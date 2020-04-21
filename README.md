@@ -2,13 +2,12 @@
 
 ## TODO
 
-- [] repo setup
-  - [x] choose temporal name
-  - [x] make repo
+- [x] repo setup
+- [] check htm works on any hello world example
 - [] rl env
-  - breakout for early testing
-  - chase the target as simpler alternative
-    - base env?
-- [] check it works
-  - naive random
-- conda env config
+  - [] breakout for early testing
+  - [] chase the target as simpler alternative
+    - [] choose base env
+- [] check env works
+  - [] naive random
+- [] conda env config
