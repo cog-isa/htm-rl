@@ -11,3 +11,7 @@
 - [x] check env works
   - [x] naive random
 - [] conda env config
+- [] add rl
+  - [] refresh schema rl inference logic
+  - [] check out TD($\lambda$)
+- consider doing live-logging here
