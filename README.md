@@ -17,7 +17,7 @@
   - [ ] read BAMI part on TM
 - [ ] implement schema rl
   - [x] refresh inference logic
-  - [ ] train making forward prediction on simple synthetic sequences
+  - [x] make forward prediction pass on simple synthetic sequences
   - [ ] try out making backtracking on simple synthetic sequences
 - [ ] implement TD($\lambda$)-based approach from Sungur's work
   - [ ] get understanding of the work
