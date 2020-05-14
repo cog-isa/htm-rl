@@ -13,8 +13,8 @@
 - [ ] conda env config
 - [ ] build up htm & neuroscience knowledge
   - [x] refresh `htm school` videos
-  - [ ] get used to terminology with `brains explained` videos (1-5, especially on Basal Ganglia)
-  - [ ] read BAMI part on TM
+  - [x] get used to terminology with `brains explained` videos (1-5, especially on Basal Ganglia)
+  - [x] read BAMI part on TM
 - [ ] implement schema rl
   - [x] refresh inference logic
   - [x] make forward prediction pass on simple synthetic sequences
@@ -23,3 +23,12 @@
   - [ ] get understanding of the work
 - [ ] checkout wandb [and, optionally, dvc]
 - consider doing live-logging here
+
+## Ideas
+
+- consider using SP between an input an TM
+  - make separate SPs for states, actions and rewards
+  - concat them together
+  - it will take care of sparsity
+  - maybe smoothes volume differences for a range of diff environments
+    - bc even large envs may have a very small signal
