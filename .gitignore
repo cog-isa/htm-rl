@@ -130,5 +130,7 @@ dmypy.json
 
 # ============ Project specific =======================
 
+.idea/
+
 # temporal scratchpad notebook
 notebooks/00_scratchpad.ipynb
