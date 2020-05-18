@@ -1,5 +1,7 @@
 # htm_rl
 
+Repo [link](https://github.com/cog-isa/htm-rl).
+
 ## TODO
 
 - [x] repo setup
