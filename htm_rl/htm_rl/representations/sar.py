@@ -1,11 +1,16 @@
-from typing import Tuple, List, Union
+from typing import List, Optional, NamedTuple
 
-Sar = Tuple[
-    Union[int, None], Union[int, None], Union[int, None]
-]
-SarSuperposition = Tuple[
-    Union[List[int], None], Union[List[int], None], Union[List[int], None]
-]
+Sar = NamedTuple('Sar', [
+    ('state', Optional[int]),
+    ('action', Optional[int]),
+    ('reward', Optional[int])
+])
+
+SarSuperposition = NamedTuple('SarSuperposition', [
+    ('states', Optional[List[int]]),
+    ('actions', Optional[List[int]]),
+    ('rewards', Optional[List[int]])
+])
 
 
 def str_from_sar_superposition(sar_superposition: SarSuperposition) -> str:
@@ -15,6 +20,5 @@ def str_from_sar_superposition(sar_superposition: SarSuperposition) -> str:
     )
 
 
-def sar_superposition_has_reward(sar_superposition: SarSuperposition) -> bool:
-    reward_superposition = sar_superposition[2]
-    return reward_superposition is not None and 1 in reward_superposition
+def sar_superposition_has_reward(sar: SarSuperposition) -> bool:
+    return sar.rewards is not None and 1 in sar.rewards
