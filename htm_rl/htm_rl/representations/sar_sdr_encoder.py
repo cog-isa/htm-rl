@@ -45,25 +45,35 @@ class SarSdrEncoder:
         )
         return SarSuperposition(states, actions, rewards)
 
+    def get_rewarding_indices_range(self) -> Tuple[int, int]:
+        reward_shift = self._shifts[2]
+        reward_encoder = self.encoders[2]
+        return reward_shift, reward_shift + reward_encoder.total_bits
+
+    def get_actions_indices_range(self) -> Tuple[int, int]:
+        action_shift = self._shifts[1]
+        action_encoder = self.encoders[1]
+        return action_shift, action_shift + action_encoder.total_bits
+
     def _split_indices_between_encoders(self, indices: SparseSdr) -> Tuple[SparseSdr, ...]:
         state_shift, action_shift, reward_shift = self._shifts
         state_indices, action_indices, reward_indices = [], [], []
 
-        def put_in_corresponding_basket(i: int):
-            if i < action_shift:
-                state_indices.append(i)
-            elif i < reward_shift:
-                action_indices.append(i - action_shift)
+        def put_into_corresponding_bucket(ind: int):
+            if ind < action_shift:
+                state_indices.append(ind)
+            elif ind < reward_shift:
+                action_indices.append(ind - action_shift)
             else:
-                reward_indices.append(i - reward_shift)
+                reward_indices.append(ind - reward_shift)
 
         for i in indices:
-            put_in_corresponding_basket(i)
+            put_into_corresponding_bucket(i)
         return state_indices, action_indices, reward_indices
 
     def str_from_sparse(self, indices: SparseSdr) -> str:
         split_indices = self._split_indices_between_encoders(indices)
-        return ' '.join(
+        return ' | '.join(
             encoder.str_from_sparse(indices_)
             for encoder, indices_ in zip(self.encoders, split_indices)
         )
@@ -71,7 +81,7 @@ class SarSdrEncoder:
     def _str_from_dense(self, arr: DenseSdr) -> str:
         assert arr.ndim == 1 and arr.shape[0] == self.total_bits, \
             f'Array shape mismatch. Expected ({self.total_bits},); got {arr.shape}'
-        return ' '.join(
+        return ' | '.join(
             encoder._str_from_dense(arr[shift: shift + encoder.total_bits])
             for encoder, shift in zip(self.encoders, self._shifts)
         )
@@ -80,7 +90,7 @@ class SarSdrEncoder:
     def _apply_shift(indices: List[int], shift: int):
         return [i + shift for i in indices]
 
-    def encode_dense(self, sar: Sar, out_result: DenseSdr = None) -> DenseSdr:
+    def _encode_dense(self, sar: Sar, out_result: DenseSdr = None) -> DenseSdr:
         if out_result is None:
             out_result = np.zeros(self.total_bits, dtype=np.int8)
 
@@ -94,7 +104,7 @@ class SarSdrEncoder:
             base_shift += encoder.total_bits
         return result
 
-    def encode_dense_state_all_actions(self, state: int, reward: int = 0) -> np.ndarray:
+    def _encode_dense_state_all_actions(self, state: int, reward: int = 0) -> np.ndarray:
         encoded_vector = np.zeros(self.total_bits, dtype=np.int8)
         state_encoder, action_encoder, reward_encoder = self.encoders
 
@@ -112,6 +122,19 @@ class SarSdrEncoder:
         actions_shift = encoders.s.total_bits
         rewards_shift = actions_shift + encoders.a.total_bits
         return 0, actions_shift, rewards_shift
+
+    def _update_sparse(self, indices: SparseSdr, sar: Sar) -> SparseSdr:
+        indices_buckets = self._split_indices_between_encoders(indices)
+        result_indices = []
+        for i in range(3):
+            x = sar[i]
+            shift = self._shifts[i]
+            if x is None:
+                indices = self._apply_shift(indices_buckets[i], shift)
+            else:
+                indices = self.encoders[i].encode_sparse_with_shift(x, shift)
+            result_indices.extend(indices)
+        return result_indices
 
 
 # class SarSdrEncoder:
