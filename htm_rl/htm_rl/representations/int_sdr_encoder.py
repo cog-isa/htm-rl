@@ -57,7 +57,7 @@ class IntSdrEncoder:
         return decoded_values
 
     def str_from_sparse(self, indices: SparseSdr):
-        self._str_from_dense(sparse_to_dense(indices, self.total_bits))
+        return self._str_from_dense(sparse_to_dense(indices, self.total_bits))
 
     def _encode_dense(self, x: int, arr: DenseSdr = None) -> DenseSdr:
         ind_from, ind_to = self._encoding_bits_range(x)

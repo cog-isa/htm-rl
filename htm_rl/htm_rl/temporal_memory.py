@@ -26,3 +26,21 @@ class TemporalMemory(TM):
         self.learning_threshold = learning_threshold
         self.initial_permanence = initial_permanence
         self.connected_permanence = connected_permanence
+
+    def __getstate__(self):
+        data = (
+            self.n_columns, self.cells_per_column, self.activation_threshold,
+            self.learning_threshold, self.initial_permanence, self.connected_permanence
+        )
+        return super().__getstate__(), data
+
+    def __setstate__(self, state):
+        super_data, data = state
+
+        super().__setstate__(super_data)
+
+        (
+            self.n_columns, self.cells_per_column, self.activation_threshold,
+            self.learning_threshold, self.initial_permanence, self.connected_permanence
+        ) = data
+

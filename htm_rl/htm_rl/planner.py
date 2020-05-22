@@ -1,5 +1,5 @@
 import pickle
-from typing import List, Any, Dict, Tuple, Mapping, Set, Iterable
+from typing import List, Tuple, Mapping
 
 import numpy as np
 
@@ -29,6 +29,7 @@ class Planner:
         if not reward_reached:
             return None
 
+        print(self.agent.tm.n_columns)
         starting_step_allowed_actions = self._backtrack_from_reward()
 
         planned_actions = self._remake_predictions_to_plan_actions(initial_sar, starting_step_allowed_actions)
@@ -103,16 +104,6 @@ class Planner:
         rewarding_columns_range = self.agent.encoder.get_rewarding_indices_range()
 
         return self._filter_cells_by_columns_range(all_final_active_cells, rewarding_columns_range)
-
-    def _filter_cells_by_columns2(self, cells: SparseSdr, columns: SparseSdr) -> SparseSdr:
-        cpc = self.agent.tm.cells_per_column
-        columns = set(columns)
-        filtered_cells = [
-            cell
-            for cell in cells
-            if cell // cpc in columns
-        ]
-        return filtered_cells
 
     def _filter_cells_by_columns_range(self, cells: SparseSdr, columns_range: Tuple[int, int]) -> SparseSdr:
         cpc = self.agent.tm.cells_per_column
@@ -201,8 +192,10 @@ class Planner:
         allowed_action_cells = [
             postsynaptic_cell
             for postsynaptic_cell, presynaptic_cells in backtracking_connections.items()
-            if postsynaptic_cell in postsynaptic_action_cells_set and \
-               any(cell for cell in presynaptic_cells if cell in presynaptic_action_cells_set)
+            if (
+                    postsynaptic_cell in postsynaptic_action_cells_set
+                    and any(cell for cell in presynaptic_cells if cell in presynaptic_action_cells_set)
+            )
         ]
         return allowed_action_cells
 
@@ -211,7 +204,7 @@ class Planner:
         return self._filter_cells_by_columns_range(cells, actions_columns_range)
 
     def _replace_actions_with_action(self, columns: SparseSdr, action: int):
-        action_only_sar = Sar(action=action)
+        action_only_sar = Sar(state=None, action=action, reward=None)
         action_sdr = self.agent.encoder.encode_sparse(action_only_sar)
 
         l, r = self.agent.encoder.get_actions_indices_range()

@@ -1,10 +1,9 @@
 from collections import defaultdict
-from typing import List, Union, Optional, Iterable, Set, Mapping
+from typing import List, Optional, Mapping
 
-import numpy as np
 from htm.bindings.sdr import SDR
 
-from representations.sar import Sar, str_from_sar_superposition
+from representations.sar import str_from_sar_superposition
 from representations.sar_sdr_encoder import SarSdrEncoder
 from representations.sdr import SparseSdr
 from temporal_memory import TemporalMemory
@@ -24,9 +23,6 @@ class Agent:
         if condition:
             self.tm.reset()
 
-    def make_action(self, state: int, reward: int, print_enabled=False, reset_enabled=True) -> int:
-        return 0
-
     def train_cycle(self, sequence: List[SparseSdr], print_enabled=False, reset_enabled=True):
         if reset_enabled:
             self.tm.reset()
@@ -39,7 +35,7 @@ class Agent:
             proximal_input,
             learn_enabled=True, output_active_cells=False, print_enabled=print_enabled
         )
-        self.depolarize_memory(learn_enabled=True, output_predictive_cells=False)
+        self.depolarize_memory(learn_enabled=True, output_predictive_cells=False, print_enabled=print_enabled)
 
     def predict_cycle(self, initial_input: SparseSdr, n_steps, print_enabled=False, reset_enabled=True):
         if reset_enabled:
@@ -59,11 +55,14 @@ class Agent:
             proximal_input,
             learn_enabled=False, output_active_cells=False, print_enabled=print_enabled
         )
-        predictive_cells = self.depolarize_memory(learn_enabled=False, output_predictive_cells=True)
+        predictive_cells = self.depolarize_memory(
+            learn_enabled=False, output_predictive_cells=True, print_enabled=print_enabled
+        )
         return predictive_cells
 
-    def activate_memory(self,
-            proximal_input: SparseSdr, learn_enabled: bool, output_active_cells: bool, print_enabled: bool
+    def activate_memory(
+            self, proximal_input: SparseSdr,
+            learn_enabled: bool, output_active_cells: bool, print_enabled: bool
     ) -> Optional[SparseSdr]:
         self._proximal_input_sdr.sparse = proximal_input
         self.tm.compute(self._proximal_input_sdr, learn=learn_enabled)
@@ -74,8 +73,8 @@ class Agent:
                 print(self._str_from_cells(active_cells, 'Active'))
             return active_cells.sparse
 
-    def depolarize_memory(self,
-            learn_enabled: bool, output_predictive_cells: bool, print_enabled: bool
+    def depolarize_memory(
+            self, learn_enabled: bool, output_predictive_cells: bool, print_enabled: bool
     ) -> Optional[SparseSdr]:
         self.tm.activateDendrites(learn=learn_enabled)
 
@@ -87,9 +86,9 @@ class Agent:
 
     def _str_from_cells(self, cells_sdr: SDR, name: str) -> str:
         flatten_cells_sparse_sdr = cells_sdr.sparse
-        cells_sparse_sdr = [[]*self.tm.cells_per_column]
+        cells_sparse_sdr = [[] for _ in range(self.tm.cells_per_column)]
         for ind in flatten_cells_sparse_sdr:
-            layer, column = divmod(ind, self.tm.cells_per_column)
+            column, layer = divmod(ind, self.tm.cells_per_column)
             cells_sparse_sdr[layer].append(column)
 
         first_line = f'{self.encoder.str_from_sparse(cells_sparse_sdr[0])} {name}'
