@@ -161,7 +161,7 @@ class Planner:
             predictive_cells = self._depolarize_cells()
             proximal_input = self.agent.columns_from_cells_sparse(predictive_cells)
 
-            reward_reached = self._check_reward(predictive_cells)
+            reward_reached = self._check_reward(proximal_input)
             if reward_reached:
                 break
 
