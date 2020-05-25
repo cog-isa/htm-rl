@@ -134,3 +134,6 @@ dmypy.json
 
 # temporal scratchpad notebook
 notebooks/00_scratchpad.ipynb
+
+# temporal scratchpad script
+htm_rl/htm_rl/scratch.py

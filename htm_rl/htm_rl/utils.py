@@ -1,8 +1,8 @@
-from typing import List, Tuple, Sequence, Any, Iterable
+from typing import Sequence, Any, Iterable
 
 import numpy as np
 
-from representations.sdr import SparseSdr, DenseSdr
+from htm_rl.representations.sdr import SparseSdr, DenseSdr
 
 
 def isnone(x, default):
