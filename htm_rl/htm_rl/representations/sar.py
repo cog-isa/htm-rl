@@ -1,5 +1,5 @@
 from typing import List, Optional, NamedTuple, TypeVar, Generic
-from dataclasses import dataclass
+from dataclasses import dataclass, astuple
 
 from utils import isnone
 
@@ -24,6 +24,7 @@ class Sar(Generic[State, ActionReward]):
 
     # is needed for tuple unpacking
     def __iter__(self):
-        yield self.state
-        yield self.action
-        yield self.reward
+        yield from astuple(self)
+
+    def __getitem__(self, item: int):
+        return astuple(self)[item]
