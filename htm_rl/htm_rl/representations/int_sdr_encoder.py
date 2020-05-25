@@ -2,8 +2,8 @@ from typing import List, Tuple, Iterable
 
 import numpy as np
 
-from representations.sdr import SparseSdr, DenseSdr
-from utils import isnone, sparse_to_dense
+from htm_rl.representations.sdr import SparseSdr, DenseSdr
+from htm_rl.utils import isnone, sparse_to_dense
 
 
 class IntSdrEncoder:

@@ -1,24 +1,29 @@
-from typing import List, Optional, NamedTuple
+from typing import List, Optional, NamedTuple, TypeVar, Generic
+from dataclasses import dataclass
 
-Sar = NamedTuple('Sar', [
-    ('state', Optional[int]),
-    ('action', Optional[int]),
-    ('reward', Optional[int])
-])
-
-SarSuperposition = NamedTuple('SarSuperposition', [
-    ('states', Optional[List[int]]),
-    ('actions', Optional[List[int]]),
-    ('rewards', Optional[List[int]])
-])
+from utils import isnone
 
 
-def str_from_sar_superposition(sar_superposition: SarSuperposition) -> str:
-    return ' '.join(
-        ''.join(map(str, superposition))
-        for superposition in sar_superposition
-    )
+State = TypeVar('State')
+ActionReward = TypeVar('ActionReward')
 
 
-def sar_superposition_has_reward(sar: SarSuperposition) -> bool:
-    return sar.rewards is not None and 1 in sar.rewards
+@dataclass(frozen=True)
+class Sar(Generic[State, ActionReward]):
+    """
+    Represents a combination of state, action, reward aka (s, a, r).
+
+    Every part is optional, e.g. (s, a, None)
+    """
+
+    #
+    __slots__ = ['state', 'action', 'reward']
+    state: Optional[State]
+    action: Optional[ActionReward]
+    reward: Optional[ActionReward]
+
+    # is needed for tuple unpacking
+    def __iter__(self):
+        yield self.state
+        yield self.action
+        yield self.reward
