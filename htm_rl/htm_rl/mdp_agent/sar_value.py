@@ -1,6 +1,6 @@
 from typing import Union, List
 
-from representations.sar import Sar
+from htm_rl.mdp_agent.sar import Sar
 
 
 # TODO: rollback to non-vectorized
@@ -19,7 +19,7 @@ def decode_sar_value(sar_value: Union[int, List[int]]) -> Union[Sar, List[Sar]]:
     def _decode_sar_value(sar_value: int) -> Sar:
         s, ar = divmod(sar_value, 100)
         a, r = divmod(ar, 10)
-        return s, a, r
+        return Sar(s, a, r)
 
     if isinstance(sar_value, list):
         sar_values = sar_value

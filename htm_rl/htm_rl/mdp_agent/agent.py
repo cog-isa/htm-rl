@@ -3,10 +3,10 @@ from typing import List, Optional, Mapping
 
 from htm.bindings.sdr import SDR
 
-from representations.sar import str_from_sar_superposition
-from representations.sar_sdr_encoder import SarSdrEncoder
-from representations.sdr import SparseSdr
-from temporal_memory import TemporalMemory
+from htm_rl.mdp_agent.sar import str_from_sar_superposition
+from htm_rl.mdp_agent.sar_sdr_encoder import SarSdrEncoder
+from htm_rl.representations.sdr import SparseSdr
+from htm_rl.representations.temporal_memory import TemporalMemory
 
 
 class Agent:
@@ -122,10 +122,10 @@ class Agent:
             for segment in self.tm.getActiveSegments()
         )
         presynaptic_connections = defaultdict(list)
-        for postsynaptic_cell, presynapric_cells in active_segments:
+        for postsynaptic_cell, presynaptic_cells in active_segments:
             presynaptic_connections[postsynaptic_cell].extend(
-                presynapric_cell
-                for presynapric_cell in presynapric_cells
-                if presynapric_cell in active_presynaptic_cells
+                presynaptic_cell
+                for presynaptic_cell in presynaptic_cells
+                if presynaptic_cell in active_presynaptic_cells
             )
         return presynaptic_connections

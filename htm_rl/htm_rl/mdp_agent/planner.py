@@ -3,11 +3,11 @@ from typing import List, Tuple, Mapping
 
 import numpy as np
 
-from agent import Agent
-from representations.int_sdr_encoder import IntSdrEncoder
-from representations.sar import Sar, str_from_sar_superposition, sar_superposition_has_reward
-from representations.sdr import SparseSdr
-from utils import range_reverse
+from htm_rl.mdp_agent.agent import Agent
+from htm_rl.representations.int_sdr_encoder import IntSdrEncoder
+from htm_rl.mdp_agent.sar import Sar, str_from_sar_superposition, sar_superposition_has_reward
+from htm_rl.representations.sdr import SparseSdr
+from htm_rl.utils import range_reverse
 
 
 class Planner:
@@ -232,4 +232,4 @@ class Planner:
     def _get_active_actions(self, active_cells) -> List[int]:
         active_columns = self.agent.columns_from_cells_sparse(active_cells)
         sar_superposition = self.agent.encoder.decode_sparse(active_columns)
-        return sar_superposition.actions
+        return sar_superposition.action
