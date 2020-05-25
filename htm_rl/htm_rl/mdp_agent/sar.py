@@ -1,18 +1,7 @@
-from typing import List, TypeVar
+from htm_rl.representations.sar import BaseSar, Superposition
 
-from htm_rl.representations.sar import Sar as GenericSar
-
-T = TypeVar('T')
-Superposition = List[T]
-
-State = int
-StateSuperposition = Superposition[State]
-
-ActionReward = int
-ActionRewardSuperposition = Superposition[ActionReward]
-
-Sar = GenericSar[State, ActionReward]
-SarSuperposition = GenericSar[StateSuperposition, ActionRewardSuperposition]
+Sar = BaseSar[int, int, int]
+SarSuperposition = BaseSar[Superposition, Superposition, Superposition]
 
 
 def str_from_sar_superposition(sar_superposition: SarSuperposition) -> str:

@@ -1,43 +1,41 @@
 from typing import List, TypeVar
 
-from htm_rl.representations.sar import Sar as GenericSar
+from htm_rl.representations.sar import BaseSar, Superposition
 from htm_rl.utils import isnone
 
 T = TypeVar('T')
-Superposition = List[T]
-Matrix = List[List[T]]
 
-StateElem = int
-State = Matrix[StateElem]
-StateElemSuperposition = Superposition[StateElem]
-StateSuperposition = Matrix[StateElemSuperposition]
+SuperpositionList = List[Superposition]
 
-ActionReward = int
-ActionRewardSuperposition = Superposition[ActionReward]
-
-Sar = GenericSar[State, ActionReward]
-SarSuperposition = GenericSar[StateSuperposition, ActionRewardSuperposition]
+Sar = BaseSar[List[int], int, int]
+SarSuperposition = BaseSar[SuperpositionList, Superposition, Superposition]
 
 
 def str_from_sar_superposition(sar: SarSuperposition) -> str:
-    return _SarSuperpositionFormatter.format(sar)
+    return SarSuperpositionFormatter.format(sar)
 
 
 def sar_superposition_has_reward(sar: SarSuperposition) -> bool:
     return sar.reward is not None and 1 in sar.reward
 
 
-class _SarSuperpositionFormatter:
+class SarSuperpositionFormatter:
     state_chars = ['X', '-', '#', '^']
     action_chars = ['<', '>', '^']
     reward_chars = ['.', '+', '-']
 
-    @classmethod
-    def format(cls, sar: SarSuperposition) -> str:
+    n_rows: int
+    n_cols: int
+
+    def __init__(self, n_rows: int, n_cols: int):
+        self.n_rows = n_rows
+        self.n_cols = n_cols
+
+    def format(self, sar: SarSuperposition) -> str:
         return ' '.join([
-            cls._str_from_state_superposition(sar.state),
-            cls._str_from_superposition(sar.action, cls.action_chars),
-            cls._str_from_superposition(sar.reward, cls.reward_chars),
+            self._str_from_state_superposition(sar.state),
+            self._str_from_superposition(sar.action, self.action_chars),
+            self._str_from_superposition(sar.reward, self.reward_chars),
         ])
 
     @staticmethod
@@ -50,12 +48,12 @@ class _SarSuperpositionFormatter:
             for i in range(n_x + d)
         )
 
-    @classmethod
-    def _str_from_state_superposition(cls, state: StateSuperposition) -> str:
-        def to_str(x: StateElemSuperposition) -> str:
-            return cls._str_from_superposition(x, cls.state_chars)
+    def _str_from_state_superposition(self, state: List[Superposition]) -> str:
+        def to_str(x: Superposition) -> str:
+            return self._str_from_superposition(x, self.state_chars)
 
+        n_rows, n_cols = self.n_rows, self.n_cols
         return '\n'.join(
-            '|'.join(to_str(col) for col in row)
-            for row in state
+            '|'.join(to_str(state[row * n_cols + col]) for col in range(n_cols))
+            for row in range(n_rows)
         )
