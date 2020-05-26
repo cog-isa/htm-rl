@@ -28,14 +28,14 @@ class SarSdrEncoder:
         encoded_indices = [
             ind
             for x, encoder, shift in zip(sar, self.encoders, self._shifts)
-            for ind in encoder.encode_sparse_with_shift(x, shift)
+            for ind in encoder.encode(x, shift)
         ]
         return encoded_indices
 
     def decode_sparse(self, indices: SparseSdr) -> SarSuperposition:
         split_indices = self._split_indices_between_encoders(indices)
         states, actions, rewards = (
-            encoder.decode_sparse(indices_)
+            encoder.decode(indices_)
             for encoder, indices_ in zip(self.encoders, split_indices)
         )
         return SarSuperposition(states, actions, rewards)
@@ -69,29 +69,12 @@ class SarSdrEncoder:
     def str_from_sparse(self, indices: SparseSdr) -> str:
         split_indices = self._split_indices_between_encoders(indices)
         return ' | '.join(
-            encoder.str_from_sparse(indices_)
+            encoder.format(indices_)
             for encoder, indices_ in zip(self.encoders, split_indices)
         )
-
-    @staticmethod
-    def _apply_shift(indices: List[int], shift: int):
-        return [i + shift for i in indices]
 
     @staticmethod
     def _get_shifts(encoders: SarSdrEncodersNT) -> Tuple[int, int, int]:
         actions_shift = encoders.s.total_bits
         rewards_shift = actions_shift + encoders.a.total_bits
         return 0, actions_shift, rewards_shift
-
-    def _update_sparse(self, indices: SparseSdr, sar: Sar) -> SparseSdr:
-        indices_buckets = self._split_indices_between_encoders(indices)
-        result_indices = []
-        for i in range(3):
-            x = sar[i]
-            shift = self._shifts[i]
-            if x is None:
-                indices = self._apply_shift(indices_buckets[i], shift)
-            else:
-                indices = self.encoders[i].encode_sparse_with_shift(x, shift)
-            result_indices.extend(indices)
-        return result_indices
