@@ -4,6 +4,7 @@ from typing import List, NamedTuple, Iterable
 from htm_rl.gridworld_agent.sar import SuperpositionList
 from htm_rl.representations.int_sdr_encoder import IntSdrEncoder, BitRange
 from htm_rl.representations.sdr import SparseSdr
+from htm_rl.utils import isnone
 
 Dim2d = NamedTuple('Dim2d', (('rows', int), ('cols', int)))
 
@@ -32,6 +33,7 @@ class ListSdrEncoder:
         self._shifts = self._get_shifts(encoder, n_elems)
 
     def encode(self, values: List[int], base_shift: int) -> Iterable[BitRange]:
+        values = isnone(values, [])
         return (
             bit_range
             for x, shift in zip(values, self._shifts)

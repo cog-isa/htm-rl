@@ -11,10 +11,6 @@ Sar = BaseSar[List[int], int, int]
 SarSuperposition = BaseSar[SuperpositionList, Superposition, Superposition]
 
 
-def str_from_sar_superposition(sar: SarSuperposition) -> str:
-    return SarSuperpositionFormatter.format(sar)
-
-
 def sar_superposition_has_reward(sar: SarSuperposition) -> bool:
     return sar.reward is not None and 1 in sar.reward
 

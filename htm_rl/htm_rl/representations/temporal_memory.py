@@ -10,7 +10,8 @@ class TemporalMemory(TM):
 
     def __init__(
             self, n_columns, cells_per_column, activation_threshold,
-            learning_threshold, initial_permanence, connected_permanence
+            learning_threshold, initial_permanence, connected_permanence,
+            **kwargs
     ):
         super().__init__(
             columnDimensions=(n_columns, ),
@@ -19,6 +20,7 @@ class TemporalMemory(TM):
             minThreshold=learning_threshold,
             initialPermanence=initial_permanence,
             connectedPermanence=connected_permanence,
+            **kwargs
         )
         self.n_columns = n_columns
         self.cells_per_column = cells_per_column
