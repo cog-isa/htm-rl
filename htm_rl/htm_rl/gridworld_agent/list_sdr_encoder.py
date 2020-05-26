@@ -9,7 +9,9 @@ Dim2d = NamedTuple('Dim2d', (('rows', int), ('cols', int)))
 
 
 class ListSdrEncoder:
+    value_bits: int
     total_bits: int
+    activation_threshold: int
 
     _encoder: IntSdrEncoder
     _n_elems: int
@@ -20,7 +22,9 @@ class ListSdrEncoder:
         n_rows, n_cols = n_dim
         n_elems = n_rows * n_cols
 
+        self.value_bits = n_elems * encoder.value_bits
         self.total_bits = n_elems * encoder.total_bits
+        self.activation_threshold = n_elems * encoder.activation_threshold
 
         self._encoder = encoder
         self._n_elems = n_elems
@@ -28,9 +32,10 @@ class ListSdrEncoder:
         self._shifts = self._get_shifts(encoder, n_elems)
 
     def encode(self, values: List[int], base_shift: int) -> Iterable[BitRange]:
-        yield from chain(
-            self._encoder.encode(x, base_shift + shift)
+        return (
+            bit_range
             for x, shift in zip(values, self._shifts)
+            for bit_range in self._encoder.encode(x, base_shift + shift)
         )
 
     def decode(self, indices: SparseSdr) -> SuperpositionList:

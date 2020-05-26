@@ -4,20 +4,20 @@ from dataclasses import dataclass, astuple
 from utils import isnone
 
 
-_S = TypeVar('S')
-_A = TypeVar('A')
-_R = TypeVar('R')
+TS = TypeVar('TS')
+TA = TypeVar('TA')
+TR = TypeVar('TR')
 
 
 @dataclass(frozen=True)
-class SarRelatedComposition(Generic[_S, _A, _R]):
+class SarRelatedComposition(Generic[TS, TA, TR]):
     """
     Represents a composition of objects related to (state, action, reward).
     """
     __slots__ = ['state', 'action', 'reward']
-    state: _S
-    action: _A
-    reward: _R
+    state: TS
+    action: TA
+    reward: TR
 
     # is needed for tuple unpacking
     def __iter__(self):
@@ -29,9 +29,9 @@ class SarRelatedComposition(Generic[_S, _A, _R]):
 
 @dataclass(frozen=True)
 class BaseSar(SarRelatedComposition[
-    Optional[_S],
-    Optional[_A],
-    Optional[_R]
+    Optional[TS],
+    Optional[TA],
+    Optional[TR]
 ]):
     """
     Represents a composition of (state, action, reward) aka sar. Every part is optional, e.g. (s, a, None)
