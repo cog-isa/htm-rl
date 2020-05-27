@@ -1,9 +1,9 @@
 import pickle
-from typing import List, Tuple, Mapping, Generic, TypeVar
+from typing import List, Tuple, Mapping
 
 import numpy as np
 
-from htm_rl.gridworld_agent.agent import Agent
+from htm_rl.agent import Agent
 from htm_rl.representations.int_sdr_encoder import IntSdrEncoder
 from htm_rl.representations.sdr import SparseSdr
 from htm_rl.utils import range_reverse

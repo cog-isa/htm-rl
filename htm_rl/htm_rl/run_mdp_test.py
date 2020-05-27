@@ -1,7 +1,6 @@
 import numpy as np
 
-from htm_rl.gridworld_agent.agent import Agent
-from htm_rl.gridworld_agent.planner import Planner
+from htm_rl.agent import Agent
 from htm_rl.mdp_agent.sar import SarSuperpositionFormatter, Sar
 from htm_rl.mdp_agent.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.mdp_agent.sar_value import decode_sar_value
