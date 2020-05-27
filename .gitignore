@@ -130,7 +130,11 @@ dmypy.json
 
 # ============ Project specific =======================
 
+# pycharm project-specific settings
 .idea/
+
+# additional auto-generated git config
+.gitconfig
 
 # temporal scratchpad notebook
 notebooks/00_scratchpad.ipynb
