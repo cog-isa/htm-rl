@@ -4,6 +4,7 @@ from htm_rl.agent import Agent
 from htm_rl.mdp_agent.sar import SarSuperpositionFormatter, Sar
 from htm_rl.mdp_agent.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.mdp_agent.sar_value import decode_sar_value
+from htm_rl.planner import Planner
 from htm_rl.representations.int_sdr_encoder import IntSdrEncoder
 from htm_rl.representations.temporal_memory import TemporalMemory
 
@@ -47,5 +48,5 @@ if __name__ == '__main__':
 
     agent.predict_cycle(initial_proximal_input, 3, print_enabled=True, reset_enabled=True)
 
-    # planner = Planner(agent, 6, print_enabled=True)
-    # planner.plan_actions(initial_sar)
+    planner = Planner(agent, 6, print_enabled=True)
+    planner.plan_actions(initial_sar)
