@@ -1,0 +1,12 @@
+numpy
+matplotlib
+jupyterlab
+
+hexy
+mock
+prettytable
+pytest==4.6.5
+htm.core==2.0.18
+
+gym==0.17.2
+gym-minigrid==1.0.1
