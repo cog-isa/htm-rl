@@ -18,6 +18,7 @@ class Agent:
         self.encoder = encoder
         self._proximal_input_sdr = SDR(self.tm.n_columns)
         self.format = formatter
+        self.anomalies = []
 
     def reset(self, condition=True) -> None:
         if condition:
@@ -66,6 +67,8 @@ class Agent:
     ) -> Optional[SparseSdr]:
         self._proximal_input_sdr.sparse = proximal_input
         self.tm.compute(self._proximal_input_sdr, learn=learn_enabled)
+        if learn_enabled:
+            self.anomalies.append(1 - self.tm.anomaly)
 
         if output_active_cells or print_enabled:
             active_cells: SDR = self.tm.getActiveCells()

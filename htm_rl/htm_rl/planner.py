@@ -29,7 +29,6 @@ class Planner:
         if not reward_reached:
             return None
 
-        print(self.agent.tm.n_columns)
         starting_step_allowed_actions = self._backtrack_from_reward()
 
         planned_actions = self._remake_predictions_to_plan_actions(initial_sar, starting_step_allowed_actions)
