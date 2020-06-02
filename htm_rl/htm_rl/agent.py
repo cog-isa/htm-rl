@@ -73,7 +73,7 @@ class Agent:
         if output_active_cells or print_enabled:
             active_cells: SDR = self.tm.getActiveCells()
             if print_enabled:
-                print(self._str_from_cells(active_cells, 'Active'))
+                print(self._str_from_cells(active_cells, 'Act'))
             return active_cells.sparse
 
     def depolarize_memory(
@@ -84,7 +84,11 @@ class Agent:
         if output_predictive_cells or print_enabled:
             predictive_cells: SDR = self.tm.getPredictiveCells()
             if print_enabled:
-                print(self._str_from_cells(predictive_cells, 'Predictive'))
+                print(self._str_from_cells(predictive_cells, 'Prd'))
+
+                proximal_input = self.columns_from_cells_sparse(predictive_cells.sparse)
+                sar_superposition = self.encoder.decode(proximal_input)
+                print(self.format(sar_superposition))
             return predictive_cells.sparse
 
     def _str_from_cells(self, cells_sdr: SDR, name: str) -> str:

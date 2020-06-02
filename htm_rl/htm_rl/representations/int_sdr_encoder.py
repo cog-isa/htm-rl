@@ -91,3 +91,19 @@ class IntSdrEncoder:
     def __str__(self):
         name, n_values, value_bits = self.name, self.n_values, self.value_bits
         return f'({name}: v{n_values} x b{value_bits})'
+
+
+class IntSdrEncoder_ShortFormat(IntSdrEncoder):
+    def __init__(self, name: str, n_values: int, value_bits: int, activation_threshold: int = None):
+        super().__init__(name, n_values, value_bits, activation_threshold)
+
+    def format(self, indices: SparseSdr) -> str:
+        n_activations = [0] * self.n_values
+        for x in indices:
+            value = x // self.value_bits
+            n_activations[value] += 1
+
+        return ' '.join(
+            f'{value_activation:2}'
+            for value_activation in n_activations
+        )

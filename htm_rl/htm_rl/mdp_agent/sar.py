@@ -8,7 +8,7 @@ class SarSuperpositionFormatter:
     @staticmethod
     def format(sar: SarSuperposition) -> str:
         return ' '.join(
-            ''.join(map(str, superposition))
+            '.'.join(map(str, superposition))
             for superposition in sar
         )
 
