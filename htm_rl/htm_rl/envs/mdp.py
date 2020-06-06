@@ -49,7 +49,7 @@ class Mdp:
 
     def get_reward(self, state, action, next_state):
         """ return the reward you get for taking action in state and landing on next_state"""
-        return 1. if self.is_terminal(next_state) else 0.
+        return 1 if self.is_terminal(next_state) else 0
 
     def reset(self):
         """ reset the game, return the initial state"""
@@ -89,6 +89,10 @@ def generate_gridworld_mdp(initial_state, cell_transitions, add_clockwise_action
     :return: Gym's environment-like object
     """
     transitions = _generate_transitions(cell_transitions, add_clockwise_action)
+
+    cell, direction = initial_state
+    initial_state = cell * 4 + direction
+
     return Mdp(transitions, initial_state, seed)
 
 
@@ -101,22 +105,22 @@ def _generate_transitions(cell_transitions, add_clockwise_action=False):
 
     By convenience directions: 0 - right, 1 - up, 2 - left, 3 - down
         , i.e. [0, 3] counter-clockwise.
-    :param cell_transitions: List[(cell, direction, next_cell)]
+    :param cell_transitions: List[(cell, direction, next_cell)].
+        Last transition must be to the terminal rewarding cell.
     :param add_clockwise_action: by default only counter-clockwise turn is allowed
     :return: Dict[state][action] = next_state
     """
-    n_cells = max(
-        max(cell for cell, _, _ in cell_transitions),
-        max(next_cell for _, _, next_cell in cell_transitions),
-    )
-    n_states = n_cells * 4 + 1  # n_cells full cells + one cell w/ only one terminal state
+    terminal_cell = cell_transitions[-1][2]
+    n_full_cells = terminal_cell
+
+    n_states = n_full_cells * 4 + 1  # n_cells full cells + one cell w/ only one terminal state
     terminal_state = n_states - 1
     transitions = {terminal_state: None}
-    for cell in range(n_cells):
-        transitions = dict(transitions, **_generate_separate_cell(cell, add_clockwise_action))
+    for cell in range(n_full_cells):
+        transitions.update(_generate_separate_cell(cell, add_clockwise_action))
 
     for cell, direction, next_cell in cell_transitions:
-        _link_cells(transitions, cell, direction, next_cell)
+        _link_cells(transitions, cell, direction, next_cell, next_cell == terminal_cell)
     return transitions
 
 
@@ -135,9 +139,14 @@ def _generate_separate_cell(cell, add_clockwise_action=False):
     return transitions
 
 
-def _link_cells(transitions, c0, direction, c1):
+def _link_cells(transitions, c0, direction, c1, c1_is_terminal):
     # forward
     s0 = c0 * 4 + direction
+    if c1_is_terminal:
+        s1 = c1 * 4
+        transitions[s0][0] = s1
+        return
+
     s1 = c1 * 4 + direction
     transitions[s0][0] = s1
 
@@ -145,3 +154,9 @@ def _link_cells(transitions, c0, direction, c1):
     s0 = c0 * 4 + ((direction + 2) % 4)
     s1 = c1 * 4 + ((direction + 2) % 4)
     transitions[s1][0] = s0
+
+
+def _link_to_terminal_cell(transitions, c0, direction, c1):
+    # forward
+    s0 = c0 * 4 + direction
+

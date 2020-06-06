@@ -28,7 +28,7 @@ def print_debug_sar(sar, encoder, sar_formatter):
 def train_for(n_steps, observation, reward, print_enabled):
     reward_reached = 0
     done = False
-    for _ in range(n_steps):
+    for step in range(n_steps + 1):
         action = np.random.choice(2)
 
         render_env(env, render)
@@ -36,6 +36,8 @@ def train_for(n_steps, observation, reward, print_enabled):
         proximal_input = encoder.encode(sar)
         agent.train_one_step(proximal_input, print_enabled)
 
+        if step == n_steps:
+            break
         next_observation, reward, done, info = env.step(action)
         observation = next_observation
         if reward > 0:
@@ -61,7 +63,7 @@ if __name__ == '__main__':
     np.random.seed(1337)
 
     env = generate_gridworld_mdp(
-        initial_state=(0, 0),   # c0 >
+        initial_state=(0, 3),   # c0 >
         cell_transitions=[
             (0, 0, 1),      # c0 > c1
         ],
@@ -71,10 +73,10 @@ if __name__ == '__main__':
     n = env.n_states
     print(f'States: {n}')
 
-    bs, ba, br = 6, 10, 10
+    bs, ba, br = 10, 10, 10
     encoder = SarSdrEncoder((
         IntSdrEncoder('state', n, bs, bs-1),
-        IntSdrEncoder('action', 3, ba, ba-1),
+        IntSdrEncoder('action', 2, ba, ba-1),
         IntSdrEncoder('reward', 2, br, br-1)
     ))
     sar_formatter = SarSuperpositionFormatter
@@ -85,7 +87,7 @@ if __name__ == '__main__':
 
     tm = TemporalMemory(
         n_columns=encoder.total_bits,
-        cells_per_column=8,
+        cells_per_column=1,
         activation_threshold=activation_threshold, learning_threshold=learning_threshold,
         initial_permanence=.5, connected_permanence=.25,
         maxNewSynapseCount=int(1.1 * encoder.value_bits),
@@ -97,8 +99,9 @@ if __name__ == '__main__':
 
     render, pause = False, .1
     reward_reached = 0
-    for _ in range(50):
-        reward_reached += train_for(40, observation, reward)
+    for _ in range(3):
+        reward_reached += train_for(5, observation, reward, True)
+        print()
         tm.reset()
         observation = env.reset()
         reward = 0
@@ -107,17 +110,17 @@ if __name__ == '__main__':
 
     # train_for(10, observation, reward, 10, True)
 
-    initial_sar = Sar(observation, 2, 0)
+    initial_sar = Sar(observation, 0, 0)
     initial_proximal_input = encoder.encode(initial_sar)
     # agent.predict_cycle(initial_proximal_input, 20, True)
 
     planner = Planner(agent, 5, print_enabled=True)
     planner.plan_actions(initial_sar)
 
-    agent.tm.printParameters()
+    # agent.tm.printParameters()
 
-    plt.figure(figsize=(12, 6))
-    anomalies = agent.anomalies
-    xs = np.arange(len(anomalies))
-    plt.plot(xs, anomalies)
-    plt.show()
+    # plt.figure(figsize=(12, 6))
+    # anomalies = agent.anomalies
+    # xs = np.arange(len(anomalies))
+    # plt.plot(xs, anomalies)
+    # plt.show()
