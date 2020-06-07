@@ -1,4 +1,5 @@
 import pickle
+from collections import defaultdict
 from typing import List, Tuple, Mapping
 
 import numpy as np
@@ -15,6 +16,9 @@ class Planner:
     max_steps: int
     print_enabled: bool
     _presynaptic_connections_graph: List[Mapping[int, List[int]]]
+
+    # segments[time][cell] = [ segments ] = [ [presynaptic_cell] ]
+    # _segment_connections_graph: List[Mapping[int, List[List[int]]]]
 
     def __init__(self, agent: Agent, max_steps: int, print_enabled: bool = False):
         self.agent = agent
@@ -78,6 +82,7 @@ class Planner:
             print('Backward pass:')
 
         rewarding_cells = self._get_rewarding_cells_as_initial_for_backtracking()
+        self.agent.print_cells(rewarding_cells)
         active_cells = rewarding_cells
 
         for t in range_reverse(self._presynaptic_connections_graph):
@@ -86,6 +91,23 @@ class Planner:
                 active_cells,
                 self._presynaptic_connections_graph[t]
             )
+            self.agent.print_cells(presynaptic_cells)
+
+            # a bit of hacks
+            if t < len(self._presynaptic_connections_graph) - 1:
+                _presynaptic_cells = self._filter_presynaptic_cells(
+                    active_cells, presynaptic_cells,
+                    self._presynaptic_connections_graph[t]
+                )
+                self.agent.print_cells(list(_presynaptic_cells))
+                #
+                # for cell in presynaptic_connections:
+                #     presynaptic_connections[cell] = list(
+                #         set(presynaptic_connections[cell]) - presynaptic_cells
+                #     )
+                # presynaptic_cells = list(presynaptic_cells)
+                # print(self.agent._str_from_cells(presynaptic_cells, ''))
+            # ^^^^^^^hacks^^^^^
 
             # replace forward pass graph layer with backtracked one
             self._presynaptic_connections_graph[t] = presynaptic_connections
@@ -96,6 +118,26 @@ class Planner:
 
         starting_step_allowed_actions = self._get_active_actions(active_cells)
         return starting_step_allowed_actions
+
+    def _filter_presynaptic_cells(
+            self, active_cells, presynaptic_cells, presynaptic_connections: Mapping[int, List[int]]
+    ):
+        print('==========')
+        self.agent.print_cells(presynaptic_connections.keys())
+        self.agent.print_cells(active_cells)
+        inactive_cells = set(presynaptic_connections.keys()) - set(active_cells)
+        self.agent.print_cells(inactive_cells)
+        presynaptic_cells = set(presynaptic_cells)
+        self.agent.print_cells(presynaptic_cells)
+
+        should_be_inactive_presynaptic_cells = {
+            presynaptic_cell
+            for inactive_cell in inactive_cells
+            for presynaptic_cell in presynaptic_connections[inactive_cell]
+        }
+        self.agent.print_cells(should_be_inactive_presynaptic_cells)
+        print('^^^^^^^^^^')
+        return presynaptic_cells - should_be_inactive_presynaptic_cells
 
     def _get_rewarding_cells_as_initial_for_backtracking(self):
         # Take cells from the last step of forward prediction phase, when the reward was found.
@@ -120,9 +162,9 @@ class Planner:
             for cell in active_cells
         }
         presynaptic_cells = {
-            connection
-            for connections in backtracked_presynaptic_connections.values()
-            for connection in connections
+            presynaptic_cell
+            for presynaptic_connections in backtracked_presynaptic_connections.values()
+            for presynaptic_cell in presynaptic_connections
         }
         presynaptic_cells = list(presynaptic_cells)
 

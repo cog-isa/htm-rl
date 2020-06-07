@@ -48,9 +48,9 @@ class SarSdrEncoder(Generic[TSar, TSarSuperposition, TStateEncoder]):
         return SarRelatedComposition(states, actions, rewards)
 
     def get_rewarding_indices_range(self) -> Tuple[int, int]:
-        reward_shift = self._shifts[2]
-        reward_encoder = self._encoders[2]
-        return reward_shift, reward_shift + reward_encoder.total_bits
+        bit_range, *_ = self._encoders.reward.encode(1, self._shifts.reward)
+        l, r = bit_range
+        return l, r
 
     def get_actions_indices_range(self) -> Tuple[int, int]:
         action_shift = self._shifts[1]

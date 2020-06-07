@@ -8,7 +8,7 @@ from htm_rl.envs.mdp import generate_gridworld_mdp
 from htm_rl.mdp_agent.sar import Sar, SarSuperpositionFormatter
 from htm_rl.mdp_agent.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.planner import Planner
-from htm_rl.representations.int_sdr_encoder import IntSdrEncoder
+from htm_rl.representations.int_sdr_encoder import IntSdrEncoderShortFormat as IntSdrEncoder
 from htm_rl.representations.temporal_memory import TemporalMemory
 
 
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     sar_formatter = SarSuperpositionFormatter
 
     activation_threshold = encoder.activation_threshold
-    learning_threshold = int(0.9*activation_threshold)
+    learning_threshold = int(0.6*activation_threshold)
     print('Bits, act, learn:', encoder.total_bits, activation_threshold, learning_threshold)
 
     tm = TemporalMemory(
@@ -110,9 +110,9 @@ if __name__ == '__main__':
 
     # train_for(10, observation, reward, 10, True)
 
-    initial_sar = Sar(observation, 0, 0)
+    initial_sar = Sar(observation, 1, 0)
     initial_proximal_input = encoder.encode(initial_sar)
-    # agent.predict_cycle(initial_proximal_input, 20, True)
+    # agent.predict_cycle(initial_proximal_input, 1, True)
 
     planner = Planner(agent, 5, print_enabled=True)
     planner.plan_actions(initial_sar)

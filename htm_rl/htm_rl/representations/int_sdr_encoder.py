@@ -93,7 +93,7 @@ class IntSdrEncoder:
         return f'({name}: v{n_values} x b{value_bits})'
 
 
-class IntSdrEncoder_ShortFormat(IntSdrEncoder):
+class IntSdrEncoderShortFormat(IntSdrEncoder):
     def __init__(self, name: str, n_values: int, value_bits: int, activation_threshold: int = None):
         super().__init__(name, n_values, value_bits, activation_threshold)
 
@@ -102,8 +102,8 @@ class IntSdrEncoder_ShortFormat(IntSdrEncoder):
         for x in indices:
             value = x // self.value_bits
             n_activations[value] += 1
-
+        
         return ' '.join(
-            f'{value_activation:2}'
-            for value_activation in n_activations
+            '+' if n_active_bits == self.value_bits else '.' if n_active_bits > 0 else '-'
+            for n_active_bits in value_active_bits
         )

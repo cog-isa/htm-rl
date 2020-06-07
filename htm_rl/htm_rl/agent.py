@@ -73,7 +73,7 @@ class Agent:
         if output_active_cells or print_enabled:
             active_cells: SDR = self.tm.getActiveCells()
             if print_enabled:
-                print(self._str_from_cells(active_cells, 'Act'))
+                self.print_cells(active_cells.sparse, 'Active')
             return active_cells.sparse
 
     def depolarize_memory(
@@ -84,17 +84,12 @@ class Agent:
         if output_predictive_cells or print_enabled:
             predictive_cells: SDR = self.tm.getPredictiveCells()
             if print_enabled:
-                print(self._str_from_cells(predictive_cells, 'Prd'))
-
-                proximal_input = self.columns_from_cells_sparse(predictive_cells.sparse)
-                sar_superposition = self.encoder.decode(proximal_input)
-                print(self.format(sar_superposition))
+                self.print_cells(predictive_cells.sparse, 'Predictive')
             return predictive_cells.sparse
 
-    def _str_from_cells(self, cells_sdr: SDR, name: str) -> str:
-        flatten_cells_sparse_sdr = cells_sdr.sparse
+    def print_cells(self, cells_sdr: SparseSdr, name: str = ''):
         cells_sparse_sdr = [[] for _ in range(self.tm.cells_per_column)]
-        for ind in flatten_cells_sparse_sdr:
+        for ind in cells_sdr:
             column, layer = divmod(ind, self.tm.cells_per_column)
             cells_sparse_sdr[layer].append(column)
 
@@ -102,7 +97,7 @@ class Agent:
         substrings = [first_line]
         for layer_ind in range(1, self.tm.cells_per_column):
             substrings.append(self.encoder.format(cells_sparse_sdr[layer_ind]))
-        return '\n'.join(substrings)
+        print('\n'.join(substrings))
 
     def columns_from_cells_sparse(self, cells_sparse_sdr: SparseSdr) -> SparseSdr:
         # flatten active cells indices -> active column indices
@@ -110,24 +105,24 @@ class Agent:
         cpc = self.tm.cells_per_column
         return list(set(cell_ind // cpc for cell_ind in cells_sparse_sdr))
 
-    def get_presynaptic_connections(self, active_presynaptic_cells: Optional[SparseSdr]) -> Mapping[int, List[int]]:
-        if active_presynaptic_cells is None:
-            active_presynaptic_cells = self.tm.getActiveCells().sparse
-
+    def get_presynaptic_connections(self, active_presynaptic_cells: SparseSdr) -> Mapping[int, List[int]]:
         active_presynaptic_cells = set(active_presynaptic_cells)
         tm, connections = self.tm, self.tm.connections
 
         def get_presynaptic_cells_for_segment(segment):
+            # take only _connected_ synapses
             return (
                 connections.presynapticCellForSynapse(synapse)
                 for synapse in connections.synapsesForSegment(segment)
                 if connections.permanenceForSynapse(synapse) >= tm.connected_permanence
             )
 
+        # active segment: postsynaptic _depolarized_ cell <- presynaptic !connected! cells
         active_segments = (
             (connections.cellForSegment(segment), get_presynaptic_cells_for_segment(segment))
-            for segment in self.tm.getActiveSegments()
+            for segment in tm.getActiveSegments()
         )
+        # take only synapses from _active_ cells
         presynaptic_connections = defaultdict(list)
         for postsynaptic_cell, presynaptic_cells in active_segments:
             presynaptic_connections[postsynaptic_cell].extend(
@@ -135,4 +130,6 @@ class Agent:
                 for presynaptic_cell in presynaptic_cells
                 if presynaptic_cell in active_presynaptic_cells
             )
+
+        # active segment: postsynaptic _depolarized_ cell <- presynaptic !active+connected! cells
         return presynaptic_connections
