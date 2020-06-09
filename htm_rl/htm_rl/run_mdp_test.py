@@ -65,7 +65,7 @@ if __name__ == '__main__':
     np.random.seed(1337)
 
     env = generate_gridworld_mdp(
-        initial_state=(0, 1),   # c0 <
+        initial_state=(0, 0),   # c0 ^
         # cell_transitions=[
         #     (0, 0, 1),      # c0 > c1
         #     (1, 1, 2),      # c1 ^ c2
@@ -77,6 +77,7 @@ if __name__ == '__main__':
             (1, 3, 4),      # c1 > c4
             (2, 0, 4),      # c2 > c4
         ],
+        # add_clockwise_action=True
     )
 
     observation, reward, done = env.reset(), 0, False

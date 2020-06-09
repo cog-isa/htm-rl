@@ -27,7 +27,7 @@ class Planner:
 
     def plan_actions(self, initial_sar: Sar):
         self._save_initial_tm_state()
-        planning_succeeded = False
+        planned_actions = None
 
         if self.print_enabled:
             print()
@@ -37,15 +37,17 @@ class Planner:
         if not reward_reached:
             return
 
-        for backtrack in self._yield_successful_backtracks_from_reward():
-            print('OK')
-            # planned_actions = self._check_backtrack_correctly_predicts_reward(
-            #     initial_sar, starting_step_allowed_actions
-            # )
-            # return planned_actions
+        for activation_timeline in self._yield_successful_backtracks_from_reward():
+            planned_actions = self._check_backtrack_correctly_predicts_reward(
+                initial_sar, activation_timeline
+            )
+            if planned_actions is not None:
+                break
 
         if self.print_enabled:
             print('<====== Planning complete')
+
+        return planned_actions
 
     def _make_predictions_to_reward(self, initial_sar: Sar) -> bool:
         if self.print_enabled:
@@ -113,10 +115,10 @@ class Planner:
             # start backtracking from time T-2:
             # when these presynaptic active cells were just a prediction (= depolarized)
             depolarized_cells = rewarding_segment
-            backtracking_succeeded, segments = self._backtrack(depolarized_cells, T-2)
+            backtracking_succeeded, activation_timeline = self._backtrack(depolarized_cells, T-2)
             if backtracking_succeeded:
-                segments.append(rewarding_segment)
-                yield segments
+                activation_timeline.append(rewarding_segment)
+                yield activation_timeline
 
         if self.print_enabled:
             print('<=== Backward pass complete')
@@ -247,25 +249,6 @@ class Planner:
         l, r = l * cpc, r * cpc
         return [cell for cell in cells if l <= cell < r]
 
-    def _backtrack_step_from_active_cells(
-            self,
-            active_cells: SparseSdr,
-            t_step: int
-    ):
-        backtracked_presynaptic_connections = {
-            cell: presynaptic_connections[cell]
-            for cell in active_cells
-        }
-        presynaptic_cells = {
-            presynaptic_cell
-            for cell_segments in backtracked_presynaptic_connections.values()
-            for segment in cell_segments
-            for presynaptic_cell in segment
-        }
-        presynaptic_cells = list(presynaptic_cells)
-
-        return backtracked_presynaptic_connections, presynaptic_cells
-
     def _print_active_cells_superposition(self, active_cells: SparseSdr):
         if self.print_enabled:
             active_columns = self.agent.columns_from_cells_sparse(active_cells)
@@ -273,21 +256,32 @@ class Planner:
             print(self.agent.format(sar_superposition))
 
     def _check_backtrack_correctly_predicts_reward(
-            self, initial_sar: Sar, starting_step_allowed_actions: List[int]
+            self, initial_sar: Sar, activation_timeline
     ) -> List[int]:
         if self.print_enabled:
-            print()
-            print('Forward pass #2')
+            print('===> Check backtracked activations')
 
         reward_reached = False
-        allowed_actions = starting_step_allowed_actions
+        initial_sar = Sar(initial_sar.state, IntSdrEncoder.ALL, initial_sar.reward)
         proximal_input = self.agent.encoder.encode(initial_sar)
-        n_steps = len(self._active_segments_timeline)
+        T = len(self._active_segments_timeline)
         planned_actions = []
 
-        for i in range(n_steps):
+        for i in range(T):
             # choose action
-            action = self._choose_action(allowed_actions)
+            backtracked_activation = activation_timeline[i]
+            # current proximal input MUST CONTAIN backtracked activation, i.e. the latter is a subset of it
+            if not backtracked_activation <= set(proximal_input):
+                self.agent.print_cells(proximal_input, 'proximal input')
+                self.agent.print_cells(backtracked_activation, 'backtracked')
+            assert backtracked_activation <= set(proximal_input)
+
+            backtracked_sar_superposition = self.agent.encoder.decode(backtracked_activation)
+            backtracked_actions = backtracked_sar_superposition.action
+            # backtracked activation MUST CONTAIN only one action
+            assert len(backtracked_actions) == 1
+
+            action = backtracked_actions[0]
             planned_actions.append(action)
 
             proximal_input = self._replace_actions_with_action(proximal_input, action)
@@ -302,21 +296,20 @@ class Planner:
             if reward_reached:
                 break
 
-            allowed_action_cells = self.ground_backtracking_predictions_with_active_presynaptic_cells(
-                active_cells, self._active_segments_timeline[i]
-            )
-            allowed_actions = self._get_active_actions(allowed_action_cells)
             if self.print_enabled:
                 print()
 
         self._restore_initial_tm_state()
 
-        # return all planned actions or None
-        if reward_reached:
-            print(f'OK: {planned_actions}')
-            return planned_actions
+        if self.print_enabled:
+            # return all planned actions or None
+            if reward_reached:
+                print(f'<=== Checking complete with SUCCESS: {planned_actions}')
+            else:
+                print(f'<=== Checking complete with NO success')
 
-        print('FAIL')
+        if reward_reached:
+            return planned_actions
 
     def ground_backtracking_predictions_with_active_presynaptic_cells(
             self, active_presynaptic_cells, backtracking_connections
