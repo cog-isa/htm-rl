@@ -105,31 +105,30 @@ class Agent:
         cpc = self.tm.cells_per_column
         return list(set(cell_ind // cpc for cell_ind in cells_sparse_sdr))
 
-    def get_presynaptic_connections(self, active_presynaptic_cells: SparseSdr) -> Mapping[int, List[int]]:
-        active_presynaptic_cells = set(active_presynaptic_cells)
+    def get_active_segments(self, active_cells: SparseSdr):
+        active_cells = frozenset(active_cells)
         tm, connections = self.tm, self.tm.connections
 
         def get_presynaptic_cells_for_segment(segment):
             # take only _connected_ synapses
-            return (
+            return frozenset(
                 connections.presynapticCellForSynapse(synapse)
                 for synapse in connections.synapsesForSegment(segment)
                 if connections.permanenceForSynapse(synapse) >= tm.connected_permanence
             )
 
         # active segment: postsynaptic _depolarized_ cell <- presynaptic !connected! cells
-        active_segments = (
+        all_active_segments = (
             (connections.cellForSegment(segment), get_presynaptic_cells_for_segment(segment))
             for segment in tm.getActiveSegments()
         )
-        # take only synapses from _active_ cells
-        presynaptic_connections = defaultdict(list)
-        for postsynaptic_cell, presynaptic_cells in active_segments:
-            presynaptic_connections[postsynaptic_cell].extend(
-                presynaptic_cell
-                for presynaptic_cell in presynaptic_cells
-                if presynaptic_cell in active_presynaptic_cells
-            )
+        # filter out synapses to _inactive_ cells
+        active_segments = defaultdict(list)
+        for depolarized_cell, active_segment in all_active_segments:
+            # keep synapses to active presynaptic cells
+            active_presynaptic_cells = active_segment & active_cells
+            assert len(active_presynaptic_cells) >= tm.activation_threshold
+            active_segments[depolarized_cell].append(active_presynaptic_cells)
 
         # active segment: postsynaptic _depolarized_ cell <- presynaptic !active+connected! cells
-        return presynaptic_connections
+        return active_segments

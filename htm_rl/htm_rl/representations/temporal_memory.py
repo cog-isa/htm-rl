@@ -1,4 +1,4 @@
-from htm.bindings.algorithms import TemporalMemory as TM
+from htm.bindings.algorithms import TemporalMemory as TM, ANMode
 
 
 class TemporalMemory(TM):
@@ -20,6 +20,7 @@ class TemporalMemory(TM):
             minThreshold=learning_threshold,
             initialPermanence=initial_permanence,
             connectedPermanence=connected_permanence,
+            anomalyMode=ANMode.DISABLED,
             **kwargs
         )
         self.n_columns = n_columns
@@ -28,6 +29,7 @@ class TemporalMemory(TM):
         self.learning_threshold = learning_threshold
         self.initial_permanence = initial_permanence
         self.connected_permanence = connected_permanence
+        # TM()
 
     def __getstate__(self):
         data = (
