@@ -105,5 +105,5 @@ class IntSdrEncoderShortFormat(IntSdrEncoder):
         
         return ' '.join(
             '+' if n_active_bits == self.value_bits else '.' if n_active_bits > 0 else '-'
-            for n_active_bits in value_active_bits
+            for n_active_bits in n_activations
         )
