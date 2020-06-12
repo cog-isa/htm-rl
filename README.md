@@ -82,6 +82,8 @@ Additional useful links:
 
 ### htm_rl package
 
+*Outdated*
+
 Entry points are `run_mdp_test.py` and `run_gridworld_test.py`. The former is for simpler develop/debug purposes as you can test implementation on a simple low-dimentional MDP. The latter is for testing/evaluation purposes as you have more complex environrment (taken from gym-minigrid package).
 
 ## TODO
@@ -109,7 +111,7 @@ Entry points are `run_mdp_test.py` and `run_gridworld_test.py`. The former is fo
 ## Ideas
 
 - consider using SP between an input an TM
-  - make separate SPs for states, actions and rewards
+  - only states need SP, as actions and reward are just ints (naive encoding is enough)
   - concat them together
   - it will take care of sparsity
   - maybe smoothes volume differences for a range of diff environments
