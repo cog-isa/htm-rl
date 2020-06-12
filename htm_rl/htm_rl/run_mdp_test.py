@@ -29,7 +29,7 @@ def train_for(n_steps, observation, reward, print_enabled):
     reward_reached = 0
     done = False
     for step in range(n_steps + 1):
-        action = np.random.choice(2)
+        action = np.random.choice(env.n_actions)
 
         render_env(env, render)
         sar = Sar(observation, action, reward)
@@ -65,29 +65,37 @@ if __name__ == '__main__':
     np.random.seed(1337)
 
     env = generate_gridworld_mdp(
-        initial_state=(0, 0),   # c0 ^
-        cell_transitions=[
-            (0, 0, 1),      # c0 > c1
-            (1, 1, 2),      # c1 ^ c2
-            (2, 0, 3),      # c2 > c3
-        ],
+        # initial_state=(0, 0),   # c0 >
+        initial_state=None,     # random
         # cell_transitions=[
         #     (0, 0, 1),      # c0 > c1
-        #     (0, 3, 2),      # c0 . c2
-        #     (1, 3, 4),      # c1 > c4
-        #     (2, 0, 4),      # c2 > c4
+        #     (1, 1, 2),      # c1 ^ c2
+        #     (2, 0, 3),      # c2 > c3
         # ],
-        # add_clockwise_action=True
+        cell_transitions=[
+            (0, 0, 1),      # c0 > c1
+            (0, 3, 2),      # c0 . c2
+            (1, 3, 3),      # c1 > c4
+            (2, 0, 3),      # c2 > c4
+            (3, 0, 4),      # c2 > c4
+            (3, 3, 5),      # c2 > c4
+            (4, 3, 6),      # c2 > c4
+            (5, 0, 6),      # c2 > c4
+            (6, 3, 7),      # c2 > c4
+
+        ],
+        add_clockwise_action=True
     )
 
     observation, reward, done = env.reset(), 0, False
-    n = env.n_states
-    print(f'States: {n}')
+    n_states = env.n_states
+    n_actions = env.n_actions
+    print(f'States: {n_states}')
 
     bs, ba, br = 10, 10, 10
     encoder = SarSdrEncoder((
-        IntSdrEncoder('state', n, bs, bs-1),
-        IntSdrEncoder('action', 2, ba, ba-1),
+        IntSdrEncoder('state', n_states, bs, bs - 1),
+        IntSdrEncoder('action', n_actions, ba, ba-1),
         IntSdrEncoder('reward', 2, br, br-1)
     ))
     sar_formatter = SarSuperpositionFormatter
@@ -114,8 +122,8 @@ if __name__ == '__main__':
 
     render, pause = False, .1
     reward_reached = 0
-    for _ in range(20):
-        reward_reached += train_for(40, observation, reward, False)
+    for _ in range(30):
+        reward_reached += train_for(50, observation, reward, False)
         tm.reset()
         observation = env.reset()
         reward = 0
@@ -124,11 +132,12 @@ if __name__ == '__main__':
 
     # train_for(10, observation, reward, 10, True)
 
-    initial_sar = Sar(observation, 1, 0)
-    initial_proximal_input = encoder.encode(Sar(3, 1, 0))
-    agent.predict_cycle(initial_proximal_input, 1, True)
+    # initial_proximal_input = encoder.encode(Sar(0, 0, 0))
+    # agent.predict_cycle(initial_proximal_input, 4, True)
 
-    planner = Planner(agent, n, print_enabled=True)
+    observation = env.reset()
+    initial_sar = Sar(observation, 1, 0)
+    planner = Planner(agent, n_states, print_enabled=True)
     planner.plan_actions(initial_sar)
 
     # agent.tm.printParameters()
