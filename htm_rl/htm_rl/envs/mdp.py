@@ -25,6 +25,7 @@ class Mdp:
         self._initial_state = initial_state
         self.transitions = transitions
         self.n_states = len(transitions)
+        self.n_actions = max(len(edges) for edges in transitions.values() if edges is not None)
         self.np_random, _ = seeding.np_random(seed)
         self._current_state = self._get_initial_state()
 
@@ -73,7 +74,7 @@ class Mdp:
         print(f'State: {state}')
 
 
-def generate_gridworld_mdp(initial_state, cell_transitions, add_clockwise_action=False, seed=None):
+def generate_gridworld_mdp(initial_state, cell_transitions, add_clockwise_action=False, seed=None) -> Mdp:
     """
     Generates MDP base on a grid world with 2 [or 3] allowed actions:
         - move forward
@@ -90,8 +91,9 @@ def generate_gridworld_mdp(initial_state, cell_transitions, add_clockwise_action
     """
     transitions = _generate_transitions(cell_transitions, add_clockwise_action)
 
-    cell, direction = initial_state
-    initial_state = cell * 4 + direction
+    if initial_state is not None:
+        cell, direction = initial_state
+        initial_state = cell * 4 + direction
 
     return Mdp(transitions, initial_state, seed)
 
