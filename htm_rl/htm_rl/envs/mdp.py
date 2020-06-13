@@ -74,91 +74,106 @@ class Mdp:
         print(f'State: {state}')
 
 
-def generate_gridworld_mdp(initial_state, cell_transitions, add_clockwise_action=False, seed=None) -> Mdp:
+class GridworldMdpGenerator:
     """
-    Generates MDP base on a grid world with 2 [or 3] allowed actions:
-        - move forward
-        - turn counter-clockwise
-        - [optional] you can allow 3rd action - turn clockwise
-
-    By convenience directions: 0 - right, 1 - up, 2 - left, 3 - down
-        , i.e. [0, 3] counter-clockwise.
-    :param initial_state: can be tuple (cell, direction)
-    :param cell_transitions: List[(cell, direction, next_cell)]
-    :param add_clockwise_action:  by default only counter-clockwise turn is allowed
-    :param seed: optional seed for a random generator
-    :return: Gym's environment-like object
+    Gridworld MDP environment generator.
+    Grid cells doesn't have to be squares - e.g. you can set them as ranges or hexagons. Check out init params.
     """
-    transitions = _generate_transitions(cell_transitions, add_clockwise_action)
+    _n_of_cell_edges: int
 
-    if initial_state is not None:
-        cell, direction = initial_state
-        initial_state = cell * 4 + direction
+    def __init__(self, n_of_cell_edges: int = 4):
+        assert n_of_cell_edges >= 2 and n_of_cell_edges % 2 == 0
+        self._n_of_cell_edges = n_of_cell_edges
 
-    return Mdp(transitions, initial_state, seed)
+    def generate_mdp(self, initial_state, cell_transitions, allow_clockwise_action=False, seed=None) -> Mdp:
+        """
+        Generates MDP based on a grid world with 2 [or 3] allowed actions:
+            - 0: move forward
+            - 1: turn counter-clockwise
+            - [optional] you can allow 3rd action 2: turn clockwise
 
+        By convenience directions for square grid: 0 - right, 1 - up, 2 - left, 3 - down
+            , i.e. from 0 to 3 counter-clockwise, starting from right.
+        :param initial_state: can be tuple (cell, view_direction)
+        :param cell_transitions: List[(cell, view_direction, next_cell)]
+            Last transition should be on of the terminal transitions.
+            Because last transition's destination will be set as terminal cell.
+        :param allow_clockwise_action:  by default only counter-clockwise turn is allowed
+        :param seed: optional seed for a random generator
+        :return: Gym's environment-like object
+        """
+        transitions = self._generate_transitions(cell_transitions, allow_clockwise_action)
 
-def _generate_transitions(cell_transitions, add_clockwise_action=False):
-    """
-    Generates transitions for MDP based on a grid world with 2 [or 3] allowed actions:
-        - move forward
-        - turn counter-clockwise
-        - [optional] you can allow 3rd action - turn clockwise
+        if initial_state is not None:
+            cell, view_direction = initial_state
+            initial_state = self._state(cell, view_direction)
 
-    By convenience directions: 0 - right, 1 - up, 2 - left, 3 - down
-        , i.e. [0, 3] counter-clockwise.
-    :param cell_transitions: List[(cell, direction, next_cell)].
-        Last transition must be to the terminal rewarding cell.
-    :param add_clockwise_action: by default only counter-clockwise turn is allowed
-    :return: Dict[state][action] = next_state
-    """
-    terminal_cell = cell_transitions[-1][2]
-    n_full_cells = terminal_cell
+        return Mdp(transitions, initial_state, seed)
 
-    n_states = n_full_cells * 4 + 1  # n_cells full cells + one cell w/ only one terminal state
-    terminal_state = n_states - 1
-    transitions = {terminal_state: None}
-    for cell in range(n_full_cells):
-        transitions.update(_generate_separate_cell(cell, add_clockwise_action))
+    def _generate_transitions(self, cell_transitions, add_clockwise_action=False):
+        """
+        Generates transitions for MDP based on a grid world with 2 [or 3] allowed actions:
+            - move forward
+            - turn counter-clockwise
+            - [optional] you can allow 3rd action - turn clockwise
 
-    for cell, direction, next_cell in cell_transitions:
-        _link_cells(transitions, cell, direction, next_cell, next_cell == terminal_cell)
-    return transitions
+        By convenience directions: 0 - right, 1 - up, 2 - left, 3 - down
+            , i.e. [0, 3] counter-clockwise.
+        :param cell_transitions: List[(cell, direction, next_cell)].
+            Last transition must be to the terminal rewarding cell.
+        :param add_clockwise_action: by default only counter-clockwise turn is allowed
+        :return: Dict[state][action] = next_state
+        """
+        terminal_cell = cell_transitions[-1][2]
+        n_full_cells = terminal_cell
 
+        n_states = n_full_cells * self._n_of_cell_edges + 1  # n_cells full cells + one cell w/ only one terminal state
+        terminal_state = n_states - 1
+        transitions = {terminal_state: None}
+        for cell in range(n_full_cells):
+            transitions.update(self._generate_separate_cell(cell, add_clockwise_action))
 
-def _generate_separate_cell(cell, add_clockwise_action=False):
-    """ Generates transitions as if the cell was the only one."""
-    transitions = dict()
-    base = cell * 4
-    for i in range(4):
-        s0 = base + i
-        if s0 not in transitions:
-            transitions[s0] = dict()
-        transitions[s0][0] = s0                     # forward move keeps you in the same state
-        transitions[s0][1] = base + ((i + 1) % 4)   # counter-clockwise turn
-        if add_clockwise_action:                    # optional clockwise turn
-            transitions[s0][2] = base + ((i - 1 + 4) % 4)
-    return transitions
+        for cell, direction, next_cell in cell_transitions:
+            self._link_cells(transitions, cell, direction, next_cell, next_cell == terminal_cell)
+        return transitions
 
+    def _generate_separate_cell(self, cell, allow_clockwise_action=False):
+        """ Generates transitions as if the cell was the only one."""
+        transitions = dict()
+        for view_direction in range(self._n_of_cell_edges):
+            s0 = self._state(cell, view_direction)
+            if s0 not in transitions:
+                transitions[s0] = dict()
 
-def _link_cells(transitions, c0, direction, c1, c1_is_terminal):
-    # forward
-    s0 = c0 * 4 + direction
-    if c1_is_terminal:
-        s1 = c1 * 4
-        transitions[s0][0] = s1
-        return
+            # forward move keeps you in the same state
+            transitions[s0][0] = s0
+            # turn counter-clockwise
+            transitions[s0][1] = self._state(cell, view_direction + 1)
+            # [optional] turn clockwise
+            if allow_clockwise_action:
+                transitions[s0][2] = self._state(cell, view_direction - 1 + self._n_of_cell_edges)
+        return transitions
 
-    s1 = c1 * 4 + direction
-    transitions[s0][0] = s1
+    def _link_cells(self, transitions, c0, view_direction, c1, c1_is_terminal):
+        s0 = self._state(c0, view_direction)
+        if c1_is_terminal:
+            # direction doesn't matter, also only forward link
+            s1 = self._state(c1, 0)
+            transitions[s0][0] = s1
+        else:
+            # forward link
+            s1 = self._state(c1, view_direction)
+            transitions[s0][0] = s1
 
-    # backward
-    s0 = c0 * 4 + ((direction + 2) % 4)
-    s1 = c1 * 4 + ((direction + 2) % 4)
-    transitions[s1][0] = s0
+            # backward link
+            back_view_direction = self._back_view_direction(view_direction)
+            s0 = self._state(c0, back_view_direction)
+            s1 = self._state(c1, back_view_direction)
+            transitions[s1][0] = s0
 
+    def _state(self, cell, view_direction):
+        return self._n_of_cell_edges * cell + (view_direction % self._n_of_cell_edges)
 
-def _link_to_terminal_cell(transitions, c0, direction, c1):
-    # forward
-    s0 = c0 * 4 + direction
+    def _back_view_direction(self, view_direction):
+        return (view_direction + self._n_of_cell_edges // 2) % self._n_of_cell_edges
 
