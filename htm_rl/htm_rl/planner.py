@@ -270,23 +270,22 @@ class Planner:
         for i in range(T):
             # choose action
             backtracked_activation = activation_timeline[i]
-            # current proximal input MUST CONTAIN backtracked activation, i.e. the latter is a subset of it
-            if not backtracked_activation <= set(proximal_input):
-                self.agent.print_cells(proximal_input, 'proximal input')
-                self.agent.print_cells(backtracked_activation, 'backtracked')
-            assert backtracked_activation <= set(proximal_input)
-
-            backtracked_sar_superposition = self.agent.encoder.decode(backtracked_activation)
+            backtracked_columns_activation = self.agent.columns_from_cells_sparse(backtracked_activation)
+            backtracked_sar_superposition = self.agent.encoder.decode(backtracked_columns_activation)
             backtracked_actions = backtracked_sar_superposition.action
             # backtracked activation MUST CONTAIN only one action
             assert len(backtracked_actions) == 1
-
             action = backtracked_actions[0]
             planned_actions.append(action)
 
             proximal_input = self._replace_actions_with_action(proximal_input, action)
 
             active_cells = self._activate_cells(proximal_input)
+            # current active cells MUST CONTAIN backtracked activation, i.e. the latter is a subset of it
+            if not backtracked_activation <= set(active_cells):
+                self.agent.print_cells(active_cells, 'active cells')
+                self.agent.print_cells(backtracked_activation, 'backtracked')
+            assert backtracked_activation <= set(active_cells)
             self._print_active_cells_superposition(active_cells)
 
             predictive_cells = self._depolarize_cells()
