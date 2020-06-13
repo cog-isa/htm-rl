@@ -1,17 +1,25 @@
 # FAQ
 
+- [FAQ](#faq)
+  - [Terminology](#terminology)
+  - [Encoding](#encoding)
+  - [Planning](#planning)
+    - [Planning. Forward prediction](#planning-forward-prediction)
+    - [Planning. Backtracking](#planning-backtracking)
+    - [Planning. Re-check](#planning-re-check)
+
 ## Terminology
 
 SAR
 
-- in short: tuple (state, action, reward)
-- given trajectory: $(s_0, a_0, r_1, s_1, a_1, r_2, s_2, a_2, ...)$
+- In short: tuple (state, action, reward)
+- Given trajectory: $(s_0, a_0, r_1, s_1, a_1, r_2, s_2, a_2, ...)$
 - $sar_t = (s_t, a_t, r_t)$
   - $sar_t$ is centered around the current state $s_t$
   - has reward $r_t$ given for getting __to__ this state
   - has action $a_t$ taken __from__ this state.
   - NB: so actually it's better be called RSA, but it's still called SAR
-  - edge cases are
+  - Edge cases are
     - reward $r_0$ for initial state is 0
     - action $a_T$ for terminal state is whatever you want
 - TM accepts SAR encoded to SDR as [proximal] input
@@ -22,54 +30,54 @@ SAR
 
 SAR Superposition
 
-- union of any number of SAR
-  - for SDR format it's a bitwise OR of corresponding SAR SDRs
-- why it's even needed
+- Union of any number of SAR
+  - For SDR format it's a bitwise OR of corresponding SAR SDRs
+- Why it's even needed
   - TM works with SAR superpositions both as input and output
-  - for any particular SAR it predicts all possible next SARs
+  - For any particular SAR it predicts all possible next SARs
     - they represented as union
     - i.e. they can't be separated into single SARs
     - hence SAR superposition
   - TM accepts SAR superpositions as input as well
     - I think it's obvious
-- even though TM remembers SAR sequences
-  - depolarization in general: active SDR $\rightarrow$ depolarized SDR
-  - for SARs: active SAR superposition $\rightarrow$ depolarized SAR superposition
+- Even though TM remembers SAR sequences
+  - Depolarization in general: active SDR $\rightarrow$ depolarized SDR
+  - For SARs: active SAR superposition $\rightarrow$ depolarized SAR superposition
 
 ## Encoding
 
 SAR SDR encoder
 
-- encodes SAR to SDR
-- uses separate state, action and reward SDR encoders
-  - resulting SDRs are concatenated
-- we consider only discrete environments
-  - hence both states and actions are discrete sets
-  - rewards are discrete too: $r \in \{0, 1\}$
-- so states, actions and rewards can be represented as integer numbers
+- Encodes SAR to SDR
+- Uses separate state, action and reward SDR encoders
+  - Resulting SDRs are concatenated
+- I consider only discrete environments
+  - Hence both states and actions are discrete sets
+  - Rewards are discrete too: $r \in \{0, 1\}$
+- So states, actions and rewards can be represented as integer numbers
   - i.e. $s_t \in [0, |S|)$ and $a_t \in [0, |A|)$
   - for this Integer SDR encoder is used
 
 Integer SDR encoder
 
-- encodes integer numbers from [0, `n_values`) to SDR
-- parameters:
+- Encodes integer numbers from [0, `n_values`) to SDR
+- Parameters:
   - `n_values` - size of the range, i.e. it's a number of unique values
   - `value_bits` - how many bits are used to encode every unique value
-- resulting SDR has `n_values` $\times$ `value_bits` bits
+- Resulting SDR has `n_values` $\times$ `value_bits` bits
   - which can be divided into `n_values` buckets of `value_bits` contiguous bits encoding every value from the range
   - e.g. `0000 0000 1111` is the result of encoding 2 by 3-by-4 integer encoder
     - 3 buckets are separated by space to make it clear
     - every bucket encoded by 4 bits
     - note that buckets don't intersect
 - PROS
-  - easy to encode/decode
-  - easy to debug
-  - easy to pretty print
+  - Easy to encode/decode
+  - Easy to debug
+  - Easy to pretty print
 - CONS
-  - cuts out information about states similarity
+  - Cuts out information about states similarity
     - as different values have no intersection
-  - you have no control on sparsity, which is `1 / n_values`
+  - You have no direct control on sparsity, which is `1 / n_values`
     - you may have problems with too low or too high sparsity levels
     - it tested that TM works well with low sparsity
       - which doesn't mean it has not negative effects at all
@@ -77,15 +85,15 @@ Integer SDR encoder
 
 State SDR encoder
 
-- for the most simple MDP environments we use integer encoding
+- For the most simple MDP environments we use integer encoding
   - because it's very good for debugging
-- for complex environments encoding states [or observations] becomes tricky
-  - of course, you still can enumerate all possible states and use Integer SDR encoder
-  - but the number of all possible states grows very fast
+- For complex environments encoding states [or observations] becomes tricky
+  - Of course, you still can enumerate all possible states and use Integer SDR encoder
+  - But the number of all possible states grows very fast
     - so in practice it works well only for small environments
-  - also Integer SDR encoder cut out information about states similarity
-- one possible solution is to encode every pixel [or grid cell] separately then concatenate results
-  - it preserves information about similarity between states
+  - Also Integer SDR encoder cut out information about states similarity
+- One possible solution is to encode every pixel [or grid cell] separately then concatenate results
+  - It preserves information about similarity between states
 
 ## Planning
 
@@ -103,7 +111,7 @@ Planning consists of 3 main phases:
 Setting up
 
 - Given initial state $s_0$
-- To find a reward, we want to check all possible paths, starting from $s_0$
+- To find a reward, I want to check all possible paths, starting from $s_0$
   - Then SAR superposition  
     (state = $s_0$, {all actions}, reward = 0)
   - .. represents all possible beginnings of these paths
@@ -138,21 +146,59 @@ A bit of details on TM work, step by step:
 
 What is saved during forward prediction phase:
 
-- at each time step $t$
-- there's a set of segments that are active
-- all active segments are saved into `active_segments_timeline[t]`
+- At each time step $t$ there's a set of segments that are active
+- These active segments are saved into `active_segments_timeline[t]`
   - as dictionary: `depolarized_cell` $\rightarrow$ `cell_active_segments_list`
   - `cell_active_segments_list` - list of cell's active segments
-  - every active segment represented as a set of active presynaptice cells
+  - each active segment represented as a set of active presynaptic cells
 
 ### Planning. Backtracking
 
 Backtracking step
 
-- Given a set of depolarized cells `{dep_cells}` [at time $t$]
-- 
+- Given a set of depolarized cells `dep_cells` [at time $t$]
+- Call active segment as _potential_ if it induces enough depolarization among `dep_cells`
+  - _ehough_ means $\geq$ activation threshold
+  - i.e. a number of depolarized cells will be enough for subsequent depolarizations
+- Take presynaptic active cells of a potential segment as depolarized cells [at time $t-1$]
 
-- Backtrack from depolarized cells in reward = 1 columns
-- Backtrack for any active segment, that induces enough depolarization
+Backtracking algorithm
+
+- Start from depolarized cells in reward = 1 columns [at time T]
+- Recursively take backtracking steps for any potential segment until time 0 is reached
+
+Details
+
+- Given a set of depolarized cells `dep_cells` [at time $t$]
+  - Each depolarized cell have at least one active segment
+  - Each active segment is associated with a set of active presynaptic cells
+    - This set defines some SAR SDR
+    - i.e. each segment is conditioned on some correct SAR
+- I want to find all potential sets of active presynaptic cells that induce enough depolarization of `dep_cells`
+  - perfect case
+    - `dep_cells` conditioned on the same SAR
+    - i.e. this SAR induces full `dep_cells` depolarization
+  - perfect multiple case
+    - `dep_cells` conditioned on more than one SAR
+    - i.e. each of these SAR induces full `dep_cells` depolarization
+- real world relaxations
+  - some SARs don't induce enough depolarization
+    - i.e. $\lt$ threshold
+  - segments don't exactly match each other
+    - cells are conditioned on very similar SARs but not exactly the same
+
+What is saved during this phase
+
+- active [presynaptic] cells at time $t$ are saved as `backtracking_SAR_conditions[t]`
+- they define condition on SAR at time $t-1$ to get desired depolarization at time $t$
 
 ### Planning. Re-check
+
+- Given active presynaptic cells at time $t$ needed to induce desired depolarization
+- Start forward prediction again from initial sar superposition
+- But now
+  - Check that SAR `backtracking_SAR_conditions[t]` is consistent with the current active SAR
+  - Extract action $a_t$ from `backtracking_SAR_conditions[t]`
+  - Action $a_t$ defines a path to make at time $t$
+  - Replace action superposition in proximal input with $a_t$
+- Check that given `backtracking_SAR_conditions` lead to reward
