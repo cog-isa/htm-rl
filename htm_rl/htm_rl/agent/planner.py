@@ -1,14 +1,12 @@
 import pickle
-from collections import defaultdict
 from typing import List, Tuple, Mapping, Set
 
 import numpy as np
 
-from htm_rl.agent import Agent
-from htm_rl.representations.int_sdr_encoder import IntSdrEncoder
-from htm_rl.representations.sdr import SparseSdr
-from htm_rl.utils import range_reverse
-from htm_rl.representations.sar import BaseSar as Sar
+from htm_rl.agent.agent import Agent
+from htm_rl.common.base_sar import Sar
+from htm_rl.common.int_sdr_encoder import IntSdrEncoder
+from htm_rl.common.sdr import SparseSdr
 
 
 class Planner:
@@ -85,20 +83,20 @@ class Planner:
         return reward_reached
 
     def _activate_cells(self, proximal_input: SparseSdr) -> SparseSdr:
-        return self.agent.activate_memory(
+        return self.agent.activate_cells(
             proximal_input, learn_enabled=False,
             output_active_cells=True, print_enabled=self.print_enabled
         )
 
     def _depolarize_cells(self) -> SparseSdr:
-        return self.agent.depolarize_memory(
-            learn_enabled=False, output_predictive_cells=True, print_enabled=self.print_enabled
+        return self.agent.depolarize_cells(
+            learn_enabled=False, output_depolarized_cells=True, print_enabled=self.print_enabled
         )
 
     def _check_reward(self, sparse_sdr: SparseSdr) -> bool:
         sar_superposition = self.agent.encoder.decode(sparse_sdr)
         if self.print_enabled:
-            print(self.agent.format(sar_superposition))
+            print(self.agent.format_sar_superposition(sar_superposition))
         return sar_superposition.reward is not None and 1 in sar_superposition.reward
 
     def _yield_successful_backtracks_from_reward(self):
@@ -253,7 +251,7 @@ class Planner:
         if self.print_enabled:
             active_columns = self.agent.columns_from_cells_sparse(active_cells)
             sar_superposition = self.agent.encoder.decode(active_columns)
-            print(self.agent.format(sar_superposition))
+            print(self.agent.format_sar_superposition(sar_superposition))
 
     def _check_backtrack_correctly_predicts_reward(
             self, initial_sar: Sar, activation_timeline

@@ -1,15 +1,14 @@
 import random
 
-import matplotlib.pyplot as plt
 import numpy as np
 
-from htm_rl.agent import Agent
-from htm_rl.envs.mdp import generate_gridworld_mdp
-from htm_rl.mdp_agent.sar import Sar, SarSuperpositionFormatter
-from htm_rl.mdp_agent.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.planner import Planner
-from htm_rl.representations.int_sdr_encoder import IntSdrEncoderShortFormat as IntSdrEncoder
-from htm_rl.representations.temporal_memory import TemporalMemory
+from htm_rl.agent.agent import Agent
+from htm_rl.common.base_sar import Sar, SarRelatedComposition
+from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
+from htm_rl.envs.mdp import GridworldMdpGenerator, SarSuperpositionFormatter
+from htm_rl.agent.planner import Planner
+from htm_rl.common.int_sdr_encoder import IntSdrEncoder, IntSdrFormatter, IntSdrShortFormatter
+from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
 def render_env(env, render):
@@ -20,9 +19,9 @@ def render_env(env, render):
 
 def print_debug_sar(sar, encoder, sar_formatter):
     indices = encoder.encode(sar)
-    print(encoder.format(indices))
+    print(encoder.format_sar_superposition(indices))
     sar_superposition = encoder.decode(indices)
-    print(sar_formatter.format(sar_superposition))
+    print(sar_formatter.format_sar_superposition(sar_superposition))
 
 
 def train_for(n_steps, observation, reward, print_enabled):
@@ -64,27 +63,27 @@ if __name__ == '__main__':
     random.seed(1337)
     np.random.seed(1337)
 
-    env = generate_gridworld_mdp(
-        # initial_state=(0, 0),   # c0 >
-        initial_state=None,     # random
-        # cell_transitions=[
-        #     (0, 0, 1),      # c0 > c1
-        #     (1, 1, 2),      # c1 ^ c2
-        #     (2, 0, 3),      # c2 > c3
-        # ],
+    env = GridworldMdpGenerator(4).generate_mdp(
+        initial_state=(0, 2),   # c0 >
+        # initial_state=None,     # random
         cell_transitions=[
             (0, 0, 1),      # c0 > c1
-            (0, 3, 2),      # c0 . c2
-            (1, 3, 3),      # c1 > c4
-            (2, 0, 3),      # c2 > c4
-            (3, 0, 4),      # c2 > c4
-            (3, 3, 5),      # c2 > c4
-            (4, 3, 6),      # c2 > c4
-            (5, 0, 6),      # c2 > c4
-            (6, 3, 7),      # c2 > c4
-
+            # (1, 1, 2),      # c1 ^ c2
+            # (2, 0, 3),      # c2 > c3
         ],
-        add_clockwise_action=True
+        # cell_transitions=[
+        #     (0, 0, 1),      # c0 > c1
+        #     (0, 3, 2),      # c0 . c2
+        #     (1, 3, 3),      # c1 > c4
+        #     (2, 0, 3),      # c2 > c4
+        #     (3, 0, 4),      # c2 > c4
+        #     (3, 3, 5),      # c2 > c4
+        #     (4, 3, 6),      # c2 > c4
+        #     (5, 0, 6),      # c2 > c4
+        #     (6, 3, 7),      # c2 > c4
+        #
+        # ],
+        # allow_clockwise_action=True
     )
 
     observation, reward, done = env.reset(), 0, False
@@ -93,11 +92,14 @@ if __name__ == '__main__':
     print(f'States: {n_states}')
 
     bs, ba, br = 10, 10, 10
-    encoder = SarSdrEncoder((
-        IntSdrEncoder('state', n_states, bs, bs - 1),
-        IntSdrEncoder('action', n_actions, ba, ba-1),
-        IntSdrEncoder('reward', 2, br, br-1)
-    ))
+    sar_encoders = SarRelatedComposition(
+        IntSdrEncoder('state', n_states, bs, bs - 1, 'short'),
+        IntSdrEncoder('action', n_actions, ba, ba-1, 'short'),
+        IntSdrEncoder('reward', 2, br, br-1, 'short')
+    )
+    encoder = SarSdrEncoder(sar_encoders)
+
+    sdr_formatter = encoder
     sar_formatter = SarSuperpositionFormatter
 
     activation_threshold = encoder.activation_threshold
@@ -118,7 +120,7 @@ if __name__ == '__main__':
         maxSynapsesPerSegment=max_synapses_per_segment,
         # maxSegmentsPerCell=4,
     )
-    agent = Agent(tm, encoder, sar_formatter.format)
+    agent = Agent(tm, encoder, sdr_formatter.format, sar_formatter.format)
 
     render, pause = False, .1
     reward_reached = 0

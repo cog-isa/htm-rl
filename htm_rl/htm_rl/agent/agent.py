@@ -1,42 +1,52 @@
 from collections import defaultdict
-from typing import List, Optional, Mapping
+from typing import List, Optional, Callable
 
+from astor import deprecated
 from htm.bindings.sdr import SDR
 
-from htm_rl.representations.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.representations.sdr import SparseSdr
-from htm_rl.representations.temporal_memory import TemporalMemory
+from htm_rl.common.base_sar import SarSuperposition
+from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
+from htm_rl.common.sdr import SparseSdr
+from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
 class Agent:
     tm: TemporalMemory
     encoder: SarSdrEncoder
-    _proximal_input_sdr: SDR
 
-    def __init__(self, tm: TemporalMemory, encoder: SarSdrEncoder, formatter):
+    _proximal_input_sdr: SDR    # cached SDR
+
+    def __init__(
+            self, tm: TemporalMemory, encoder: SarSdrEncoder,
+            sdr_formatter: Callable[[SparseSdr], str],
+            sar_superposition_formatter: Callable[[SarSuperposition], str],
+            collect_anomalies: bool = False
+    ):
         self.tm = tm
         self.encoder = encoder
+        self.format_sdr = sdr_formatter
+        self.format_sar_superposition = sar_superposition_formatter
+        self.anomalies = [] if collect_anomalies else None
         self._proximal_input_sdr = SDR(self.tm.n_columns)
-        self.format = formatter
-        self.anomalies = []
 
-    def reset(self, condition=True) -> None:
-        if condition:
-            self.tm.reset()
+    def reset(self):
+        self.tm.reset()
+        self._proximal_input_sdr.sparse = []
 
-    def train_cycle(self, sequence: List[SparseSdr], print_enabled=False, reset_enabled=True):
-        if reset_enabled:
-            self.tm.reset()
-
-        for proximal_input in sequence:
-            self.train_one_step(proximal_input, print_enabled=print_enabled)
+    # @deprecated
+    # def train_cycle(self, sequence: List[SparseSdr], print_enabled=False, reset_enabled=True):
+    #     if reset_enabled:
+    #         self.tm.reset()
+    #
+    #     for proximal_input in sequence:
+    #         self.train_one_step(proximal_input, print_enabled=print_enabled)
 
     def train_one_step(self, proximal_input: SparseSdr, print_enabled=False):
-        self.activate_memory(
+        self.activate_cells(
             proximal_input,
             learn_enabled=True, output_active_cells=False, print_enabled=print_enabled
         )
-        self.depolarize_memory(learn_enabled=True, output_predictive_cells=False, print_enabled=print_enabled)
+        self.depolarize_cells(learn_enabled=True, output_depolarized_cells=False, print_enabled=print_enabled)
 
     def predict_cycle(self, initial_input: SparseSdr, n_steps, print_enabled=False, reset_enabled=True):
         if reset_enabled:
@@ -49,25 +59,25 @@ class Agent:
 
             if print_enabled:
                 sar_superposition = self.encoder.decode(proximal_input)
-                print(self.format(sar_superposition))
+                print(self.format_sar_superposition(sar_superposition))
 
     def predict_one_step(self, proximal_input: SparseSdr, print_enabled=False):
-        self.activate_memory(
+        self.activate_cells(
             proximal_input,
             learn_enabled=False, output_active_cells=False, print_enabled=print_enabled
         )
-        predictive_cells = self.depolarize_memory(
-            learn_enabled=False, output_predictive_cells=True, print_enabled=print_enabled
+        predictive_cells = self.depolarize_cells(
+            learn_enabled=False, output_depolarized_cells=True, print_enabled=print_enabled
         )
         return predictive_cells
 
-    def activate_memory(
+    def activate_cells(
             self, proximal_input: SparseSdr,
             learn_enabled: bool, output_active_cells: bool, print_enabled: bool
     ) -> Optional[SparseSdr]:
         self._proximal_input_sdr.sparse = proximal_input
         self.tm.compute(self._proximal_input_sdr, learn=learn_enabled)
-        if learn_enabled:
+        if self.anomalies is not None:
             self.anomalies.append(1 - self.tm.anomaly)
 
         if output_active_cells or print_enabled:
@@ -76,12 +86,12 @@ class Agent:
                 self.print_cells(active_cells.sparse, 'Active')
             return active_cells.sparse
 
-    def depolarize_memory(
-            self, learn_enabled: bool, output_predictive_cells: bool, print_enabled: bool
+    def depolarize_cells(
+            self, learn_enabled: bool, output_depolarized_cells: bool, print_enabled: bool
     ) -> Optional[SparseSdr]:
         self.tm.activateDendrites(learn=learn_enabled)
 
-        if output_predictive_cells or print_enabled:
+        if output_depolarized_cells or print_enabled:
             predictive_cells: SDR = self.tm.getPredictiveCells()
             if print_enabled:
                 self.print_cells(predictive_cells.sparse, 'Predictive')
@@ -93,10 +103,10 @@ class Agent:
             column, layer = divmod(ind, self.tm.cells_per_column)
             cells_sparse_sdr[layer].append(column)
 
-        first_line = f'{self.encoder.format(cells_sparse_sdr[0])} {name}'
+        first_line = f'{self.format_sdr(cells_sparse_sdr[0])} {name}'
         substrings = [first_line]
         for layer_ind in range(1, self.tm.cells_per_column):
-            substrings.append(self.encoder.format(cells_sparse_sdr[layer_ind]))
+            substrings.append(self.format_sdr(cells_sparse_sdr[layer_ind]))
         print('\n'.join(substrings))
 
     def columns_from_cells_sparse(self, cells_sparse_sdr: SparseSdr) -> SparseSdr:

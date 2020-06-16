@@ -1,5 +1,12 @@
 from gym.utils import seeding
 
+from htm_rl.common.sar_sdr_encoder import SarSuperposition
+
+
+# Superposition = List[int]
+# Sar = TSar[int, int, int]
+# SarSuperposition = TSar[Superposition, Superposition, Superposition]
+
 
 class Mdp:
     def __init__(self, transitions, initial_state=None, seed=None):
@@ -177,3 +184,11 @@ class GridworldMdpGenerator:
     def _back_view_direction(self, view_direction):
         return (view_direction + self._n_of_cell_edges // 2) % self._n_of_cell_edges
 
+
+class SarSuperpositionFormatter:
+    @staticmethod
+    def format(sar: SarSuperposition) -> str:
+        return '  '.join(
+            '.'.join(map(str, superposition))
+            for superposition in sar
+        )

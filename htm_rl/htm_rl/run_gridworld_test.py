@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from htm_rl.agent import Agent
-from htm_rl.gridworld_agent.list_sdr_encoder import ListSdrEncoder, Dim2d
-from htm_rl.gridworld_agent.minigrid import make_minigrid
-from htm_rl.planner import Planner
-from htm_rl.gridworld_agent.sar import Sar, SarSuperpositionFormatter
-from htm_rl.gridworld_agent.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.representations.int_sdr_encoder import IntSdrEncoder
-from htm_rl.representations.temporal_memory import TemporalMemory
+from htm_rl.experimental.list_sdr_encoder import ListSdrEncoder, Dim2d
+from htm_rl.envs.minigrid import make_minigrid
+from htm_rl.agent.planner import Planner
+from htm_rl.minigrid.sar import Sar, SarSuperpositionFormatter
+from htm_rl.minigrid.sar_sdr_encoder import SarSdrEncoder
+from htm_rl.common.int_sdr_encoder import IntSdrEncoder
+from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
 def render_env(env, render: bool, pause: float = None):
@@ -27,9 +27,9 @@ def render_env(env, render: bool, pause: float = None):
 
 def print_debug_sar(sar, encoder, sar_formatter):
     indices = encoder.encode(sar)
-    print(encoder.format(indices))
+    print(encoder.format_sar_superposition(indices))
     sar_superposition = encoder.decode(indices)
-    print(sar_formatter.format(sar_superposition))
+    print(sar_formatter.format_sar_superposition(sar_superposition))
 
 
 def train_for(n_steps, observation, reward, a_ind, print_enabled):
@@ -106,7 +106,7 @@ if __name__ == '__main__':
         permanenceIncrement=.1,
         permanenceDecrement=.1,
     )
-    agent = Agent(tm, encoder, sar_formatter.format)
+    agent = Agent(tm, encoder, sar_formatter.format_sar_superposition)
 
     render, pause = False, .1
     reward_reached = 0

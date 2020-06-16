@@ -32,6 +32,7 @@ class TemporalMemory(TM):
         # TM()
 
     def __getstate__(self):
+        # used to pickle object
         data = (
             self.n_columns, self.cells_per_column, self.activation_threshold,
             self.learning_threshold, self.initial_permanence, self.connected_permanence
@@ -39,6 +40,7 @@ class TemporalMemory(TM):
         return super().__getstate__(), data
 
     def __setstate__(self, state):
+        # used to unpickle
         super_data, data = state
 
         super().__setstate__(super_data)

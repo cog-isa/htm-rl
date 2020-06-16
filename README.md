@@ -88,32 +88,23 @@ Entry points are `run_mdp_test.py` and `run_gridworld_test.py`. The former is fo
 
 ## TODO
 
-- [x] repo setup
-- [x] check htm works on any hello world example
-- [x] rl env
-  - [x] chase the target as simpler alternative
-    - [x] choose base env
-- [x] check env works
-  - [x] naive random
-- [x] virtual env config
-- [x] build up htm & neuroscience knowledge
-  - [x] refresh `htm school` videos
-  - [x] get used to terminology with `brains explained` videos (1-5, especially on Basal Ganglia)
-  - [x] read BAMI part on TM
-- [x] implement simplistic version of schema rl
-  - [x] refresh inference logic
-  - [x] make forward prediction pass on simple synthetic sequences
-  - [x] try out making backtracking on simple synthetic sequences
-- [x] checkout wandb [and, optionally, dvc]
-- [ ] implement TD($\lambda$)-based approach from Sungur's work
-  - [ ] get understanding of the work
+- [ ] Adapt planning algo for high order TMs
+- [ ] Make semi-handcrafted POMDP version of gridworld generator
+  - naive version w/ ray casting maybe is enough
 
-## Ideas
+## Thoughts
 
 - consider using SP between an input an TM
-  - only states need SP, as actions and reward are just ints (naive encoding is enough)
+  - only states need SP, because actions and reward are just ints (naive encoding is enough)
   - concat them together
   - it will take care of sparsity
-  - maybe smoothes volume differences for a range of diff environments
+  - maybe smoothes the difference in size for a range of diff environments
     - bc even large envs may have a very small signal
+- consider TD($\lambda$)-based approach from Sungur's work
+- split SAR-based TM into State TM + Action TM
+  - both has apical connections to each other
+  - reward or goal-based approach? Could be interchangeable
+- goal-based hierarchies of TM blocks
+- SP hierarchies for large input images
+  - with every SP working similar to convolution filter
 - consider doing live-logging experiments in markdown there

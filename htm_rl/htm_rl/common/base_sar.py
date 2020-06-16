@@ -1,9 +1,7 @@
-from typing import List, Optional, NamedTuple, TypeVar, Generic
 from dataclasses import dataclass, astuple
+from typing import Optional, TypeVar, Generic, List
 
-from utils import isnone
-
-
+T = TypeVar('T')
 TS = TypeVar('TS')
 TA = TypeVar('TA')
 TR = TypeVar('TR')
@@ -28,14 +26,17 @@ class SarRelatedComposition(Generic[TS, TA, TR]):
 
 
 @dataclass(frozen=True)
-class BaseSar(SarRelatedComposition[
+class Sar(SarRelatedComposition[
     Optional[TS],
     Optional[TA],
     Optional[TR]
 ]):
     """
-    Represents a composition of (state, action, reward) aka sar. Every part is optional, e.g. (s, a, None)
+    Represents a composition of (state, action, reward) aka sar.
+    Every part is optional, e.g. (s, a, None)
     """
     pass
 
-Superposition = List[int]
+
+Superposition = List[T]
+SarSuperposition = SarRelatedComposition[Superposition, Superposition, Superposition]

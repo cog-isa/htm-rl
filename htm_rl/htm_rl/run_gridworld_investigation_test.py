@@ -4,13 +4,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from htm_rl.agent import Agent
-from htm_rl.gridworld_agent.list_sdr_encoder import ListSdrEncoder, Dim2d
-from htm_rl.gridworld_agent.minigrid import make_minigrid, format_minigrid_observation
-from htm_rl.mdp_agent.sar import Sar, SarSuperpositionFormatter
-from htm_rl.mdp_agent.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.planner import Planner
-from htm_rl.representations.int_sdr_encoder import IntSdrEncoder #IntSdrEncoder_ShortFormat as IntSdrEncoder
-from htm_rl.representations.temporal_memory import TemporalMemory
+from htm_rl.experimental.list_sdr_encoder import Dim2d
+from htm_rl.envs.minigrid import make_minigrid
+from htm_rl.mdp.sar import Sar, SarSuperpositionFormatter
+from htm_rl.mdp.sar_sdr_encoder import SarSdrEncoder
+from htm_rl.agent.planner import Planner
+from htm_rl.common.int_sdr_encoder import IntSdrEncoderShortFormat as IntSdrEncoder
+from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
 def render_env(env, render: bool, pause: float = None):
@@ -27,14 +27,14 @@ def render_env(env, render: bool, pause: float = None):
 
 def print_debug_sar(sar, encoder, sar_formatter):
     indices = encoder.encode(sar)
-    print(encoder.format(indices))
+    print(encoder.format_sar_superposition(indices))
     sar_superposition = encoder.decode(indices)
-    print(sar_formatter.format(sar_superposition))
+    print(sar_formatter.format_sar_superposition(sar_superposition))
 
 
 def print_proximal_input(proximal_input, encoder, print_enabled):
     if print_enabled:
-        print(encoder.format(proximal_input))
+        print(encoder.format_sar_superposition(proximal_input))
 
 def get_all_observations(actions, env, render, pause):
     observation = env.reset()
@@ -61,7 +61,8 @@ def find_index(observations, observation):
 
 
 def train_for(n_steps, observation, reward, a_ind, observations_mapping, rnd_eps, print_enabled):
-    print('=> stepping')
+    if print_enabled:
+        print('=> stepping')
     reward_reached = 0
     done = False
     prev_obs, prev_action = None, None
@@ -78,13 +79,13 @@ def train_for(n_steps, observation, reward, a_ind, observations_mapping, rnd_eps
         if prev_obs is not None and (prev_obs, prev_action) not in mdp:
             mdp[(prev_obs, prev_action)] = encoded_obs
 
-        print(encoded_obs, action, reward)
-        print(format_minigrid_observation(observation))
+        # print(encoded_obs, action, reward)
+        # print(format_minigrid_observation(observation))
         agent.train_one_step(proximal_input, print_enabled)
         if print_enabled:
             print(f'{encoded_obs} <-', [(s1, a) for (s1, a), s2 in mdp.items() if s2 == encoded_obs])
             print(f'{encoded_obs} ->', [(a, s2) for (s1, a), s2 in mdp.items() if s1 == encoded_obs])
-        print()
+            print()
         render_env(env, render, pause)
 
         next_observation, reward, done, info = env.step(action)
@@ -105,20 +106,21 @@ def train_for(n_steps, observation, reward, a_ind, observations_mapping, rnd_eps
             if prev_obs is not None and (prev_obs, prev_action) not in mdp:
                 mdp[(prev_obs, prev_action)] = encoded_obs
 
-            print(encoded_obs)
-            print(format_minigrid_observation(observation))
+            # print(encoded_obs)
+            # print(format_minigrid_observation(observation))
             agent.train_one_step(proximal_input, print_enabled)
             if print_enabled:
                 print(f'{encoded_obs} <-', [(s1, a) for (s1, a), s2 in mdp.items() if s2 == encoded_obs])
                 print(f'{encoded_obs} ->', [(a, s2) for (s1, a), s2 in mdp.items() if s1 == encoded_obs])
-            print('YAY')
+            # print('YAY')
             render_env(env, render, pause)
             break
 
     if done and reward != 1:
         agent.tm.reset()
 
-    print('<= stepping')
+    if print_enabled:
+        print('<= stepping')
 
     return reward_reached
 
@@ -128,7 +130,7 @@ if __name__ == '__main__':
     random.seed(1337)
     np.random.seed(1337)
 
-    size, view_size = 5, 5
+    size, view_size = 7, None
     env = make_minigrid(size, view_size)
     n_dims = Dim2d(view_size, view_size)
 
@@ -155,20 +157,21 @@ if __name__ == '__main__':
     sar_formatter = SarSuperpositionFormatter
 
     activation_threshold = encoder.activation_threshold
-    learning_threshold = int(0.8*activation_threshold)
+    learning_threshold = int(0.85*activation_threshold)
     print(encoder.total_bits, activation_threshold, learning_threshold)
 
     tm = TemporalMemory(
         n_columns=encoder.total_bits,
-        cells_per_column=1,
+        cells_per_column=4,
         activation_threshold=activation_threshold, learning_threshold=learning_threshold,
-        initial_permanence=.5, connected_permanence=.5,
-        maxNewSynapseCount=int(1.2 * encoder.value_bits),
+        initial_permanence=.5, connected_permanence=.4,
+        maxNewSynapseCount=encoder.value_bits,
         predictedSegmentDecrement=.0001,
         permanenceIncrement=.1,
-        permanenceDecrement=.1,
+        permanenceDecrement=.05,
+        maxSynapsesPerSegment=encoder.value_bits,
     )
-    agent = Agent(tm, encoder, sar_formatter.format)
+    agent = Agent(tm, encoder, sar_formatter.format_sar_superposition)
 
     encoded_obs = find_index(all_observations, observation)
     initial_sar = Sar(encoded_obs, 2, 0)
@@ -177,39 +180,41 @@ if __name__ == '__main__':
     observation = env.reset()
     encoded_obs = find_index(all_observations, observation)
 
-    render, pause = False, -.3
+    render, pause, print_enabled = False, -.3, False
     rnd_eps = 2.
     reward_reached = 0
-    for _ in range(3):
-        rew = train_for(50, observation, reward, 0, all_observations, rnd_eps, True)
-        if rew == -1:
-            break
+    for _ in range(20):
+        rew = train_for(1000, observation, reward, 0, all_observations, rnd_eps, print_enabled)
         reward_reached += rew
         tm.reset()
-        print()
-        agent.predict_cycle(initial_proximal_input, 1, True)
+        if print_enabled:
+            print()
+        # agent.predict_cycle(initial_proximal_input, 1, True)
         tm.reset()
         observation = env.reset()
         reward = 0
         a_ind = 0
-        print('='*20)
+        if print_enabled:
+            print('='*20)
     print(f'Reward reached: {reward_reached}')
+
     # print((initial_sar.state, initial_sar.action), mdp[(initial_sar.state, initial_sar.action)])
     # print(format_minigrid_observation(all_observations[9]))
     # print(format_minigrid_observation(all_observations[0]))
 
-    print((27, 1), mdp[(27, 1)])
-    print(format_minigrid_observation(all_observations[27]))
-    print(format_minigrid_observation(all_observations[10]))
-    print(format_minigrid_observation(all_observations[9]))
+    # print((27, 1), mdp[(27, 1)])
+    # print(format_minigrid_observation(all_observations[27]))
+    # print(format_minigrid_observation(all_observations[10]))
+    # print(format_minigrid_observation(all_observations[9]))
     #
     # print(format_minigrid_observation(all_observations[9]), 9)
     # for i in [1, 4, 17]:
     #     obs = all_observations[i]
     #     print(format_minigrid_observation(obs), i)
     #
-    # planner = Planner(agent, 5, print_enabled=True)
-    # planner.plan_actions(initial_sar)
+    # render_env(env, True, None)
+    planner = Planner(agent, size * 3, print_enabled=True)
+    planner.plan_actions(initial_sar)
     #
     # agent.tm.printParameters()
     #
