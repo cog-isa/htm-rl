@@ -166,9 +166,9 @@ class IntSdrShortFormatter:
         + - - . - +
     """
     format_chars = [
-        '+',    # full value: value_bits 1 bits
-        '.',    # partial:  0 < x < value_bits 1 bits
         '-',    # empty: zero 1 bits
+        '.',    # partial:  0 < x < value_bits 1 bits
+        '+',    # full value: value_bits 1 bits
     ]
 
     @classmethod

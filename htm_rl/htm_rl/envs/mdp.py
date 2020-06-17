@@ -1,11 +1,8 @@
+from typing import Type
+
 from gym.utils import seeding
 
 from htm_rl.common.sar_sdr_encoder import SarSuperposition
-
-
-# Superposition = List[int]
-# Sar = TSar[int, int, int]
-# SarSuperposition = TSar[Superposition, Superposition, Superposition]
 
 
 class Mdp:
@@ -36,28 +33,9 @@ class Mdp:
         self.np_random, _ = seeding.np_random(seed)
         self._current_state = self._get_initial_state()
 
-    def _get_initial_state(self) -> int:
-        state = None
-        if self._initial_state is None:
-            while state is None or self.is_terminal(state):
-                state = self.np_random.choice(self.n_states)
-        elif 0 <= self._initial_state < self.n_states:
-            state = self._initial_state
-        elif callable(self._initial_state):
-            state = self._initial_state()
-        return state
-
-    def get_all_states(self):
-        """ return a tuple of all possible states """
-        return tuple(range(self.n_states))
-
     def is_terminal(self, state):
         """ return True if state is terminal or False if it isn't """
         return self.transitions[state] is None
-
-    def get_reward(self, state, action, next_state):
-        """ return the reward you get for taking action in state and landing on next_state"""
-        return 1 if self.is_terminal(next_state) else 0
 
     def reset(self):
         """ reset the game, return the initial state"""
@@ -71,7 +49,7 @@ class Mdp:
         next_state = self.transitions[self._current_state][action]
         assert next_state is not None
 
-        reward = self.get_reward(self._current_state, action, next_state)
+        reward = self._reward(next_state)
         is_done = self.is_terminal(next_state)
         self._current_state = next_state
         return next_state, reward, is_done, {}
@@ -79,6 +57,21 @@ class Mdp:
     def render(self):
         state = self._current_state
         print(f'State: {state}')
+
+    def _get_initial_state(self) -> int:
+        state = None
+        if self._initial_state is None:
+            while state is None or self.is_terminal(state):
+                state = self.np_random.choice(self.n_states)
+        elif 0 <= self._initial_state < self.n_states:
+            state = self._initial_state
+        elif callable(self._initial_state):
+            state = self._initial_state()
+        return state
+
+    def _reward(self, state):
+        """ return the reward you get for taking action in state and landing on next_state"""
+        return 1 if self.is_terminal(state) else 0
 
 
 class GridworldMdpGenerator:
@@ -92,7 +85,9 @@ class GridworldMdpGenerator:
         assert n_of_cell_edges >= 2 and n_of_cell_edges % 2 == 0
         self._n_of_cell_edges = n_of_cell_edges
 
-    def generate_mdp(self, initial_state, cell_transitions, allow_clockwise_action=False, seed=None) -> Mdp:
+    def generate_mdp(
+            self, env_type: Type[Mdp], initial_state, cell_transitions, allow_clockwise_action=False, seed=None
+    ) -> Mdp:
         """
         Generates MDP based on a grid world with 2 [or 3] allowed actions:
             - 0: move forward
@@ -115,7 +110,7 @@ class GridworldMdpGenerator:
             cell, view_direction = initial_state
             initial_state = self._state(cell, view_direction)
 
-        return Mdp(transitions, initial_state, seed)
+        return env_type(transitions, initial_state, seed)
 
     def _generate_transitions(self, cell_transitions, add_clockwise_action=False):
         """

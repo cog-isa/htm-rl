@@ -7,7 +7,7 @@ from htm_rl.agent.planner import Planner
 from htm_rl.common.base_sar import Sar, SarRelatedComposition
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.envs.mdp import GridworldMdpGenerator, SarSuperpositionFormatter
+from htm_rl.envs.mdp import GridworldMdpGenerator, SarSuperpositionFormatter, Mdp
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
@@ -65,6 +65,7 @@ if __name__ == '__main__':
     np.random.seed(1337)
 
     env = GridworldMdpGenerator(4).generate_mdp(
+        Mdp,
         initial_state=(0, 2),   # c0 >
         # initial_state=None,     # random
         cell_transitions=[
