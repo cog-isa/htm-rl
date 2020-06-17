@@ -11,6 +11,11 @@ from htm_rl.envs.mdp import GridworldMdpGenerator, SarSuperpositionFormatter
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
+"""
+Here you can test agent+planner on a simple handcrafted MDP envs.
+"""
+
+
 def render_env(env, render):
     if not render:
         return

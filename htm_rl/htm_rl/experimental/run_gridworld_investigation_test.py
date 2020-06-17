@@ -13,6 +13,18 @@ from htm_rl.common.int_sdr_encoder import IntSdrEncoderShortFormat as IntSdrEnco
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
+"""
+!!!!!!!!!!!!!!!!!!!!!!!!!!!
+It's outdated and doesn't work RN as for now minigrid is not a main target for testing.
+
+Don't delete as it contains some useful code. It will be updated at some point in future.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+Here you can test agent+planner on easy MDP variations of minigrid envs.
+"""
+
+
 def render_env(env, render: bool, pause: float = None):
     if not render:
         return
