@@ -3,11 +3,11 @@ import random
 import numpy as np
 
 from htm_rl.agent.agent import Agent
+from htm_rl.agent.planner import Planner
 from htm_rl.common.base_sar import Sar, SarRelatedComposition
+from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.envs.mdp import GridworldMdpGenerator, SarSuperpositionFormatter
-from htm_rl.agent.planner import Planner
-from htm_rl.common.int_sdr_encoder import IntSdrEncoder, IntSdrFormatter, IntSdrShortFormatter
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
@@ -31,9 +31,7 @@ def train_for(n_steps, observation, reward, print_enabled):
         action = np.random.choice(env.n_actions)
 
         render_env(env, render)
-        sar = Sar(observation, action, reward)
-        proximal_input = encoder.encode(sar)
-        agent.train_one_step(proximal_input, print_enabled)
+        agent.train(Sar(observation, action, reward), print_enabled)
 
         if step == n_steps:
             break
@@ -46,9 +44,7 @@ def train_for(n_steps, observation, reward, print_enabled):
         if done:
             action = 0 # any next action
             render_env(env, render)
-            sar = Sar(observation, action, reward)
-            proximal_input = encoder.encode(sar)
-            agent.train_one_step(proximal_input, print_enabled)
+            agent.train(Sar(observation, action, reward), print_enabled)
             break
 
     if done and reward != 1:
@@ -139,8 +135,8 @@ if __name__ == '__main__':
 
     observation = env.reset()
     initial_sar = Sar(observation, 1, 0)
-    planner = Planner(agent, n_states, print_enabled=True)
-    planner.plan_actions(initial_sar)
+    planner = Planner(agent, n_states)
+    planner.plan_actions(initial_sar, True)
 
     # agent.tm.printParameters()
 
