@@ -20,7 +20,7 @@ class TemporalMemory(TM):
             minThreshold=learning_threshold,
             initialPermanence=initial_permanence,
             connectedPermanence=connected_permanence,
-            anomalyMode=ANMode.DISABLED,
+            # anomalyMode=ANMode.DISABLED,
             **kwargs
         )
         self.n_columns = n_columns

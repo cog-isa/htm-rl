@@ -85,17 +85,18 @@ class GridworldMdpGenerator:
         assert n_of_cell_edges >= 2 and n_of_cell_edges % 2 == 0
         self._n_of_cell_edges = n_of_cell_edges
 
-    def generate_mdp(
+    def generate_env(
             self, env_type: Type[Mdp], initial_state, cell_transitions, allow_clockwise_action=False, seed=None
     ) -> Mdp:
         """
-        Generates MDP based on a grid world with 2 [or 3] allowed actions:
+        Generates MDP/POMDP based on a grid world with 2 [or 3] allowed actions:
             - 0: move forward
             - 1: turn counter-clockwise
             - [optional] you can allow 3rd action 2: turn clockwise
 
         By convenience directions for square grid: 0 - right, 1 - up, 2 - left, 3 - down
             , i.e. from 0 to 3 counter-clockwise, starting from right.
+        :param env_type: type of environment. It may be MDP or
         :param initial_state: can be tuple (cell, view_direction)
         :param cell_transitions: List[(cell, view_direction, next_cell)]
             Last transition should be on of the terminal transitions.
@@ -106,7 +107,7 @@ class GridworldMdpGenerator:
         """
         transitions = self._generate_transitions(cell_transitions, allow_clockwise_action)
 
-        if initial_state is not None:
+        if initial_state is not None and initial_state[1] is not None:
             cell, view_direction = initial_state
             initial_state = self._state(cell, view_direction)
 

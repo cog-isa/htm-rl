@@ -128,12 +128,3 @@ class NumberOfForwardCellsPomdp(AbstractPomdp):
             state = self.transitions[state][self.ForwardMove]
             n_cells_before_agent += 1
         return n_cells_before_agent
-
-
-class SarSuperpositionFormatter:
-    @staticmethod
-    def format(sar: SarSuperposition) -> str:
-        return '  '.join(
-            '.'.join(map(str, superposition))
-            for superposition in sar
-        )
