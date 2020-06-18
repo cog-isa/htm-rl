@@ -5,9 +5,12 @@ from htm_rl.agent.agent import Agent
 from htm_rl.common.base_sar import Sar
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.common.utils import trace
 
 
 # noinspection PyPep8Naming
+
+
 class Planner:
     agent: Agent
     max_steps: int
@@ -20,29 +23,29 @@ class Planner:
         self.max_steps = max_steps
         self._active_segments_timeline = []
 
-    def plan_actions(self, initial_sar: Sar, trace: bool):
-        self.print(trace, '\n======> Planning')
+    def plan_actions(self, initial_sar: Sar, verbose: bool):
+        trace(verbose, '\n======> Planning')
 
         # saves initial TM state at the start of planning.
         self._save_initial_tm_state()
         planned_actions = None
 
-        reward_reached = self._make_predictions_to_reward(initial_sar, trace)
+        reward_reached = self._make_predictions_to_reward(initial_sar, verbose)
         if not reward_reached:
             return
 
-        for activation_timeline in self._yield_successful_backtracks_from_reward(trace):
+        for activation_timeline in self._yield_successful_backtracks_from_reward(verbose):
             planned_actions = self._check_backtrack_correctly_predicts_reward(
-                initial_sar, activation_timeline, trace
+                initial_sar, activation_timeline, verbose
             )
             if planned_actions is not None:
                 break
 
-        self.print(trace, '<====== Planning complete')
+        trace(verbose, '<====== Planning complete')
         return planned_actions
 
-    def _make_predictions_to_reward(self, initial_sar: Sar, trace: bool) -> bool:
-        self.print(trace, '===> Forward pass')
+    def _make_predictions_to_reward(self, initial_sar: Sar, verbose: bool) -> bool:
+        trace(verbose, '===> Forward pass')
 
         # to consider all possible prediction paths, prediction is started with all possible actions
         all_actions_sar = Sar(initial_sar.state, IntSdrEncoder.ALL, initial_sar.reward)
@@ -56,30 +59,30 @@ class Planner:
             if reward_reached:
                 break
 
-            active_cells, depolarized_cells = self.agent.process(proximal_input, learn=False, trace=trace)
+            active_cells, depolarized_cells = self.agent.process(proximal_input, learn=False, verbose=verbose)
 
             active_segments_t = self.agent.active_segments(active_cells)
             active_segments_timeline.append(active_segments_t)
 
             proximal_input = self.agent.columns_from_cells(depolarized_cells)
-            self.print(trace, '')
+            trace(verbose, '')
 
         self._restore_initial_tm_state()
         self._active_segments_timeline = active_segments_timeline
 
         if reward_reached:
             T = len(active_segments_timeline)
-            self.print(trace, f'<=== Predict reward in {T} steps')
+            trace(verbose, f'<=== Predict reward in {T} steps')
         else:
-            self.print(trace, f'<=== Predicting NO reward in {self.max_steps} steps')
+            trace(verbose, f'<=== Predicting NO reward in {self.max_steps} steps')
 
         return reward_reached
 
-    def _yield_successful_backtracks_from_reward(self, trace: bool):
-        self.print(trace, '\n===> Backward pass')
+    def _yield_successful_backtracks_from_reward(self, verbose: bool):
+        trace(verbose, '\n===> Backward pass')
 
         T = len(self._active_segments_timeline)
-        for rewarding_segment in self._yield_rewarding_segments(trace):
+        for rewarding_segment in self._yield_rewarding_segments(verbose):
             # rewarding segment:
             #   - one of the active segments at time T-1
             #   - consists of a set of presynaptic [active at time T-1] cells
@@ -88,21 +91,21 @@ class Planner:
             # start backtracking from time T-2:
             # when these presynaptic active cells were just a prediction (= depolarized)
             depolarized_cells = rewarding_segment
-            backtracking_succeeded, activation_timeline = self._backtrack(depolarized_cells, T-2, trace)
+            backtracking_succeeded, activation_timeline = self._backtrack(depolarized_cells, T-2, verbose)
             if backtracking_succeeded:
                 activation_timeline.append(rewarding_segment)
                 yield activation_timeline
 
-        self.print(trace, '<=== Backward pass complete')
+        trace(verbose, '<=== Backward pass complete')
 
-    def _yield_rewarding_segments(self, trace: bool):
+    def _yield_rewarding_segments(self, verbose: bool):
         """TODO"""
         T = len(self._active_segments_timeline)
         reward_activation_threshold = self.agent.encoder._encoders.reward.activation_threshold
 
         # Take active_segments for time T-1, when the reward was found.
         depolarized_reward_cells = self._get_depolarized_reward_cells()
-        self.agent.print_cells(trace, depolarized_reward_cells, 'Reward == 1')
+        self.agent.print_cells(verbose, depolarized_reward_cells, 'Reward == 1')
 
         # all segments, whose presynaptic cells can potentially induce desired reward == 1 prediction
         rewarding_segment_candidates = self._get_unique_active_segments(depolarized_reward_cells, T-1)
@@ -114,18 +117,18 @@ class Planner:
                 t=T-1
             )
 
-            print('>')
+            trace(verbose, '>')
             self.agent.print_cells(
-                trace, candidate_segment, f'n: {n_depolarized_cells} of {reward_activation_threshold}'
+                verbose, candidate_segment, f'n: {n_depolarized_cells} of {reward_activation_threshold}'
             )
 
             # if number of depolarized cells < reward activation threshold
             #   ==> reward == 1 is not predicted
             if n_depolarized_cells >= reward_activation_threshold:
                 yield candidate_segment
-            print('<')
+            trace(verbose, '<')
 
-    def _backtrack(self, should_be_depolarized_cells, t, trace):
+    def _backtrack(self, should_be_depolarized_cells, t, verbose):
         # goal:
         #   - find any active_segment whose presynaptic active cells induce depolarization we need
         #   - recursively check if we can backtrack from this segment
@@ -135,10 +138,10 @@ class Planner:
 
         # obviously, we should look only among active segments of these "should-be-depolarized" cells
         unique_potential_segments = self._get_unique_active_segments(should_be_depolarized_cells, t)
-        self.print(trace, '\ncandidates:')
+        trace(verbose, '\ncandidates:')
         for potential_segment in unique_potential_segments:
-            self.agent.print_cells(trace, potential_segment)
-        self.print(trace, '')
+            self.agent.print_cells(verbose, potential_segment)
+        trace(verbose, '')
 
         # check every potential segment
         for potential_segment in unique_potential_segments:
@@ -150,14 +153,14 @@ class Planner:
             )
 
             self.agent.print_cells(
-                trace, presynaptic_active_cells,
+                verbose, presynaptic_active_cells,
                 f'n: {n_depolarized_cells} of {self.agent.tm.activation_threshold}'
             )
 
             # if number of depolarized cells < threshold ==> they can't depolarize t+1 segment
             if n_depolarized_cells >= self.agent.tm.activation_threshold:
                 backtracking_succeeded, activation_timeline = self._backtrack(
-                    presynaptic_active_cells, t - 1, trace
+                    presynaptic_active_cells, t - 1, verbose
                 )
                 if backtracking_succeeded:
                     activation_timeline.append(presynaptic_active_cells)
@@ -209,9 +212,9 @@ class Planner:
         return depolarized_rewarding_cells
 
     def _check_backtrack_correctly_predicts_reward(
-            self, initial_sar: Sar, activation_timeline, trace: bool
+            self, initial_sar: Sar, activation_timeline, verbose: bool
     ) -> List[int]:
-        self.print(trace, '\n===> Check backtracked activations')
+        trace(verbose, '\n===> Check backtracked activations')
 
         initial_sar = Sar(initial_sar.state, IntSdrEncoder.ALL, initial_sar.reward)
         proximal_input = self.agent.encoder.encode(initial_sar)
@@ -231,24 +234,24 @@ class Planner:
 
             proximal_input = self.agent.encoder.replace_action(proximal_input, action)
 
-            active_cells, depolarized_cells = self.agent.process(proximal_input, learn=False, trace=trace)
+            active_cells, depolarized_cells = self.agent.process(proximal_input, learn=False, verbose=verbose)
 
             # current active cells MUST CONTAIN backtracked activation, i.e. the latter is a subset of it
             if not backtracked_activation <= set(active_cells):
-                self.agent.print_cells(trace, active_cells, 'active cells')
-                self.agent.print_cells(trace, backtracked_activation, 'backtracked')
+                self.agent.print_cells(verbose, active_cells, 'active cells')
+                self.agent.print_cells(verbose, backtracked_activation, 'backtracked')
             assert backtracked_activation <= set(active_cells)
 
             proximal_input = self.agent.columns_from_cells(depolarized_cells)
-            self.print(trace, '')
+            trace(verbose, '')
 
         reward_reached = self.agent.encoder.is_rewarding(proximal_input)
         self._restore_initial_tm_state()
 
         if reward_reached:
-            self.print(trace, f'<=== Checking complete with SUCCESS: {planned_actions}')
+            trace(verbose, f'<=== Checking complete with SUCCESS: {planned_actions}')
         else:
-            self.print(trace, f'<=== Checking complete with NO success')
+            trace(verbose, f'<=== Checking complete with NO success')
 
         # return all planned actions or None
         if reward_reached:
@@ -285,8 +288,3 @@ class Planner:
     def _restore_initial_tm_state(self):
         """Restores saved TM state."""
         self.agent.tm = pickle.loads(self._initial_tm_state)
-
-    @staticmethod
-    def print(print_condition, str_to_print: str):
-        if print_condition:
-            print(str_to_print)

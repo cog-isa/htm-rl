@@ -7,6 +7,7 @@ from htm_rl.common.base_sar import SarSuperposition, Sar
 from htm_rl.common.int_sdr_encoder import BitRange
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.common.utils import trace
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
@@ -32,35 +33,33 @@ class Agent:
     def reset(self):
         self.tm.reset()
 
-    def train(self, sar: Sar, trace: bool):
+    def train(self, sar: Sar, verbose: bool):
         proximal_input = self.encoder.encode(sar)
-        self.process(proximal_input, learn=True, trace=trace)
+        self.process(proximal_input, learn=True, verbose=verbose)
 
-    def predict_from_sar(self, initial_sar: Sar, n_steps, trace: bool):
+    def predict_from_sar(self, initial_sar: Sar, n_steps, verbose: bool):
         proximal_input = self.encoder.encode(initial_sar)
         for i in range(n_steps):
-            _, depolarized_cells = self.process(
-                proximal_input, learn=False, trace=trace
-            )
+            _, depolarized_cells = self.process(proximal_input, learn=False, verbose=verbose)
             proximal_input = self.columns_from_cells(depolarized_cells)
 
-    def process(self, proximal_input: SparseSdr, learn:bool, trace: bool) -> Tuple[SparseSdr, SparseSdr]:
+    def process(self, proximal_input: SparseSdr, learn: bool, verbose: bool) -> Tuple[SparseSdr, SparseSdr]:
         """
         Given new piece of proximal input data, processes it by sequentially activating cells
         and then depolarizes them, making prediction about next proximal input.
 
         :param proximal_input: column activations sparse SDR.
         :param learn: whether or not to force learning.
-        :param trace: whether or not to print debug traces.
+        :param verbose: whether or not to print debug traces.
         :return: tuple (active cells, depolarized cells) of sparse SDRs.
         """
-        self.print_sar_superposition(trace, proximal_input)
+        self.print_sar_superposition(verbose, proximal_input)
 
         active_cells = self.activate_cells(proximal_input, learn)
-        self.print_cells(trace, active_cells, 'Active')
+        self.print_cells(verbose, active_cells, 'Active')
 
         depolarized_cells = self.depolarize_cells(learn)
-        self.print_cells(trace, depolarized_cells, 'Predictive')
+        self.print_cells(verbose, depolarized_cells, 'Predictive')
 
         return active_cells, depolarized_cells
 
@@ -156,13 +155,14 @@ class Agent:
         # active segment: (postsynaptic _depolarized_ cell; presynaptic !active+connected! cells)
         return active_segments
 
-    def print_cells(self, trace_enabled: bool, cells_sparse_sdr: SparseSdr, mark: str = ''):
+    def print_cells(self, trace_condition: bool, cells_sparse_sdr: SparseSdr, mark: str = ''):
         """
         Prints cells sparse SDR layer by layer, each one on a separate line.
-        :param trace_enabled: whether or not to print debug traces.
+        :param trace_condition: whether or not to print debug traces.
+        :param cells_sparse_sdr:
         :param mark: optional description mark to print near the first line
         """
-        if not trace_enabled:
+        if not trace_condition:
             return
 
         cpc = self.tm.cells_per_column
@@ -176,14 +176,9 @@ class Agent:
         lines = [first_line]
         for layer_ind in range(1, cpc):
             lines.append(self.format_sdr(layerwise_sparse_sdrs[layer_ind]))
-        print('\n'.join(lines))
+        trace(trace_condition, '\n'.join(lines))
 
-    def print_sar_superposition(self, trace_enabled: bool, proximal_input: SparseSdr):
-        if trace_enabled:
+    def print_sar_superposition(self, trace_condition: bool, proximal_input: SparseSdr):
+        if trace_condition:
             sar_superposition = self.encoder.decode(proximal_input)
-            self.print(trace_enabled, self.format_sar_superposition(sar_superposition))
-
-    @staticmethod
-    def print(trace_enabled, str_to_print: str):
-        if trace_enabled:
-            print(str_to_print)
+            trace(trace_condition, self.format_sar_superposition(sar_superposition))
