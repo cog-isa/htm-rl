@@ -106,7 +106,7 @@ class Agent:
         :return: columns sparse SDR
         """
         cpc = self.tm.cells_per_column
-        return list(set(cell_ind // cpc for cell_ind in cells_sparse_sdr))
+        return set(cell_ind // cpc for cell_ind in cells_sparse_sdr)
 
     def filter_cells_by_columns_range(self, cells: SparseSdr, columns_range: BitRange) -> SparseSdr:
         cpc = self.tm.cells_per_column

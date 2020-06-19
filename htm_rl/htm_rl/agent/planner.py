@@ -1,11 +1,12 @@
 import pickle
+from collections import defaultdict
 from typing import List, Mapping, Set
 
 from htm_rl.agent.agent import Agent
 from htm_rl.common.base_sar import Sar
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import trace
+from htm_rl.common.utils import trace, range_reverse
 
 
 # noinspection PyPep8Naming
@@ -109,37 +110,19 @@ class Planner:
         self.agent.print_cells(verbose, depolarized_reward_cells, 'Reward == 1')
 
         # all segments, whose presynaptic cells can potentially induce desired reward == 1 prediction
-        rewarding_segment_candidates = self._get_unique_active_segments(depolarized_reward_cells, T-1)
+        rewarding_segment_candidates = self._get_backtracking_candidates(
+            should_be_depolarized_cells=depolarized_reward_cells,
+            sufficient_activation_threshold=reward_activation_threshold,
+            t=T - 1,
+            verbose=verbose
+        )
 
-        trace(verbose, '\ncandidates:')
-        for candidate_segment in rewarding_segment_candidates:
-            n_depolarized_cells = self._count_induced_depolarization(
-                active_cells=candidate_segment,
-                could_be_depolarized_cells=depolarized_reward_cells,
-                t=T-1
-            )
-            self.agent.print_cells(
-                verbose, candidate_segment, f'n: {n_depolarized_cells} of {reward_activation_threshold}'
-            )
-            trace(verbose, '----')
-
-        for candidate_segment in rewarding_segment_candidates:
-            # imagine that they're active cells => how many "should be depolarized" cells they depolarize?
-            n_depolarized_cells = self._count_induced_depolarization(
-                active_cells=candidate_segment,
-                could_be_depolarized_cells=depolarized_reward_cells,
-                t=T-1
-            )
-
+        for candidate_segment, n_induced_depolarization in rewarding_segment_candidates:
             trace(verbose, '>')
             self.agent.print_cells(
-                verbose, candidate_segment, f'n: {n_depolarized_cells} of {reward_activation_threshold}'
+                verbose, candidate_segment, f'n: {n_induced_depolarization} of {reward_activation_threshold}'
             )
-
-            # if number of depolarized cells < reward activation threshold
-            #   ==> reward == 1 is not predicted
-            if n_depolarized_cells >= reward_activation_threshold:
-                yield candidate_segment
+            yield candidate_segment
             trace(verbose, '<')
 
     def _backtrack(self, should_be_depolarized_cells, t, verbose):
@@ -154,66 +137,110 @@ class Planner:
         self.agent.print_sar_superposition(verbose, self.agent.columns_from_cells(should_be_depolarized_cells))
 
         # obviously, we should look only among active segments of these "should-be-depolarized" cells
-        unique_potential_segments = self._get_unique_active_segments(should_be_depolarized_cells, t)
-        trace(verbose, 'candidates:')
-        for candidate_segment in unique_potential_segments:
-            presynaptic_active_cells = candidate_segment
-            n_depolarized_cells = self._count_induced_depolarization(
-                presynaptic_active_cells, should_be_depolarized_cells, t
-            )
+        unique_potential_segments = self._get_backtracking_candidates(
+            should_be_depolarized_cells=should_be_depolarized_cells,
+            sufficient_activation_threshold=self.agent.tm.activation_threshold,
+            t=t, verbose=verbose
+        )
 
+        # check every candidate
+        for candidate, n_induced_depolarization in unique_potential_segments:
             self.agent.print_cells(
-                verbose, presynaptic_active_cells,
-                f'n: {n_depolarized_cells} of {self.agent.tm.activation_threshold}'
-            )
-            trace(verbose, '----')
-        trace(verbose, '')
-
-        # check every potential segment
-        for candidate_segment in unique_potential_segments:
-            # check depolarization induced by segment's presynaptic cells
-            #   i.e. how many "should be depolarized" cells are in fact depolarized
-            presynaptic_active_cells = candidate_segment
-            n_depolarized_cells = self._count_induced_depolarization(
-                presynaptic_active_cells, should_be_depolarized_cells, t
+                verbose, candidate, f'n: {n_induced_depolarization} of {self.agent.tm.activation_threshold}'
             )
 
-            self.agent.print_cells(
-                verbose, presynaptic_active_cells,
-                f'n: {n_depolarized_cells} of {self.agent.tm.activation_threshold}'
+            backtracking_succeeded, activation_timeline = self._backtrack(
+                candidate, t - 1, verbose
             )
-
-            # if number of depolarized cells < threshold ==> they can't depolarize t+1 segment
-            if n_depolarized_cells >= self.agent.tm.activation_threshold:
-                backtracking_succeeded, activation_timeline = self._backtrack(
-                    presynaptic_active_cells, t - 1, verbose
-                )
-                if backtracking_succeeded:
-                    activation_timeline.append(presynaptic_active_cells)
-                    return True, activation_timeline
+            if backtracking_succeeded:
+                activation_timeline.append(candidate)
+                return True, activation_timeline
 
         return False, None
 
-    def _get_unique_active_segments(self, depolarized_cells, t):
-        """TODO"""
-        active_segments_t = self._active_segments_timeline[t]
-        return {
-            cell_active_segment
-            for cell in depolarized_cells
-            for cell_active_segment in active_segments_t[cell]
-        }
+    def _get_backtracking_candidates(
+            self, should_be_depolarized_cells, sufficient_activation_threshold: int, t: int, verbose: bool
+    ):
+        """Find any active_segment whose presynaptic active cells induce depolarization we need."""
 
-    def _count_induced_depolarization(self, active_cells, could_be_depolarized_cells, t):
+        # obviously, we should look only among active segments of these "should-be-depolarized" cells
+        unique_potential_segments = self._get_active_cell_clusters(should_be_depolarized_cells, t)
+
+        trace(verbose, 'candidates:')
+        candidates = []
+        n_all_candidate = 0
+        for candidate_segment in unique_potential_segments:
+            n_depolarized_cells = self._count_induced_depolarization(
+                active_cells=candidate_segment,
+                depolarization_candidates=should_be_depolarized_cells,
+                t=t
+            )
+            n_all_candidate += 1
+            if n_depolarized_cells > 4:
+                self.agent.print_cells(
+                    verbose, candidate_segment,
+                    f'n: {n_depolarized_cells} of {sufficient_activation_threshold}'
+                )
+                trace(verbose, '----')
+            if n_depolarized_cells >= sufficient_activation_threshold:
+                candidates.append((candidate_segment, n_depolarized_cells))
+        trace(verbose, f'total:   {n_all_candidate}')
+
+        return candidates
+
+    def _get_active_cell_clusters(self, depolarized_cells, t):
         """TODO"""
         active_segments_t = self._active_segments_timeline[t]
-        n_depolarized_cells = 0
+        # clusters = defaultdict(set)
+        # for cell in depolarized_cells:
+        #     for cell_active_segment in active_segments_t[cell]:
+        #         cluster = frozenset(self.agent.columns_from_cells(cell_active_segment))
+        #         clusters[cluster].update(cell_active_segment)
+
+        clusters = []
+        for cell in depolarized_cells:
+            for cell_active_segment in active_segments_t[cell]:
+                cols = frozenset(self.agent.columns_from_cells(cell_active_segment))
+                clusters.append((cols, cell_active_segment))
+
+        while self._merge_clusters(clusters):
+            ...
+
+        column_clusters, cell_clusters = zip(*clusters)
+
+        # print(column_clusters)
+        return cell_clusters
+
+    def _merge_clusters(self, clusters: List):
+        initial_len = len(clusters)
+
+        for i in range_reverse(clusters):
+            cluster_cols, cluster_cells = clusters[i]
+            for j in range(i):
+                cols, cells = clusters[j]
+                is_subset = cluster_cols <= cols or cluster_cols >= cols
+                enough_intersection = len(cluster_cols & cols) >= self.agent.tm.activation_threshold - 2
+                if is_subset or enough_intersection:
+                    # merge i into j
+                    clusters[j] = (cluster_cols | cols, cluster_cells | cells)
+                    # remove i by swapping it with the last and then popping
+                    clusters[i] = clusters[-1]
+                    clusters.pop()
+                    break
+
+        return len(clusters) < initial_len
+
+    def _count_induced_depolarization(self, active_cells, depolarization_candidates, t):
+        """TODO"""
+        active_segments_t = self._active_segments_timeline[t]
 
         # look only among specified "could-be-depolarized" cells
-        for could_be_depolarized_cell in could_be_depolarized_cells:
-            cell_segments = active_segments_t[could_be_depolarized_cell]
+        depolarized_cells = []
+        for depolarization_candidate_cell in depolarization_candidates:
+            cell_segments = active_segments_t[depolarization_candidate_cell]
 
             # for segment in cell_segments:
-            #     self.agent.print_cells(segment, f' {could_be_depolarized_cell:2} presynaptics')
+            #     self.agent.print_cells(segment, f' {depolarization_candidate_cell:2} presynaptics')
 
             any_cell_segments_activated = any(
                 len(segment & active_cells) >= self.agent.tm.activation_threshold
@@ -221,9 +248,10 @@ class Planner:
             )
             # the cell becomes depolarized if any of its segments becomes active
             if any_cell_segments_activated:
-                n_depolarized_cells += 1
+                depolarized_cells.append(depolarization_candidate_cell)
 
-        return n_depolarized_cells
+        depolarized_columns = self.agent.columns_from_cells(depolarized_cells)
+        return len(depolarized_columns)
 
     def _get_depolarized_reward_cells(self) -> SparseSdr:
         # depolarized cells from the last step of forward prediction phase, when the reward was found
@@ -251,6 +279,13 @@ class Planner:
             # choose action
             backtracked_activation = activation_timeline[i]
             backtracked_columns_activation = self.agent.columns_from_cells(backtracked_activation)
+
+            # current active cells MUST CONTAIN backtracked activation, i.e. the latter is a subset of it
+            if not set(backtracked_columns_activation) <= set(proximal_input):
+                trace(verbose, f'{self.agent.format_sdr(proximal_input)} proximal_input')
+                trace(verbose, f'{self.agent.format_sdr(backtracked_columns_activation)} backtracked')
+                # assert False
+
             backtracked_sar_superposition = self.agent.encoder.decode(backtracked_columns_activation)
             backtracked_actions = backtracked_sar_superposition.action
             # backtracked activation MUST CONTAIN only one action
@@ -261,12 +296,6 @@ class Planner:
             proximal_input = self.agent.encoder.replace_action(proximal_input, action)
 
             active_cells, depolarized_cells = self.agent.process(proximal_input, learn=False, verbose=verbose)
-
-            # current active cells MUST CONTAIN backtracked activation, i.e. the latter is a subset of it
-            if not backtracked_activation <= set(active_cells):
-                self.agent.print_cells(verbose, active_cells, 'active cells')
-                self.agent.print_cells(verbose, backtracked_activation, 'backtracked')
-            assert backtracked_activation <= set(active_cells)
 
             proximal_input = self.agent.columns_from_cells(depolarized_cells)
             trace(verbose, '')

@@ -4,8 +4,8 @@ from htm.bindings.algorithms import TemporalMemory as TM, ANMode
 class TemporalMemory(TM):
     n_columns: int
     cells_per_column: int
-    activation_threshold: float
-    learning_threshold: float
+    activation_threshold: int
+    learning_threshold: int
     connected_permanence: float
 
     def __init__(

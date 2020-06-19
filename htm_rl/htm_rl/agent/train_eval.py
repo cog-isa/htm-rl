@@ -22,7 +22,7 @@ def train_episode(agent: Agent, env, max_steps: int, verbose: bool):
     observation, reward, done = env.reset(), 0, False
 
     for step in range(max_steps + 1):
-        action = np.random.choice(env.n_actions, p=(.4, .6))
+        action = np.random.choice(env.n_actions)
         agent.train(Sar(observation, action, reward), verbose)
 
         if step == max_steps or done:
