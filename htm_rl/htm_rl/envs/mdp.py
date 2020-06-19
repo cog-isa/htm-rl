@@ -77,13 +77,17 @@ class Mdp:
 class GridworldMdpGenerator:
     """
     Gridworld MDP environment generator.
-    Grid cells doesn't have to be squares - e.g. you can set them as ranges or hexagons. Check out init params.
-    """
-    _n_of_cell_edges: int
 
-    def __init__(self, n_of_cell_edges: int = 4):
-        assert n_of_cell_edges >= 2 and n_of_cell_edges % 2 == 0
-        self._n_of_cell_edges = n_of_cell_edges
+    Gridworld is constructed with the same shaped and sized cells. But these cells haven't to be squares - they can be
+    hexagons or even ranges too. Generally speaking, a cell must be a regular convex n-gon, where n is even.
+
+    2-gon is allowed for the most simplest 1-D gridworld on a line. It's small and simple.
+    """
+    _n_cell_edges: int
+
+    def __init__(self, n_cell_edges: int = 4):
+        assert n_cell_edges >= 2 and n_cell_edges % 2 == 0
+        self._n_cell_edges = n_cell_edges
 
     def generate_env(
             self, env_type: Type[Mdp], initial_state, cell_transitions, allow_clockwise_action=False, seed=None
@@ -130,7 +134,7 @@ class GridworldMdpGenerator:
         terminal_cell = cell_transitions[-1][2]
         n_full_cells = terminal_cell
 
-        n_states = n_full_cells * self._n_of_cell_edges + 1  # n_cells full cells + one cell w/ only one terminal state
+        n_states = n_full_cells * self._n_cell_edges + 1  # n_cells full cells + one cell w/ only one terminal state
         terminal_state = n_states - 1
         transitions = {terminal_state: None}
         for cell in range(n_full_cells):
@@ -143,7 +147,7 @@ class GridworldMdpGenerator:
     def _generate_separate_cell(self, cell, allow_clockwise_action=False):
         """ Generates transitions as if the cell was the only one."""
         transitions = dict()
-        for view_direction in range(self._n_of_cell_edges):
+        for view_direction in range(self._n_cell_edges):
             s0 = self._state(cell, view_direction)
             if s0 not in transitions:
                 transitions[s0] = dict()
@@ -154,7 +158,7 @@ class GridworldMdpGenerator:
             transitions[s0][1] = self._state(cell, view_direction + 1)
             # [optional] turn clockwise
             if allow_clockwise_action:
-                transitions[s0][2] = self._state(cell, view_direction - 1 + self._n_of_cell_edges)
+                transitions[s0][2] = self._state(cell, view_direction - 1 + self._n_cell_edges)
         return transitions
 
     def _link_cells(self, transitions, c0, view_direction, c1, c1_is_terminal):
@@ -175,10 +179,10 @@ class GridworldMdpGenerator:
             transitions[s1][0] = s0
 
     def _state(self, cell, view_direction):
-        return self._n_of_cell_edges * cell + (view_direction % self._n_of_cell_edges)
+        return self._n_cell_edges * cell + (view_direction % self._n_cell_edges)
 
     def _back_view_direction(self, view_direction):
-        return (view_direction + self._n_of_cell_edges // 2) % self._n_of_cell_edges
+        return (view_direction + self._n_cell_edges // 2) % self._n_cell_edges
 
 
 class SarSuperpositionFormatter:

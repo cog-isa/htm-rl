@@ -90,6 +90,7 @@ class Planner:
 
             # start backtracking from time T-2:
             # when these presynaptic active cells were just a prediction (= depolarized)
+
             depolarized_cells = rewarding_segment
             backtracking_succeeded, activation_timeline = self._backtrack(depolarized_cells, T-2, verbose)
             if backtracking_succeeded:
@@ -109,6 +110,19 @@ class Planner:
 
         # all segments, whose presynaptic cells can potentially induce desired reward == 1 prediction
         rewarding_segment_candidates = self._get_unique_active_segments(depolarized_reward_cells, T-1)
+
+        trace(verbose, '\ncandidates:')
+        for candidate_segment in rewarding_segment_candidates:
+            n_depolarized_cells = self._count_induced_depolarization(
+                active_cells=candidate_segment,
+                could_be_depolarized_cells=depolarized_reward_cells,
+                t=T-1
+            )
+            self.agent.print_cells(
+                verbose, candidate_segment, f'n: {n_depolarized_cells} of {reward_activation_threshold}'
+            )
+            trace(verbose, '----')
+
         for candidate_segment in rewarding_segment_candidates:
             # imagine that they're active cells => how many "should be depolarized" cells they depolarize?
             n_depolarized_cells = self._count_induced_depolarization(
@@ -136,18 +150,30 @@ class Planner:
         if t < 0:
             return True, []
 
+        trace(verbose)
+        self.agent.print_sar_superposition(verbose, self.agent.columns_from_cells(should_be_depolarized_cells))
+
         # obviously, we should look only among active segments of these "should-be-depolarized" cells
         unique_potential_segments = self._get_unique_active_segments(should_be_depolarized_cells, t)
-        trace(verbose, '\ncandidates:')
-        for potential_segment in unique_potential_segments:
-            self.agent.print_cells(verbose, potential_segment)
+        trace(verbose, 'candidates:')
+        for candidate_segment in unique_potential_segments:
+            presynaptic_active_cells = candidate_segment
+            n_depolarized_cells = self._count_induced_depolarization(
+                presynaptic_active_cells, should_be_depolarized_cells, t
+            )
+
+            self.agent.print_cells(
+                verbose, presynaptic_active_cells,
+                f'n: {n_depolarized_cells} of {self.agent.tm.activation_threshold}'
+            )
+            trace(verbose, '----')
         trace(verbose, '')
 
         # check every potential segment
-        for potential_segment in unique_potential_segments:
+        for candidate_segment in unique_potential_segments:
             # check depolarization induced by segment's presynaptic cells
             #   i.e. how many "should be depolarized" cells are in fact depolarized
-            presynaptic_active_cells = potential_segment
+            presynaptic_active_cells = candidate_segment
             n_depolarized_cells = self._count_induced_depolarization(
                 presynaptic_active_cells, should_be_depolarized_cells, t
             )

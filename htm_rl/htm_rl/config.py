@@ -12,25 +12,16 @@ from htm_rl.envs.mdp import GridworldMdpGenerator, Mdp, SarSuperpositionFormatte
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
-def make_mdp_one_way_snake(start_direction, n_cells, seed, clockwise_action: bool = False):
-    """
-    ######
-    ###45#
-    ##23##
-    #01###
-    ######
-    """
-    initial_state = (0, start_direction)
-    cell_transitions = [
-        (0, 0, 1),      # >
-        (1, 1, 2),      # ^
-        (2, 0, 3),      # >
-        (3, 1, 4),      # ^
-        (4, 0, 5),      # >
-    ]
-    cell_transitions = cell_transitions[:(n_cells - 1)]
+def make_mdp_passage(cell_gonality, path, seed, clockwise_action: bool = False):
+    initial_state = (0, 0)
+    current_cell = 0
+    cell_transitions = []
+    for direction in path:
+        cell_transitions.append((current_cell, direction, current_cell + 1))
+        current_cell += 1
 
-    return GridworldMdpGenerator(4).generate_env(Mdp, initial_state, cell_transitions, clockwise_action, seed)
+    generator = GridworldMdpGenerator(cell_gonality)
+    return generator.generate_env(Mdp, initial_state, cell_transitions, clockwise_action, seed)
 
 
 def make_mdp_multi_way(start_direction, seed, clockwise_action: bool = False):
@@ -68,7 +59,7 @@ def set_random_seed(seed):
 
 def make_sar_encoder(
         n_unique_states, n_unique_actions, n_unique_rewards=2,
-        bits_per_state_value=10, bits_per_action_value=10, bits_per_reward_value=10,
+        bits_per_state_value=8, bits_per_action_value=8, bits_per_reward_value=8,
         trace_format: str = 'short'
 ):
     # shortcuts
@@ -76,7 +67,7 @@ def make_sar_encoder(
 
     state_encoder = IntSdrEncoder('state', n_unique_states, bps, bps - 1, trace_format)
     action_encoder = IntSdrEncoder('action', n_unique_actions, bpa, bpa - 1, trace_format)
-    reward_encoder = IntSdrEncoder('reward', 2, bpr, bpr - 1, trace_format)
+    reward_encoder = IntSdrEncoder('reward', n_unique_rewards, bpr, bpr - 1, trace_format)
 
     return SarSdrEncoder(
         encoders=SarRelatedComposition(state_encoder, action_encoder, reward_encoder)
@@ -114,17 +105,17 @@ def make_tm(encoder: SarSdrEncoder, cells_per_column, verbose: bool) -> Temporal
     )
 
 
-def make_agent(env, verbose: bool):
+def make_agent(env, cells_per_column, trace_format: str, verbose: bool):
     n_states = env.n_states
     n_actions = env.n_actions
     trace(verbose, f'States: {n_states}')
 
-    encoder = make_sar_encoder(n_states, n_actions)
+    encoder = make_sar_encoder(n_states, n_actions, trace_format=trace_format)
 
     sdr_formatter = encoder.format
     sar_formatter = SarSuperpositionFormatter.format
 
-    tm = make_tm(encoder, cells_per_column=1, verbose=verbose)
+    tm = make_tm(encoder, cells_per_column, verbose=verbose)
     agent = Agent(tm, encoder, sdr_formatter, sar_formatter, collect_anomalies=True)
     planner = Planner(agent, n_states)
     return agent, planner

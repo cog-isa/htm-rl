@@ -11,7 +11,7 @@ def range_reverse(arr: Sequence[Any]) -> Iterable[int]:
     return range(len(arr) - 1, -1, -1)
 
 
-def trace(verbose: bool, str_to_print: str):
+def trace(verbose: bool, str_to_print: str = ''):
     """Prints string only if `verbose` is True."""
     if verbose:
         print(str_to_print)
