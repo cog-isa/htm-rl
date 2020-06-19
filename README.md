@@ -88,9 +88,16 @@ Entry points are `run_mdp_test.py` and `run_gridworld_test.py`. The former is fo
 
 ## TODO
 
-- [ ] Adapt planning algo for high order TMs
-- [ ] Make semi-handcrafted POMDP version of gridworld generator
+- [x] Adapt planning algo for high order TMs
+- [x] Make semi-handcrafted POMDP version of gridworld generator
   - naive version w/ ray casting maybe is enough
+- [ ] config based tests
+  - [ ] fine grained trace verbosity levels
+  - [ ] test config + builder classes
+- [ ] make FAQ on TM params
+- [ ] issue: fantom false positive transitions
+  - e.g. sometimes it predicts state superposition from sar - it's a mistake as the next state is always _one_ determined state.
+- [ ] start testing on POMDPs
 
 ## Thoughts
 
