@@ -22,6 +22,7 @@ class Test_Planner_Given_2gon_PassageMdp:
             for path in [[0]*i for i in [1, 2, 3, 4]]:
                 assert self.plan_actions(cells_per_column, path) == path
 
+    # TODO: make plan_actions to accept n_episodes and max_steps and make the test commented below
     # def test_large(self):
     #     path = [0]*5
     #     for cells_per_column in [1, 2, 6]:
@@ -41,7 +42,8 @@ class Test_Planner_Given_2gon_PassageMdp:
 
 def debug_test():
     Test_Planner_Given_2gon_PassageMdp.verbose = True
-    Test_Planner_Given_2gon_PassageMdp().plan_actions(2, [0, 0])
+    Test_Planner_Given_2gon_PassageMdp.cell_gonality = 4
+    Test_Planner_Given_2gon_PassageMdp().plan_actions(1, [0, 1, 0])
 
 
 if __name__ == '__main__':
