@@ -3,10 +3,13 @@
 - [FAQ](#faq)
   - [Terminology](#terminology)
   - [Encoding](#encoding)
+  - [Parameters](#parameters)
+    - [Currently in use](#currently-in-use)
+    - [Adviced by Numenta community](#adviced-by-numenta-community)
   - [Planning](#planning)
-    - [Planning. Forward prediction](#planning-forward-prediction)
-    - [Planning. Backtracking](#planning-backtracking)
-    - [Planning. Re-check](#planning-re-check)
+    - [Step 1: Forward prediction](#step-1-forward-prediction)
+    - [Step 2: Backtracking](#step-2-backtracking)
+    - [Step 3: Re-check](#step-3-re-check)
 
 ## Terminology
 
@@ -65,8 +68,10 @@ Integer SDR encoder
   - `n_values` - size of the range, i.e. it's a number of unique values
   - `value_bits` - how many bits are used to encode every unique value
 - Resulting SDR has `n_values` $\times$ `value_bits` bits
-  - which can be divided into `n_values` buckets of `value_bits` contiguous bits encoding every value from the range
-  - e.g. `0000 0000 1111` is the result of encoding 2 by 3-by-4 integer encoder
+  - called `total_bits`
+  - it can be logically divided into `n_values` buckets of `value_bits` contiguous bits
+    - each bucket corresponds to a value from the range
+  - e.g. 2 $\rightarrow$ `0000 0000 1111` encoded by 3-by-4 integer encoder
     - 3 buckets are separated by space to make it clear
     - every bucket encoded by 4 bits
     - note that buckets don't intersect
@@ -95,6 +100,140 @@ State SDR encoder
 - One possible solution is to encode every pixel [or grid cell] separately then concatenate results
   - It preserves information about similarity between states
 
+## Parameters
+
+### Currently in use
+
+**SAR encoder**:
+
+- `n_values`: (>=3, 2, 2)
+- `value_bits`: 24
+- `activation_threshold`: 21
+- Derived params or attributes
+  - `total_bits`: >=56
+  - `sparsity`: ~15-35%
+
+Rationale
+
+- `n_values`
+  - определяется числом уникальных состояний/наблюдений
+  - опробованы среды с n_values 3-100
+- `value_bits`
+  - рекомендовано >= 20
+  - каждая часть SAR - по 8 активных бит, в сумме 24
+- `activation_threshold`
+  - = _value_bits_ - 3
+  - __очень важная характеристика__
+  - каждой части SAR задается свой activation_threshold = *value_bits* - 1 = 7
+    - порог активации одной части SAR, т.е. state/action/reward
+    - -1 оставляется под шум (=12.5% шума для 8 бит) и близкие значения
+    - в сумме на три части: -3
+    - спорное решение - вместо суммы должен браться максимум?
+  - т.к. на вход приходят данные от кодировщика, который разным значениям дает не пересекающиеся векторы, выбор порога пока не так важен и актуален
+
+**Temporal Memory**:
+
+- `n_columns`: >= 56
+- `cells_per_column`: 1 or ??
+- `activation_threshold`: 21
+- `learning_threshold`: 17
+- `initial_permanence`: 0.5
+- `connected_permanence`: 0.4
+- `permanenceIncrement`: 0.1
+- `permanenceDecrement`: 0.05
+- `predictedSegmentDecrement`: 0.0001
+- `maxNewSynapseCount`: 24
+- `maxSynapsesPerSegment`: 24
+
+Rationale:
+
+- `n_columns`
+  - = *sar.total_bits*
+- `cells_per_column`
+  - для MDP достаточно first-order memory
+  - для POMDP нет данных
+- `activation_threshold`
+  - = *sar.activation_threshold* = 21
+- `learning_threshold`
+  - = 85% \* *sar.activation_threshold* = 17
+  - есть нижний порог: *action.value_bits* + *reward.value_bits* = 8 + 8 = 16
+    - именно такое ложно положительное пересечение встречается регулярно
+    - например, SAR вида (x, 0, 0) пересекаются в 16 битах, но не имеют ничего общего, потому что вся уникальность только в состоянии
+    - при этом штрафовать такие пересечения нельзя
+    - следовательно learning_threshold должен быть > 16
+- `initial_permanence`
+  - начальное значение при создании синапса
+  - абсолютное значение initial_permanence не важно
+- `connected_permanence`
+  - порог, определяющий синапс connected или нет
+    - только connected синапсы могут активировать сегмент
+  - разница между initial и connected может иметь значение
+    - и как она соотносится с параметрами обучения
+    - сделать их равными - хороший вариант по умолчанию
+  - нужно изучать отдельно
+- `permanenceIncrement`
+  - имеет значение, нужно изучать
+- `permanenceDecrement`
+  - рекомендуется брать в 2-3 раза меньше инкремента (точно? почему?)
+- `predictedSegmentDecrement`
+  - рекомендуется брать _permanenceIncrement_ * sparsity
+    - логика рекомендации от Numenta в текущем виде не очень применима
+    - т.к. входные векторы имеют перекошенную энтропию
+  - нужно тестировать отдельно
+- `maxNewSynapseCount`
+  - = *sar.value_bits* = 24
+  - плохо понимаю важность этого параметра
+  - по идее имеет смысл делать его как минимум *activation_threshold*, чтобы новый сегмент сразу смог активироваться паттерном (иначе мало синапсов)
+  - ну и бессмысленно делать его больше *maxSynapsesPerSegment*
+- `maxSynapsesPerSegment`
+  - = *sar.value_bits* = 24
+  - оказалось, что это очень важный параметр
+  - очевидно, нижний порог: *activation_threshold*
+  - не очевидно, верхний порог: *sar.value_bits*
+    - каждый сегмент должен распознавать ровно один SAR (отсюда верхний порог)
+    - если он способен распознавать больше одного SAR, то они интерферируют
+    - это очень сильно мешает при бэктрекинге
+    - с другой стороны это ведет к большому числу сегментов, по сути мы запоминаем все переходы
+    - с этим придется разбираться в будущем
+
+### Adviced by Numenta community
+
+**Spatial Pooler**:
+
+- `n_colunms`: >= 2000
+  - more is better
+  - similarity metric - overlap
+    - different "values" => low overlap score
+    - similar "values" => high overlap score
+  - so, there should be enough columns to distinguish levels of similarity, given some noise
+- `sparsity`: 2%
+  - how many bits are active
+  - ok: 1-10%
+  - `n_active_bits` should be >= 20
+  - TODO: add equations from numenta paper
+
+**Temporal Memory**:
+
+- `n_columns`: >= 2000
+  - same as for Spatial Pooler
+- `cells_per_column`: 8
+  - defines number of different ways context is represented (grows exponentially)
+- `activation_threshold`
+  - number of active synapses enough for segment activation
+  - = *n_active_bits* - R
+    - expected number of active columns
+    - minus some accepted similarity radius R (or noise)
+- `learning_threshold`
+  - ??
+- `initial_permanence`: 0.5
+- `connected_permanence`: 0.5
+- `permanenceIncrement`: 0.1
+- `permanenceDecrement`: 2-4 times smaller than *permanenceIncrement*
+- `predictedSegmentDecrement`: *activation_threshold* \* *sparsity*
+  - used to punish on reaching *learning_threshold*
+- `maxNewSynapseCount`: 32
+- `maxSynapsesPerSegment`: 255
+
 ## Planning
 
 Initial: agent is in state $s_0$  
@@ -106,7 +245,7 @@ Planning consists of 3 main phases:
 - Backtracking phase - backward unrolling predictions from reward
 - Re-check phase - check that backtracked sequence of transitions is correct
 
-### Planning. Forward prediction
+### Step 1: Forward prediction
 
 Setting up
 
@@ -152,7 +291,7 @@ What is saved during forward prediction phase:
   - `cell_active_segments_list` - list of cell's active segments
   - each active segment represented as a set of active presynaptic cells
 
-### Planning. Backtracking
+### Step 2: Backtracking
 
 Backtracking step
 
@@ -192,7 +331,7 @@ What is saved during this phase
 - active [presynaptic] cells at time $t$ are saved as `backtracking_SAR_conditions[t]`
 - they define condition on SAR at time $t-1$ to get desired depolarization at time $t$
 
-### Planning. Re-check
+### Step 3: Re-check
 
 - Given active presynaptic cells at time $t$ needed to induce desired depolarization
 - Start forward prediction again from initial sar superposition

@@ -1,6 +1,22 @@
 # HTM applied to RL setting
 
-This repo [link](https://github.com/cog-isa/htm-rl).
+- [HTM applied to RL setting](#htm-applied-to-rl-setting)
+  - [Links](#links)
+  - [Installation](#installation)
+    - [Python package requirements](#python-package-requirements)
+    - [Jupyter Notebooks stripping](#jupyter-notebooks-stripping)
+    - [htm_rl package use in Jupyter Notebooks](#htm_rl-package-use-in-jupyter-notebooks)
+  - [Project structure and guideline](#project-structure-and-guideline)
+  - [Quick intro](#quick-intro)
+    - [HTM](#htm)
+    - [htm_rl package](#htm_rl-package)
+  - [TODO](#todo)
+  - [Thoughts](#thoughts)
+
+## Links
+
+- This repo [link](https://github.com/cog-isa/htm-rl)
+- Cumulative [FAQ](htm_rl/htm_rl/README.md)
 
 ## Installation
 
