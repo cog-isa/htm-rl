@@ -70,7 +70,7 @@ class IntSdrEncoder:
 
     def encode(self, x: int) -> BitRange:
         """
-        Encodes a single value as _sparse_ SDR in intermediate BitRange [l, r) short format.
+        Encodes a single value to sparse SDR in intermediate BitRange [l, r) short format.
         """
         return self._bit_bucket_range(x)
 
@@ -109,7 +109,12 @@ class IntSdrEncoder:
 
         return value_activations
 
-    def format(self, sparse_sdr: SparseSdr, format_: str = None):
+    def format(self, sparse_sdr: SparseSdr, format_: str = None) -> str:
+        """
+        Formats sparse SDR to string with one of the supported formats.
+
+        Supported formats are: 'full' and 'short'. If None then encoder's default is used.
+        """
         format_ = isnone(format_, self.default_format)
         supported_formats = {
             'full': IntSdrFormatter,
@@ -118,6 +123,7 @@ class IntSdrEncoder:
         return supported_formats[format_].format(sparse_sdr, self)
 
     def _bit_bucket_range(self, x: int) -> BitRange:
+        """Gets BitRange [l, r) of the bit bucket corresponding to the given value `x`."""
         self._assert_acceptable_values(x)
 
         if x is None:
@@ -173,6 +179,10 @@ class IntSdrShortFormatter:
 
     @classmethod
     def format(cls, sparse_sdr: SparseSdr, encoder: IntSdrEncoder) -> str:
+        """
+        :param sparse_sdr: SDR to print into string
+        :param encoder: encoder for this particular kind of SDRs
+        """
         bucket_activations = encoder.value_activations(sparse_sdr)
 
         encoded_sdr_for_printing = [

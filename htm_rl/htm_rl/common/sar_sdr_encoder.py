@@ -32,6 +32,9 @@ class SarSdrEncoder:
         self._encoders = encoders
 
     def encode(self, sar: Sar) -> SparseSdr:
+        """
+        Encodes SAR to sparse SDR.
+        """
         return [
             bit_index
             for x, encoder, shift in zip(sar, self._encoders, self._shifts)
@@ -39,7 +42,19 @@ class SarSdrEncoder:
         ]
 
     def decode(self, sparse_sdr: SparseSdr) -> SarSuperposition:
-        split_sparse_sdrs = self.split_between_encoders(sparse_sdr)
+        """
+        Decodes sparse SDR into SAR superposition, which is a SAR triplet of superpositions.
+
+        Note that given SDR may contain multiple single values for each part of SAR. That's why
+        the result is not a single SAR. It's also not a superposition of SARs, but a SAR
+        of superpositions. I.e. each part of SAR is decoded separately as a superposition, which
+        is a list of decoded [active] values.
+
+        :param sparse_sdr: sparse SDR to decode
+        :return: SAR superposition. Each part of SAR contains a list of decoded values.
+        """
+
+        split_sparse_sdrs = self.split_sar(sparse_sdr)
         state_superposition, action_superposition, reward_superposition = (
             encoder.decode(sparse_sdr_)
             for encoder, sparse_sdr_ in zip(self._encoders, split_sparse_sdrs)
@@ -47,22 +62,29 @@ class SarSdrEncoder:
         return SarRelatedComposition(state_superposition, action_superposition, reward_superposition)
 
     def is_rewarding(self, sparse_sdr: SparseSdr) -> bool:
-        split_sparse_sdrs = self.split_between_encoders(sparse_sdr)
+        """Whether or not given sparse SDR contains reward == 1."""
+
+        split_sparse_sdrs = self.split_sar(sparse_sdr)
         return self._encoders.reward.has_value(split_sparse_sdrs.reward, 1)
 
-    def get_rewarding_indices_range(self) -> BitRange:
+    def rewarding_indices_range(self) -> BitRange:
+        """Gets sparse SDR indices range encoding to reward == 1."""
         return self._encoders.reward.encode(1).shift(self._shifts.reward)
 
-    def get_actions_indices_range(self) -> BitRange:
+    def actions_indices_range(self) -> BitRange:
+        """Gets sparse SDR indices range encoding actions."""
+
         action_shift = self._shifts.action
         reward_shift = self._shifts.reward
         return BitRange(action_shift, reward_shift)
 
     def replace_action(self, sparse_sdr: SparseSdr, action: int) -> SparseSdr:
+        """Gets sparse SDR which has action part replaced with specific action `action`."""
+
         action_only_sar = Sar(state=None, action=action, reward=None)
         action_only_sdr = self.encode(action_only_sar)
 
-        left, right = self.get_actions_indices_range()
+        left, right = self.actions_indices_range()
         no_action_sdr = [
             index for index in sparse_sdr if not (left <= index < right)
         ]
@@ -70,7 +92,14 @@ class SarSdrEncoder:
         no_action_sdr.extend(action_only_sdr)
         return no_action_sdr
 
-    def split_between_encoders(self, indices: SparseSdr) -> SarSplitSdr:
+    def split_sar(self, sparse_sdr: SparseSdr) -> SarSplitSdr:
+        """
+        Splits given sparse SDR into triplet of sparse SDRs, corresponding to each part of SAR.
+
+        I.e. sdr -> SAR(state_sdr, action_sdr, reward_sdr)
+        :param sparse_sdr: sparse SDR encoding some SAR
+        :return: SAR(state_sparse_sdr, action_sparse_sdr, reward_sparse_sdr)
+        """
         shifts = self._shifts
         split_indices = SarSplitSdr([], [], [])
 
@@ -82,12 +111,18 @@ class SarSdrEncoder:
             else:
                 split_indices.reward.append(ind - shifts.reward)
 
-        for i in indices:
-            put_for_corresponding_encoder(i)
+        for ind in sparse_sdr:
+            put_for_corresponding_encoder(ind)
         return split_indices
 
     def format(self, sparse_sdr: SparseSdr, format_: str = None) -> str:
-        split_sdrs = self.split_between_encoders(sparse_sdr)
+        """
+        Formats sparse SDR to string with one of the supported formats.
+
+        Supported formats are: 'full' and 'short'. If None then encoder's default is used.
+        """
+
+        split_sdrs = self.split_sar(sparse_sdr)
         return ' | '.join(
             encoder.format(sparse_sdr_, format_)
             for encoder, sparse_sdr_ in zip(self._encoders, split_sdrs)
