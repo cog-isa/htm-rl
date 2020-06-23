@@ -7,6 +7,7 @@
     - [Currently in use](#currently-in-use)
     - [Adviced by Numenta community](#adviced-by-numenta-community)
   - [Planning](#planning)
+    - [Pseudocode](#pseudocode)
     - [Step 1: Forward prediction](#step-1-forward-prediction)
     - [Step 2: Backtracking](#step-2-backtracking)
     - [Step 3: Re-check](#step-3-re-check)
@@ -244,6 +245,118 @@ Planning consists of 3 main phases:
 - Forward prediction phase - predict every possible outcomes until reward (= rewarding state) is found
 - Backtracking phase - backward unrolling predictions from reward
 - Re-check phase - check that backtracked sequence of transitions is correct
+
+### Pseudocode
+
+Псевдокод алгоритма планирования:
+
+```python
+def plan_actions(initial_sar: Sar):
+    # Step 1: Forward prediction
+    active_segments_timeline = predict_to_reward(initial_sar)
+
+    # Step 2: Backtrack from reward
+    activation_timeline = backtrack_from_reward(active_segments_timeline)
+
+    # Step 3: Forward-check backtracked activations
+    planned_actions = check_activation_timeline_leads_to_reward(
+        initial_sar, activation_timeline
+    )
+
+    return planned_actions
+```
+
+Первый шаг - предсказание награды:
+
+```python
+def predict_to_reward(initial_sar: Sar):
+    # Start prediction with all possible actions
+    initial_sar.action = encoder.AllValues
+    proximal_input = agent.encoder.encode(all_actions_sar)
+
+    active_segments_timeline = []
+    for i in range(max_steps):
+
+        if is_rewarding(proximal_input):
+            return active_segments_timeline
+
+        active_cells, depolarized_cells = agent.process(
+            proximal_input, learn=False
+        )
+
+        active_segments_t = agent.active_segments(active_cells)
+        active_segments_timeline.append(active_segments_t)
+
+        proximal_input = columns_from_cells(depolarized_cells)
+```
+
+Второй шаг - рекурсивный бэктрекинг из столбцов, соответствующих награде, назад во времени:
+
+```python
+def backtrack_from_reward(active_segments_timeline):
+    final_depolarized_cells = active_segments_timeline[T-1].keys()
+    depolarized_reward_cells = get_reward_cells(final_depolarized_cells)
+
+    return backtrack(depolarized_reward_cells, T-1)
+
+
+def backtrack(desired_depolarization: SparseSdr, t: int):
+    # presynaptic cells clusters, each can induce desired depolarization
+    cell_clusters = get_backtracking_candidate_clusters(
+        desired_depolarization, activation_threshold, t
+    )
+
+    for cluster in cell_clusters:
+        activation_timeline = backtrack(cluster, t-1)
+        if backtracking_succeeded:
+            activation_timeline.append(cluster)
+            return activation_timeline
+```
+
+Откуда берутся кластеры-кандидаты:
+
+```python
+def get_backtracking_candidate_clusters(
+        desired_depolarization: SparseSdr,
+        sufficient_activation_threshold: int,
+        t: int
+):
+    # Active presynaptic cell clusters (clusterization by columns)
+    active_segments = active_segments_timeline[t][desired_depolarization]
+    candidate_clusters = merge_segments_into_clusters(active_segments)
+
+    # Keep clusters that induce sufficient depolarization among desired
+    for cluster in candidate_clusters:
+        count_induced_depolarization(cluster, desired_depolarization)
+
+        if induced_depolarization >= sufficient_activation_threshold:
+            backtracking_candidate_clusters.append(cluster)
+
+    return backtracking_candidate_clusters
+```
+
+Последний шаг - предсказание награды по пути успешного бэктрекинга:
+
+```python
+def check_activation_timeline_leads_to_reward(
+        initial_sar: Sar, activation_timeline
+):
+    proximal_input = encoder.encode(initial_sar)
+
+    for i in range(T):
+        action = extract_action(activation_timeline[i])
+        proximal_input.action = action
+
+        active_cells, depolarized_cells = agent.process(
+            proximal_input, learn=False
+        )
+        proximal_input = columns_from_cells(depolarized_cells)
+
+        planned_actions.append(action)
+
+    if is_rewarding(proximal_input):
+        return planned_actions
+```
 
 ### Step 1: Forward prediction
 
