@@ -104,16 +104,40 @@ Entry points are `run_mdp_test.py` and `run_gridworld_test.py`. The former is fo
 
 ## TODO
 
+Research + functional tasks
+
 - [x] Adapt planning algo for high order TMs
 - [x] Make semi-handcrafted POMDP version of gridworld generator
   - naive version w/ ray casting maybe is enough
+- [ ] Split SAR TM into 2 TMs
+  - State TM: (s, a) $\rightarrow$ s'
+  - Action TM: s $\rightarrow$ a
+  - Direct external rewards aren't a thing
+  - Reinforcement isn't tracked ATM
+- [ ] Adapt planning to goal-based strategy
+  - switch from reward-based planning to goal-based
+  - no reinforcement
+- [ ] Investigate `MaxSegmentsPerCell` parameter impact
+- [ ] Implement integer encoder w/ overlapping buckets
+  - overlapping should be a parameter
+  - it defines the level of uncertainty
+  - MDP planning becomes a light version of POMDP planning because of uncertainty
+- [ ] Investigate relation between overlapping and sufficient activation thresholds
+- [ ] Investigate `MaxSynapsesPerSegment` parameter impact
+- [ ] Start testing on POMDPs
+
+Non-critical issues needing further investigation
+
+- [ ] issue: fantom false positive transitions
+  - e.g. sometimes it predicts state superposition from sar - it's a mistake as the next state is always _one_ determined state.
+
+Auxialiary tasks, usability improvements and so on
+
+- [x] make FAQ on TM params
 - [ ] config based tests
   - [ ] fine grained trace verbosity levels
   - [ ] test config + builder classes
-- [ ] make FAQ on TM params
-- [ ] issue: fantom false positive transitions
-  - e.g. sometimes it predicts state superposition from sar - it's a mistake as the next state is always _one_ determined state.
-- [ ] start testing on POMDPs
+
 
 ## Thoughts
 
