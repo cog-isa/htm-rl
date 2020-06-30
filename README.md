@@ -137,7 +137,11 @@ Auxialiary tasks, usability improvements and so on
 - [ ] config based tests
   - [ ] fine grained trace verbosity levels
   - [ ] test config + builder classes
-
+- [ ] setup release-based dev cycle
+  - add tagging to git commits
+  - how to add release notes
+  - ?notes for major releases should contain algo details from FAQ
+- [ ] release v0.1 version of the SAR-based agent
 
 ## Thoughts
 
