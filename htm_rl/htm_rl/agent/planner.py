@@ -30,7 +30,7 @@ class Planner:
         self._save_initial_tm_state()
 
         planned_actions = None
-        reward_reached = self._make_predictions_to_reward(initial_sar, verbose)
+        reward_reached = self._predict_to_reward(initial_sar, verbose)
         if reward_reached:
             for activation_timeline in self._backtrack_from_reward(verbose):
                 planning_successful, planned_actions = self._check_activation_timeline_leads_to_reward(
@@ -42,7 +42,7 @@ class Planner:
         trace(verbose, '<====== Planning complete')
         return planned_actions
 
-    def _make_predictions_to_reward(self, initial_sar: Sar, verbose: bool) -> bool:
+    def _predict_to_reward(self, initial_sar: Sar, verbose: bool) -> bool:
         trace(verbose, '===> Forward pass')
 
         # to consider all possible prediction paths, prediction is started with all possible actions
@@ -137,14 +137,14 @@ class Planner:
         self.agent.print_sar_superposition(verbose, self.agent.columns_from_cells(desired_depolarization))
 
         # Gets all presynaptic cells clusters, each can induce desired depolarization
-        candidate_cell_cluster = self._get_backtracking_candidate_clusters(
+        candidate_cell_clusters = self._get_backtracking_candidate_clusters(
             desired_depolarization=desired_depolarization,
             sufficient_activation_threshold=self.agent.tm.activation_threshold,
             t=t, verbose=verbose
         )
 
         # For each candidate cluster tries backtracking to the beginning
-        for candidate_cluster, n_induced_depolarization in candidate_cell_cluster:
+        for candidate_cluster, n_induced_depolarization in candidate_cell_clusters:
             self.agent.print_cells(
                 verbose, candidate_cluster,
                 f'n: {n_induced_depolarization} of {self.agent.tm.activation_threshold}'
