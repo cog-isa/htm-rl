@@ -1,6 +1,7 @@
 # HTM applied to RL setting
 
 - [HTM applied to RL setting](#htm-applied-to-rl-setting)
+- [<<<<<<< HEAD](#-head)
   - [Links](#links)
   - [Installation](#installation)
     - [Python package requirements](#python-package-requirements)
@@ -8,6 +9,14 @@
   - [Repository structure](#repository-structure)
   - [Quick intro](#quick-intro)
     - [HTM](#htm)
+  - [Interesting links](#interesting-links)
+<<<<<<< HEAD
+=======
+    - [htm_rl package](#htm_rl-package)
+  - [TODO](#todo)
+  - [Thoughts](#thoughts)
+  - [Interesting links](#interesting-links)
+>>>>>>> add links to htm.core Network API and Tiebreak TM
 
 ## Links
 
@@ -93,3 +102,19 @@ Additional useful links:
 - [BAMI.SDR](https://numenta.com/assets/pdf/biological-and-machine-intelligence/BaMI-SDR.pdf) - definitive guide on Sparse Distributed Representations (SDR)
 - [BAMI.SP](https://numenta.com/assets/pdf/spatial-pooling-algorithm/Spatial-Pooling-Algorithm-Details.pdf) - definitive guide on Spatial Pooler (SP)
 - [Optional] Another [numenta paper](https://arxiv.org/abs/1903.11257) on the power of sparse representations applied to mainstream Artificial Neural Networks.
+
+## Interesting links
+
+- [Temporal Pooler](https://github.com/numenta/htmresearch/wiki/Overview-of-the-Temporal-Pooler)
+  - a concept of the algo by htm.research
+  - makes TM more robust to intra-sequence noise
+  - general idea as I understand it - to add exponential averaging of activations over time
+  - but.. found that on the forum (May 2020):
+  > As far as I know, there is no official implementation of a "temporal pooler", just experimental research code. If you are talking about the union pooler logic in the research repo, I’m not sure anyone is actually working on this anymore.
+- [Network API FAQ](https://github.com/htm-community/htm.core/blob/master/docs/NetworkAPI.md)
+- [Tiebreak TM](https://github.com/htm-community/htm.core/blob/master/py/htm/advanced/algorithms/apical_tiebreak_temporal_memory.py)
+  - basal + apical connections
+  - hence two kinds of depolatizations
+  - cell is depolarized iff
+    - apical + basal depolarization
+    - only basal and no apical at all
