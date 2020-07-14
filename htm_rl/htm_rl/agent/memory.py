@@ -1,3 +1,4 @@
+import pickle
 from collections import defaultdict
 from typing import List, Callable, Dict, Set, Tuple
 
@@ -11,7 +12,7 @@ from htm_rl.common.utils import trace
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
-class Agent:
+class Memory:
     tm: TemporalMemory
     encoder: SarSdrEncoder
 
@@ -182,3 +183,11 @@ class Agent:
         if trace_condition:
             sar_superposition = self.encoder.decode(proximal_input)
             trace(trace_condition, self.format_sar_superposition(sar_superposition))
+
+    def save_tm_state(self):
+        """Saves TM state."""
+        return pickle.dumps(self.tm)
+
+    def restore_tm_state(self, tm_dump):
+        """Restores saved TM state."""
+        self.tm = pickle.loads(tm_dump)

@@ -3,12 +3,12 @@ from typing import List
 import numpy as np
 import matplotlib.pyplot as plt
 
-from htm_rl.agent.agent import Agent
+from htm_rl.agent.agent import Memory
 from htm_rl.common.base_sar import Sar
 from htm_rl.common.utils import trace
 
 
-def train(agent: Agent, env, n_episodes: int, max_steps: int, verbose: bool):
+def train(agent: Memory, env, n_episodes: int, max_steps: int, verbose: bool):
     reward_reached = 0
     for episode in range(n_episodes):
         reward_reached += train_episode(agent, env, max_steps, verbose)
@@ -18,7 +18,7 @@ def train(agent: Agent, env, n_episodes: int, max_steps: int, verbose: bool):
     trace(True, f'Reward reached: {reward_reached} of {n_episodes}')
 
 
-def train_episode(agent: Agent, env, max_steps: int, verbose: bool):
+def train_episode(agent: Memory, env, max_steps: int, verbose: bool):
     observation, reward, done = env.reset(), 0, False
 
     for step in range(max_steps + 1):
@@ -33,7 +33,7 @@ def train_episode(agent: Agent, env, max_steps: int, verbose: bool):
     return reward
 
 
-def train_trajectories(agent: Agent, env, trajectories: List[List[int]], verbose: bool):
+def train_trajectories(agent: Memory, env, trajectories: List[List[int]], verbose: bool):
     reward_reached = 0
     for trajectory_actions in trajectories:
         trace(verbose, '>')
@@ -44,7 +44,7 @@ def train_trajectories(agent: Agent, env, trajectories: List[List[int]], verbose
     trace(True, f'Reward reached: {reward_reached} of {len(trajectories)}')
 
 
-def train_trajectory(agent: Agent, env, actions: List[int], verbose: bool):
+def train_trajectory(agent: Memory, env, actions: List[int], verbose: bool):
     observation, reward, done = env.reset(), 0, False
 
     max_steps = len(actions)

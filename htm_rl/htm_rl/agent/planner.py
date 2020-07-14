@@ -1,7 +1,6 @@
-import pickle
 from typing import List, Mapping, Set, Tuple
 
-from htm_rl.agent.agent import Agent
+from htm_rl.agent.memory import Memory
 from htm_rl.common.base_sar import Sar
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sdr import SparseSdr
@@ -12,22 +11,24 @@ from htm_rl.common.utils import trace, range_reverse
 
 
 class Planner:
-    agent: Agent
+    memory: Memory
     max_steps: int
 
     # segments[time][cell] = segments = [ segment ] = [ [presynaptic_cell] ]
     _active_segments_timeline: List[Mapping[int, List[Set[int]]]]
 
-    def __init__(self, agent: Agent, max_steps: int):
-        self.agent = agent
+    def __init__(self, memory: Memory, max_steps: int):
+        self.memory = memory
+        self.encoder = memory.encoder
         self.max_steps = max_steps
         self._active_segments_timeline = []
+        self._initial_tm_state = None
 
     def plan_actions(self, initial_sar: Sar, verbose: bool):
         trace(verbose, '\n======> Planning')
 
         # saves initial TM state at the start of planning.
-        self._save_initial_tm_state()
+        self._initial_tm_state = self.memory.save_tm_state()
 
         planned_actions = None
         reward_reached = self._predict_to_reward(initial_sar, verbose)
@@ -48,24 +49,24 @@ class Planner:
         # to consider all possible prediction paths, prediction is started with all possible actions
         all_actions_sar = Sar(initial_sar.state, IntSdrEncoder.ALL, initial_sar.reward)
 
-        proximal_input = self.agent.encoder.encode(all_actions_sar)
+        proximal_input = self.encoder.encode(all_actions_sar)
         reward_reached = False
         active_segments_timeline = []
 
         for i in range(self.max_steps):
-            reward_reached = self.agent.encoder.is_rewarding(proximal_input)
+            reward_reached = self.encoder.is_rewarding(proximal_input)
             if reward_reached:
                 break
 
-            active_cells, depolarized_cells = self.agent.process(proximal_input, learn=False, verbose=verbose)
+            active_cells, depolarized_cells = self.memory.process(proximal_input, learn=False, verbose=verbose)
 
-            active_segments_t = self.agent.active_segments(active_cells)
+            active_segments_t = self.memory.active_segments(active_cells)
             active_segments_timeline.append(active_segments_t)
 
-            proximal_input = self.agent.columns_from_cells(depolarized_cells)
+            proximal_input = self.memory.columns_from_cells(depolarized_cells)
             trace(verbose, '')
 
-        self._restore_initial_tm_state()
+        self.memory.restore_tm_state(self._initial_tm_state)
         self._active_segments_timeline = active_segments_timeline
 
         if reward_reached:
@@ -87,14 +88,14 @@ class Planner:
         trace(verbose, '\n===> Backward pass')
 
         T = len(self._active_segments_timeline)
-        reward_activation_threshold = self.agent.encoder._encoders.reward.activation_threshold
+        reward_activation_threshold = self.encoder._encoders.reward.activation_threshold
 
         # All depolarized cells from the last step of forward prediction phase, when the reward was found
         all_final_depolarized_cells = list(self._active_segments_timeline[T-1].keys())
 
         # Take only cells corresponding to reward == 1. Backtracking is started from these cells.
         depolarized_reward_cells = self._get_reward_cells(all_final_depolarized_cells)
-        self.agent.print_cells(verbose, depolarized_reward_cells, 'Reward == 1')
+        self.memory.print_cells(verbose, depolarized_reward_cells, 'Reward == 1')
 
         # Gets all presynaptic cells clusters, each can induce desired reward == 1 depolarization
         rewarding_candidate_cell_cluster = self._get_backtracking_candidate_clusters(
@@ -107,7 +108,7 @@ class Planner:
         # For each rewarding candidate cluster tries backtracking to the beginning
         for candidate_cluster, n_induced_depolarization in rewarding_candidate_cell_cluster:
             trace(verbose, '>')
-            self.agent.print_cells(
+            self.memory.print_cells(
                 verbose, candidate_cluster,
                 f'n: {n_induced_depolarization} of {reward_activation_threshold}'
             )
@@ -134,20 +135,20 @@ class Planner:
             return True, []
 
         trace(verbose)
-        self.agent.print_sar_superposition(verbose, self.agent.columns_from_cells(desired_depolarization))
+        self.memory.print_sar_superposition(verbose, self.memory.columns_from_cells(desired_depolarization))
 
         # Gets all presynaptic cells clusters, each can induce desired depolarization
         candidate_cell_clusters = self._get_backtracking_candidate_clusters(
             desired_depolarization=desired_depolarization,
-            sufficient_activation_threshold=self.agent.tm.activation_threshold,
+            sufficient_activation_threshold=self.memory.tm.activation_threshold,
             t=t, verbose=verbose
         )
 
         # For each candidate cluster tries backtracking to the beginning
         for candidate_cluster, n_induced_depolarization in candidate_cell_clusters:
-            self.agent.print_cells(
+            self.memory.print_cells(
                 verbose, candidate_cluster,
-                f'n: {n_induced_depolarization} of {self.agent.tm.activation_threshold}'
+                f'n: {n_induced_depolarization} of {self.memory.tm.activation_threshold}'
             )
 
             backtracking_succeeded, activation_timeline = self._backtrack(candidate_cluster, t-1, verbose)
@@ -163,7 +164,7 @@ class Planner:
     ):
         """Gets presynaptic active cell clusters, which sufficient to induce desired depolarization."""
 
-        # Gets active presynaptic cell clusters (clusterization by their columns)
+        # Gets active presynaptic cell clusters (clustering by their columns)
         all_candidate_cell_clusters = self._get_active_presynaptic_cell_clusters(desired_depolarization, t)
 
         trace(verbose, 'candidates:')
@@ -174,7 +175,7 @@ class Planner:
                 active_cells, desired_depolarization, t
             )
             print_filter = n_depolarized_cells > 4
-            self.agent.print_cells(
+            self.memory.print_cells(
                 print_filter and verbose, active_cells,
                 f'n: {n_depolarized_cells} of {sufficient_activation_threshold}'
             )
@@ -200,7 +201,7 @@ class Planner:
         clusters = []
         for cell in depolarized_cells:
             for cell_active_segment in active_segments_t[cell]:
-                cols = frozenset(self.agent.columns_from_cells(cell_active_segment))
+                cols = frozenset(self.memory.columns_from_cells(cell_active_segment))
                 clusters.append((cols, cell_active_segment))
 
         # greedy merge cell clusters if they have sufficient columns intersection
@@ -242,7 +243,7 @@ class Planner:
             # if one of them is subset of the other
             len(columns_i), len(columns_j),
             # TODO: WARN! Handcrafted threshold
-            self.agent.tm.activation_threshold - 2
+            self.memory.tm.activation_threshold - 2
         )
 
         intersection = columns_i & columns_j
@@ -269,14 +270,14 @@ class Planner:
             cell_segments = active_segments_t[depolarization_candidate_cell]
 
             any_cell_segments_activated = any(
-                len(segment & active_cells) >= self.agent.tm.activation_threshold
+                len(segment & active_cells) >= self.memory.tm.activation_threshold
                 for segment in cell_segments
             )
             # the cell becomes depolarized if any of its segments becomes active
             if any_cell_segments_activated:
                 induced_depolarization.append(depolarization_candidate_cell)
 
-        depolarized_columns = self.agent.columns_from_cells(induced_depolarization)
+        depolarized_columns = self.memory.columns_from_cells(induced_depolarization)
         # noinspection PyTypeChecker
         return len(depolarized_columns)
 
@@ -286,10 +287,10 @@ class Planner:
         """
 
         # BitRange [l, r): range of columns corresponding to reward == 1
-        rewarding_columns_range = self.agent.encoder.rewarding_indices_range()
+        rewarding_columns_range = self.memory.encoder.rewarding_indices_range()
 
         # filter cells by that range
-        depolarized_rewarding_cells = self.agent.filter_cells_by_columns_range(
+        depolarized_rewarding_cells = self.memory.filter_cells_by_columns_range(
             cells_sparse_sdr, rewarding_columns_range
         )
         return depolarized_rewarding_cells
@@ -300,23 +301,23 @@ class Planner:
         trace(verbose, '\n===> Check backtracked activations')
 
         initial_sar = Sar(initial_sar.state, IntSdrEncoder.ALL, initial_sar.reward)
-        proximal_input = self.agent.encoder.encode(initial_sar)
+        proximal_input = self.encoder.encode(initial_sar)
         T = len(self._active_segments_timeline)
         planned_actions = []
 
         for i in range(T):
             action = self._extract_action_from_backtracked_activation(activation_timeline[i])
             # set action to proximal input
-            proximal_input = self.agent.encoder.replace_action(proximal_input, action)
+            proximal_input = self.encoder.replace_action(proximal_input, action)
             planned_actions.append(action)
 
-            active_cells, depolarized_cells = self.agent.process(proximal_input, learn=False, verbose=verbose)
+            active_cells, depolarized_cells = self.memory.process(proximal_input, learn=False, verbose=verbose)
 
-            proximal_input = self.agent.columns_from_cells(depolarized_cells)
+            proximal_input = self.memory.columns_from_cells(depolarized_cells)
             trace(verbose, '')
 
-        reward_reached = self.agent.encoder.is_rewarding(proximal_input)
-        self._restore_initial_tm_state()
+        reward_reached = self.encoder.is_rewarding(proximal_input)
+        self.memory.restore_tm_state(self._initial_tm_state)
 
         if reward_reached:
             trace(verbose, f'<=== Checking complete with SUCCESS: {planned_actions}')
@@ -326,8 +327,8 @@ class Planner:
             return False, planned_actions
 
     def _extract_action_from_backtracked_activation(self, backtracked_activation: SparseSdr) -> int:
-        backtracked_columns_activation = self.agent.columns_from_cells(backtracked_activation)
-        backtracked_sar_superposition = self.agent.encoder.decode(backtracked_columns_activation)
+        backtracked_columns_activation = self.memory.columns_from_cells(backtracked_activation)
+        backtracked_sar_superposition = self.encoder.decode(backtracked_columns_activation)
         backtracked_actions = backtracked_sar_superposition.action
 
         # backtracked activation MUST CONTAIN only one action
@@ -335,10 +336,3 @@ class Planner:
         action = backtracked_actions[0]
         return action
 
-    def _save_initial_tm_state(self):
-        """Saves TM state."""
-        self._initial_tm_state = pickle.dumps(self.agent.tm)
-
-    def _restore_initial_tm_state(self):
-        """Restores saved TM state."""
-        self.agent.tm = pickle.loads(self._initial_tm_state)
