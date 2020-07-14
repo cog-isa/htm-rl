@@ -53,6 +53,28 @@ def make_mdp_multi_way(start_direction, seed, clockwise_action: bool = False):
     return GridworldMdpGenerator(4).generate_env(Mdp, initial_state, cell_transitions, clockwise_action, seed)
 
 
+def make_mdp_multi_way_v0(start_direction, seed, clockwise_action: bool = False):
+    """
+    #####
+    #012#
+    #3#4#
+    #567#
+    #####
+    """
+    initial_state = (0, start_direction)
+    cell_transitions = [
+        (0, 0, 1),  # c0 > c1
+        (0, 3, 3),  # c0 . c3
+        (1, 0, 2),  # c1 > c2
+        (2, 3, 4),  # c2 . c4
+        (3, 3, 5),  # c3 . c5
+        (4, 3, 7),  # c4 . c7
+        (5, 0, 6),  # c5 > c6
+        (6, 0, 7),  # c6 > c7
+    ]
+    return GridworldMdpGenerator(4).generate_env(Mdp, initial_state, cell_transitions, clockwise_action, seed)
+
+
 def set_random_seed(seed):
     random.seed(seed)
     np.random.seed(seed)
@@ -75,7 +97,7 @@ def make_sar_encoder(
     )
 
 
-def make_tm(encoder: SarSdrEncoder, cells_per_column, verbose: bool) -> TemporalMemory:
+def make_tm(encoder: SarSdrEncoder, cells_per_column, seed, verbose: bool) -> TemporalMemory:
     n_columns = encoder.total_bits
     activation_threshold = encoder.activation_threshold
     learning_threshold = int(0.85*activation_threshold)
@@ -103,10 +125,13 @@ def make_tm(encoder: SarSdrEncoder, cells_per_column, verbose: bool) -> Temporal
         permanenceDecrement=.05,
         maxNewSynapseCount=max_new_synapses_count,
         maxSynapsesPerSegment=max_synapses_per_segment,
+        seed=seed,
     )
 
 
-def make_agent(env, cells_per_column, trace_format: str, verbose: bool):
+def make_agent(
+        env, cells_per_column, planning_horizon, use_cooldown, seed: int, trace_format: str, verbose: bool
+):
     n_states = env.n_states
     n_actions = env.n_actions
     trace(verbose, f'States: {n_states}')
@@ -116,8 +141,8 @@ def make_agent(env, cells_per_column, trace_format: str, verbose: bool):
     sdr_formatter = encoder.format
     sar_formatter = SarSuperpositionFormatter.format
 
-    tm = make_tm(encoder, cells_per_column, verbose=verbose)
+    tm = make_tm(encoder, cells_per_column, seed, verbose=verbose)
     memory = Memory(tm, encoder, sdr_formatter, sar_formatter, collect_anomalies=True)
-    planner = Planner(memory, n_states)
-    agent = Agent(memory, planner, n_actions)
+    planner = Planner(memory, planning_horizon)
+    agent = Agent(memory, planner, n_actions, use_cooldown)
     return agent

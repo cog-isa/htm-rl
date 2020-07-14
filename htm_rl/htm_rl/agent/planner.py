@@ -25,12 +25,15 @@ class Planner:
         self._initial_tm_state = None
 
     def plan_actions(self, initial_sar: Sar, verbose: bool):
+        planned_actions = []
+        if self.max_steps == 0 or initial_sar.reward == 1:
+            return planned_actions
+
         trace(verbose, '\n======> Planning')
 
         # saves initial TM state at the start of planning.
         self._initial_tm_state = self.memory.save_tm_state()
 
-        planned_actions = []
         reward_reached = self._predict_to_reward(initial_sar, verbose)
         if reward_reached:
             for activation_timeline in self._backtrack_from_reward(verbose):
@@ -53,18 +56,17 @@ class Planner:
         reward_reached = False
         active_segments_timeline = []
 
-        for i in range(self.max_steps):
-            reward_reached = self.encoder.is_rewarding(proximal_input)
-            if reward_reached:
-                break
-
+        for _ in range(self.max_steps):
             active_cells, depolarized_cells = self.memory.process(proximal_input, learn=False, verbose=verbose)
 
             active_segments_t = self.memory.active_segments(active_cells)
             active_segments_timeline.append(active_segments_t)
 
             proximal_input = self.memory.columns_from_cells(depolarized_cells)
+            reward_reached = self.encoder.is_rewarding(proximal_input)
             trace(verbose, '')
+            if reward_reached or len(proximal_input) < self.encoder.activation_threshold:
+                break
 
         self.memory.restore_tm_state(self._initial_tm_state)
         self._active_segments_timeline = active_segments_timeline
@@ -88,6 +90,9 @@ class Planner:
         trace(verbose, '\n===> Backward pass')
 
         T = len(self._active_segments_timeline)
+        if T == 0:
+            return
+
         reward_activation_threshold = self.encoder._encoders.reward.activation_threshold
 
         # All depolarized cells from the last step of forward prediction phase, when the reward was found

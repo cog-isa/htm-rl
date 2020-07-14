@@ -2,6 +2,7 @@ from typing import List
 
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import trange
 
 from htm_rl.agent.agent import Agent
 from htm_rl.agent.memory import Memory
@@ -10,11 +11,15 @@ from htm_rl.common.utils import trace
 
 
 def train(agent: Agent, env, n_episodes: int, max_steps: int, verbose: bool):
-    reward_reached = 0
-    for episode in range(n_episodes):
-        reward_reached += train_episode(agent, env, max_steps, verbose)
+    episodes_len = np.empty(n_episodes, dtype=np.int)
+    rewards = np.empty(n_episodes, dtype=np.float)
+    for episode in trange(n_episodes):
+        episode_len, reward = train_episode(agent, env, max_steps, verbose)
+
+        episodes_len[episode] = episode_len
+        rewards[episode] = reward
         trace(verbose, '')
-    trace(True, f'Reward reached: {reward_reached} of {n_episodes}')
+    return episodes_len, rewards
 
 
 def train_episode(agent: Agent, env, max_steps: int, verbose: bool):
@@ -23,9 +28,8 @@ def train_episode(agent: Agent, env, max_steps: int, verbose: bool):
     for step in range(max_steps + 1):
         action = agent.make_step(state, reward, verbose)
         if step == max_steps or done:
-            break
+            return step, reward
         state, reward, done, info = env.step(action)
-    return reward
 
 
 def train_trajectories(agent: Memory, env, trajectories: List[List[int]], verbose: bool):
@@ -62,3 +66,20 @@ def plot_anomalies(anomalies):
     ax1.plot(xs, anomalies)
     ax2.hist(anomalies)
     plt.show()
+
+
+def plot_train_results(episode_lens, rewards, plot_title, episodes_title, rewards_title):
+    fig, [ax1, ax2] = plt.subplots(nrows=2, figsize=(12, 10), sharex=True)
+
+    xs = np.arange(episode_lens.size)
+
+    fig.suptitle(plot_title)
+    ax1.plot(xs, episode_lens)
+    ax1.axhline(episode_lens.mean(), color='r')
+    ax1.set_title(episodes_title)
+
+    ax2.plot(xs, rewards)
+    ax2.axhline(rewards.mean(), color='r')
+    ax2.set_title(rewards_title)
+    plt.show()
+
