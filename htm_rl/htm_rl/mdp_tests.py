@@ -3,7 +3,10 @@ from timeit import default_timer as timer
 import numpy
 
 from htm_rl.agent.train_eval import train, plot_train_results
-from htm_rl.config import set_random_seed, make_mdp_passage, make_agent, make_mdp_multi_way_v0
+from htm_rl.config import (
+    set_random_seed, make_mdp_passage, make_agent, make_mdp_multi_way_v0, make_mdp_multi_way_v1,
+    make_mdp_multi_way_v2,
+)
 
 """
 Here you can test agent+planner on a simple handcrafted MDP envs.
@@ -108,13 +111,13 @@ class Test_Planner_Given_4gon_PassageMdp:
 
 class Test_Planner_Given_Labirinth_v0:
     seed: int = 1337
-    verbose: bool = False
+    verbose: bool = True
 
     def plan_actions(self, cells_per_column):
         set_random_seed(self.seed)
         start = timer()
 
-        n_episodes, max_steps, planning_horizon, clockwise, cooldown = 50, 100, 4, False, False
+        n_episodes, max_steps, planning_horizon, clockwise, cooldown = 50, 100, 8, True, False
         env = make_mdp_multi_way_v0(0, self.seed, clockwise_action=clockwise)
         agent = make_agent(
             env, cells_per_column, planning_horizon, cooldown, self.seed, 'short', self.verbose
@@ -139,10 +142,92 @@ class Test_Planner_Given_Labirinth_v0:
         plot_train_results(episodes_len, rewards, plot_title, episodes_title, rewards_title)
 
 
+class Test_Planner_Given_Labirinth_v1:
+    seed: int = 1337
+    verbose: bool = True
+
+    def plan_actions(self, cells_per_column):
+        set_random_seed(self.seed)
+        start = timer()
+
+        n_episodes, max_steps, planning_horizon, clockwise, cooldown = 1, 400, 12, False, False
+        pretrain = 30
+        env = make_mdp_multi_way_v1(0, self.seed, clockwise_action=clockwise)
+        agent = make_agent(
+            env, cells_per_column, planning_horizon, cooldown, self.seed, 'short', self.verbose
+        )
+
+        if pretrain > 0:
+            agent.set_planning_horizon(0)
+            train(agent, env, pretrain, max_steps, verbose=False)
+            agent.set_planning_horizon(planning_horizon)
+
+        train(agent, env, n_episodes=1, max_steps=max_steps, verbose=True)
+        return
+        episodes_len, rewards = train(
+            agent, env, n_episodes=n_episodes, max_steps=max_steps, verbose=False
+        )
+        elapsed = timer() - start
+        episode_t_mean = elapsed / n_episodes
+
+        rewards /= episodes_len
+        plan_to_random = agent.plan_to_random_ratio
+        print(f'T: {elapsed: .4f}, EpT: {episode_t_mean: .4f}, P2R: {plan_to_random: .4f}')
+        plot_title = f'Episodes: {n_episodes}, MaxSteps: {max_steps}, PlanningHorizon: {planning_horizon}, ' \
+                     f'ClockwiseAction: {clockwise}, UseCooldown: {cooldown}'
+        episodes_title = f'Episodes length, mean: {episodes_len.mean(): .3f}'
+        rewards_title = f'Discounted reward, mean: {rewards.mean(): .4f}'
+        print(plot_title)
+        print(episodes_title)
+        print(rewards_title)
+        # plot_train_results(episodes_len, rewards, plot_title, episodes_title, rewards_title)
+
+
+class Test_Planner_Given_Labirinth_v2:
+    seed: int = 1337
+    verbose: bool = True
+
+    def plan_actions(self, cells_per_column):
+        set_random_seed(self.seed)
+        start = timer()
+
+        n_episodes, max_steps, planning_horizon, clockwise, cooldown = 4, 3000, 8, True, True
+        pretrain = 30
+        env = make_mdp_multi_way_v2(0, self.seed, clockwise_action=clockwise)
+        agent = make_agent(
+            env, cells_per_column, planning_horizon, cooldown, self.seed, 'short', self.verbose
+        )
+
+        if pretrain > 0:
+            agent.set_planning_horizon(0)
+            train(agent, env, pretrain, max_steps, verbose=False)
+            agent.set_planning_horizon(planning_horizon)
+
+        # train(agent, env, n_episodes=1, max_steps=max_steps, verbose=True)
+        # return
+        episodes_len, rewards = train(
+            agent, env, n_episodes=n_episodes, max_steps=max_steps, verbose=False
+        )
+        elapsed = timer() - start
+        episode_t_mean = elapsed / n_episodes
+
+        rewards /= episodes_len
+        plan_to_random = agent.plan_to_random_ratio
+        print(f'T: {elapsed: .4f}, EpT: {episode_t_mean: .4f}, P2R: {plan_to_random: .4f}')
+        plot_title = f'Episodes: {n_episodes}, MaxSteps: {max_steps}, PlanningHorizon: {planning_horizon}, ' \
+                     f'ClockwiseAction: {clockwise}, UseCooldown: {cooldown}'
+        episodes_title = f'Episodes length, mean: {episodes_len.mean(): .3f}'
+        rewards_title = f'Discounted reward, mean: {rewards.mean(): .4f}'
+        print(plot_title)
+        print(episodes_title)
+        print(rewards_title)
+        plot_train_results(episodes_len, rewards, plot_title, episodes_title, rewards_title)
+
+
 def debug_test():
     # Test_Planner_Given_4gon_PassageMdp.verbose = True
     # Test_Planner_Given_4gon_PassageMdp().plan_actions(1, [0, 1, 0])
-    Test_Planner_Given_Labirinth_v0().plan_actions(1)
+    Test_Planner_Given_Labirinth_v2().plan_actions(1)
 
 
 if __name__ == '__main__':

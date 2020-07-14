@@ -13,14 +13,18 @@ class Agent:
         self.memory = memory
         self.planner = planner
         self._n_actions = n_actions
-        self._planning_horizon = planner.max_steps
-
-        self._planning_enabled = planner.max_steps > 0
+        self.set_planning_horizon(planner.max_steps)
         self._use_cooldown = use_cooldown
+
+    def set_planning_horizon(self, planning_horizon):
+        self.planner.max_steps = planning_horizon
+        self._planning_horizon = planning_horizon
+
+        self._planning_enabled = planning_horizon > 0
         self._n_times_planned = 0
         self._n_times_random = 0
         self._init_planning()
-        self._cooldown_scaler = self._planning_horizon / .1
+        self._cooldown_scaler = self._planning_horizon / .2
 
     def reset(self):
         self.memory.tm.reset()
