@@ -32,11 +32,11 @@ class Test_Planner_Given_2gon_PassageMdp:
     def plan_actions(self, cells_per_column, path):
         set_random_seed(self.seed)
         env = make_mdp_passage(self.cell_gonality, path, self.seed)
-        agent, planner = make_agent(env, cells_per_column, 'full', self.verbose)
+        agent = make_agent(env, cells_per_column, 'full', self.verbose)
 
         train(agent, env, n_episodes=40, max_steps=20, verbose=False)
 
-        planned_actions = planner.plan_actions(Sar(env.reset(), None, 0), self.verbose)
+        planned_actions = agent.plan_actions(Sar(env.reset(), None, 0), self.verbose)
         return planned_actions
 
 

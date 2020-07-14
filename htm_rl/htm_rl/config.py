@@ -2,6 +2,7 @@ import random
 
 import numpy as np
 
+from htm_rl.agent.agent import Agent
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
 from htm_rl.common.base_sar import SarRelatedComposition
@@ -116,6 +117,7 @@ def make_agent(env, cells_per_column, trace_format: str, verbose: bool):
     sar_formatter = SarSuperpositionFormatter.format
 
     tm = make_tm(encoder, cells_per_column, verbose=verbose)
-    agent = Memory(tm, encoder, sdr_formatter, sar_formatter, collect_anomalies=True)
-    planner = Planner(agent, n_states)
-    return agent, planner
+    memory = Memory(tm, encoder, sdr_formatter, sar_formatter, collect_anomalies=True)
+    planner = Planner(memory, n_states)
+    agent = Agent(memory, planner, n_actions)
+    return agent

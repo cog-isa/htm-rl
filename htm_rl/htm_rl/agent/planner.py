@@ -30,7 +30,7 @@ class Planner:
         # saves initial TM state at the start of planning.
         self._initial_tm_state = self.memory.save_tm_state()
 
-        planned_actions = None
+        planned_actions = []
         reward_reached = self._predict_to_reward(initial_sar, verbose)
         if reward_reached:
             for activation_timeline in self._backtrack_from_reward(verbose):
