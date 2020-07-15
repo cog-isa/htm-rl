@@ -26,7 +26,7 @@ def train_episode(agent: Agent, env, max_steps: int, verbose: bool):
     agent.reset()
     state, reward, done = env.reset(), 0, False
     for step in range(max_steps + 1):
-        action = agent.make_step(state, reward, verbose)
+        action = agent.make_step(state, reward, done, verbose)
         if step == max_steps or done:
             return step, reward
         state, reward, done, info = env.step(action)

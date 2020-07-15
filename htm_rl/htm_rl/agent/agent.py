@@ -30,9 +30,9 @@ class Agent:
         self.memory.tm.reset()
         self._init_planning()
 
-    def make_step(self, state, reward, verbose):
+    def make_step(self, state, reward, is_done, verbose):
         trace(verbose, f'\nState: {state}; reward: {reward}')
-        action = self._make_action(state, reward, verbose)
+        action = self._make_action(state, reward, is_done, verbose)
         trace(verbose, f'\nMake action: {action}')
 
         self.memory.train(Sar(state, action, reward), verbose)
@@ -42,8 +42,8 @@ class Agent:
         self._planned_actions = deque(maxlen=self._planning_horizon + 1)
         self._planning_cooldown = 0
 
-    def _make_action(self, state, reward, verbose):
-        if self._should_plan:
+    def _make_action(self, state, reward, is_done, verbose):
+        if self._should_plan and not is_done:
             from_sar = Sar(state, None, reward)
             planned_actions = self.planner.plan_actions(from_sar, verbose)
             self._planned_actions.extend(planned_actions)

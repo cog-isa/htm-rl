@@ -3,6 +3,7 @@ from timeit import default_timer as timer
 import numpy
 
 from htm_rl.agent.train_eval import train, plot_train_results
+from htm_rl.baselines.dqn_agent import DqnAgent
 from htm_rl.config import (
     set_random_seed, make_mdp_passage, make_agent, make_mdp_multi_way_v0, make_mdp_multi_way_v1,
     make_mdp_multi_way_v2,
@@ -224,10 +225,45 @@ class Test_Planner_Given_Labirinth_v2:
         plot_train_results(episodes_len, rewards, plot_title, episodes_title, rewards_title)
 
 
+class Test_DQN:
+    seed: int = 1337
+    verbose: bool = True
+
+    def test(self):
+        set_random_seed(self.seed)
+        start = timer()
+
+        n_episodes, max_steps, clockwise, epsilon, gamma, lr = 100, 2000, True, .15, .99, .5e-3
+        pretrain = 0
+        env = make_mdp_multi_way_v2(0, self.seed, clockwise_action=clockwise)
+        agent = DqnAgent(env.n_states, env.n_actions, epsilon, gamma, lr)
+
+        if pretrain > 0:
+            train(agent, env, pretrain, max_steps, verbose=False)
+            agent.epsilon = 0.
+
+        episodes_len, rewards = train(
+            agent, env, n_episodes=n_episodes, max_steps=max_steps, verbose=False
+        )
+        elapsed = timer() - start
+        episode_t_mean = elapsed / n_episodes
+
+        rewards /= episodes_len
+        print(f'T: {elapsed: .4f}, EpT: {episode_t_mean: .4f}')
+        plot_title = f'Episodes: {n_episodes}, MaxSteps: {max_steps} ClockwiseAction: {clockwise}'
+        episodes_title = f'Episodes length, mean: {episodes_len.mean(): .3f}'
+        rewards_title = f'Discounted reward, mean: {rewards.mean(): .4f}'
+        print(plot_title)
+        print(episodes_title)
+        print(rewards_title)
+        plot_train_results(episodes_len, rewards, plot_title, episodes_title, rewards_title)
+
+
 def debug_test():
     # Test_Planner_Given_4gon_PassageMdp.verbose = True
     # Test_Planner_Given_4gon_PassageMdp().plan_actions(1, [0, 1, 0])
-    Test_Planner_Given_Labirinth_v2().plan_actions(1)
+    # Test_Planner_Given_Labirinth_v2().plan_actions(1)
+    Test_DQN().test()
 
 
 if __name__ == '__main__':
