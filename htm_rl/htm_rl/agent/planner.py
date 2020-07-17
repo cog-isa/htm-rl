@@ -12,21 +12,22 @@ from htm_rl.common.utils import trace, range_reverse
 
 class Planner:
     memory: Memory
-    max_steps: int
+    planning_horizon: int
 
     # segments[time][cell] = segments = [ segment ] = [ [presynaptic_cell] ]
     _active_segments_timeline: List[Mapping[int, List[Set[int]]]]
 
-    def __init__(self, memory: Memory, max_steps: int):
+    def __init__(self, memory: Memory, planning_horizon: int):
         self.memory = memory
         self.encoder = memory.encoder
-        self.max_steps = max_steps
+        self.planning_horizon = planning_horizon
+
         self._active_segments_timeline = []
         self._initial_tm_state = None
 
     def plan_actions(self, initial_sar: Sar, verbose: bool):
         planned_actions = []
-        if self.max_steps == 0 or initial_sar.reward == 1:
+        if self.planning_horizon == 0 or initial_sar.reward == 1:
             return planned_actions
 
         trace(verbose, '\n======> Planning')
@@ -56,7 +57,7 @@ class Planner:
         reward_reached = False
         active_segments_timeline = []
 
-        for _ in range(self.max_steps):
+        for _ in range(self.planning_horizon):
             active_cells, depolarized_cells = self.memory.process(proximal_input, learn=False, verbose=verbose)
 
             active_segments_t = self.memory.active_segments(active_cells)
@@ -75,7 +76,7 @@ class Planner:
             T = len(active_segments_timeline)
             trace(verbose, f'<=== Predict reward in {T} steps')
         else:
-            trace(verbose, f'<=== Predicting NO reward in {self.max_steps} steps')
+            trace(verbose, f'<=== Predicting NO reward in {self.planning_horizon} steps')
 
         return reward_reached
 

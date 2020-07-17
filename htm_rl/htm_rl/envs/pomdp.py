@@ -1,6 +1,5 @@
 from abc import abstractmethod
 
-from htm_rl.common.sar_sdr_encoder import SarSuperposition
 from htm_rl.envs.mdp import Mdp
 
 

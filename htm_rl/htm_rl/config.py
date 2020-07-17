@@ -1,4 +1,9 @@
+import dataclasses
+import inspect
 import random
+from dataclasses import dataclass
+from itertools import chain
+from typing import Any, Callable, Dict
 
 import numpy as np
 
@@ -9,142 +14,8 @@ from htm_rl.common.base_sar import SarRelatedComposition
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.utils import trace
-from htm_rl.envs.mdp import GridworldMdpGenerator, Mdp, SarSuperpositionFormatter
+from htm_rl.envs.mdp import SarSuperpositionFormatter
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
-
-
-def make_mdp_passage(cell_gonality, path, seed, clockwise_action: bool = False):
-    initial_state = (0, 0)
-    current_cell = 0
-    cell_transitions = []
-    for direction in path:
-        cell_transitions.append((current_cell, direction, current_cell + 1))
-        current_cell += 1
-
-    generator = GridworldMdpGenerator(cell_gonality)
-    return generator.generate_env(Mdp, initial_state, cell_transitions, clockwise_action, seed)
-
-
-def make_mdp_multi_way(start_direction, seed, clockwise_action: bool = False):
-    """
-    ######
-    #01###
-    #234##
-    ##567#
-    ###89#
-    ######
-    """
-    initial_state = (0, start_direction)
-    cell_transitions = [
-        (0, 0, 1),  # c0 > c1
-        (0, 3, 2),  # c0 . c2
-        (1, 3, 3),  # c1 . c3
-        (2, 0, 3),  # c2 > c3
-        (3, 0, 4),  # c3 > c4
-        (3, 3, 5),  # c3 . c5
-        (4, 3, 6),  # c4 > c6
-        (5, 0, 6),  # c5 > c6
-        (6, 0, 7),  # c6 > c7
-        (6, 3, 8),  # c6 . c8
-        (7, 3, 9),  # c7 . c9
-        (8, 0, 9),  # c8 > c9
-    ]
-
-    return GridworldMdpGenerator(4).generate_env(Mdp, initial_state, cell_transitions, clockwise_action, seed)
-
-
-def make_mdp_multi_way_v0(start_direction, seed, clockwise_action: bool = False):
-    """
-    #####
-    #012#
-    #3#4#
-    #567#
-    #####
-    """
-    initial_state = (0, start_direction)
-    cell_transitions = [
-        (0, 0, 1),  # c0 > c1
-        (0, 3, 3),  # c0 . c3
-        (1, 0, 2),  # c1 > c2
-        (2, 3, 4),  # c2 . c4
-        (3, 3, 5),  # c3 . c5
-        (4, 3, 7),  # c4 . c7
-        (5, 0, 6),  # c5 > c6
-        (6, 0, 7),  # c6 > c7
-    ]
-    return GridworldMdpGenerator(4).generate_env(Mdp, initial_state, cell_transitions, clockwise_action, seed)
-
-
-def make_mdp_multi_way_v1(start_direction, seed, clockwise_action: bool = False):
-    """
-    #######
-    #012###
-    #3#4###
-    #56789#
-    ###0#1#
-    ###234#
-    #######
-    """
-    initial_state = (0, start_direction)
-    cell_transitions = [
-        (0, 0, 1),  # c0 > c1
-        (0, 3, 3),  # c0 . c3
-        (1, 0, 2),  # c1 > c2
-        (2, 3, 4),  # c2 . c4
-        (3, 3, 5),  # c3 . c5
-        (4, 3, 7),  # c4 . c7
-        (5, 0, 6),  # c5 > c6
-        (6, 0, 7),  # c6 > c7
-        (7, 0, 8),  # c7 > c8
-        (7, 3, 10),  # c7 . c10
-        (8, 0, 9),  # c8 > c9
-        (9, 3, 11),  # c9 . c11
-        (10, 3, 12),  # c10 . c12
-        (11, 3, 14),  # c11 . c14
-        (12, 0, 13),  # c12 > c13
-        (13, 0, 14),  # c13 > c14
-    ]
-    return GridworldMdpGenerator(4).generate_env(Mdp, initial_state, cell_transitions, clockwise_action, seed)
-
-
-def make_mdp_multi_way_v2(start_direction, seed, clockwise_action: bool = False):
-    """
-    #########
-    #012#####
-    #3#4#####
-    #567890##
-    ###12####
-    ###3#890#
-    ###467###
-    ###5#####
-    #########
-    """
-    initial_state = (7, start_direction)
-    cell_transitions = [
-        (0, 0, 1),  # c0 > c1
-        (0, 3, 3),  # c0 . c3
-        (1, 0, 2),  # c1 > c2
-        (2, 3, 4),  # c2 . c4
-        (3, 3, 5),  # c3 . c5
-        (4, 3, 7),  # c4 . c7
-        (5, 0, 6),  # c5 > c6
-        (6, 0, 7),  # c6 > c7
-        (7, 0, 8),  # c7 > c8
-        (7, 3, 11),  # c7 . c11
-        (8, 0, 9),  # c8 > c9
-        (8, 3, 12),  # c8 > c12
-        (9, 0, 10),  # c9 . c10
-        (11, 0, 12),  # c11 . c12
-        (11, 3, 13),  # c11 . c13
-        (13, 3, 14),  # c13 . c14
-        (14, 0, 16),  # c14 . c16
-        (14, 3, 15),  # c14 . c15
-        (16, 0, 17),  # c16 > c17
-        (17, 1, 18),  # c17 > c18
-        (18, 0, 19),  # c18 > c19
-        (19, 0, 20),  # c19 > c20
-    ]
-    return GridworldMdpGenerator(4).generate_env(Mdp, initial_state, cell_transitions, clockwise_action, seed)
 
 
 def set_random_seed(seed):
@@ -152,69 +23,187 @@ def set_random_seed(seed):
     np.random.seed(seed)
 
 
-def make_sar_encoder(
-        n_unique_states, n_unique_actions, n_unique_rewards=2,
-        bits_per_state_value=8, bits_per_action_value=8, bits_per_reward_value=8,
-        trace_format: str = 'short'
-):
-    # shortcuts
-    bps, bpa, bpr = bits_per_state_value, bits_per_action_value, bits_per_reward_value
+@dataclass
+class SarSdrEncoderConfig:
+    n_unique_states: int
+    n_unique_actions: int
+    n_unique_rewards: int = 2
+    bits_per_state_value: int = 8
+    bits_per_action_value: int = 8
+    bits_per_reward_value: int = 8
+    trace_format: str = 'short'
 
-    state_encoder = IntSdrEncoder('state', n_unique_states, bps, bps - 1, trace_format)
-    action_encoder = IntSdrEncoder('action', n_unique_actions, bpa, bpa - 1, trace_format)
-    reward_encoder = IntSdrEncoder('reward', n_unique_rewards, bpr, bpr - 1, trace_format)
+    @classmethod
+    def path(cls):
+        return '.encoder'
 
-    return SarSdrEncoder(
-        encoders=SarRelatedComposition(state_encoder, action_encoder, reward_encoder)
-    )
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        if 'env' not in global_config:
+            return
 
+        env = global_config['env']
+        config['n_unique_states'] = env.n_states
+        config['n_unique_actions'] = env.n_actions
 
-def make_tm(encoder: SarSdrEncoder, cells_per_column, seed, verbose: bool) -> TemporalMemory:
-    n_columns = encoder.total_bits
-    activation_threshold = encoder.activation_threshold
-    learning_threshold = int(0.85*activation_threshold)
-    max_new_synapses_count = encoder.value_bits
-    max_synapses_per_segment = encoder.value_bits
+    def make(self, verbose=False) -> SarSdrEncoder:
+        # shortcuts
+        bps, bpa, bpr = self.bits_per_state_value, self.bits_per_action_value, self.bits_per_reward_value
+        n_states, n_actions, n_rewards = self.n_unique_states, self.n_unique_actions, self.n_unique_rewards
+        trace_format = self.trace_format
 
-    action_act_threshold = encoder._encoders.action.activation_threshold
-    reward_act_threshold = encoder._encoders.reward.activation_threshold
-    assert action_act_threshold + reward_act_threshold < learning_threshold
+        state_encoder = IntSdrEncoder('state', n_states, bps, bps - 1, trace_format)
+        action_encoder = IntSdrEncoder('action', n_actions, bpa, bpa - 1, trace_format)
+        reward_encoder = IntSdrEncoder('reward', n_rewards, bpr, bpr - 1, trace_format)
 
-    trace(
-        verbose,
-        f'Cells: {n_columns}x{cells_per_column}; activation: {activation_threshold}; learn: {learning_threshold}'
-    )
-
-    return TemporalMemory(
-        n_columns=n_columns,
-        cells_per_column=cells_per_column,
-        activation_threshold=activation_threshold,
-        learning_threshold=learning_threshold,
-        initial_permanence=.5,
-        connected_permanence=.4,
-        predictedSegmentDecrement=.0001,
-        permanenceIncrement=.1,
-        permanenceDecrement=.05,
-        maxNewSynapseCount=max_new_synapses_count,
-        maxSynapsesPerSegment=max_synapses_per_segment,
-        seed=seed,
-    )
+        encoders = SarRelatedComposition(state_encoder, action_encoder, reward_encoder)
+        return SarSdrEncoder(encoders)
 
 
-def make_agent(
-        env, cells_per_column, planning_horizon, use_cooldown, seed: int, trace_format: str, verbose: bool
-):
-    n_states = env.n_states
-    n_actions = env.n_actions
-    trace(verbose, f'States: {n_states}')
+@dataclass
+class TemporalMemoryConfig:
+    n_columns: int
+    cells_per_column: int
+    activation_threshold: int
+    learning_threshold: int
+    maxNewSynapseCount: int
+    maxSynapsesPerSegment: int
+    seed: int
+    initial_permanence: float = .5
+    connected_permanence: float = .4
+    predictedSegmentDecrement: float = .0001
+    permanenceIncrement: float = .1
+    permanenceDecrement: float = .05
 
-    encoder = make_sar_encoder(n_states, n_actions, trace_format=trace_format)
+    @classmethod
+    def path(cls):
+        return '.tm'
 
-    sdr_formatter = encoder.format
-    sar_formatter = SarSuperpositionFormatter.format
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        if 'encoder' in global_config:
+            encoder: SarSdrEncoder = global_config['encoder']
 
-    tm = make_tm(encoder, cells_per_column, seed, verbose=verbose)
-    memory = Memory(tm, encoder, sdr_formatter, sar_formatter, collect_anomalies=True)
-    planner = Planner(memory, planning_horizon)
-    agent = Agent(memory, planner, n_actions, use_cooldown)
-    return agent
+            activation_threshold = encoder.activation_threshold
+
+            action_bits = encoder._encoders.action.value_bits
+            reward_bits = encoder._encoders.reward.value_bits
+            learning_threshold = action_bits + reward_bits + 2
+            assert learning_threshold + 2 < encoder.activation_threshold, \
+                f'{learning_threshold}, {encoder.activation_threshold}'
+
+            config['n_columns'] = encoder.total_bits
+            config['activation_threshold'] = activation_threshold
+            config['learning_threshold'] = learning_threshold
+            config['maxNewSynapseCount'] = encoder.value_bits
+            config['maxSynapsesPerSegment'] = encoder.value_bits
+
+        if 'seed' in global_config:
+            config['seed'] = global_config['seed']
+
+    def make(self, verbose=False) -> TemporalMemory:
+        trace(
+            verbose,
+            f'Cells: {self.n_columns}x{self.cells_per_column}; '
+            f'activation: {self.activation_threshold}; '
+            f'learn: {self.learning_threshold}'
+        )
+        tm_kwargs = dataclasses.asdict(self)
+        return TemporalMemory(**tm_kwargs)
+
+
+@dataclass
+class AgentConfig:
+    n_actions: int
+    planning_horizon: int
+    encoder: SarSdrEncoder
+    tm: TemporalMemory
+    sdr_formatter: Callable
+    sar_formatter: Callable = SarSuperpositionFormatter.format
+
+    collect_anomalies: bool = False
+    use_cooldown: bool = False
+
+    @classmethod
+    def path(cls):
+        return '.agent'
+
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        env = global_config['env']
+        config['n_actions'] = env.n_actions
+
+        if 'encoder' in global_config:
+            encoder = global_config['encoder']
+            config['encoder'] = encoder
+            config['sdr_formatter'] = encoder.format
+
+        if 'tm' in global_config:
+            config['tm'] = global_config['tm']
+
+    def make(self, verbose=False):
+        memory = Memory(
+            self.tm, self.encoder, self.sdr_formatter, self.sar_formatter,
+            collect_anomalies=self.collect_anomalies
+        )
+        planner = Planner(memory, self.planning_horizon)
+        agent = Agent(memory, planner, self.n_actions, use_cooldown=self.use_cooldown)
+        return agent
+
+
+class ConfigBasedFactory:
+    config: Dict[str, Any]
+
+    def __init__(self, config: Dict):
+        self.config = config
+        self.verbose = config.get('verbosity', 0) > 0
+
+    def make(self, *config_type):
+        return [
+            self.make_obj(config_type) for config_type in config_type
+        ]
+
+    def make_obj(self, config_type):
+        config_path = config_type.path()
+        config = self[config_path]
+
+        custom_config = self._project_to_type_fields(config_type, config)
+        config_type.apply_defaults(config, self.config)
+        config.update(custom_config)
+        config_obj = config_type(**config)
+
+        obj = config_obj.make(self.verbose)
+        name = self._get_name(config_path)
+        self.config[name] = obj
+        return obj
+
+    @staticmethod
+    def _project_to_type_fields(config_type, config):
+        projection = {
+            field.name: config[field.name]
+            for field in dataclasses.fields(config_type)
+            if field.name in config
+        }
+        return projection
+
+    @staticmethod
+    def _project_to_method_params(func, config):
+        argspec = inspect.getfullargspec(func)
+        args = chain(argspec.args, argspec.kwonlyargs)
+
+        projection = {
+            arg_name: config[arg_name]
+            for arg_name in args
+            if arg_name in config
+        }
+        return projection
+
+    def __getitem__(self, path):
+        nodes = path.split('.')[1:]
+        config = self.config
+        for node in nodes:
+            config = config.setdefault(f'.{node}', dict())
+        return config
+
+    def _get_name(self, path):
+        return path.split('.')[-1]
