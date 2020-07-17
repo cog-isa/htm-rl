@@ -1,9 +1,10 @@
 import dataclasses
 import inspect
 import random
+from abc import abstractmethod
 from dataclasses import dataclass
 from itertools import chain
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, List, Type
 
 import numpy as np
 
@@ -14,8 +15,9 @@ from htm_rl.common.base_sar import SarRelatedComposition
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.utils import trace
-from htm_rl.envs.mdp import SarSuperpositionFormatter
+from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
+from htm_rl.testing_envs import PresetMdpCellTransitions
 
 
 def set_random_seed(seed):
@@ -24,7 +26,25 @@ def set_random_seed(seed):
 
 
 @dataclass
-class SarSdrEncoderConfig:
+class BaseConfig:
+
+    @classmethod
+    @abstractmethod
+    def path(cls):
+        ...
+
+    @classmethod
+    @abstractmethod
+    def apply_defaults(cls, config, global_config):
+        ...
+
+    @abstractmethod
+    def make(self, verbose=False):
+        ...
+
+
+@dataclass
+class SarSdrEncoderConfig(BaseConfig):
     n_unique_states: int
     n_unique_actions: int
     n_unique_rewards: int = 2
@@ -61,7 +81,7 @@ class SarSdrEncoderConfig:
 
 
 @dataclass
-class TemporalMemoryConfig:
+class TemporalMemoryConfig(BaseConfig):
     n_columns: int
     cells_per_column: int
     activation_threshold: int
@@ -113,7 +133,7 @@ class TemporalMemoryConfig:
 
 
 @dataclass
-class AgentConfig:
+class AgentConfig(BaseConfig):
     n_actions: int
     planning_horizon: int
     encoder: SarSdrEncoder
@@ -151,6 +171,63 @@ class AgentConfig:
         return agent
 
 
+@dataclass
+class MdpCellTransitionsGeneratorConfig(BaseConfig):
+    preset_name: str
+    path_directions: List[int]
+
+    @classmethod
+    def path(cls):
+        return '.mdp_cell_transitions'
+
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        config['preset_name'] = 'passage'
+        config['path_directions'] = [0, 1]
+
+    def make(self, verbose=False):
+        preset_name = self.preset_name
+        if preset_name == 'passage':
+            return PresetMdpCellTransitions.passage(self.path_directions)
+        elif preset_name == 'multi_way_v0':
+            return PresetMdpCellTransitions.multi_way_v0()
+        elif preset_name == 'multi_way_v1':
+            return PresetMdpCellTransitions.multi_way_v1()
+        elif preset_name == 'multi_way_v2':
+            return PresetMdpCellTransitions.multi_way_v2()
+        elif preset_name == 'multi_way_v3':
+            return PresetMdpCellTransitions.multi_way_v3()
+
+
+@dataclass
+class MdpEnvConfig(BaseConfig):
+    cell_transitions: List
+    seed: int
+    initial_cell: int = 0
+    initial_direction: int = 0
+    cell_gonality: int = 4
+    clockwise_action: bool = False
+
+    @classmethod
+    def path(cls):
+        return '.env'
+
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        config['seed'] = global_config['seed']
+
+        if 'mdp_cell_transitions' in global_config:
+            config['cell_transitions'] = global_config['mdp_cell_transitions']
+
+    def make(self, verbose=False):
+        initial_state = (self.initial_cell, self.initial_direction)
+        mdp_generator = GridworldMdpGenerator(self.cell_gonality)
+        mdp = mdp_generator.generate_env(
+            Mdp, initial_state, self.cell_transitions, self.clockwise_action, self.seed
+        )
+        return mdp
+
+
 class ConfigBasedFactory:
     config: Dict[str, Any]
 
@@ -163,7 +240,7 @@ class ConfigBasedFactory:
             self.make_obj(config_type) for config_type in config_type
         ]
 
-    def make_obj(self, config_type):
+    def make_obj(self, config_type: Type[BaseConfig]):
         config_path = config_type.path()
         config = self[config_path]
 
