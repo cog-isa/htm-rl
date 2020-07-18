@@ -1,28 +1,23 @@
 import dataclasses
-import inspect
 import random
 from abc import abstractmethod
 from dataclasses import dataclass
-from itertools import chain
+from pprint import pprint
 from typing import Any, Callable, Dict, List, Type
 
 import numpy as np
 
-from htm_rl.agent.agent import Agent
+from htm_rl.agent.agent import Agent, AgentRunner
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
+from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 from htm_rl.common.base_sar import SarRelatedComposition
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.common.utils import trace
+from htm_rl.common.utils import trace, project_to_type_fields
 from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 from htm_rl.testing_envs import PresetMdpCellTransitions
-
-
-def set_random_seed(seed):
-    random.seed(seed)
-    np.random.seed(seed)
 
 
 @dataclass
@@ -41,6 +36,84 @@ class BaseConfig:
     @abstractmethod
     def make(self, verbose=False):
         ...
+
+
+@dataclass
+class RandomSeedConfig(BaseConfig):
+    seed: int = 1337
+
+    @classmethod
+    def path(cls):
+        return '.seed'
+
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        pass
+
+    def make(self, verbose=False):
+        seed = self.seed
+
+        random.seed(seed)
+        np.random.seed(seed)
+        return seed
+
+
+@dataclass
+class MdpCellTransitionsGeneratorConfig(BaseConfig):
+    preset_name: str
+    path_directions: List[int]
+
+    @classmethod
+    def path(cls):
+        return '.mdp_cell_transitions'
+
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        config['preset_name'] = 'passage'
+        config['path_directions'] = [0, 1]
+
+    def make(self, verbose=False):
+        preset_name = self.preset_name
+        if preset_name == 'passage':
+            return PresetMdpCellTransitions.passage(self.path_directions)
+        elif preset_name == 'multi_way_v0':
+            return PresetMdpCellTransitions.multi_way_v0()
+        elif preset_name == 'multi_way_v1':
+            return PresetMdpCellTransitions.multi_way_v1()
+        elif preset_name == 'multi_way_v2':
+            return PresetMdpCellTransitions.multi_way_v2()
+        elif preset_name == 'multi_way_v3':
+            return PresetMdpCellTransitions.multi_way_v3()
+
+
+@dataclass
+class MdpEnvConfig(BaseConfig):
+    cell_transitions: List
+    seed: int
+    initial_cell: int = 0
+    initial_direction: int = 0
+    cell_gonality: int = 4
+    clockwise_action: bool = False
+
+    @classmethod
+    def path(cls):
+        return '.env'
+
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        config['seed'] = global_config['seed']
+
+        if 'mdp_cell_transitions' in global_config:
+            config['cell_transitions'] = global_config['mdp_cell_transitions']
+
+    def make(self, verbose=False):
+        initial_state = (self.initial_cell, self.initial_direction)
+        mdp_generator = GridworldMdpGenerator(self.cell_gonality)
+        mdp = mdp_generator.generate_env(
+            Mdp, initial_state, self.cell_transitions, self.clockwise_action, self.seed
+        )
+        trace(verbose, f'States: {mdp.n_states}, actions: {mdp.n_actions}')
+        return mdp
 
 
 @dataclass
@@ -172,60 +245,77 @@ class AgentConfig(BaseConfig):
 
 
 @dataclass
-class MdpCellTransitionsGeneratorConfig(BaseConfig):
-    preset_name: str
-    path_directions: List[int]
+class DqnAgentConfig(BaseConfig):
+    n_states: int
+    n_actions: int
+    seed: int
+    epsilon: float = .15
+    gamma: float = .99
+    lr: float = .5e-3
 
     @classmethod
     def path(cls):
-        return '.mdp_cell_transitions'
+        return '.dqn_agent'
 
     @classmethod
     def apply_defaults(cls, config, global_config):
-        config['preset_name'] = 'passage'
-        config['path_directions'] = [0, 1]
+        if 'env' in global_config:
+            env = global_config['env']
+            config['n_states'] = env.n_states
+            config['n_actions'] = env.n_actions
+        if 'seed' in global_config:
+            config['seed'] = global_config['seed']
 
     def make(self, verbose=False):
-        preset_name = self.preset_name
-        if preset_name == 'passage':
-            return PresetMdpCellTransitions.passage(self.path_directions)
-        elif preset_name == 'multi_way_v0':
-            return PresetMdpCellTransitions.multi_way_v0()
-        elif preset_name == 'multi_way_v1':
-            return PresetMdpCellTransitions.multi_way_v1()
-        elif preset_name == 'multi_way_v2':
-            return PresetMdpCellTransitions.multi_way_v2()
-        elif preset_name == 'multi_way_v3':
-            return PresetMdpCellTransitions.multi_way_v3()
+        kwargs = dataclasses.asdict(self)
+        return DqnAgent(**kwargs)
 
 
 @dataclass
-class MdpEnvConfig(BaseConfig):
-    cell_transitions: List
-    seed: int
-    initial_cell: int = 0
-    initial_direction: int = 0
-    cell_gonality: int = 4
-    clockwise_action: bool = False
+class AgentRunnerConfig(BaseConfig):
+    env: Any
+    agent: Agent
+    n_episodes: int
+    max_steps: int
+    verbose: bool
 
     @classmethod
     def path(cls):
-        return '.env'
+        return '.agent_runner'
 
     @classmethod
     def apply_defaults(cls, config, global_config):
-        config['seed'] = global_config['seed']
-
-        if 'mdp_cell_transitions' in global_config:
-            config['cell_transitions'] = global_config['mdp_cell_transitions']
+        config['env'] = global_config['env']
+        config['agent'] = global_config['agent']
+        config['verbose'] = global_config['verbosity'] > 0
 
     def make(self, verbose=False):
-        initial_state = (self.initial_cell, self.initial_direction)
-        mdp_generator = GridworldMdpGenerator(self.cell_gonality)
-        mdp = mdp_generator.generate_env(
-            Mdp, initial_state, self.cell_transitions, self.clockwise_action, self.seed
+        return AgentRunner(
+            self.agent, self.env, self.n_episodes, self.max_steps, self.verbose
         )
-        return mdp
+
+
+@dataclass
+class DqnAgentRunnerConfig(BaseConfig):
+    env: Any
+    agent: DqnAgent
+    n_episodes: int
+    max_steps: int
+    verbose: bool
+
+    @classmethod
+    def path(cls):
+        return '.dqn_agent_runner'
+
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        config['env'] = global_config['env']
+        config['agent'] = global_config['dqn_agent']
+        config['verbose'] = global_config['verbosity'] > 0
+
+    def make(self, verbose=False):
+        kwargs = dataclasses.asdict(self)
+        return DqnAgentRunner(**kwargs)
 
 
 class ConfigBasedFactory:
@@ -244,36 +334,26 @@ class ConfigBasedFactory:
         config_path = config_type.path()
         config = self[config_path]
 
-        custom_config = self._project_to_type_fields(config_type, config)
-        config_type.apply_defaults(config, self.config)
-        config.update(custom_config)
-        config_obj = config_type(**config)
+        try:
+            custom_config = project_to_type_fields(config_type, config)
+            config_type.apply_defaults(config, self.config)
+            config.update(custom_config)
+            config_obj = config_type(**config)
 
-        obj = config_obj.make(self.verbose)
-        name = self._get_name(config_path)
-        self.config[name] = obj
-        return obj
+            obj = config_obj.make(self.verbose)
+            name = self._get_name(config_path)
+            self.config[name] = obj
+            return obj
+        except:
+            print('\n\n_________________ DEBUG:')
+            print(f'TYPE: {config_type.__name__}')
+            print('CONFIG[TYPE]:')
+            pprint(config)
+            print('GLOBAL CONFIG:')
+            pprint(self.config)
+            print('_______________________')
+            raise
 
-    @staticmethod
-    def _project_to_type_fields(config_type, config):
-        projection = {
-            field.name: config[field.name]
-            for field in dataclasses.fields(config_type)
-            if field.name in config
-        }
-        return projection
-
-    @staticmethod
-    def _project_to_method_params(func, config):
-        argspec = inspect.getfullargspec(func)
-        args = chain(argspec.args, argspec.kwonlyargs)
-
-        projection = {
-            arg_name: config[arg_name]
-            for arg_name in args
-            if arg_name in config
-        }
-        return projection
 
     def __getitem__(self, path):
         nodes = path.split('.')[1:]

@@ -1,41 +1,47 @@
+from typing import Any
+
 import numpy as np
 import torch
 import torch.nn as nn
+from tqdm import trange
 
-from htm_rl.common.utils import trace
+from htm_rl.agent.train_eval import RunStats
+from htm_rl.common.utils import trace, timed
 
 
 class DqnAgent:
-    def __init__(self, n_states, n_actions, epsilon, gamma, lr):
-        self.qn = DqnAgentNetwork((n_states, ), n_actions)
-        self.opt = torch.optim.Adam(self.qn.parameters(), lr=lr)
+    def __init__(self, n_states, n_actions, epsilon, gamma, lr, seed):
+        torch.manual_seed(seed)
 
-        self.epsilon = epsilon
-        self.gamma = gamma
         self._n_states = n_states
         self._n_actions = n_actions
-        self._last_state = None
-        self._last_action = None
 
-    def reset(self):
-        pass
+        self.qn = DqnAgentNetwork((n_states, ), n_actions)
+        self._optimizer = torch.optim.Adam(self.qn.parameters(), lr=lr)
 
-    def make_step(self, state, reward, is_done, verbose):
-        if self._last_state is not None:
-            s, a, r, ns = self._last_state, self._last_action, reward, state
-            self._train(s, a, r, ns, is_done)
+        self._epsilon = epsilon
+        self._gamma = gamma
+        self._train_mode = True
 
-        trace(verbose, f'\nState: {state}; reward: {reward}')
-        action = self._make_action(state)
-        trace(verbose, f'\nMake action: {action}')
+    def reset(self, train_mode=None):
+        if train_mode is not None:
+            self._train_mode = train_mode
+            # sets train or eval (inference) mode
+            self.qn.train(train_mode)
 
-        self._last_state = state
-        self._last_action = action
+    def make_action(self, state):
+        if self._train_mode and np.random.rand() < self._epsilon:
+            return np.random.choice(self._n_actions)
 
-        return action
+        s = self._to_one_hot(state)
+        qvalues = self.qn.get_qvalues([s])
+        return np.argmax(qvalues)
 
-    def _train(self, s, a, r, ns, is_done):
-        gamma = self.gamma
+    def train(self, s, a, r, ns, is_done):
+        if not self._train_mode:
+            return
+
+        gamma = self._gamma
         # encode input to 1-hot
         s, ns = self._to_one_hot(s), self._to_one_hot(ns)
         # to torch tensors
@@ -61,26 +67,64 @@ class DqnAgent:
         loss = torch.mean(loss)
 
         loss.backward()
-        self.opt.step()
-        self.opt.zero_grad()
+        self._optimizer.step()
+        self._optimizer.zero_grad()
 
     @staticmethod
     def _to_tensor(x, dtype=torch.float32):
         # also to batch
         return torch.tensor([x], dtype=dtype)
 
-    def _make_action(self, state):
-        if np.random.rand() < self.epsilon:
-            return np.random.choice(self._n_actions)
-
-        s = self._to_one_hot(state)
-        qvalues = self.qn.get_qvalues([s])
-        return np.argmax(qvalues)
-
     def _to_one_hot(self, state):
         one_hot_state = np.zeros(self._n_states, dtype=np.float)
         one_hot_state[state] = 1.
         return one_hot_state
+
+
+class DqnAgentRunner:
+    agent: DqnAgent
+    env: Any
+    n_episodes: int
+    max_steps: int
+    verbose: bool
+    train_stats: RunStats
+    test_stats: RunStats
+
+    def __init__(self, agent, env, n_episodes, max_steps, verbose):
+        self.agent = agent
+        self.env = env
+        self.n_episodes = n_episodes
+        self.max_steps = max_steps
+        self.verbose = verbose
+        self.train_stats = RunStats(n_episodes)
+        self.test_stats = RunStats(n_episodes)
+
+    def run(self):
+        for _ in trange(self.n_episodes):
+            for train_mode, stats in zip([True, False], [self.train_stats, self.test_stats]):
+                (steps, reward), elapsed_time = self.run_episode(train_mode=True)
+                stats.append_stats(steps, reward, elapsed_time)
+                trace(self.verbose, '')
+
+    @timed
+    def run_episode(self, train_mode: bool):
+        verbose = self.verbose
+
+        self.agent.reset(train_mode)
+        with torch.set_grad_enabled(train_mode):
+            state = self.env.reset()
+            trace(verbose, f'\nState: {state}')
+            for step in range(self.max_steps):
+                action = self.agent.make_action(state)
+                trace(verbose, f'\nMake action: {action}')
+
+                next_state, reward, done, info = self.env.step(action)
+                self.agent.train(state, action, reward, next_state, done)
+
+                state = next_state
+                trace(verbose, f'\nState: {state}; reward: {reward}')
+                if done:
+                    return step, reward
 
 
 class DqnAgentNetwork(nn.Module):
@@ -104,7 +148,7 @@ class DqnAgentNetwork(nn.Module):
     def forward(self, state):
         """
         takes agent's observation (tensor), returns qvalues (tensor)
-        :param state_t: a batch states, shape = [batch_size, *state_dim=4]
+        :param state: a batch states, shape = [batch_size, *state_dim=4]
         """
         # Use your network to compute qvalues for given state
         qvalues = self.network(state)
@@ -122,5 +166,4 @@ class DqnAgentNetwork(nn.Module):
         """
         states = torch.tensor(states, device=self._device, dtype=torch.float32)
         qvalues = self.forward(states)
-        # or .cpu().numpy()?
         return qvalues.data.detach().numpy()

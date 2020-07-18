@@ -1,11 +1,14 @@
 from collections import deque
+from typing import Any
 
 import numpy as np
+from tqdm import trange
 
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
+from htm_rl.agent.train_eval import RunStats
 from htm_rl.common.base_sar import Sar
-from htm_rl.common.utils import trace
+from htm_rl.common.utils import trace, timed
 
 
 class Agent:
@@ -79,3 +82,38 @@ class Agent:
     @property
     def plan_to_random_ratio(self):
         return (self._n_times_planned + 1) / (self._n_times_random + 1)
+
+
+class AgentRunner:
+    agent: Agent
+    env: Any
+    n_episodes: int
+    max_steps: int
+    verbose: bool
+    train_stats: RunStats
+
+    def __init__(self, agent, env, n_episodes, max_steps, verbose):
+        self.agent = agent
+        self.env = env
+        self.n_episodes = n_episodes
+        self.max_steps = max_steps
+        self.verbose = verbose
+        self.train_stats = RunStats(n_episodes)
+
+    def run(self):
+        for _ in trange(self.n_episodes):
+            (steps, reward), elapsed_time = self.run_episode()
+            self.train_stats.append_stats(steps, reward, elapsed_time)
+            trace(self.verbose, '')
+
+    @timed
+    def run_episode(self):
+        self.agent.reset()
+        state, reward, done = self.env.reset(), 0, False
+        action = self.agent.make_step(state, reward, done, self.verbose)
+
+        for step in range(self.max_steps):
+            if done:
+                return step, reward
+            state, reward, done, info = self.env.step(action)
+            action = self.agent.make_step(state, reward, done, self.verbose)
