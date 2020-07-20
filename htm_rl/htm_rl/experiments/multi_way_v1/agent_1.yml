@@ -1,0 +1,16 @@
+.agent:
+  planning_horizon: 1
+.agent_runner:
+  max_steps: 250
+  n_episodes: 200
+.agent_tm:
+  cells_per_column: 1
+.env:
+  clockwise_action: False
+.env_mdp_cell_transitions:
+  preset_name: multi_way_v1
+.run_results_processor:
+  env_name: multi_way_v1
+  optimal_len: 12
+seed: 1337
+verbosity: 1
