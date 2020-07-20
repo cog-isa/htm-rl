@@ -144,5 +144,6 @@ notebooks/00_scratchpad.ipynb
 htm_rl/htm_rl/scratch.py
 
 # experiments folder
-experiments/*.pkl
-experiments/*.png
+/htm_rl/htm_rl/experiments/**/*.pkl
+/htm_rl/htm_rl/experiments/**/*.png
+/htm_rl/htm_rl/experiments/**/*.csv.tar.gz

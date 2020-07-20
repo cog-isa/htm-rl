@@ -1,0 +1,13 @@
+.dqn_agent_runner:
+  max_steps: 15
+  n_episodes: 50
+.env:
+  clockwise_action: False
+.env_mdp_cell_transitions:
+  path_directions: [0, 1]
+  preset_name: passage
+.run_results_processor:
+  env_name: passage_0_01
+  optimal_len: 3
+seed: 1337
+verbosity: 1

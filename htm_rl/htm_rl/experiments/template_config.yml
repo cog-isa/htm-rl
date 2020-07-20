@@ -1,0 +1,15 @@
+.agent:
+  planning_horizon: 4
+.agent_runner:
+  max_steps: 10
+  n_episodes: 30
+.agent_tm:
+  cells_per_column: 1
+.dqn_agent_runner:
+  max_steps: 20
+  n_episodes: 300
+.env_mdp_cell_transitions:
+  path_directions: [0, 1]
+  preset_name: passage
+seed: 1337
+verbosity: 1
