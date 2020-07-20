@@ -101,10 +101,12 @@ class AgentRunner:
         self.train_stats = RunStats(n_episodes)
 
     def run(self):
+        trace(self.verbose, '============> RUN HTM AGENT')
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode()
             self.train_stats.append_stats(steps, reward, elapsed_time)
             trace(self.verbose, '')
+        trace(self.verbose, '<============')
 
     @timed
     def run_episode(self):
@@ -112,8 +114,10 @@ class AgentRunner:
         state, reward, done = self.env.reset(), 0, False
         action = self.agent.make_step(state, reward, done, self.verbose)
 
-        for step in range(self.max_steps):
-            if done:
-                return step, reward
+        step = 0
+        while step < self.max_steps and not done:
             state, reward, done, info = self.env.step(action)
             action = self.agent.make_step(state, reward, done, self.verbose)
+            step += 1
+
+        return step, reward

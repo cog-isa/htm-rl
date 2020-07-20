@@ -100,11 +100,13 @@ class DqnAgentRunner:
         self.test_stats = RunStats(n_episodes)
 
     def run(self):
+        trace(self.verbose, '============> RUN DQN AGENT')
         for _ in trange(self.n_episodes):
             for train_mode, stats in zip([True, False], [self.train_stats, self.test_stats]):
                 (steps, reward), elapsed_time = self.run_episode(train_mode=True)
                 stats.append_stats(steps, reward, elapsed_time)
                 trace(self.verbose, '')
+        trace(self.verbose, '<============')
 
     @timed
     def run_episode(self, train_mode: bool):
@@ -112,9 +114,10 @@ class DqnAgentRunner:
 
         self.agent.reset(train_mode)
         with torch.set_grad_enabled(train_mode):
-            state = self.env.reset()
+            state, step, done = self.env.reset(), 0, False
             trace(verbose, f'\nState: {state}')
-            for step in range(self.max_steps):
+
+            while step < self.max_steps and not done:
                 action = self.agent.make_action(state)
                 trace(verbose, f'\nMake action: {action}')
 
@@ -123,8 +126,9 @@ class DqnAgentRunner:
 
                 state = next_state
                 trace(verbose, f'\nState: {state}; reward: {reward}')
-                if done:
-                    return step, reward
+                step += 1
+
+            return step, reward
 
 
 class DqnAgentNetwork(nn.Module):

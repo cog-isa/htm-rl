@@ -142,3 +142,7 @@ notebooks/00_scratchpad.ipynb
 
 # temporal scratchpad script
 htm_rl/htm_rl/scratch.py
+
+# experiments folder
+experiments/*.pkl
+experiments/*.png

@@ -3,18 +3,20 @@ import random
 from abc import abstractmethod
 from dataclasses import dataclass
 from pprint import pprint
-from typing import Any, Callable, Dict, List, Type
+from typing import Any, Callable, Dict, List, Type, Optional
 
 import numpy as np
+import yaml
 
 from htm_rl.agent.agent import Agent, AgentRunner
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
+from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 from htm_rl.common.base_sar import SarRelatedComposition
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.common.utils import trace, project_to_type_fields
+from htm_rl.common.utils import trace, project_to_type_fields, isnone
 from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 from htm_rl.testing_envs import PresetMdpCellTransitions
@@ -65,7 +67,7 @@ class MdpCellTransitionsGeneratorConfig(BaseConfig):
 
     @classmethod
     def path(cls):
-        return '.mdp_cell_transitions'
+        return '.env_mdp_cell_transitions'
 
     @classmethod
     def apply_defaults(cls, config, global_config):
@@ -103,8 +105,8 @@ class MdpEnvConfig(BaseConfig):
     def apply_defaults(cls, config, global_config):
         config['seed'] = global_config['seed']
 
-        if 'mdp_cell_transitions' in global_config:
-            config['cell_transitions'] = global_config['mdp_cell_transitions']
+        if 'env_mdp_cell_transitions' in global_config:
+            config['cell_transitions'] = global_config['env_mdp_cell_transitions']
 
     def make(self, verbose=False):
         initial_state = (self.initial_cell, self.initial_direction)
@@ -128,7 +130,7 @@ class SarSdrEncoderConfig(BaseConfig):
 
     @classmethod
     def path(cls):
-        return '.encoder'
+        return '.agent_encoder'
 
     @classmethod
     def apply_defaults(cls, config, global_config):
@@ -170,12 +172,12 @@ class TemporalMemoryConfig(BaseConfig):
 
     @classmethod
     def path(cls):
-        return '.tm'
+        return '.agent_tm'
 
     @classmethod
     def apply_defaults(cls, config, global_config):
-        if 'encoder' in global_config:
-            encoder: SarSdrEncoder = global_config['encoder']
+        if 'agent_encoder' in global_config:
+            encoder: SarSdrEncoder = global_config['agent_encoder']
 
             activation_threshold = encoder.activation_threshold
 
@@ -226,13 +228,13 @@ class AgentConfig(BaseConfig):
         env = global_config['env']
         config['n_actions'] = env.n_actions
 
-        if 'encoder' in global_config:
-            encoder = global_config['encoder']
+        if 'agent_encoder' in global_config:
+            encoder = global_config['agent_encoder']
             config['encoder'] = encoder
             config['sdr_formatter'] = encoder.format
 
-        if 'tm' in global_config:
-            config['tm'] = global_config['tm']
+        if 'agent_tm' in global_config:
+            config['tm'] = global_config['agent_tm']
 
     def make(self, verbose=False):
         memory = Memory(
@@ -287,7 +289,7 @@ class AgentRunnerConfig(BaseConfig):
     def apply_defaults(cls, config, global_config):
         config['env'] = global_config['env']
         config['agent'] = global_config['agent']
-        config['verbose'] = global_config['verbosity'] > 0
+        config['verbose'] = global_config['verbosity'] > 1
 
     def make(self, verbose=False):
         return AgentRunner(
@@ -311,11 +313,34 @@ class DqnAgentRunnerConfig(BaseConfig):
     def apply_defaults(cls, config, global_config):
         config['env'] = global_config['env']
         config['agent'] = global_config['dqn_agent']
-        config['verbose'] = global_config['verbosity'] > 0
+        config['verbose'] = global_config['verbosity'] > 1
 
     def make(self, verbose=False):
         kwargs = dataclasses.asdict(self)
         return DqnAgentRunner(**kwargs)
+
+
+@dataclass
+class RunResultsProcessorConfig(BaseConfig):
+    env_name: str
+    optimal_len: int
+    test_dir: str
+    moving_average: int = 4
+    verbose: bool = True
+
+    @classmethod
+    def path(cls):
+        return '.run_results_processor'
+
+    @classmethod
+    def apply_defaults(cls, config, global_config):
+        if 'test_dir' in global_config:
+            config['test_dir'] = global_config['test_dir']
+
+    def make(self, verbose=False):
+        return RunResultsProcessor(
+            self.env_name, self.optimal_len, self.test_dir, self.moving_average, self.verbose
+        )
 
 
 class ConfigBasedFactory:
@@ -325,12 +350,12 @@ class ConfigBasedFactory:
         self.config = config
         self.verbose = config.get('verbosity', 0) > 0
 
-    def make(self, *config_type):
+    def make_(self, *config_type):
         return [
-            self.make_obj(config_type) for config_type in config_type
+            self.make_obj_(config_type) for config_type in config_type
         ]
 
-    def make_obj(self, config_type: Type[BaseConfig]):
+    def make_obj_(self, config_type: Type[BaseConfig]):
         config_path = config_type.path()
         config = self[config_path]
 
@@ -364,3 +389,78 @@ class ConfigBasedFactory:
 
     def _get_name(self, path):
         return path.split('.')[-1]
+
+
+class TestRunner:
+    config: Dict
+
+    def __init__(self, config):
+        self.config = config
+        self.factory = ConfigBasedFactory(config)
+
+    def run(self, which_agent=None):
+        # make env
+        self.factory.make_(
+            MdpCellTransitionsGeneratorConfig,
+            MdpEnvConfig,
+        )
+
+        run_results_processor: Optional[RunResultsProcessor] = None
+        if '.run_results_processor' in self.config:
+            self.factory.make_(RunResultsProcessorConfig)
+            run_results_processor = self.config['run_results_processor']
+
+        if '.agent_runner' in self.config and isnone(which_agent, 'htm') == 'htm':
+            self._run_htm_agent(run_results_processor)
+
+        if '.dqn_agent_runner' in self.config and isnone(which_agent, 'dqn') == 'dqn':
+            self._run_dqn_agent(run_results_processor)
+
+    def aggregate_results(self):
+        self.factory.make_(RunResultsProcessorConfig)
+        run_results_processor: RunResultsProcessor = self.config['run_results_processor']
+        run_results_processor.aggregate_results()
+
+    def _run_htm_agent(self, run_results_processor):
+        self.factory.make_(
+            SarSdrEncoderConfig,
+            TemporalMemoryConfig,
+            AgentConfig,
+            AgentRunnerConfig,
+        )
+        agent_runner: AgentRunner = self.config['agent_runner']
+        agent_runner.run()
+
+        agent: Agent = self.config['agent']
+        planning_horizon = agent.planner.planning_horizon
+
+        if run_results_processor is not None:
+            run_results_processor.store_result(agent_runner.train_stats, f'htm_{planning_horizon}')
+
+    def _run_dqn_agent(self, run_results_processor):
+        self.factory.make_(
+            DqnAgentConfig,
+            DqnAgentRunnerConfig,
+        )
+        agent_runner: DqnAgentRunner = self.config['dqn_agent_runner']
+        agent_runner.run()
+
+        if run_results_processor is not None:
+            run_results_processor.store_result(agent_runner.train_stats, f'dqn_eps')
+            run_results_processor.store_result(agent_runner.test_stats, f'dqn_greedy')
+
+
+def read_config(file_name):
+    if file_name is None:
+        return None
+
+    with open(file_name, 'r') as stream:
+        return yaml.safe_load(stream)
+
+
+def save_config(file_name, config):
+    if file_name is None:
+        return None
+
+    with open(file_name, 'w', encoding='utf8') as stream:
+        yaml.safe_dump(config, stream, allow_unicode=True, default_flow_style=False)
