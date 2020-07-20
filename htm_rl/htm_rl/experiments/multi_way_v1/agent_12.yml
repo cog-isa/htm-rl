@@ -3,6 +3,7 @@
 .agent_runner:
   max_steps: 250
   n_episodes: 200
+  pretrain: 15
 .agent_tm:
   cells_per_column: 1
 .env:

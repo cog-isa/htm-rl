@@ -89,20 +89,29 @@ class AgentRunner:
     env: Any
     n_episodes: int
     max_steps: int
+    pretrain: int
     verbose: bool
     train_stats: RunStats
 
-    def __init__(self, agent, env, n_episodes, max_steps, verbose):
+    def __init__(self, agent, env, n_episodes, max_steps, pretrain, verbose):
         self.agent = agent
         self.env = env
         self.n_episodes = n_episodes
         self.max_steps = max_steps
+        self.pretrain = pretrain
         self.verbose = verbose
         self.train_stats = RunStats(n_episodes)
 
     def run(self):
         trace(self.verbose, '============> RUN HTM AGENT')
-        for _ in trange(self.n_episodes):
+        if self.pretrain > 0:
+            planning_horizon = self.agent.planner.planning_horizon
+            self.agent.set_planning_horizon(0)
+
+        for ep in trange(self.n_episodes):
+            if ep == self.pretrain:
+                self.agent.set_planning_horizon(planning_horizon)
+
             (steps, reward), elapsed_time = self.run_episode()
             self.train_stats.append_stats(steps, reward, elapsed_time)
             trace(self.verbose, '')

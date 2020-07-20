@@ -280,6 +280,7 @@ class AgentRunnerConfig(BaseConfig):
     n_episodes: int
     max_steps: int
     verbose: bool
+    pretrain: int = 0
 
     @classmethod
     def path(cls):
@@ -293,7 +294,7 @@ class AgentRunnerConfig(BaseConfig):
 
     def make(self, verbose=False):
         return AgentRunner(
-            self.agent, self.env, self.n_episodes, self.max_steps, self.verbose
+            self.agent, self.env, self.n_episodes, self.max_steps, self.pretrain, self.verbose
         )
 
 
