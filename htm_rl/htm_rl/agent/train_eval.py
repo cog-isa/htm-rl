@@ -67,6 +67,8 @@ class RunResultsProcessor:
         df_times: pd.DataFrame = pd.concat(self._get_columns(dfs, 'times'), axis=1, keys=col_names)
         df_rewards: pd.DataFrame = pd.concat(self._get_columns(dfs, 'rewards'), axis=1, keys=col_names)
         df_rewards *= self.optimal_len / df_steps
+        # print(df_rewards.max(axis=0))
+        # print(df_steps.min(axis=0))
 
         ma = self.moving_average
         self._plot_figure(df_rewards, f'Episode rewards, fraction of optimal, MA={ma}', 'rewards')

@@ -252,8 +252,8 @@ class DqnAgentConfig(BaseConfig):
     n_actions: int
     seed: int
     epsilon: float = .15
-    gamma: float = .99
-    lr: float = .5e-3
+    gamma: float = .975
+    lr: float = .3e-3
 
     @classmethod
     def path(cls):

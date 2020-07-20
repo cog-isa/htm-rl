@@ -17,6 +17,7 @@ class PresetMdpCellTransitions:
         #567#
         #####
         """
+        optimal_path_len = (7, 5)
         return [
             (0, 0, 1),  # c0 > c1
             (0, 3, 3),  # c0 . c3
@@ -39,6 +40,7 @@ class PresetMdpCellTransitions:
         ###234#
         #######
         """
+        optimal_path_len = (12, 10)
         return [
             (0, 0, 1),  # c0 > c1
             (0, 3, 3),  # c0 . c3
@@ -71,6 +73,7 @@ class PresetMdpCellTransitions:
         ###5#####
         #########
         """
+        optimal_path_len = (16, 12)
         return [
             (0, 0, 1),  # c0 > c1
             (0, 3, 3),  # c0 . c3
