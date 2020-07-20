@@ -103,10 +103,17 @@ class DqnAgentRunner:
         trace(self.verbose, '============> RUN DQN AGENT')
         for _ in trange(self.n_episodes):
             for train_mode, stats in zip([True, False], [self.train_stats, self.test_stats]):
-                (steps, reward), elapsed_time = self.run_episode(train_mode=True)
+                (steps, reward), elapsed_time = self.run_episode(train_mode=train_mode)
                 stats.append_stats(steps, reward, elapsed_time)
                 trace(self.verbose, '')
         trace(self.verbose, '<============')
+
+    def print_q_values(self):
+        self.agent.reset(False)
+        with torch.set_grad_enabled(False):
+            for s in range(self.agent._n_states):
+                a = self.agent.make_action(s)
+                print(s, a)
 
     @timed
     def run_episode(self, train_mode: bool):
@@ -157,7 +164,8 @@ class DqnAgentNetwork(nn.Module):
         # Use your network to compute qvalues for given state
         qvalues = self.network(state)
 
-        assert qvalues.requires_grad, "qvalues must be a torch tensor with grad"
+        if self.training:
+            assert qvalues.requires_grad, "qvalues must be a torch tensor with grad"
         assert len(qvalues.shape) == 2 \
             and qvalues.shape[0] == state.shape[0] \
             and qvalues.shape[1] == self.n_actions
