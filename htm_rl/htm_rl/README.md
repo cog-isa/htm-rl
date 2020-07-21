@@ -366,10 +366,9 @@ Rationale:
 
 Оптимальная политика - 16 действий.
 
-![episode reward](https://i.imgur.com/Snu2UCZ.png)
-![episode steps](https://i.imgur.com/tloDKvP.png)
-![episode execution time](https://i.imgur.com/Cej4avz.png)
-
+![episode reward](https://i.imgur.com/4oILm7X.png)
+![episode steps](https://i.imgur.com/oqdeYbC.png)
+![episode execution time](https://i.imgur.com/odBBTlv.png)
 
 ## Planning
 

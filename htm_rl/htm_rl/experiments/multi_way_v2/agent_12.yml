@@ -1,9 +1,9 @@
 .agent:
-  planning_horizon: 4
+  planning_horizon: 12
 .agent_runner:
-  max_steps: 1500
-  n_episodes: 200
-  pretrain: 10
+  max_steps: 1000
+  n_episodes: 100
+  pretrain: 15
 .agent_tm:
   cells_per_column: 1
 .env:
