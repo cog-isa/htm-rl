@@ -71,9 +71,11 @@ class RunResultsProcessor:
         # print(df_steps.min(axis=0))
 
         ma = self.moving_average
-        self._plot_figure(df_rewards, f'Episode rewards, fraction of optimal, MA={ma}', 'rewards')
-        self._plot_figure(df_steps, f'Episode lengths, steps, MA={ma}', 'steps')
-        self._plot_figure(df_times, f'Episode durations, sec, MA={ma}', 'times')
+        rewards_title = f'{self.env_name}: episode reward, fraction of optimal, MA={ma}'
+        self._plot_figure(df_rewards, rewards_title, 'rewards')
+
+        self._plot_figure(df_steps, f'{self.env_name}: episode duration, steps, MA={ma}', 'steps')
+        self._plot_figure(df_times, f'{self.env_name}: episode execution time, sec, MA={ma}', 'times')
         plt.show()
 
     def _plot_figure(self, df: pd.DataFrame, title: str, fname):

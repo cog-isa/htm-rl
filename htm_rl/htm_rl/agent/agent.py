@@ -109,7 +109,7 @@ class AgentRunner:
             self.agent.set_planning_horizon(0)
 
         for ep in trange(self.n_episodes):
-            if ep == self.pretrain:
+            if 0 < self.pretrain == ep:
                 self.agent.set_planning_horizon(planning_horizon)
 
             (steps, reward), elapsed_time = self.run_episode()
