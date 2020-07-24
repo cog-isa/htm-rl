@@ -1,0 +1,4 @@
+reports/**/*.png filter=lfs diff=lfs merge=lfs -text
+reports/**/*.pkl filter=lfs diff=lfs merge=lfs -text
+reports/**/*.csv filter=lfs diff=lfs merge=lfs -text
+reports/**/*.csv.tar.gz filter=lfs diff=lfs merge=lfs -text
