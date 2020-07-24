@@ -5,7 +5,9 @@
   - [Installation](#installation)
     - [Python package requirements](#python-package-requirements)
     - [Jupyter Notebooks stripping](#jupyter-notebooks-stripping)
-    - [htm_rl package use in Jupyter Notebooks](#htm_rl-package-use-in-jupyter-notebooks)
+      - [Jupyter Notebooks trusting and stripping setup details](#jupyter-notebooks-trusting-and-stripping-setup-details)
+    - [Using `htm_rl` package in Jupyter Notebooks](#using-htm_rl-package-in-jupyter-notebooks)
+    - [Git LFS: working with data files](#git-lfs-working-with-data-files)
   - [Project structure and guideline](#project-structure-and-guideline)
   - [Quick intro](#quick-intro)
     - [HTM](#htm)
@@ -22,18 +24,18 @@
 
 ### Python package requirements
 
-`[Optional]` Create environment `htm_rl` with _conda_ (alternatives are _pipenv_ and _virtualenv_):
+1. `[Optional]` Create environment `htm_rl` with _conda_ (alternatives are _pipenv_ and _virtualenv_):
   
-```bash
-conda create --name htm_rl
-conda activate htm_rl
-```
+    ```bash
+    conda create --name htm_rl
+    conda activate htm_rl
+    ```
 
-Install requirements [specified in _requirements.txt_]:
+2. Install requirements [specified in _requirements.txt_]:
 
-```bash
-pip install -r requirements.txt
-```
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 ### Jupyter Notebooks stripping
 
@@ -45,12 +47,64 @@ To set everything up just run:
 tools/run-after-git-clone
 ```
 
-As a result, folders dedicated for notebooks will have
+Folders dedicated for notebooks are:
 
 - `./notebooks/`: output erased
+- `./notebooks/reports/`: output retained
+  - so, it's a special subfolder in `notebooks` for this purpose!
+
+Also notebooks can be included in reports, hence it has stripping [and trusting] rule too:
+
 - `./reports/`: output retained
 
-### htm_rl package use in Jupyter Notebooks
+#### Jupyter Notebooks trusting and stripping setup details
+
+_Skip this section if you just want to install the repo._
+
+This section consists of details about how it was done, in case it has to be re-done again. Rationale:
+
+- stripping is for stripping unneccessary metadata
+- trusting
+  - normally, modified outside of jupyter environment notebooks lose their "trusted" state, so you won't be able to run them automatically and will need to manually set them to be trusted.
+  - the following setup does it automatically for you on `git pull`
+
+Steps:
+
+- Configure which directories you want to be "auto-trusted" by editing `tools/trust-doc-nbs`:
+
+  ```python
+  trust_nbs('./notebooks')
+  trust_nbs('./reports')
+  ```
+
+  - if you ever need to reconfigure the set of trusted folders, just edit the file again and nothing more :)
+- Add `.gitconfig` to `.gitignore`
+- Configure which directories you want to strip [and how] by placing the right `.gitattributes` files into these folders.
+  - This `.gitattributes` will strip out all the unnecessary bits and keep the `output`s:
+
+    ``` python
+    *.ipynb filter=fastai-nbstripout-code
+    *.ipynb diff=ipynb-code
+    ```
+
+  - This `.gitattributes` will strip out all the unnecessary bits, including the `output`s:
+
+    ```python
+    *.ipynb filter=fastai-nbstripout-docs
+    *.ipynb diff=ipynb-docs
+    ```
+
+  - If you ever need to change which and how directories have to be stripped, just operate with `.gitattributes` files, i.e. nothing has to be done with git or `tools/` scripts. But remember about the set of trusting folders too.
+
+- `git add` created `.gitattributes` files before proceeding
+  - as I understand, you don't have to commit them
+- run `tools/run-after-git-clone` to setup things, which
+  - auto-generates `.gitconfig`
+  - sets up git hooks
+
+After it's done and commited only the last step is have to be done by any other repo users on git clone [exactly as it's said in the guide in previous section].
+
+### Using `htm_rl` package in Jupyter Notebooks
 
 To have an ability to import and use `htm_rl` package in Jupyter Notebooks, install it with _development mode_ flag:
 
@@ -60,6 +114,38 @@ cd <project_root>/htm_rl
 pip install -e .
 ```
 
+### Git LFS: working with data files
+
+TL;DR for Linux:
+
+```bash
+apt-get install git-lfs && git lfs install
+```
+
+___
+
+Storing binary or any other "data" files in a repository can quickly bloat its size. They rarely change, and if so, mostly as a whole (i.e they are added or deleted, not edited). But git still treats them as text files and tries to track their content, putting it to its index.
+
+If only was a way to track some signature of these files, store their content somewhere else and pull them only on demand - i.e. on checkout!
+
+Fortunately, that's exactly what Git[hub] LFS, which stands for Large File Storage, do :)
+
+> Git Large File Storage (LFS) replaces large files such as audio samples, videos, datasets, and graphics with text pointers inside Git, while storing the file contents on a remote server like GitHub.com or GitHub Enterprise.
+
+To setup Git LFS you need to [download and install](https://github.com/git-lfs/git-lfs#downloading) `git-lfs` first. E.g. for Linux it's just a:
+
+```bash
+apt-get install git-lfs
+```
+
+Then "link" git and git-lfs together by:
+
+```bash
+git lfs install
+```
+
+After that you just work as usual :)
+
 ## Project structure and guideline
 
 Project structure:
@@ -68,7 +154,8 @@ Project structure:
 - `./reports/` - any [markdown, tex, Jupyter Notebooks] reports
 - `./tools/` - any 3rd party tools and scripts
 - `./htm_rl/htm_rl/` - `htm_rl` package src code
-- __NB__: these files are added to _.gitignore_ so you can use them as local temporal scratchpad
+  - `./experiments/` - configs and results of experiments
+- __NB__: the following files are added to _.gitignore_ so you can use them as a local temporal scratchpad
   - `./notebooks/00_scratchpad.ipynb`
   - `./htm_rl/htm_rl/scratch.py`
 
@@ -100,7 +187,7 @@ Additional useful links:
 
 *Outdated*
 
-Entry points are `run_mdp_test.py` and `run_gridworld_test.py`. The former is for simpler develop/debug purposes as you can test implementation on a simple low-dimentional MDP. The latter is for testing/evaluation purposes as you have more complex environrment (taken from gym-minigrid package).
+Entry point is `run_mdp_test.py`.
 
 ## TODO
 
@@ -134,9 +221,9 @@ Non-critical issues needing further investigation
 Auxialiary tasks, usability improvements and so on
 
 - [x] make FAQ on TM params
-- [ ] config based tests
-  - [ ] fine grained trace verbosity levels
-  - [ ] test config + builder classes
+- [x] config based tests
+  - [x] test config + builder classes
+- [ ] fine grained trace verbosity levels
 - [ ] setup release-based dev cycle
   - add tagging to git commits
   - how to add release notes

@@ -1,3 +1,26 @@
+# ============ Project specific =======================
+
+# pycharm project-specific settings
+.idea/
+
+# additional auto-generated git config
+.gitconfig
+
+# temporal scratchpad notebook
+notebooks/00_scratchpad.ipynb
+
+# temporal scratchpad script
+htm_rl/htm_rl/scratch.py
+
+# data files in experiments folder
+/htm_rl/**/*.pkl
+/htm_rl/**/*.png
+/htm_rl/**/*.csv.tar.gz
+
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+# please, place all project specific rules above this line
+# =====================================================
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -128,22 +151,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-# ============ Project specific =======================
-
-# pycharm project-specific settings
-.idea/
-
-# additional auto-generated git config
-.gitconfig
-
-# temporal scratchpad notebook
-notebooks/00_scratchpad.ipynb
-
-# temporal scratchpad script
-htm_rl/htm_rl/scratch.py
-
-# experiments folder
-/htm_rl/htm_rl/experiments/**/*.pkl
-/htm_rl/htm_rl/experiments/**/*.png
-/htm_rl/htm_rl/experiments/**/*.csv.tar.gz
