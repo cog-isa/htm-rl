@@ -20,9 +20,8 @@ class SarSdrEncoder:
     _encoders: SarRelatedComposition
     _shifts: SarRelatedComposition
 
-    def __init__(self, encoders):
-        if not isinstance(encoders, SarRelatedComposition):
-            encoders = SarRelatedComposition(*encoders)
+    def __init__(self, state_encoder, action_encoder, reward_encoder):
+        encoders = SarRelatedComposition(state_encoder, action_encoder, reward_encoder)
 
         self.value_bits = sum(e.value_bits for e in encoders)
         self.total_bits = sum(e.total_bits for e in encoders)

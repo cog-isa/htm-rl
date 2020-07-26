@@ -1,0 +1,65 @@
+seed: &seed 1337
+verbosity: &verbosity 1
+base_env: &base_env
+  cell_transitions:
+  initial_cell: 0
+  initial_direction: 0
+  cell_gonality: 4
+  allow_clockwise_action: False
+  seed: *seed
+env: !env &env_passage
+  <<: *base_env
+  cell_transitions: !passage_transitions
+    path: [0, 1, 0]
+
+#
+#.agent:
+#  planning_horizon: 0
+#.agent_runner:
+#  max_steps: 15
+#  n_episodes: 50
+#.agent_tm:
+#  cells_per_column: 1
+#.run_results_processor:
+#  env_name: passage_0_01
+#  optimal_len: 3
+#seed: 1337
+#verbosity: 1
+#
+#.agent:
+#  planning_horizon: 4
+#.agent_runner:
+#  max_steps: 15
+#  n_episodes: 50
+#.agent_tm:
+#  cells_per_column: 1
+#.env:
+#  clockwise_action: False
+#.env_mdp_cell_transitions:
+#  path_directions: [0, 1]
+#  preset_name: passage
+#.run_results_processor:
+#  env_name: passage_0_01
+#  optimal_len: 3
+#seed: 1337
+#verbosity: 1
+#
+#.dqn_agent_runner:
+#  max_steps: 15
+#  n_episodes: 50
+#.env:
+#  clockwise_action: False
+#.env_mdp_cell_transitions:
+#  path_directions: [0, 1]
+#  preset_name: passage
+#.run_results_processor:
+#  env_name: passage_0_01
+#  optimal_len: 3
+#seed: 1337
+#verbosity: 1
+#
+#.run_results_processor:
+#  env_name: passage_0_01
+#  optimal_len: 3
+#seed: 1337
+#verbosity: 1

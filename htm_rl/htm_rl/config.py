@@ -2,11 +2,13 @@ import dataclasses
 import random
 from abc import abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from pprint import pprint
 from typing import Any, Callable, Dict, List, Type, Optional
+from inspect import getattr_static
 
 import numpy as np
-import yaml
+from ruamel.yaml import YAML, BaseConstructor, BaseLoader
 
 from htm_rl.agent.agent import Agent, AgentRunner
 from htm_rl.agent.memory import Memory
@@ -151,8 +153,7 @@ class SarSdrEncoderConfig(BaseConfig):
         action_encoder = IntSdrEncoder('action', n_actions, bpa, bpa - 1, trace_format)
         reward_encoder = IntSdrEncoder('reward', n_rewards, bpr, bpr - 1, trace_format)
 
-        encoders = SarRelatedComposition(state_encoder, action_encoder, reward_encoder)
-        return SarSdrEncoder(encoders)
+        return SarSdrEncoder(state_encoder, action_encoder, reward_encoder)
 
 
 @dataclass
@@ -451,12 +452,40 @@ class TestRunner:
             run_results_processor.store_result(agent_runner.test_stats, f'dqn_greedy')
 
 
-def read_config(file_name):
-    if file_name is None:
-        return None
+class TagProxies:
+    @classmethod
+    def register_all_tags(cls, yaml: YAML):
+        constructor: BaseConstructor = yaml.constructor
+        all_funcs = [
+            (func, getattr_static(cls, func))
+            for func in dir(cls)
+        ]
+        funcs = [
+            (tag, getattr(cls, tag))
+            for tag, func in all_funcs
+            if isinstance(func, staticmethod)
+        ]
+        for tag, func in funcs:
+            constructor.add_constructor(f'!{tag}', func)
 
-    with open(file_name, 'r') as stream:
-        return yaml.safe_load(stream)
+    @staticmethod
+    def passage_transitions(loader: BaseLoader, node):
+        kwargs = loader.construct_mapping(node, deep=True)
+        return PresetMdpCellTransitions.passage(**kwargs)
+
+    @staticmethod
+    def env(loader: BaseLoader, node):
+        kwargs = loader.construct_mapping(node)
+        kwargs['env_type'] = Mdp
+        return GridworldMdpGenerator.generate_env(**kwargs)
+
+def read_config(file_path: Path, verbose=False):
+    yaml = YAML(typ='safe')
+    TagProxies.register_all_tags(yaml)
+    config = yaml.load(file_path)
+    if verbose:
+        pprint(config)
+    return config
 
 
 def save_config(file_name, config):

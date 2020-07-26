@@ -85,12 +85,16 @@ class GridworldMdpGenerator:
     """
     _n_cell_edges: int
 
-    def __init__(self, n_cell_edges: int = 4):
+    def __init__(
+            self, n_cell_edges: int = 4
+    ):
         assert n_cell_edges >= 2 and n_cell_edges % 2 == 0
         self._n_cell_edges = n_cell_edges
 
+    @classmethod
     def generate_env(
-            self, env_type: Type[Mdp], initial_state, cell_transitions, allow_clockwise_action=False, seed=None
+            cls, env_type: Type[Mdp], initial_cell, initial_direction, cell_transitions,
+            cell_gonality: int = 4, allow_clockwise_action=False, seed=None
     ) -> Mdp:
         """
         Generates MDP/POMDP based on a grid world with 2 [or 3] allowed actions:
@@ -109,11 +113,12 @@ class GridworldMdpGenerator:
         :param seed: optional seed for a random generator
         :return: Gym's environment-like object
         """
-        transitions = self._generate_transitions(cell_transitions, allow_clockwise_action)
+        generator = cls(cell_gonality)
+        transitions = generator._generate_transitions(cell_transitions, allow_clockwise_action)
 
-        if initial_state is not None and initial_state[1] is not None:
-            cell, view_direction = initial_state
-            initial_state = self._state(cell, view_direction)
+        initial_state = None
+        if initial_cell is not None and initial_direction is not None:
+            initial_state = generator._state(initial_cell, initial_direction)
 
         return env_type(transitions, initial_state, seed)
 
