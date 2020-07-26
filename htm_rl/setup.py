@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='htm_rl',
-    version='0.1',
+    version='1.0',
     description='RL agent based on HTM framework',
     url='https://github.com/cog-isa/htm-rl/',
     author='Petr Kuderov',
