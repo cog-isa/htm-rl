@@ -191,19 +191,39 @@ Entry point is `run_mdp_test.py`.
 
 ## TODO
 
+**Urgent**:
+
+- add ruamel.yaml to requirements
+- describe config based building details
+  - conventions
+  - implementation
+  - patches
+
 Research + functional tasks
 
 - [x] Adapt planning algo for high order TMs
 - [x] Make semi-handcrafted POMDP version of gridworld generator
   - naive version w/ ray casting maybe is enough
+- [ ] Adapt planning to goal-based strategy
+  - [ ] Switch from reward-based planning to goal-based
+    - [ ] Cut out reward from encoding and memorizing
+    - [ ] Track history of rewarding states and plan according to any of them
+      - add naive list-based rewarding states tracking
+  - [ ] Test transfer learning capabilities
+    - [ ] Adapt environments for random initial states
+    - [ ] Adapt environments for random rewarding states
+    - [ ] Make the set of testing environments
+    - [ ] Adapt test runners for a multi-environment tests
+    - [ ] Make config for an experiment
+    - [ ] Run experiment
+  - [ ] Report results
+    - [ ] Update method description
+    - [ ] Add experiment results
 - [ ] Split SAR TM into 2 TMs
   - State TM: (s, a) $\rightarrow$ s'
   - Action TM: s $\rightarrow$ a
   - Direct external rewards aren't a thing
   - Reinforcement isn't tracked ATM
-- [ ] Adapt planning to goal-based strategy
-  - switch from reward-based planning to goal-based
-  - no reinforcement
 - [ ] Investigate `MaxSegmentsPerCell` parameter impact
 - [ ] Implement integer encoder w/ overlapping buckets
   - overlapping should be a parameter
@@ -223,6 +243,9 @@ Auxialiary tasks, usability improvements and so on
 - [x] make FAQ on TM params
 - [x] config based tests
   - [x] test config + builder classes
+  - [ ] improve config based building:
+    - one config file for one test run (=all agents one test)
+    - or even one config file for the whole experiment (=all agents all tests)
 - [ ] fine grained trace verbosity levels
 - [ ] setup release-based dev cycle
   - add tagging to git commits
