@@ -1,26 +1,23 @@
 import dataclasses
-import inspect
 import random
 from abc import abstractmethod
 from dataclasses import dataclass
-from itertools import chain
+from inspect import getattr_static
 from pathlib import Path
 from pprint import pprint
-from typing import Any, Callable, Dict, List, Type, Optional
-from inspect import getattr_static
+from typing import Any, Dict, List
 
 import numpy as np
-from ruamel.yaml import YAML, BaseConstructor, BaseLoader, Constructor, SafeConstructor
+from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
 from htm_rl.agent.agent import Agent, AgentRunner
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
-from htm_rl.common.base_sar import SarRelatedComposition
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.common.utils import trace, isnone
+from htm_rl.common.utils import trace
 from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 from htm_rl.testing_envs import PresetMdpCellTransitions
@@ -53,6 +50,7 @@ class RandomSeedSetter:
         random.seed(seed)
         np.random.seed(seed)
 
+
 @dataclass
 class MdpCellTransitionsGeneratorConfig(BaseConfig):
     preset_name: str
@@ -79,42 +77,6 @@ class MdpCellTransitionsGeneratorConfig(BaseConfig):
             return PresetMdpCellTransitions.multi_way_v2()
         elif preset_name == 'multi_way_v3':
             return PresetMdpCellTransitions.multi_way_v3()
-
-
-@dataclass
-class SarSdrEncoderConfig(BaseConfig):
-    n_unique_states: int
-    n_unique_actions: int
-    n_unique_rewards: int = 2
-    bits_per_state_value: int = 8
-    bits_per_action_value: int = 8
-    bits_per_reward_value: int = 8
-    trace_format: str = 'short'
-
-    @classmethod
-    def path(cls):
-        return '.agent_encoder'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        if 'env' not in global_config:
-            return
-
-        env = global_config['env']
-        config['n_unique_states'] = env.n_states
-        config['n_unique_actions'] = env.n_actions
-
-    def make(self, verbose=False) -> SarSdrEncoder:
-        # shortcuts
-        bps, bpa, bpr = self.bits_per_state_value, self.bits_per_action_value, self.bits_per_reward_value
-        n_states, n_actions, n_rewards = self.n_unique_states, self.n_unique_actions, self.n_unique_rewards
-        trace_format = self.trace_format
-
-        state_encoder = IntSdrEncoder('state', n_states, bps, bps - 1, trace_format)
-        action_encoder = IntSdrEncoder('action', n_actions, bpa, bpa - 1, trace_format)
-        reward_encoder = IntSdrEncoder('reward', n_rewards, bpr, bpr - 1, trace_format)
-
-        return SarSdrEncoder(state_encoder, action_encoder, reward_encoder)
 
 
 @dataclass
@@ -170,72 +132,6 @@ class TemporalMemoryConfig(BaseConfig):
 
 
 @dataclass
-class AgentConfig(BaseConfig):
-    n_actions: int
-    planning_horizon: int
-    encoder: SarSdrEncoder
-    tm: TemporalMemory
-    sdr_formatter: Callable
-    sar_formatter: Callable = SarSuperpositionFormatter.format
-
-    collect_anomalies: bool = False
-    use_cooldown: bool = False
-
-    @classmethod
-    def path(cls):
-        return '.agent'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        env = global_config['env']
-        config['n_actions'] = env.n_actions
-
-        if 'agent_encoder' in global_config:
-            encoder = global_config['agent_encoder']
-            config['encoder'] = encoder
-            config['sdr_formatter'] = encoder.format
-
-        if 'agent_tm' in global_config:
-            config['tm'] = global_config['agent_tm']
-
-    def make(self, verbose=False):
-        memory = Memory(
-            self.tm, self.encoder, self.sdr_formatter, self.sar_formatter,
-            collect_anomalies=self.collect_anomalies
-        )
-        planner = Planner(memory, self.planning_horizon)
-        agent = Agent(memory, planner, self.n_actions, use_cooldown=self.use_cooldown)
-        return agent
-
-
-@dataclass
-class DqnAgentConfig(BaseConfig):
-    n_states: int
-    n_actions: int
-    seed: int
-    epsilon: float = .15
-    gamma: float = .975
-    lr: float = .3e-3
-
-    @classmethod
-    def path(cls):
-        return '.dqn_agent'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        if 'env' in global_config:
-            env = global_config['env']
-            config['n_states'] = env.n_states
-            config['n_actions'] = env.n_actions
-        if 'seed' in global_config:
-            config['seed'] = global_config['seed']
-
-    def make(self, verbose=False):
-        kwargs = dataclasses.asdict(self)
-        return DqnAgent(**kwargs)
-
-
-@dataclass
 class AgentRunnerConfig(BaseConfig):
     env: Any
     agent: Agent
@@ -281,97 +177,6 @@ class DqnAgentRunnerConfig(BaseConfig):
     def make(self, verbose=False):
         kwargs = dataclasses.asdict(self)
         return DqnAgentRunner(**kwargs)
-
-
-@dataclass
-class RunResultsProcessorConfig(BaseConfig):
-    env_name: str
-    optimal_len: int
-    test_dir: str
-    moving_average: int = 4
-    verbose: bool = True
-
-    @classmethod
-    def path(cls):
-        return '.run_results_processor'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        if 'test_dir' in global_config:
-            config['test_dir'] = global_config['test_dir']
-
-    def make(self, verbose=False):
-        return RunResultsProcessor(
-            self.env_name, self.optimal_len, self.test_dir, self.moving_average, self.verbose
-        )
-
-
-class ConfigBasedFactory:
-    config: Dict[str, Any]
-
-    def __init__(self, config: Dict):
-        self.config = config
-        self.verbose = config.get('verbosity', 0) > 0
-
-    def make_(self, *config_type):
-        return [
-            self.make_obj_(config_type) for config_type in config_type
-        ]
-
-    def make_obj_(self, config_type: Type[BaseConfig]):
-        config_path = config_type.path()
-        config = self[config_path]
-
-        try:
-            custom_config = self.project_to_type_fields(config_type, config)
-            config_type.apply_defaults(config, self.config)
-            config.update(custom_config)
-            config_obj = config_type(**config)
-
-            obj = config_obj.make(self.verbose)
-            name = self._get_name(config_path)
-            self.config[name] = obj
-            return obj
-        except:
-            print('\n\n_________________ DEBUG:')
-            print(f'TYPE: {config_type.__name__}')
-            print('CONFIG[TYPE]:')
-            pprint(config)
-            print('GLOBAL CONFIG:')
-            pprint(self.config)
-            print('_______________________')
-            raise
-
-    def __getitem__(self, path):
-        nodes = path.split('.')[1:]
-        config = self.config
-        for node in nodes:
-            config = config.setdefault(f'.{node}', dict())
-        return config
-
-    def _get_name(self, path):
-        return path.split('.')[-1]
-
-    @staticmethod
-    def project_to_type_fields(config_type, config):
-        projection = {
-            field.name: config[field.name]
-            for field in dataclasses.fields(config_type)
-            if field.name in config
-        }
-        return projection
-
-    @staticmethod
-    def project_to_method_params(func, config):
-        argspec = inspect.getfullargspec(func)
-        args = chain(argspec.args, argspec.kwonlyargs)
-
-        projection = {
-            arg_name: config[arg_name]
-            for arg_name in args
-            if arg_name in config
-        }
-        return projection
 
 
 class TestRunner:
