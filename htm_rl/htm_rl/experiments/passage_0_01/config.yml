@@ -1,5 +1,12 @@
-seed: &seed 1337
 verbosity: &verbosity 1
+# TODO: deprecated, use verbosity
+verbose: &verbose False
+
+# seed
+random_seed_setter: !RandomSeedSetter
+  seed: &seed 1337
+
+# environment
 base_env: &base_env
   cell_transitions:
   initial_cell: 0
@@ -7,12 +14,93 @@ base_env: &base_env
   cell_gonality: 4
   allow_clockwise_action: False
   seed: *seed
-env: !env &env_passage
+
+env: !env &env
   <<: *base_env
   cell_transitions: !passage_transitions
     path: [0, 1, 0]
 
-#
+# dqn agent
+env_dimensions: &env_states_actions
+  n_states: !property &n_states [*env, n_states]
+  n_actions: !property &n_actions [*env, n_actions]
+
+dqn_agent: !DqnAgent &dqn_agent
+  <<: *env_states_actions
+  epsilon: .15
+  gamma: .975
+  learning_rate: .3e-3
+  seed: *seed
+
+# htm agent
+base_encoder: &base_encoder
+  name:
+  n_values:
+  value_bits: 8
+  activation_threshold: 7
+  default_format: short
+
+sar_sdr_encoder: &encoder !SarSdrEncoder
+  state_encoder: !IntSdrEncoder
+    <<: *base_encoder
+    name: state
+    n_values: *n_states
+  action_encoder: !IntSdrEncoder
+    <<: *base_encoder
+    name: action
+    n_values: *n_actions
+  reward_encoder: !IntSdrEncoder
+    <<: *base_encoder
+    name: state
+    n_values: 2
+
+temporal_memory: !TemporalMemory &tm
+  n_columns: !property [*encoder, total_bits]
+  cells_per_column: 1
+  initial_permanence: .5
+  connected_permanence: .4
+  activation_threshold: 21            # 7*3
+  learning_threshold: 18              # [a+r].value_bits < x < activation_threshold
+  predictedSegmentDecrement: .0001
+  permanenceIncrement: .1
+  permanenceDecrement: .05
+  maxNewSynapseCount: 24              # enc.value_bits
+  maxSynapsesPerSegment: 24           # enc.value_bits
+  seed: *seed
+
+agent_memory: !Memory &agent_memory
+  tm: *tm
+  encoder: *encoder
+  sdr_formatter: !property [*encoder, format]
+  sar_superposition_formatter: !sar_superposition_formatter
+  collect_anomalies: False
+
+planner: !Planner &planner
+  memory: *agent_memory
+  planning_horizon: 0
+
+htm_agent: !Agent &htm_agent
+  memory: *agent_memory
+  planner: *planner
+  n_actions: *n_actions
+  use_cooldown: False
+
+# agent runners
+base_agent_runner: &base_runner
+  env: *env
+  n_episodes: 50
+  max_steps: 15
+  verbose: *verbose
+
+dqn_agent_runner: !DqnAgentRunner
+  <<: *base_runner
+  agent: *dqn_agent
+
+htm_agent_runner: !AgentRunner
+  <<: *base_runner
+  agent: *htm_agent
+  pretrain: 0
+
 #.agent:
 #  planning_horizon: 0
 #.agent_runner:

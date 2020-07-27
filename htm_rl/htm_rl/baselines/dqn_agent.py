@@ -10,14 +10,14 @@ from htm_rl.common.utils import trace, timed
 
 
 class DqnAgent:
-    def __init__(self, n_states, n_actions, epsilon, gamma, lr, seed):
+    def __init__(self, n_states, n_actions, epsilon, gamma, learning_rate, seed):
         torch.manual_seed(seed)
 
         self._n_states = n_states
         self._n_actions = n_actions
 
         self.qn = DqnAgentNetwork((n_states, ), n_actions)
-        self._optimizer = torch.optim.Adam(self.qn.parameters(), lr=lr)
+        self._optimizer = torch.optim.Adam(self.qn.parameters(), lr=learning_rate)
 
         self._epsilon = epsilon
         self._gamma = gamma

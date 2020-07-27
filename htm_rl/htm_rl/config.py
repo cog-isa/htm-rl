@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Type, Optional
 from inspect import getattr_static
 
 import numpy as np
-from ruamel.yaml import YAML, BaseConstructor, BaseLoader
+from ruamel.yaml import YAML, BaseConstructor, BaseLoader, Constructor, SafeConstructor
 
 from htm_rl.agent.agent import Agent, AgentRunner
 from htm_rl.agent.memory import Memory
@@ -42,25 +42,14 @@ class BaseConfig:
         ...
 
 
-@dataclass
-class RandomSeedConfig(BaseConfig):
-    seed: int = 1337
+class RandomSeedSetter:
+    seed: int
 
-    @classmethod
-    def path(cls):
-        return '.seed'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        pass
-
-    def make(self, verbose=False):
-        seed = self.seed
+    def __init__(self, seed):
+        self.seed = seed
 
         random.seed(seed)
         np.random.seed(seed)
-        return seed
-
 
 @dataclass
 class MdpCellTransitionsGeneratorConfig(BaseConfig):
@@ -88,36 +77,6 @@ class MdpCellTransitionsGeneratorConfig(BaseConfig):
             return PresetMdpCellTransitions.multi_way_v2()
         elif preset_name == 'multi_way_v3':
             return PresetMdpCellTransitions.multi_way_v3()
-
-
-@dataclass
-class MdpEnvConfig(BaseConfig):
-    cell_transitions: List
-    seed: int
-    initial_cell: int = 0
-    initial_direction: int = 0
-    cell_gonality: int = 4
-    clockwise_action: bool = False
-
-    @classmethod
-    def path(cls):
-        return '.env'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        config['seed'] = global_config['seed']
-
-        if 'env_mdp_cell_transitions' in global_config:
-            config['cell_transitions'] = global_config['env_mdp_cell_transitions']
-
-    def make(self, verbose=False):
-        initial_state = (self.initial_cell, self.initial_direction)
-        mdp_generator = GridworldMdpGenerator(self.cell_gonality)
-        mdp = mdp_generator.generate_env(
-            Mdp, initial_state, self.cell_transitions, self.clockwise_action, self.seed
-        )
-        trace(verbose, f'States: {mdp.n_states}, actions: {mdp.n_actions}')
-        return mdp
 
 
 @dataclass
@@ -452,22 +411,27 @@ class TestRunner:
             run_results_processor.store_result(agent_runner.test_stats, f'dqn_greedy')
 
 
-class TagProxies:
-    @classmethod
-    def register_all_tags(cls, yaml: YAML):
-        constructor: BaseConstructor = yaml.constructor
-        all_funcs = [
-            (func, getattr_static(cls, func))
-            for func in dir(cls)
-        ]
-        funcs = [
-            (tag, getattr(cls, tag))
-            for tag, func in all_funcs
-            if isinstance(func, staticmethod)
-        ]
-        for tag, func in funcs:
-            constructor.add_constructor(f'!{tag}', func)
+class PatchedSafeConstructor(SafeConstructor):
+    def construct_yaml_object_with_init(self, node, cls):
+        kwargs = self.construct_mapping(node, deep=True)
+        return cls(**kwargs)
 
+
+class PatchedYaml(YAML):
+    def __init__(self):
+        super(PatchedYaml, self).__init__(typ='safe')
+        self.Constructor = PatchedSafeConstructor
+
+    def register_class_for_initialization(self, cls):
+        tag = f'!{cls.__name__}'
+
+        def from_yaml(constructor: PatchedSafeConstructor, node):
+            return constructor.construct_yaml_object_with_init(node, cls)
+
+        self.constructor.add_constructor(tag, from_yaml)
+
+
+class TagProxies:
     @staticmethod
     def passage_transitions(loader: BaseLoader, node):
         kwargs = loader.construct_mapping(node, deep=True)
@@ -475,22 +439,60 @@ class TagProxies:
 
     @staticmethod
     def env(loader: BaseLoader, node):
-        kwargs = loader.construct_mapping(node)
+        kwargs = loader.construct_mapping(node, deep=True)
         kwargs['env_type'] = Mdp
         return GridworldMdpGenerator.generate_env(**kwargs)
 
+    @staticmethod
+    def property(loader: BaseLoader, node):
+        seq: List = loader.construct_sequence(node, deep=True)
+        if len(seq) == 2:
+            obj, prop_name = seq
+            return getattr(obj, prop_name)
+        else:
+            obj, prop_name, default = seq
+            return getattr(obj, prop_name, default)
+
+    @staticmethod
+    def sar_superposition_formatter(loader: BaseLoader, node):
+        return SarSuperpositionFormatter.format
+
+
 def read_config(file_path: Path, verbose=False):
-    yaml = YAML(typ='safe')
-    TagProxies.register_all_tags(yaml)
+    yaml: PatchedYaml = PatchedYaml()
+    register_static_methods_as_tags(TagProxies, yaml)
+    register_classes(yaml)
     config = yaml.load(file_path)
     if verbose:
         pprint(config)
     return config
 
 
-def save_config(file_name, config):
-    if file_name is None:
-        return None
+def register_classes(yaml: PatchedYaml):
+    classes = [
+        RandomSeedSetter,
+        DqnAgent, DqnAgentRunner,
+        IntSdrEncoder, SarSdrEncoder,
+        TemporalMemory, Memory,
+        Planner,
+        Agent, AgentRunner,
+    ]
+    for cls in classes:
+        yaml.register_class_for_initialization(cls)
 
-    with open(file_name, 'w', encoding='utf8') as stream:
-        yaml.safe_dump(config, stream, allow_unicode=True, default_flow_style=False)
+
+def register_static_methods_as_tags(cls, yaml: PatchedYaml):
+    constructor: PatchedSafeConstructor = yaml.constructor
+    constructor.deep_construct = True
+
+    all_funcs = [
+        (func, getattr_static(cls, func))
+        for func in dir(cls)
+    ]
+    funcs = [
+        (tag, getattr(cls, tag))
+        for tag, func in all_funcs
+        if isinstance(func, staticmethod)
+    ]
+    for tag, func in funcs:
+        constructor.add_constructor(f'!{tag}', func)
