@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from tqdm import trange
 
-from htm_rl.agent.train_eval import RunStats
+from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.common.utils import trace, timed
 
 
@@ -136,6 +136,10 @@ class DqnAgentRunner:
                 step += 1
 
             return step, reward
+
+    def store_results(self, run_results_processor: RunResultsProcessor):
+        run_results_processor.store_result(self.train_stats, 'dqn_eps')
+        run_results_processor.store_result(self.test_stats, 'dqn_greedy')
 
 
 class DqnAgentNetwork(nn.Module):

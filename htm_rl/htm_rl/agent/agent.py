@@ -6,7 +6,7 @@ from tqdm import trange
 
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
-from htm_rl.agent.train_eval import RunStats
+from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.common.base_sar import Sar
 from htm_rl.common.utils import trace, timed
 
@@ -130,3 +130,7 @@ class AgentRunner:
             step += 1
 
         return step, reward
+
+    def store_results(self, run_results_processor: RunResultsProcessor):
+        planning_horizon = self.agent.planner.planning_horizon
+        run_results_processor.store_result(self.train_stats, f'htm_{planning_horizon}')

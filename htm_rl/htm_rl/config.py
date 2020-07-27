@@ -1,7 +1,9 @@
 import dataclasses
+import inspect
 import random
 from abc import abstractmethod
 from dataclasses import dataclass
+from itertools import chain
 from pathlib import Path
 from pprint import pprint
 from typing import Any, Callable, Dict, List, Type, Optional
@@ -18,7 +20,7 @@ from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 from htm_rl.common.base_sar import SarRelatedComposition
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.common.utils import trace, project_to_type_fields, isnone
+from htm_rl.common.utils import trace, isnone
 from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 from htm_rl.testing_envs import PresetMdpCellTransitions
@@ -321,7 +323,7 @@ class ConfigBasedFactory:
         config = self[config_path]
 
         try:
-            custom_config = project_to_type_fields(config_type, config)
+            custom_config = self.project_to_type_fields(config_type, config)
             config_type.apply_defaults(config, self.config)
             config.update(custom_config)
             config_obj = config_type(**config)
@@ -340,7 +342,6 @@ class ConfigBasedFactory:
             print('_______________________')
             raise
 
-
     def __getitem__(self, path):
         nodes = path.split('.')[1:]
         config = self.config
@@ -351,64 +352,55 @@ class ConfigBasedFactory:
     def _get_name(self, path):
         return path.split('.')[-1]
 
+    @staticmethod
+    def project_to_type_fields(config_type, config):
+        projection = {
+            field.name: config[field.name]
+            for field in dataclasses.fields(config_type)
+            if field.name in config
+        }
+        return projection
+
+    @staticmethod
+    def project_to_method_params(func, config):
+        argspec = inspect.getfullargspec(func)
+        args = chain(argspec.args, argspec.kwonlyargs)
+
+        projection = {
+            arg_name: config[arg_name]
+            for arg_name in args
+            if arg_name in config
+        }
+        return projection
+
 
 class TestRunner:
     config: Dict
 
     def __init__(self, config):
         self.config = config
-        self.factory = ConfigBasedFactory(config)
 
-    def run(self, which_agent=None):
-        # make env
-        self.factory.make_(
-            MdpCellTransitionsGeneratorConfig,
-            MdpEnvConfig,
-        )
-
-        run_results_processor: Optional[RunResultsProcessor] = None
-        if '.run_results_processor' in self.config:
-            self.factory.make_(RunResultsProcessorConfig)
-            run_results_processor = self.config['run_results_processor']
-
-        if '.agent_runner' in self.config and isnone(which_agent, 'htm') == 'htm':
-            self._run_htm_agent(run_results_processor)
-
-        if '.dqn_agent_runner' in self.config and isnone(which_agent, 'dqn') == 'dqn':
-            self._run_dqn_agent(run_results_processor)
-
-    def aggregate_results(self):
-        self.factory.make_(RunResultsProcessorConfig)
+    def run(self, agent_key: str, run: bool, aggregate: bool):
         run_results_processor: RunResultsProcessor = self.config['run_results_processor']
-        run_results_processor.aggregate_results()
+        if run_results_processor.test_dir is None:
+            run_results_processor.test_dir = self.config['test_dir']
 
-    def _run_htm_agent(self, run_results_processor):
-        self.factory.make_(
-            SarSdrEncoderConfig,
-            TemporalMemoryConfig,
-            AgentConfig,
-            AgentRunnerConfig,
-        )
-        agent_runner: AgentRunner = self.config['agent_runner']
-        agent_runner.run()
+        # by default, if nothing specified then at least `run`
+        if run or not aggregate:
+            if agent_key is not None:
+                agents = [agent_key]
+            else:
+                agents = self.config['agents'].keys()
 
-        agent: Agent = self.config['agent']
-        planning_horizon = agent.planner.planning_horizon
+            for agent in agents:
+                # TODO: make IAgentRunner
+                runner = self.config['agent_runners'][agent]
+                print(f'AGENT: {agent}')
+                runner.run()
+                runner.store_results(run_results_processor)
 
-        if run_results_processor is not None:
-            run_results_processor.store_result(agent_runner.train_stats, f'htm_{planning_horizon}')
-
-    def _run_dqn_agent(self, run_results_processor):
-        self.factory.make_(
-            DqnAgentConfig,
-            DqnAgentRunnerConfig,
-        )
-        agent_runner: DqnAgentRunner = self.config['dqn_agent_runner']
-        agent_runner.run()
-
-        if run_results_processor is not None:
-            run_results_processor.store_result(agent_runner.train_stats, f'dqn_eps')
-            run_results_processor.store_result(agent_runner.test_stats, f'dqn_greedy')
+        if aggregate:
+            run_results_processor.aggregate_results()
 
 
 class PatchedSafeConstructor(SafeConstructor):
@@ -476,6 +468,7 @@ def register_classes(yaml: PatchedYaml):
         TemporalMemory, Memory,
         Planner,
         Agent, AgentRunner,
+        RunResultsProcessor,
     ]
     for cls in classes:
         yaml.register_class_for_initialization(cls)

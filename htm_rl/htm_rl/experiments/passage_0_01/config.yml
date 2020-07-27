@@ -7,7 +7,7 @@ random_seed_setter: !RandomSeedSetter
   seed: &seed 1337
 
 # environment
-base_env: &base_env
+.base_env: &base_env
   cell_transitions:
   initial_cell: 0
   initial_direction: 0
@@ -18,22 +18,14 @@ base_env: &base_env
 env: !env &env
   <<: *base_env
   cell_transitions: !passage_transitions
-    path: [0, 1, 0]
+    path: [0, 1]
 
-# dqn agent
-env_dimensions: &env_states_actions
+.env_dimensions:
   n_states: !property &n_states [*env, n_states]
   n_actions: !property &n_actions [*env, n_actions]
 
-dqn_agent: !DqnAgent &dqn_agent
-  <<: *env_states_actions
-  epsilon: .15
-  gamma: .975
-  learning_rate: .3e-3
-  seed: *seed
-
-# htm agent
-base_encoder: &base_encoder
+# htm agent related parts
+.base_encoder: &base_encoder
   name:
   n_values:
   value_bits: 8
@@ -75,79 +67,64 @@ agent_memory: !Memory &agent_memory
   sar_superposition_formatter: !sar_superposition_formatter
   collect_anomalies: False
 
-planner: !Planner &planner
+# NB: all agents will use the same TM object!
+.base_htm_agent: &base_htm_agent
   memory: *agent_memory
-  planning_horizon: 0
-
-htm_agent: !Agent &htm_agent
-  memory: *agent_memory
-  planner: *planner
+  planner: &base_planner
+    memory: *agent_memory
+    planning_horizon:
   n_actions: *n_actions
   use_cooldown: False
 
+agents:
+  dqn: !DqnAgent &dqn_agent
+    n_states: *n_states
+    n_actions: *n_actions
+    epsilon: .15
+    gamma: .975
+    learning_rate: .3e-3
+    seed: *seed
+
+  htm_0: !Agent &htm_0_agent
+    <<: *base_htm_agent
+    planner: !Planner
+      <<: *base_planner
+      planning_horizon: 0
+
+  htm_4: !Agent &htm_4_agent
+    <<: *base_htm_agent
+    planner: !Planner
+      <<: *base_planner
+      planning_horizon: 4
+
+
 # agent runners
-base_agent_runner: &base_runner
+.base_agent_runner: &base_runner
   env: *env
   n_episodes: 50
   max_steps: 15
   verbose: *verbose
 
-dqn_agent_runner: !DqnAgentRunner
-  <<: *base_runner
-  agent: *dqn_agent
+agent_runners:
+  dqn: !DqnAgentRunner
+    <<: *base_runner
+    agent: *dqn_agent
 
-htm_agent_runner: !AgentRunner
-  <<: *base_runner
-  agent: *htm_agent
-  pretrain: 0
+  htm_0: !AgentRunner
+    <<: *base_runner
+    agent: *htm_0_agent
+    pretrain: 0
 
-#.agent:
-#  planning_horizon: 0
-#.agent_runner:
-#  max_steps: 15
-#  n_episodes: 50
-#.agent_tm:
-#  cells_per_column: 1
-#.run_results_processor:
-#  env_name: passage_0_01
-#  optimal_len: 3
-#seed: 1337
-#verbosity: 1
-#
-#.agent:
-#  planning_horizon: 4
-#.agent_runner:
-#  max_steps: 15
-#  n_episodes: 50
-#.agent_tm:
-#  cells_per_column: 1
-#.env:
-#  clockwise_action: False
-#.env_mdp_cell_transitions:
-#  path_directions: [0, 1]
-#  preset_name: passage
-#.run_results_processor:
-#  env_name: passage_0_01
-#  optimal_len: 3
-#seed: 1337
-#verbosity: 1
-#
-#.dqn_agent_runner:
-#  max_steps: 15
-#  n_episodes: 50
-#.env:
-#  clockwise_action: False
-#.env_mdp_cell_transitions:
-#  path_directions: [0, 1]
-#  preset_name: passage
-#.run_results_processor:
-#  env_name: passage_0_01
-#  optimal_len: 3
-#seed: 1337
-#verbosity: 1
-#
-#.run_results_processor:
-#  env_name: passage_0_01
-#  optimal_len: 3
-#seed: 1337
-#verbosity: 1
+  htm_4: !AgentRunner
+    <<: *base_runner
+    agent: *htm_4_agent
+    pretrain: 0
+
+# test run results processing
+run_results_processor: !RunResultsProcessor
+  env_name: passage_0_01
+  optimal_len: 3              # hack
+  moving_average: 4
+  verbose: *verbose
+  test_dir:                   # leave empty for default behavior - output to the config's dir
+

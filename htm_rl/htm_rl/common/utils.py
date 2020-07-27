@@ -22,27 +22,6 @@ def trace(verbose: bool, str_to_print: str = ''):
         print(str_to_print)
 
 
-def project_to_type_fields(config_type, config):
-    projection = {
-        field.name: config[field.name]
-        for field in dataclasses.fields(config_type)
-        if field.name in config
-    }
-    return projection
-
-
-def project_to_method_params(func, config):
-    argspec = inspect.getfullargspec(func)
-    args = chain(argspec.args, argspec.kwonlyargs)
-
-    projection = {
-        arg_name: config[arg_name]
-        for arg_name in args
-        if arg_name in config
-    }
-    return projection
-
-
 def timed(f):
     @wraps(f)
     def wrap(*args, **kw):
