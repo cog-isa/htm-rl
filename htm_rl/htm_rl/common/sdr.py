@@ -1,8 +1,8 @@
-from typing import Iterable
+from typing import Iterable, Union, Sequence
 
 import numpy as np
 
-SparseSdr = Iterable[int]
+SparseSdr = Union[Iterable[int], Sequence[int]]
 DenseSdr = np.ndarray
 
 

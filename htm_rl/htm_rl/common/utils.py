@@ -1,7 +1,4 @@
-import dataclasses
-import inspect
 from functools import wraps
-from itertools import chain
 from timeit import default_timer as timer
 from typing import Sequence, Any, Iterable
 
@@ -19,6 +16,14 @@ def range_reverse(arr: Sequence[Any]) -> Iterable[int]:
 def trace(verbose: bool, str_to_print: str = ''):
     """Prints string only if `verbose` is True."""
     if verbose:
+        print(str_to_print)
+
+
+def trace2(accepted_verbosity: int, verbosity: int, str_to_print: str = ''):
+    """
+    Prints string only if `verbosity` is not greater than `accepted_verbosity`
+    """
+    if verbosity <= accepted_verbosity:
         print(str_to_print)
 
 
