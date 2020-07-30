@@ -199,9 +199,6 @@ Entry point is `run_mdp_test.py`.
 
 Research + functional tasks
 
-- [x] Adapt planning algo for high order TMs
-- [x] Make semi-handcrafted POMDP version of gridworld generator
-  - naive version w/ ray casting maybe is enough
 - [ ] Adapt planning to goal-based strategy
   - [x] Switch from reward-based planning to goal-based
     - [x] Cut out reward from encoding and memorizing
@@ -233,10 +230,6 @@ Research + functional tasks
   - [ ] Start testing on POMDPs
 
 Non-critical issues needing further investigation
-
-- [ ] issue: fantom false positive transitions
-  - e.g. sometimes it predicts state superposition from sar - it's a mistake as the next state is always _one_ determined state.
-  - haven't been detected since, will remove this item
 
 Auxialiary tasks, usability improvements and so on
 
