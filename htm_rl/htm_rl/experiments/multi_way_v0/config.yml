@@ -15,8 +15,7 @@ random_seed_setter: !RandomSeedSetter
 
 env: !env &env
   <<: *base_env
-  cell_transitions: !passage_transitions
-    path: [0, 1]
+  cell_transitions: !preset_env_transitions multi_way_v0
 
 .env_dimensions:
   n_states: !property &n_states [*env, n_states]
@@ -121,11 +120,43 @@ agents:
       <<: *legacy_base_planner
       planning_horizon: 0
 
+  htm_1: !LegacyAgent &htm_1_agent
+    <<: *base_legacy_htm_agent
+    planner: !LegacyPlanner
+      <<: *legacy_base_planner
+      planning_horizon: 1
+
+  htm_2: !LegacyAgent &htm_2_agent
+    <<: *base_legacy_htm_agent
+    planner: !LegacyPlanner
+      <<: *legacy_base_planner
+      planning_horizon: 2
+
   htm_4: !LegacyAgent &htm_4_agent
     <<: *base_legacy_htm_agent
     planner: !LegacyPlanner
       <<: *legacy_base_planner
       planning_horizon: 4
+
+  htm_8: !LegacyAgent &htm_8_agent
+    <<: *base_legacy_htm_agent
+    planner: !LegacyPlanner
+      <<: *legacy_base_planner
+      planning_horizon: 8
+
+  htm_1_: !Agent &htm_1_agent_
+    <<: *base_htm_agent
+    use_cooldown: False
+    planner: !Planner
+      <<: *base_planner
+      planning_horizon: 1
+
+  htm_2_: !Agent &htm_2_agent_
+    <<: *base_htm_agent
+    use_cooldown: False
+    planner: !Planner
+      <<: *base_planner
+      planning_horizon: 2
 
   htm_4_: !Agent &htm_4_agent_
     <<: *base_htm_agent
@@ -134,11 +165,18 @@ agents:
       <<: *base_planner
       planning_horizon: 4
 
+  htm_8_: !Agent &htm_8_agent_
+    <<: *base_htm_agent
+    use_cooldown: False
+    planner: !Planner
+      <<: *base_planner
+      planning_horizon: 8
+
 # agent runners
 .base_agent_runner: &base_runner
   env: *env
-  n_episodes: 50
-  max_steps: 80
+  n_episodes: 200
+  max_steps: 100
   agent:
   verbosity: *verbosity
 
@@ -155,23 +193,43 @@ agent_runners:
     <<: *base_htm_runner
     agent: *htm_0_agent
 
+  htm_1: !AgentRunner
+    <<: *base_htm_runner
+    agent: *htm_1_agent
+
+  htm_2: !AgentRunner
+    <<: *base_htm_runner
+    agent: *htm_2_agent
+
   htm_4: !AgentRunner
     <<: *base_htm_runner
     agent: *htm_4_agent
-    n_episodes: 50
-    verbosity: 1
+
+  htm_8: !AgentRunner
+    <<: *base_htm_runner
+    agent: *htm_8_agent
+
+  htm_1_: !AgentRunner
+    <<: *base_htm_runner
+    agent: *htm_1_agent_
+
+  htm_2_: !AgentRunner
+    <<: *base_htm_runner
+    agent: *htm_2_agent_
 
   htm_4_: !AgentRunner
     <<: *base_htm_runner
     agent: *htm_4_agent_
-    n_episodes: 50
-    verbosity: 1
+
+  htm_8_: !AgentRunner
+    <<: *base_htm_runner
+    agent: *htm_8_agent_
 
 # test run results processing
 run_results_processor: !RunResultsProcessor
-  env_name: passage_0_01
-  optimal_len: 3              # hack
-  moving_average: 4
+  env_name: multi_way_v0
+  optimal_len: 7              # hack
+  moving_average: 20
   verbosity: *verbosity
   test_dir:                   # leave empty for default behavior - output to the config's dir
 
