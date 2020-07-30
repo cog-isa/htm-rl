@@ -1,5 +1,4 @@
 from htm_rl.common.base_sa import SaRelatedComposition, Sa, SaSuperposition
-from htm_rl.common.base_sar import SarRelatedComposition, SarSuperposition, Sar
 from htm_rl.common.int_sdr_encoder import BitRange
 from htm_rl.common.sdr import SparseSdr
 
@@ -60,10 +59,17 @@ class SaSdrEncoder:
         )
         return SaRelatedComposition(state_superposition, action_superposition)
 
+    @property
+    def state_activation_threshold(self):
+        return self._encoders.state.activation_threshold
+
+    def states_indices_range(self) -> BitRange:
+        """Gets sparse SDR indices range encoding states."""
+        return BitRange(self._shifts.state, self._shifts.action)
+
     def actions_indices_range(self) -> BitRange:
         """Gets sparse SDR indices range encoding actions."""
-        action_shift = self._shifts.action
-        return BitRange(action_shift, self.total_bits)
+        return BitRange(self._shifts.action, self.total_bits)
 
     def replace_action(self, sparse_sdr: SparseSdr, action: int) -> SparseSdr:
         """

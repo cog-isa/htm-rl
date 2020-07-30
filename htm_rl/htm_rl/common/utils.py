@@ -19,11 +19,11 @@ def trace(verbose: bool, str_to_print: str = ''):
         print(str_to_print)
 
 
-def trace2(accepted_verbosity: int, verbosity: int, str_to_print: str = ''):
+def trace2(verbosity: int, req_level: int, str_to_print: str = ''):
     """
-    Prints string only if `verbosity` is not greater than `accepted_verbosity`
+    Prints string only if `req_level` is not greater than `verbosity`
     """
-    if verbosity <= accepted_verbosity:
+    if req_level <= verbosity:
         print(str_to_print)
 
 

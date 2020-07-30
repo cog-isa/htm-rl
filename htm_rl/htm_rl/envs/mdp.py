@@ -2,6 +2,7 @@ from typing import Type
 
 from gym.utils import seeding
 
+from htm_rl.common.base_sa import SaSuperposition
 from htm_rl.common.sar_sdr_encoder import SarSuperposition
 
 
@@ -196,4 +197,13 @@ class SarSuperpositionFormatter:
         return '  '.join(
             '.'.join(map(str, superposition))
             for superposition in sar
+        )
+
+
+class SaSuperpositionFormatter:
+    @staticmethod
+    def format(sa: SaSuperposition) -> str:
+        return '  '.join(
+            '.'.join(map(str, superposition))
+            for superposition in sa
         )
