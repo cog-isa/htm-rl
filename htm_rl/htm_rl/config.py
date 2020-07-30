@@ -11,11 +11,14 @@ import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
 from htm_rl.agent.agent import Agent, AgentRunner
+from htm_rl.agent.legacy_memory import LegacyMemory
+from htm_rl.agent.legacy_planner import LegacyPlanner
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
+from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.utils import trace
 from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp
@@ -120,9 +123,9 @@ class TemporalMemoryConfig(BaseConfig):
         if 'seed' in global_config:
             config['seed'] = global_config['seed']
 
-    def make(self, verbose=False) -> TemporalMemory:
+    def make(self, verbosity=False) -> TemporalMemory:
         trace(
-            verbose,
+            verbosity, 1,
             f'Cells: {self.n_columns}x{self.cells_per_column}; '
             f'activation: {self.activation_threshold}; '
             f'learn: {self.learning_threshold}'
@@ -269,9 +272,9 @@ def register_classes(yaml: PatchedYaml):
     classes = [
         RandomSeedSetter,
         DqnAgent, DqnAgentRunner,
-        IntSdrEncoder, SarSdrEncoder,
-        TemporalMemory, Memory,
-        Planner,
+        IntSdrEncoder, SarSdrEncoder, SaSdrEncoder,
+        TemporalMemory, LegacyMemory, Memory,
+        LegacyPlanner, Planner,
         Agent, AgentRunner,
         RunResultsProcessor,
     ]

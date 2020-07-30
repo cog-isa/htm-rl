@@ -185,8 +185,6 @@ Additional useful links:
 
 ### htm_rl package
 
-*Outdated*
-
 Entry point is `run_mdp_test.py`.
 
 ## TODO

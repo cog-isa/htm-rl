@@ -4,22 +4,22 @@ from typing import Any
 import numpy as np
 from tqdm import trange
 
-from htm_rl.agent.memory import Memory
-from htm_rl.agent.planner import Planner
+from htm_rl.agent.legacy_memory import LegacyMemory
+from htm_rl.agent.legacy_planner import LegacyPlanner
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.common.base_sar import Sar
-from htm_rl.common.utils import trace, timed
+from htm_rl.common.utils import timed, trace
 
 
 class Agent:
-    def __init__(self, memory: Memory, planner: Planner, n_actions, use_cooldown=False):
+    def __init__(self, memory: LegacyMemory, planner: LegacyPlanner, n_actions, use_cooldown=False):
         self.memory = memory
         self.planner = planner
         self._n_actions = n_actions
         self.set_planning_horizon(planner.planning_horizon)
         self._use_cooldown = use_cooldown
 
-    def set_planning_horizon(self, planning_horizon):
+    def set_planning_horizon(self, planning_horizon: int):
         self.planner.planning_horizon = planning_horizon
         self._planning_horizon = planning_horizon
 
@@ -33,22 +33,22 @@ class Agent:
         self.memory.tm.reset()
         self._init_planning()
 
-    def make_step(self, state, reward, is_done, verbose):
-        trace(verbose, f'\nState: {state}; reward: {reward}')
-        action = self._make_action(state, reward, is_done, verbose)
-        trace(verbose, f'\nMake action: {action}')
+    def make_step(self, state, reward, is_done, verbosity: int):
+        trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
+        action = self._make_action(state, reward, is_done, verbosity)
+        trace(verbosity, 2, f'\nMake action: {action}')
 
-        self.memory.train(Sar(state, action, reward), verbose)
+        self.memory.train(Sar(state, action, reward), verbosity)
         return action
 
     def _init_planning(self):
         self._planned_actions = deque(maxlen=self._planning_horizon + 1)
         self._planning_cooldown = 0
 
-    def _make_action(self, state, reward, is_done, verbose):
+    def _make_action(self, state, reward, is_done, verbosity: int):
         if self._should_plan and not is_done:
             from_sar = Sar(state, None, reward)
-            planned_actions = self.planner.plan_actions(from_sar, verbose)
+            planned_actions = self.planner.plan_actions(from_sar, verbosity)
             self._planned_actions.extend(planned_actions)
             self._raise_cooldown()
             self._n_times_planned += 1
@@ -90,20 +90,20 @@ class AgentRunner:
     n_episodes: int
     max_steps: int
     pretrain: int
-    verbose: bool
+    verbosity: int
     train_stats: RunStats
 
-    def __init__(self, agent, env, n_episodes, max_steps, pretrain, verbose):
+    def __init__(self, agent, env, n_episodes, max_steps, pretrain, verbosity):
         self.agent = agent
         self.env = env
         self.n_episodes = n_episodes
         self.max_steps = max_steps
         self.pretrain = pretrain
-        self.verbose = verbose
+        self.verbosity = verbosity
         self.train_stats = RunStats(n_episodes)
 
     def run(self):
-        trace(self.verbose, '============> RUN HTM AGENT')
+        trace(self.verbosity, 1, '============> RUN HTM AGENT')
         if self.pretrain > 0:
             planning_horizon = self.agent.planner.planning_horizon
             self.agent.set_planning_horizon(0)
@@ -114,19 +114,19 @@ class AgentRunner:
 
             (steps, reward), elapsed_time = self.run_episode()
             self.train_stats.append_stats(steps, reward, elapsed_time)
-            trace(self.verbose, '')
-        trace(self.verbose, '<============')
+            trace(self.verbosity, 2, '')
+        trace(self.verbosity, 1, '<============')
 
     @timed
     def run_episode(self):
         self.agent.reset()
         state, reward, done = self.env.reset(), 0, False
-        action = self.agent.make_step(state, reward, done, self.verbose)
+        action = self.agent.make_step(state, reward, done, self.verbosity)
 
         step = 0
         while step < self.max_steps and not done:
             state, reward, done, info = self.env.step(action)
-            action = self.agent.make_step(state, reward, done, self.verbose)
+            action = self.agent.make_step(state, reward, done, self.verbosity)
             step += 1
 
         return step, reward

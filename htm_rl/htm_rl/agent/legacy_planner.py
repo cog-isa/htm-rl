@@ -4,7 +4,7 @@ from htm_rl.agent.legacy_memory import LegacyMemory
 from htm_rl.common.base_sar import Sar
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import trace, range_reverse, trace2
+from htm_rl.common.utils import range_reverse, trace
 
 
 # noinspection PyPep8Naming
@@ -30,7 +30,7 @@ class LegacyPlanner:
         if self.planning_horizon == 0 or initial_sar.reward == 1:
             return planned_actions
 
-        trace2(verbosity, 2, '\n======> Planning')
+        trace(verbosity, 2, '\n======> Planning')
 
         # saves initial TM state at the start of planning.
         self._initial_tm_state = self.memory.save_tm_state()
@@ -44,11 +44,11 @@ class LegacyPlanner:
                 if planning_successful:
                     break
 
-        trace2(verbosity, 2, '<====== Planning complete')
+        trace(verbosity, 2, '<====== Planning complete')
         return planned_actions
 
     def _predict_to_reward(self, initial_sar: Sar, verbosity: int) -> bool:
-        trace2(verbosity, 2, '===> Forward pass')
+        trace(verbosity, 2, '===> Forward pass')
 
         # to consider all possible prediction paths, prediction is started with all possible actions
         all_actions_sar = Sar(initial_sar.state, IntSdrEncoder.ALL, initial_sar.reward)
@@ -67,7 +67,7 @@ class LegacyPlanner:
 
             proximal_input = self.memory.columns_from_cells(depolarized_cells)
             reward_reached = self.encoder.is_rewarding(proximal_input)
-            trace2(verbosity, 3, '')
+            trace(verbosity, 3, '')
             if reward_reached or len(proximal_input) < self.encoder.activation_threshold:
                 break
 
@@ -76,9 +76,9 @@ class LegacyPlanner:
 
         if reward_reached:
             T = len(active_segments_timeline)
-            trace2(verbosity, 2, f'<=== Predict reward in {T} steps')
+            trace(verbosity, 2, f'<=== Predict reward in {T} steps')
         else:
-            trace2(verbosity, 2, f'<=== Predicting NO reward in {self.planning_horizon} steps')
+            trace(verbosity, 2, f'<=== Predicting NO reward in {self.planning_horizon} steps')
 
         return reward_reached
 
@@ -90,7 +90,7 @@ class LegacyPlanner:
         :return: iterator on all successful backtracks. Each backtrack is forward view activation timeline.
             Activation timeline is a list of active cells sparse SDR at each previous timestep t.
         """
-        trace2(verbosity, 2, '\n===> Backward pass')
+        trace(verbosity, 2, '\n===> Backward pass')
 
         T = len(self._active_segments_timeline)
         if T == 0:
@@ -115,20 +115,20 @@ class LegacyPlanner:
 
         # For each rewarding candidate cluster tries backtracking to the beginning
         for candidate_cluster, n_induced_depolarization in rewarding_candidate_cell_cluster:
-            trace2(verbosity, 3, '>')
+            trace(verbosity, 3, '>')
             self.memory.print_cells(
                 verbosity, candidate_cluster,
                 f'n: {n_induced_depolarization} of {reward_activation_threshold}'
             )
             backtracking_succeeded, activation_timeline = self._backtrack(candidate_cluster, T-2, verbosity)
-            trace2(verbosity, 3, '<')
+            trace(verbosity, 3, '<')
 
             if backtracking_succeeded:
                 # yield successful activation timeline
                 activation_timeline.append(candidate_cluster)
                 yield activation_timeline
 
-        trace2(verbosity, 2, '<=== Backward pass complete')
+        trace(verbosity, 2, '<=== Backward pass complete')
 
     def _backtrack(self, desired_depolarization: SparseSdr, t: int, verbosity: int) -> Tuple:
         """
@@ -142,7 +142,7 @@ class LegacyPlanner:
         if t < 0:
             return True, []
 
-        trace2(verbosity, 3)
+        trace(verbosity, 3)
         self.memory.print_sar_superposition(verbosity, self.memory.columns_from_cells(desired_depolarization))
 
         # Gets all presynaptic cells clusters, each can induce desired depolarization
@@ -175,23 +175,23 @@ class LegacyPlanner:
         # Gets active presynaptic cell clusters (clustering by their columns)
         all_candidate_cell_clusters = self._get_active_presynaptic_cell_clusters(desired_depolarization, t)
 
-        trace2(verbosity, 3, 'candidates:')
+        trace(verbosity, 3, 'candidates:')
         # Backtracking candidate clusters are clusters that induce sufficient depolarization among desired
         backtracking_candidate_clusters = []
         for active_cells in all_candidate_cell_clusters:
             n_depolarized_cells = self._count_induced_depolarization(
                 active_cells, desired_depolarization, t
             )
-            print_filter = n_depolarized_cells > 4
+            print_verbosity = verbosity if n_depolarized_cells > 4 else -1
             self.memory.print_cells(
-                print_filter and verbosity, active_cells,
+                print_verbosity, 3, active_cells,
                 f'n: {n_depolarized_cells} of {sufficient_activation_threshold}'
             )
-            trace(print_filter and verbosity, '----')
+            trace(print_verbosity, 3, '----')
 
             if n_depolarized_cells >= sufficient_activation_threshold:
                 backtracking_candidate_clusters.append((active_cells, n_depolarized_cells))
-        trace2(verbosity, 3, f'total:   {len(backtracking_candidate_clusters)}')
+        trace(verbosity, 3, f'total:   {len(backtracking_candidate_clusters)}')
 
         return backtracking_candidate_clusters
 
@@ -306,7 +306,7 @@ class LegacyPlanner:
     def _check_activation_timeline_leads_to_reward(
             self, initial_sar: Sar, activation_timeline, verbosity: int
     ) -> Tuple[bool, List[int]]:
-        trace2(verbosity, 2, '\n===> Check backtracked activations')
+        trace(verbosity, 2, '\n===> Check backtracked activations')
 
         initial_sar = Sar(initial_sar.state, IntSdrEncoder.ALL, initial_sar.reward)
         proximal_input = self.encoder.encode(initial_sar)
@@ -324,16 +324,16 @@ class LegacyPlanner:
             )
 
             proximal_input = self.memory.columns_from_cells(depolarized_cells)
-            trace2(verbosity, 3, '')
+            trace(verbosity, 3, '')
 
         reward_reached = self.encoder.is_rewarding(proximal_input)
         self.memory.restore_tm_state(self._initial_tm_state)
 
         if reward_reached:
-            trace2(verbosity, 2, f'<=== Checking complete with SUCCESS: {planned_actions}')
+            trace(verbosity, 2, f'<=== Checking complete with SUCCESS: {planned_actions}')
             return True, planned_actions
         else:
-            trace2(verbosity, 2, f'<=== Checking complete with NO success')
+            trace(verbosity, 2, f'<=== Checking complete with NO success')
             return False, planned_actions
 
     def _extract_action_from_backtracked_activation(self, backtracked_activation: SparseSdr) -> int:

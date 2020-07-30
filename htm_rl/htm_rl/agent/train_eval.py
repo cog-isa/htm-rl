@@ -33,16 +33,18 @@ class RunResultsProcessor:
     optimal_len: int
     test_dir: str
     moving_average: int
-    verbose: bool
+    verbosity: int
 
     data_ext = '.csv.tar.gz'
 
-    def __init__(self, env_name: str, optimal_len: int, test_dir: str, moving_average: int, verbose: bool):
+    def __init__(
+            self, env_name: str, optimal_len: int, test_dir: str, moving_average: int, verbosity: int
+    ):
         self.env_name = env_name
         self.optimal_len = optimal_len
         self.test_dir = test_dir
         self.moving_average = moving_average
-        self.verbose = verbose
+        self.verbosity = verbosity
 
     def store_result(self, run_stats: RunStats, agent_info: str):
         result_table = pd.DataFrame({
@@ -112,7 +114,7 @@ class RunResultsProcessor:
         avg_time = run_stats.times.mean()
         elapsed = run_stats.times.sum()
         trace(
-            self.verbose,
+            self.verbosity, 1,
             f'AvgLen: {avg_len: .2f}  AvgReward: {avg_reward: .5f}  '
             f'AvgTime: {avg_time: .6f}  TotalTime: {elapsed: .6f}'
         )

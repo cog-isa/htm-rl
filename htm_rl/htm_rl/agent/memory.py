@@ -8,7 +8,7 @@ from htm_rl.common.base_sa import SaSuperposition, Sa
 from htm_rl.common.int_sdr_encoder import BitRange
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import trace2
+from htm_rl.common.utils import trace
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
@@ -189,14 +189,14 @@ class Memory:
         lines = [first_line]
         for layer_ind in range(1, cpc):
             lines.append(self.format_sdr(layerwise_sparse_sdrs[layer_ind]))
-        trace2(verbosity, req_level, '\n'.join(lines))
+        trace(verbosity, req_level, '\n'.join(lines))
 
     def print_sa_superposition(
             self, verbosity: int, req_level: int, proximal_input: SparseSdr
     ):
         if req_level <= verbosity:
             sa_superposition = self.encoder.decode(proximal_input)
-            trace2(verbosity, req_level, self.format_sa_superposition(sa_superposition))
+            trace(verbosity, req_level, self.format_sa_superposition(sa_superposition))
 
     def save_tm_state(self):
         """Saves TM state."""

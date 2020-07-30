@@ -6,7 +6,7 @@ from htm_rl.common.base_sa import Sa
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import range_reverse, trace2
+from htm_rl.common.utils import range_reverse, trace
 
 
 # noinspection PyPep8Naming
@@ -43,7 +43,7 @@ class Planner:
         if initial_sa.state in self.goal_memory:
             self.goal_memory.remove(initial_sa.state)
 
-        trace2(verbosity, 2, '\n======> Planning')
+        trace(verbosity, 2, '\n======> Planning')
 
         # saves initial TM state at the start of planning.
         self._initial_tm_state = self.memory.save_tm_state()
@@ -51,11 +51,11 @@ class Planner:
         reached_goals = self._predict_to_goals(initial_sa, verbosity)
         planned_actions = self._backtrack(reached_goals, verbosity)
 
-        trace2(verbosity, 2, '<====== Planning complete')
+        trace(verbosity, 2, '<====== Planning complete')
         return planned_actions
 
     def _predict_to_goals(self, initial_sa: Sa, verbosity: int) -> List[int]:
-        trace2(verbosity, 2, '===> Forward pass')
+        trace(verbosity, 2, '===> Forward pass')
 
         # to consider all possible prediction paths, prediction is started with all possible actions
         all_actions_sa = Sa(initial_sa.state, IntSdrEncoder.ALL)
@@ -75,7 +75,7 @@ class Planner:
             proximal_input = self.memory.columns_from_cells(depolarized_cells)
             sa_superposition = self.encoder.decode(proximal_input)
             reached_goals = self._reached_goals(sa_superposition.state)
-            trace2(verbosity, 3, '')
+            trace(verbosity, 3, '')
             if reached_goals or not sa_superposition.state or not sa_superposition.action:
                 break
 
@@ -84,9 +84,9 @@ class Planner:
 
         if reached_goals:
             T = len(active_segments_timeline)
-            trace2(verbosity, 2, f'<=== Predict reaching goals {reached_goals} in {T} steps')
+            trace(verbosity, 2, f'<=== Predict reaching goals {reached_goals} in {T} steps')
         else:
-            trace2(verbosity, 2, f'<=== Predicting NO goals in {self.planning_horizon} steps')
+            trace(verbosity, 2, f'<=== Predicting NO goals in {self.planning_horizon} steps')
 
         return reached_goals
 
@@ -98,7 +98,7 @@ class Planner:
         :return: iterator on all successful backtracks. Each backtrack is forward view activation timeline.
             Activation timeline is a list of active cells sparse SDR at each previous timestep t.
         """
-        trace2(verbosity, 2, '\n===> Backward pass')
+        trace(verbosity, 2, '\n===> Backward pass')
         planned_actions = []
 
         T = len(self._active_segments_timeline)
@@ -118,7 +118,7 @@ class Planner:
             if planning_successful:
                 break
 
-        trace2(verbosity, 2, '<=== Backward pass complete')
+        trace(verbosity, 2, '<=== Backward pass complete')
         return planned_actions
 
     def _backtrack_from_state(self, desired_depolarization: SparseSdr, t: int, verbosity: int) -> Tuple:
@@ -133,7 +133,7 @@ class Planner:
         if t < 0:
             return True, []
 
-        trace2(verbosity, 3)
+        trace(verbosity, 3)
         self.memory.print_sa_superposition(
             verbosity, 3, self.memory.columns_from_cells(desired_depolarization)
         )
@@ -156,7 +156,7 @@ class Planner:
             action_columns = self.memory.columns_from_cells(actions_sdr)
             actions = self.encoder.decode(action_columns)
             if len(actions.action) != 1:
-                trace2(verbosity, 2, f'Actions: {actions}')
+                trace(verbosity, 2, f'Actions: {actions}')
                 continue
 
             # actions has length == 1
@@ -181,7 +181,7 @@ class Planner:
         # Gets active presynaptic cell clusters
         all_candidate_cell_clusters = self._get_active_presynaptic_cell_clusters(desired_depolarization, t)
 
-        trace2(verbosity, 3, 'candidates:')
+        trace(verbosity, 3, 'candidates:')
         # Backtracking candidate clusters are clusters that induce sufficient depolarization among desired
         backtracking_candidate_clusters = []
         for cell_cluster, n_containing_segments in all_candidate_cell_clusters:
@@ -192,7 +192,7 @@ class Planner:
 
             if cluster_for_backtracking is not None:
                 backtracking_candidate_clusters.append(cluster_for_backtracking)
-        trace2(verbosity, 3, f'total:   {len(backtracking_candidate_clusters)}')
+        trace(verbosity, 3, f'total:   {len(backtracking_candidate_clusters)}')
 
         return backtracking_candidate_clusters
 
@@ -215,7 +215,7 @@ class Planner:
 
             if n_depolarized_cells != n_containing_segments:
                 # hypothesis: they should be equal every time, hence we never reach this branch!
-                trace2(verbosity, 2, f'{n_containing_segments} -> {n_depolarized_cells}')
+                trace(verbosity, 2, f'{n_containing_segments} -> {n_depolarized_cells}')
                 self.memory.print_cells(
                     verbosity, 2, active_cells,
                     f'n: {n_depolarized_cells} of {sufficient_activation_threshold}'
@@ -225,7 +225,7 @@ class Planner:
             verbosity, 3, active_cells,
             f'n: {n_depolarized_cells} of {sufficient_activation_threshold}'
         )
-        trace2(verbosity, 3, '----')
+        trace(verbosity, 3, '----')
 
         if n_depolarized_cells >= sufficient_activation_threshold:
             return active_cells, n_depolarized_cells

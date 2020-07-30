@@ -86,27 +86,27 @@ class DqnAgentRunner:
     env: Any
     n_episodes: int
     max_steps: int
-    verbose: bool
+    verbosity: int
     train_stats: RunStats
     test_stats: RunStats
 
-    def __init__(self, agent, env, n_episodes, max_steps, verbose):
+    def __init__(self, agent, env, n_episodes, max_steps, verbosity):
         self.agent = agent
         self.env = env
         self.n_episodes = n_episodes
         self.max_steps = max_steps
-        self.verbose = verbose
+        self.verbosity = verbosity
         self.train_stats = RunStats(n_episodes)
         self.test_stats = RunStats(n_episodes)
 
     def run(self):
-        trace(self.verbose, '============> RUN DQN AGENT')
+        trace(self.verbosity, 1, '============> RUN DQN AGENT')
         for _ in trange(self.n_episodes):
             for train_mode, stats in zip([True, False], [self.train_stats, self.test_stats]):
                 (steps, reward), elapsed_time = self.run_episode(train_mode=train_mode)
                 stats.append_stats(steps, reward, elapsed_time)
-                trace(self.verbose, '')
-        trace(self.verbose, '<============')
+                trace(self.verbosity, 2, '')
+        trace(self.verbosity, 1, '<============')
 
     def print_q_values(self):
         self.agent.reset(False)
@@ -117,22 +117,22 @@ class DqnAgentRunner:
 
     @timed
     def run_episode(self, train_mode: bool):
-        verbose = self.verbose
+        verbosity = self.verbosity
 
         self.agent.reset(train_mode)
         with torch.set_grad_enabled(train_mode):
             state, step, done = self.env.reset(), 0, False
-            trace(verbose, f'\nState: {state}')
+            trace(verbosity, 2, f'\nState: {state}')
 
             while step < self.max_steps and not done:
                 action = self.agent.make_action(state)
-                trace(verbose, f'\nMake action: {action}')
+                trace(verbosity, 2, f'\nMake action: {action}')
 
                 next_state, reward, done, info = self.env.step(action)
                 self.agent.train(state, action, reward, next_state, done)
 
                 state = next_state
-                trace(verbose, f'\nState: {state}; reward: {reward}')
+                trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
                 step += 1
 
             return step, reward

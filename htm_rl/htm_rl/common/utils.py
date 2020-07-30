@@ -13,15 +13,13 @@ def range_reverse(arr: Sequence[Any]) -> Iterable[int]:
     return range(len(arr) - 1, -1, -1)
 
 
-def trace(verbose: bool, str_to_print: str = ''):
-    """Prints string only if `verbose` is True."""
-    if verbose:
-        print(str_to_print)
-
-
-def trace2(verbosity: int, req_level: int, str_to_print: str = ''):
+def trace(verbosity: int, req_level: int, str_to_print: str = ''):
     """
     Prints string only if `req_level` is not greater than `verbosity`
+
+    :param verbosity: accepted level of verbosity defined by the caller
+    :param req_level: required level of verbosity defined by the callee
+    :param str_to_print: string to print
     """
     if req_level <= verbosity:
         print(str_to_print)
