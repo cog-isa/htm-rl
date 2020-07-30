@@ -1,6 +1,4 @@
 verbosity: &verbosity 1
-# TODO: deprecated, use verbosity
-verbose: &verbose False
 
 # seed
 random_seed_setter: !RandomSeedSetter
@@ -60,7 +58,7 @@ temporal_memory: !TemporalMemory &tm
   maxSynapsesPerSegment: 24           # enc.value_bits
   seed: *seed
 
-agent_memory: !Memory &agent_memory
+agent_memory: !LegacyMemory &agent_memory
   tm: *tm
   encoder: *encoder
   sdr_formatter: !property [*encoder, format]
@@ -87,13 +85,13 @@ agents:
 
   htm_0: !Agent &htm_0_agent
     <<: *base_htm_agent
-    planner: !Planner
+    planner: !LegacyPlanner
       <<: *base_planner
       planning_horizon: 0
 
   htm_4: !Agent &htm_4_agent
     <<: *base_htm_agent
-    planner: !Planner
+    planner: !LegacyPlanner
       <<: *base_planner
       planning_horizon: 4
 
@@ -103,7 +101,7 @@ agents:
   env: *env
   n_episodes: 50
   max_steps: 15
-  verbose: *verbose
+  verbosity: *verbosity
 
 agent_runners:
   dqn: !DqnAgentRunner
@@ -125,6 +123,6 @@ run_results_processor: !RunResultsProcessor
   env_name: passage_0_01
   optimal_len: 3              # hack
   moving_average: 4
-  verbose: *verbose
+  verbosity: *verbosity
   test_dir:                   # leave empty for default behavior - output to the config's dir
 

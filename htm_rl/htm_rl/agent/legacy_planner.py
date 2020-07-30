@@ -117,7 +117,7 @@ class LegacyPlanner:
         for candidate_cluster, n_induced_depolarization in rewarding_candidate_cell_cluster:
             trace(verbosity, 3, '>')
             self.memory.print_cells(
-                verbosity, candidate_cluster,
+                verbosity, 3, candidate_cluster,
                 f'n: {n_induced_depolarization} of {reward_activation_threshold}'
             )
             backtracking_succeeded, activation_timeline = self._backtrack(candidate_cluster, T-2, verbosity)
@@ -143,7 +143,9 @@ class LegacyPlanner:
             return True, []
 
         trace(verbosity, 3)
-        self.memory.print_sar_superposition(verbosity, self.memory.columns_from_cells(desired_depolarization))
+        self.memory.print_sar_superposition(
+            verbosity, 3, self.memory.columns_from_cells(desired_depolarization)
+        )
 
         # Gets all presynaptic cells clusters, each can induce desired depolarization
         candidate_cell_clusters = self._get_backtracking_candidate_clusters(
@@ -155,7 +157,7 @@ class LegacyPlanner:
         # For each candidate cluster tries backtracking to the beginning
         for candidate_cluster, n_induced_depolarization in candidate_cell_clusters:
             self.memory.print_cells(
-                verbosity, candidate_cluster,
+                verbosity, 3, candidate_cluster,
                 f'n: {n_induced_depolarization} of {self.memory.tm.activation_threshold}'
             )
 
