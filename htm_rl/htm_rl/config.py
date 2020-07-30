@@ -24,7 +24,7 @@ from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.utils import trace
 from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp, SaSuperpositionFormatter
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
-from htm_rl.testing_envs import PresetMdpCellTransitions
+from htm_rl.envs.testing_envs import PresetMdpCellTransitions
 
 
 @dataclass
@@ -237,6 +237,12 @@ class TagProxies:
     def passage_transitions(loader: BaseLoader, node):
         kwargs = loader.construct_mapping(node, deep=True)
         return PresetMdpCellTransitions.passage(**kwargs)
+
+    @staticmethod
+    def preset_env_transitions(loader: BaseLoader, node):
+        preset_name = loader.construct_scalar(node)
+        transitions_builder = getattr(PresetMdpCellTransitions, preset_name)
+        return transitions_builder()
 
     @staticmethod
     def env(loader: BaseLoader, node):
