@@ -24,7 +24,7 @@ from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.utils import trace
 from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp, SaSuperpositionFormatter
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
-from htm_rl.envs.testing_envs import PresetMdpCellTransitions
+from htm_rl.envs.preset_mdp_cell_transitions import PresetMdpCellTransitions
 
 
 @dataclass
