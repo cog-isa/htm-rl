@@ -191,8 +191,8 @@ Entry point is `run_mdp_test.py`.
 
 **Urgent**:
 
-- add ruamel.yaml to requirements
-- describe config based building details
+- [ ] add ruamel.yaml to requirements
+- [ ] describe config based building details
   - conventions
   - implementation
   - patches
@@ -203,9 +203,9 @@ Research + functional tasks
 - [x] Make semi-handcrafted POMDP version of gridworld generator
   - naive version w/ ray casting maybe is enough
 - [ ] Adapt planning to goal-based strategy
-  - [ ] Switch from reward-based planning to goal-based
-    - [ ] Cut out reward from encoding and memorizing
-    - [ ] Track history of rewarding states and plan according to any of them
+  - [x] Switch from reward-based planning to goal-based
+    - [x] Cut out reward from encoding and memorizing
+    - [x] Track history of rewarding states and plan according to any of them
       - add naive list-based rewarding states tracking
   - [ ] Test transfer learning capabilities
     - [ ] Adapt environments for random initial states
@@ -217,39 +217,41 @@ Research + functional tasks
   - [ ] Report results
     - [ ] Update method description
     - [ ] Add experiment results
-- [ ] Split SAR TM into 2 TMs
-  - State TM: (s, a) $\rightarrow$ s'
-  - Action TM: s $\rightarrow$ a
-  - Direct external rewards aren't a thing
-  - Reinforcement isn't tracked ATM
-- [ ] Investigate `MaxSegmentsPerCell` parameter impact
-- [ ] Implement integer encoder w/ overlapping buckets
-  - overlapping should be a parameter
-  - it defines the level of uncertainty
-  - MDP planning becomes a light version of POMDP planning because of uncertainty
-- [ ] Investigate relation between overlapping and sufficient activation thresholds
-- [ ] Investigate `MaxSynapsesPerSegment` parameter impact
-- [ ] Start testing on POMDPs
+- Not acknowledged and questionable:
+  - [ ] Split SAR TM into 2 TMs
+    - State TM: (s, a) $\rightarrow$ s'
+    - Action TM: s $\rightarrow$ a
+    - Direct external rewards aren't a thing
+    - Reinforcement isn't tracked ATM
+  - [ ] Investigate `MaxSegmentsPerCell` parameter impact
+  - [ ] Implement integer encoder w/ overlapping buckets
+    - overlapping should be a parameter
+    - it defines the level of uncertainty
+    - MDP planning becomes a light version of POMDP planning because of uncertainty
+  - [ ] Investigate relation between overlapping and sufficient activation thresholds
+  - [ ] Investigate `MaxSynapsesPerSegment` parameter impact
+  - [ ] Start testing on POMDPs
 
 Non-critical issues needing further investigation
 
 - [ ] issue: fantom false positive transitions
   - e.g. sometimes it predicts state superposition from sar - it's a mistake as the next state is always _one_ determined state.
+  - haven't been detected since, will remove this item
 
 Auxialiary tasks, usability improvements and so on
 
 - [x] make FAQ on TM params
 - [x] config based tests
   - [x] test config + builder classes
-  - [ ] improve config based building:
+  - [x] improve config based building:
     - one config file for one test run (=all agents one test)
     - or even one config file for the whole experiment (=all agents all tests)
-- [ ] fine grained trace verbosity levels
-- [ ] setup release-based dev cycle
+- [x] fine grained trace verbosity levels
+- [x] setup release-based dev cycle
   - add tagging to git commits
   - how to add release notes
   - ?notes for major releases should contain algo details from FAQ
-- [ ] release v0.1 version of the SAR-based agent
+- [x] release v0.1 version of the SAR-based agent
 
 ## Thoughts
 
