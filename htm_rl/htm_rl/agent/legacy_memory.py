@@ -53,7 +53,7 @@ class LegacyMemory:
 
         :param proximal_input: column activations sparse SDR.
         :param learn: whether or not to force learning.
-        :param verbose: whether or not to print debug traces.
+        :param verbosity: whether or not to print debug traces.
         :return: tuple (active cells, depolarized cells) of sparse SDRs.
         """
         self.print_sar_superposition(verbosity, 2, proximal_input)

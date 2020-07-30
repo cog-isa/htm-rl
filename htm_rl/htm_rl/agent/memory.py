@@ -5,6 +5,7 @@ from typing import List, Callable, Dict, Set, Tuple
 from htm.bindings.sdr import SDR
 
 from htm_rl.common.base_sa import SaSuperposition, Sa
+from htm_rl.common.base_sar import Sar
 from htm_rl.common.int_sdr_encoder import BitRange
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sdr import SparseSdr
@@ -180,15 +181,15 @@ class Memory:
 
         cpc = self.tm.cells_per_column
 
-        layerwise_sparse_sdrs = [[] for _ in range(cpc)]
+        layer_wise_sparse_sdrs = [[] for _ in range(cpc)]
         for cell_index in cells_sparse_sdr:
             column, layer = divmod(cell_index, cpc)
-            layerwise_sparse_sdrs[layer].append(column)
+            layer_wise_sparse_sdrs[layer].append(column)
 
-        first_line = f'{self.format_sdr(layerwise_sparse_sdrs[0])} {mark}'
+        first_line = f'{self.format_sdr(layer_wise_sparse_sdrs[0])} {mark}'
         lines = [first_line]
         for layer_ind in range(1, cpc):
-            lines.append(self.format_sdr(layerwise_sparse_sdrs[layer_ind]))
+            lines.append(self.format_sdr(layer_wise_sparse_sdrs[layer_ind]))
         trace(verbosity, req_level, '\n'.join(lines))
 
     def print_sa_superposition(

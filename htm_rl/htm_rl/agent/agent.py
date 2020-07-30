@@ -4,20 +4,29 @@ from typing import Any
 import numpy as np
 from tqdm import trange
 
-from htm_rl.agent.legacy_memory import LegacyMemory
-from htm_rl.agent.legacy_planner import LegacyPlanner
+from htm_rl.agent.memory import Memory
+from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
+from htm_rl.common.base_sa import Sa
 from htm_rl.common.base_sar import Sar
 from htm_rl.common.utils import timed, trace
 
 
 class Agent:
-    def __init__(self, memory: LegacyMemory, planner: LegacyPlanner, n_actions, use_cooldown=False):
+    memory: Memory
+    planner: Planner
+    _n_actions: int
+    _use_cooldown: bool
+    _planning_horizon: int
+
+    def __init__(self, memory: Memory, planner: Planner, n_actions, use_cooldown=False):
         self.memory = memory
         self.planner = planner
         self._n_actions = n_actions
-        self.set_planning_horizon(planner.planning_horizon)
         self._use_cooldown = use_cooldown
+        self._planning_horizon = self.planner.planning_horizon
+        self.set_planning_horizon(self._planning_horizon)
+        self._goal_state = None
 
     def set_planning_horizon(self, planning_horizon: int):
         self.planner.planning_horizon = planning_horizon
@@ -35,20 +44,28 @@ class Agent:
 
     def make_step(self, state, reward, is_done, verbosity: int):
         trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
-        action = self._make_action(state, reward, is_done, verbosity)
+        action = self._make_action(state, is_done, verbosity)
         trace(verbosity, 2, f'\nMake action: {action}')
 
-        self.memory.train(Sar(state, action, reward), verbosity)
+        self.memory.train(Sa(state, action), verbosity)
+        if reward > 0:
+            self.planner.add_goal(state)
         return action
 
     def _init_planning(self):
         self._planned_actions = deque(maxlen=self._planning_horizon + 1)
         self._planning_cooldown = 0
+        self._goal_state = None
 
-    def _make_action(self, state, reward, is_done, verbosity: int):
+    def _make_action(self, state, is_done, verbosity: int):
         if self._should_plan and not is_done:
-            from_sar = Sar(state, None, reward)
-            planned_actions = self.planner.plan_actions(from_sar, verbosity)
+            if self._goal_state is not None:
+                if self._goal_state == state:
+                    self.planner.remove_goal(self._goal_state)
+                self._goal_state = None
+
+            from_sa = Sa(state, None)
+            planned_actions, self._goal_state = self.planner.plan_actions(from_sa, verbosity)
             self._planned_actions.extend(planned_actions)
             self._raise_cooldown()
             self._n_times_planned += 1
@@ -133,4 +150,5 @@ class AgentRunner:
 
     def store_results(self, run_results_processor: RunResultsProcessor):
         planning_horizon = self.agent.planner.planning_horizon
-        run_results_processor.store_result(self.train_stats, f'htm_{planning_horizon}')
+        mark = '_' if isinstance(self.agent, Agent) else ''
+        run_results_processor.store_result(self.train_stats, f'htm_{planning_horizon}{mark}')

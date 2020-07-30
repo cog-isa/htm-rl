@@ -11,6 +11,7 @@ import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
 from htm_rl.agent.agent import Agent, AgentRunner
+from htm_rl.agent.legacy_agent import LegacyAgent
 from htm_rl.agent.legacy_memory import LegacyMemory
 from htm_rl.agent.legacy_planner import LegacyPlanner
 from htm_rl.agent.memory import Memory
@@ -21,7 +22,7 @@ from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.utils import trace
-from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp
+from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp, SaSuperpositionFormatter
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 from htm_rl.testing_envs import PresetMdpCellTransitions
 
@@ -257,6 +258,10 @@ class TagProxies:
     def sar_superposition_formatter(loader: BaseLoader, node):
         return SarSuperpositionFormatter.format
 
+    @staticmethod
+    def sa_superposition_formatter(loader: BaseLoader, node):
+        return SaSuperpositionFormatter.format
+
 
 def read_config(file_path: Path, verbose=False):
     yaml: PatchedYaml = PatchedYaml()
@@ -275,7 +280,7 @@ def register_classes(yaml: PatchedYaml):
         IntSdrEncoder, SarSdrEncoder, SaSdrEncoder,
         TemporalMemory, LegacyMemory, Memory,
         LegacyPlanner, Planner,
-        Agent, AgentRunner,
+        LegacyAgent, Agent, AgentRunner,
         RunResultsProcessor,
     ]
     for cls in classes:

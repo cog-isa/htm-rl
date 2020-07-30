@@ -16,7 +16,8 @@ class Planner:
     memory: Memory
     planning_horizon: int
     encoder: SaSdrEncoder
-    goal_memory: 'CircularSet'
+    episode_goal_memory: 'CircularSet'
+    inter_episode_goal_memory: 'CircularSet'
 
     # segments[time][cell] = segments = [ segment ] = [ [presynaptic_cell] ]
     _active_segments_timeline: List[Mapping[int, List[Set[int]]]]
@@ -26,7 +27,8 @@ class Planner:
         self.memory = memory
         self.encoder = memory.encoder
         self.planning_horizon = planning_horizon
-        self.goal_memory = CircularSet(goal_memory_size)
+        self.episode_goal_memory = CircularSet(goal_memory_size)
+        self.inter_episode_goal_memory = CircularSet(goal_memory_size)
 
         self._active_segments_timeline = []
         self._initial_tm_state = None
@@ -35,13 +37,13 @@ class Planner:
         self._clusters_merging_threshold = self.memory.tm.activation_threshold - 2
 
     def plan_actions(self, initial_sa: Sa, verbosity: int):
-        planned_actions = []
-        if self.planning_horizon == 0:
-            return planned_actions
+        planned_actions, goal_state = [], None
+        if self.planning_horizon == 0 or not self.episode_goal_memory:
+            return planned_actions, goal_state
 
         # TODO: check if it should be there
-        if initial_sa.state in self.goal_memory:
-            self.goal_memory.remove(initial_sa.state)
+        if initial_sa.state in self.episode_goal_memory:
+            self.episode_goal_memory.remove(initial_sa.state)
 
         trace(verbosity, 2, '\n======> Planning')
 
@@ -49,10 +51,10 @@ class Planner:
         self._initial_tm_state = self.memory.save_tm_state()
 
         reached_goals = self._predict_to_goals(initial_sa, verbosity)
-        planned_actions = self._backtrack(reached_goals, verbosity)
+        planned_actions, goal_state = self._backtrack(reached_goals, verbosity)
 
         trace(verbosity, 2, '<====== Planning complete')
-        return planned_actions
+        return planned_actions, goal_state
 
     def _predict_to_goals(self, initial_sa: Sa, verbosity: int) -> List[int]:
         trace(verbosity, 2, '===> Forward pass')
@@ -99,11 +101,11 @@ class Planner:
             Activation timeline is a list of active cells sparse SDR at each previous timestep t.
         """
         trace(verbosity, 2, '\n===> Backward pass')
-        planned_actions = []
+        planned_actions, goal_state = [], None
 
         T = len(self._active_segments_timeline)
         if not reached_goal_states or T == 0:
-            return planned_actions
+            return planned_actions, goal_state
 
         depolarized_cells = self._active_segments_timeline[T-1].keys()
         for goal_state in reached_goal_states:
@@ -119,7 +121,7 @@ class Planner:
                 break
 
         trace(verbosity, 2, '<=== Backward pass complete')
-        return planned_actions
+        return planned_actions, goal_state
 
     def _backtrack_from_state(self, desired_depolarization: SparseSdr, t: int, verbosity: int) -> Tuple:
         """
@@ -345,7 +347,14 @@ class Planner:
         return action
 
     def _reached_goals(self, states):
-        return [state for state in states if state in self.goal_memory]
+        return [state for state in states if state in self.episode_goal_memory]
+
+    def add_goal(self, goal_state):
+        self.episode_goal_memory.add(goal_state)
+        self.inter_episode_goal_memory.add(goal_state)
+
+    def remove_goal(self, goal_state):
+        self.episode_goal_memory.remove(goal_state)
 
 
 class CircularSet:

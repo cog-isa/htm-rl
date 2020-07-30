@@ -30,7 +30,7 @@ env: !env &env
   activation_threshold: 7
   default_format: short
 
-sar_sdr_encoder: &encoder !SarSdrEncoder
+sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   state_encoder: !IntSdrEncoder
     <<: *base_encoder
     name: state
@@ -39,13 +39,16 @@ sar_sdr_encoder: &encoder !SarSdrEncoder
     <<: *base_encoder
     name: action
     n_values: *n_actions
+
+sar_sdr_encoder: &sar_sdr_encoder !SarSdrEncoder
+  <<: *sa_sdr_encoder
   reward_encoder: !IntSdrEncoder
     <<: *base_encoder
     name: state
     n_values: 2
 
-temporal_memory: !TemporalMemory &tm
-  n_columns: !property [*encoder, total_bits]
+sar_temporal_memory: !TemporalMemory &sar_tm
+  n_columns: !property [*sar_sdr_encoder, total_bits]
   cells_per_column: 1
   initial_permanence: .5
   connected_permanence: .4
@@ -58,21 +61,50 @@ temporal_memory: !TemporalMemory &tm
   maxSynapsesPerSegment: 24           # enc.value_bits
   seed: *seed
 
-agent_memory: !LegacyMemory &agent_memory
-  tm: *tm
-  encoder: *encoder
-  sdr_formatter: !property [*encoder, format]
+legacy_agent_memory: !LegacyMemory &legacy_agent_memory
+  tm: *sar_tm
+  encoder: *sar_sdr_encoder
+  sdr_formatter: !property [*sar_sdr_encoder, format]
   sar_superposition_formatter: !sar_superposition_formatter
   collect_anomalies: False
 
+temporal_memory: !TemporalMemory &tm
+  n_columns: !property [*sa_sdr_encoder, total_bits]
+  cells_per_column: 1
+  initial_permanence: .5
+  connected_permanence: .4
+  activation_threshold: 14            # 7*2
+  learning_threshold: 11              # action.value_bits < x < activation_threshold
+  predictedSegmentDecrement: .0001
+  permanenceIncrement: .1
+  permanenceDecrement: .05
+  maxNewSynapseCount: !property [*sa_sdr_encoder, value_bits]
+  maxSynapsesPerSegment: !property [*sa_sdr_encoder, value_bits]
+  seed: *seed
+
+agent_memory: !Memory &agent_memory
+  tm: *tm
+  encoder: *sa_sdr_encoder
+  sdr_formatter: !property [*sa_sdr_encoder, format]
+  sa_superposition_formatter: !sa_superposition_formatter
+  collect_anomalies: False
+
 # NB: all agents will use the same TM object!
+.base_legacy_htm_agent: &base_legacy_htm_agent
+  memory: *legacy_agent_memory
+  planner: &legacy_base_planner
+    memory: *legacy_agent_memory
+    planning_horizon:
+  n_actions: *n_actions
+  use_cooldown: False
+
 .base_htm_agent: &base_htm_agent
   memory: *agent_memory
   planner: &base_planner
     memory: *agent_memory
     planning_horizon:
+    goal_memory_size: 1
   n_actions: *n_actions
-  use_cooldown: False
 
 agents:
   dqn: !DqnAgent &dqn_agent
@@ -83,25 +115,36 @@ agents:
     learning_rate: .3e-3
     seed: *seed
 
-  htm_0: !Agent &htm_0_agent
-    <<: *base_htm_agent
+  htm_0: !LegacyAgent &htm_0_agent
+    <<: *base_legacy_htm_agent
     planner: !LegacyPlanner
-      <<: *base_planner
+      <<: *legacy_base_planner
       planning_horizon: 0
 
-  htm_4: !Agent &htm_4_agent
-    <<: *base_htm_agent
+  htm_4: !LegacyAgent &htm_4_agent
+    <<: *base_legacy_htm_agent
     planner: !LegacyPlanner
-      <<: *base_planner
+      <<: *legacy_base_planner
       planning_horizon: 4
 
+  htm_4_: !Agent &htm_4_agent_
+    <<: *base_htm_agent
+    use_cooldown: False
+    planner: !Planner
+      <<: *base_planner
+      planning_horizon: 4
 
 # agent runners
 .base_agent_runner: &base_runner
   env: *env
   n_episodes: 50
-  max_steps: 15
+  max_steps: 80
+  agent:
   verbosity: *verbosity
+
+.base_htm_agent_runner: &base_htm_runner
+  <<: *base_runner
+  pretrain: 0
 
 agent_runners:
   dqn: !DqnAgentRunner
@@ -109,14 +152,20 @@ agent_runners:
     agent: *dqn_agent
 
   htm_0: !AgentRunner
-    <<: *base_runner
+    <<: *base_htm_runner
     agent: *htm_0_agent
-    pretrain: 0
 
   htm_4: !AgentRunner
-    <<: *base_runner
+    <<: *base_htm_runner
     agent: *htm_4_agent
-    pretrain: 0
+    n_episodes: 50
+    verbosity: 1
+
+  htm_4_: !AgentRunner
+    <<: *base_htm_runner
+    agent: *htm_4_agent_
+    n_episodes: 50
+    verbosity: 1
 
 # test run results processing
 run_results_processor: !RunResultsProcessor
