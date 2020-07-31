@@ -107,10 +107,12 @@ sar_sdr_encoder: !SarSdrEncoder &sar_sdr_encoder
 .base_htm_agent: &base_htm_agent
   memory:
   planner:
-    memory:
-    planning_horizon:
-    goal_memory_size: 1
   n_actions: *n_actions
+
+.base_htm_planner: &base_htm_planner
+  memory:
+  planning_horizon:
+  goal_memory_size: 1
 
 # agent runners
 .base_agent_runner: &base_runner
@@ -139,22 +141,22 @@ agent_runners:
     <<: *base_htm_runner
     agent: !LegacyAgent
       <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm
+      memory: !LegacyMemory &tm0
         <<: *base_legacy_agent_memory
         tm: !TemporalMemory {<<: *base_sar_tm}
       planner: !LegacyPlanner
-        memory: *tm
+        memory: *tm0
         planning_horizon: 0
 
   htm_8: !AgentRunner
     <<: *base_htm_runner
     agent: !LegacyAgent
       <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm
+      memory: !LegacyMemory &tm8
         <<: *base_legacy_agent_memory
         tm: !TemporalMemory {<<: *base_sar_tm}
       planner: !LegacyPlanner
-        memory: *tm
+        memory: *tm8
         planning_horizon: 8
     n_episodes: 100
     pretrain: 15
@@ -177,11 +179,11 @@ agent_runners:
     <<: *base_htm_runner
     agent: !LegacyAgent
       <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm
+      memory: !LegacyMemory &tm16
         <<: *base_legacy_agent_memory
         tm: !TemporalMemory {<<: *base_sar_tm}
       planner: !LegacyPlanner
-        memory: *tm
+        memory: *tm16
         planning_horizon: 16
     pretrain: 15
 
@@ -189,11 +191,12 @@ agent_runners:
     <<: *base_htm_runner
     agent: !Agent
       <<: *base_htm_agent
-      memory: !Memory &tm
+      memory: !Memory &tm8_
         <<: *base_agent_memory
         tm: !TemporalMemory {<<: *base_tm}
       planner: !Planner
-        memory: *tm
+        <<: *base_htm_planner
+        memory: *tm8_
         planning_horizon: 8
     n_episodes: 100
     pretrain: 15
@@ -202,22 +205,26 @@ agent_runners:
     <<: *base_htm_runner
     agent: !Agent
       <<: *base_htm_agent
-      memory: !Memory &tm
+      memory: !Memory &tm12_
         <<: *base_agent_memory
         tm: !TemporalMemory {<<: *base_tm}
       planner: !Planner
-        memory: *tm
+        <<: *base_htm_planner
+        memory: *tm12_
         planning_horizon: 12
+    n_episodes: 100
     pretrain: 15
 
   htm_16_: !AgentRunner
     <<: *base_htm_runner
     agent: !Agent
       <<: *base_htm_agent
-      memory: !Memory &tm
+      memory: !Memory &tm16_
         <<: *base_agent_memory
         tm: !TemporalMemory {<<: *base_tm}
       planner: !Planner
-        memory: *tm
-        planning_horizon: 12
+        <<: *base_htm_planner
+        memory: *tm16_
+        planning_horizon: 16
+    n_episodes: 100
     pretrain: 15
