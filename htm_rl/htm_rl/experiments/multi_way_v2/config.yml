@@ -6,8 +6,8 @@ random_seed_setter: !RandomSeedSetter
 
 # =========== environment =============
 env: !pov_env &env
-  cell_transitions: !preset_env_transitions multi_way_v0
-  initial_cell: 0
+  cell_transitions: !preset_env_transitions multi_way_v2
+  initial_cell: 7
   initial_direction: 0
   cell_gonality: 4
   allow_clockwise_action: False
@@ -16,6 +16,14 @@ env: !pov_env &env
 .env_dimensions:
   n_states: !property &n_states [*env, n_states]
   n_actions: !property &n_actions [*env, n_actions]
+
+# test run results processing
+run_results_processor: !RunResultsProcessor
+  env_name: multi_way_v2
+  optimal_len: 16             # hack
+  moving_average: 20
+  verbosity: *verbosity
+  test_dir:                   # leave empty for default behavior - output to the config's dir
 
 # =========== encoder =================
 # encoder can be one for all
@@ -108,7 +116,7 @@ sar_sdr_encoder: !SarSdrEncoder &sar_sdr_encoder
 .base_agent_runner: &base_runner
   env: *env
   n_episodes: 200
-  max_steps: 100
+  max_steps: 1500
   agent:
   verbosity: *verbosity
 
@@ -138,39 +146,6 @@ agent_runners:
         memory: *tm
         planning_horizon: 0
 
-  htm_1: !AgentRunner
-    <<: *base_htm_runner
-    agent: !LegacyAgent
-      <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm
-        <<: *base_legacy_agent_memory
-        tm: !TemporalMemory {<<: *base_sar_tm}
-      planner: !LegacyPlanner
-        memory: *tm
-        planning_horizon: 1
-
-  htm_2: !AgentRunner
-    <<: *base_htm_runner
-    agent: !LegacyAgent
-      <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm
-        <<: *base_legacy_agent_memory
-        tm: !TemporalMemory {<<: *base_sar_tm}
-      planner: !LegacyPlanner
-        memory: *tm
-        planning_horizon: 2
-
-  htm_4: !AgentRunner
-    <<: *base_htm_runner
-    agent: !LegacyAgent
-      <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm
-        <<: *base_legacy_agent_memory
-        tm: !TemporalMemory {<<: *base_sar_tm}
-      planner: !LegacyPlanner
-        memory: *tm
-        planning_horizon: 4
-
   htm_8: !AgentRunner
     <<: *base_htm_runner
     agent: !LegacyAgent
@@ -181,39 +156,34 @@ agent_runners:
       planner: !LegacyPlanner
         memory: *tm
         planning_horizon: 8
+    n_episodes: 100
+    pretrain: 15
 
-  htm_1_: !AgentRunner
+  htm_12: !AgentRunner
     <<: *base_htm_runner
-    agent: !Agent
-      <<: *base_htm_agent
-      memory: !Memory &tm
-        <<: *base_agent_memory
-        tm: !TemporalMemory {<<: *base_tm}
-      planner: !Planner
+    agent: !LegacyAgent
+      <<: *base_legacy_htm_agent
+      memory: !LegacyMemory &tm
+        <<: *base_legacy_agent_memory
+        tm: !TemporalMemory {<<: *base_sar_tm}
+      planner: !LegacyPlanner
         memory: *tm
-        planning_horizon: 1
+        planning_horizon: 12
+    n_episodes: 100
+    max_steps: 1000
+    pretrain: 15
 
-  htm_2_: !AgentRunner
+  htm_16: !AgentRunner
     <<: *base_htm_runner
-    agent: !Agent
-      <<: *base_htm_agent
-      memory: !Memory &tm
-        <<: *base_agent_memory
-        tm: !TemporalMemory {<<: *base_tm}
-      planner: !Planner
+    agent: !LegacyAgent
+      <<: *base_legacy_htm_agent
+      memory: !LegacyMemory &tm
+        <<: *base_legacy_agent_memory
+        tm: !TemporalMemory {<<: *base_sar_tm}
+      planner: !LegacyPlanner
         memory: *tm
-        planning_horizon: 2
-
-  htm_4_: !AgentRunner
-    <<: *base_htm_runner
-    agent: !Agent
-      <<: *base_htm_agent
-      memory: !Memory &tm
-        <<: *base_agent_memory
-        tm: !TemporalMemory {<<: *base_tm}
-      planner: !Planner
-        memory: *tm
-        planning_horizon: 4
+        planning_horizon: 16
+    pretrain: 15
 
   htm_8_: !AgentRunner
     <<: *base_htm_runner
@@ -225,12 +195,29 @@ agent_runners:
       planner: !Planner
         memory: *tm
         planning_horizon: 8
+    n_episodes: 100
+    pretrain: 15
 
-# test run results processing
-run_results_processor: !RunResultsProcessor
-  env_name: multi_way_v0
-  optimal_len: 7              # hack
-  moving_average: 20
-  verbosity: *verbosity
-  test_dir:                   # leave empty for default behavior - output to the config's dir
+  htm_12_: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        memory: *tm
+        planning_horizon: 12
+    pretrain: 15
 
+  htm_16_: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        memory: *tm
+        planning_horizon: 12
+    pretrain: 15
