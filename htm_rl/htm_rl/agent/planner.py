@@ -356,6 +356,9 @@ class Planner:
     def remove_goal(self, goal_state):
         self.episode_goal_memory.remove(goal_state)
 
+    def restore_goal_list(self):
+        self.episode_goal_memory = self.inter_episode_goal_memory.copy()
+
 
 class CircularSet:
     max_size: int

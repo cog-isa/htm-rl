@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Any
+from typing import Any, List
 
 import numpy as np
 from tqdm import trange
@@ -8,8 +8,8 @@ from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.common.base_sa import Sa
-from htm_rl.common.base_sar import Sar
 from htm_rl.common.utils import timed, trace
+from htm_rl.envs.mdp import Mdp
 
 
 class Agent:
@@ -56,6 +56,7 @@ class Agent:
         self._planned_actions = deque(maxlen=self._planning_horizon + 1)
         self._planning_cooldown = 0
         self._goal_state = None
+        self.planner.restore_goal_list()
 
     def _make_action(self, state, is_done, verbosity: int):
         if self._should_plan and not is_done:
@@ -109,6 +110,7 @@ class AgentRunner:
     pretrain: int
     verbosity: int
     train_stats: RunStats
+    name: str
 
     def __init__(self, agent, env, n_episodes, max_steps, pretrain, verbosity):
         self.agent = agent
@@ -117,7 +119,8 @@ class AgentRunner:
         self.max_steps = max_steps
         self.pretrain = pretrain
         self.verbosity = verbosity
-        self.train_stats = RunStats(n_episodes)
+        self.train_stats = RunStats()
+        self.name = '???'
 
     def run(self):
         trace(self.verbosity, 1, '============> RUN HTM AGENT')
@@ -141,14 +144,31 @@ class AgentRunner:
         action = self.agent.make_step(state, reward, done, self.verbosity)
 
         step = 0
+        total_reward = 0.
         while step < self.max_steps and not done:
             state, reward, done, info = self.env.step(action)
             action = self.agent.make_step(state, reward, done, self.verbosity)
             step += 1
+            total_reward += reward
 
-        return step, reward
+        return step, total_reward
 
     def store_results(self, run_results_processor: RunResultsProcessor):
-        planning_horizon = self.agent.planner.planning_horizon
-        mark = '_' if isinstance(self.agent, Agent) else ''
-        run_results_processor.store_result(self.train_stats, f'htm_{planning_horizon}{mark}')
+        run_results_processor.store_result(self.train_stats, f'{self.name}')
+
+
+class TransferLearningExperimentRunner:
+    terminal_states: List[int]
+    verbosity: int
+
+    def __init__(self, terminal_states: List[int], verbosity: int):
+        self.terminal_states = terminal_states
+        self.verbosity = verbosity
+
+    def run_experiment(self, agent_runner: AgentRunner):
+        trace(self.verbosity, 1, '========================> RUN TRANSFER LEARNING EXPERIMENT')
+        env: Mdp = agent_runner.env
+        for terminal_state in self.terminal_states:
+            env.terminal_state = terminal_state
+            agent_runner.run()
+        trace(self.verbosity, 1, '<========================')

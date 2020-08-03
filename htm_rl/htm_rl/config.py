@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
-from htm_rl.agent.agent import Agent, AgentRunner
+from htm_rl.agent.agent import Agent, AgentRunner, TransferLearningExperimentRunner
 from htm_rl.agent.legacy_agent import LegacyAgent
 from htm_rl.agent.legacy_memory import LegacyMemory
 from htm_rl.agent.legacy_planner import LegacyPlanner
@@ -22,7 +22,10 @@ from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.utils import trace
-from htm_rl.envs.mdp import SarSuperpositionFormatter, GridworldMdpGenerator, Mdp, SaSuperpositionFormatter
+from htm_rl.envs.mdp import (
+    SarSuperpositionFormatter, PovBasedGridworldMdpGenerator, Mdp, SaSuperpositionFormatter,
+    GridworldMdpGenerator,
+)
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 from htm_rl.envs.preset_mdp_cell_transitions import PresetMdpCellTransitions
 
@@ -50,137 +53,11 @@ class RandomSeedSetter:
 
     def __init__(self, seed):
         self.seed = seed
+        self.reset()
 
-        random.seed(seed)
-        np.random.seed(seed)
-
-
-@dataclass
-class MdpCellTransitionsGeneratorConfig(BaseConfig):
-    preset_name: str
-    path_directions: List[int]
-
-    @classmethod
-    def path(cls):
-        return '.env_mdp_cell_transitions'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        config['preset_name'] = 'passage'
-        config['path_directions'] = [0, 1]
-
-    def make(self, verbose=False):
-        preset_name = self.preset_name
-        if preset_name == 'passage':
-            return PresetMdpCellTransitions.passage(self.path_directions)
-        elif preset_name == 'multi_way_v0':
-            return PresetMdpCellTransitions.multi_way_v0()
-        elif preset_name == 'multi_way_v1':
-            return PresetMdpCellTransitions.multi_way_v1()
-        elif preset_name == 'multi_way_v2':
-            return PresetMdpCellTransitions.multi_way_v2()
-        elif preset_name == 'multi_way_v3':
-            return PresetMdpCellTransitions.multi_way_v3()
-
-
-@dataclass
-class TemporalMemoryConfig(BaseConfig):
-    n_columns: int
-    cells_per_column: int
-    activation_threshold: int
-    learning_threshold: int
-    maxNewSynapseCount: int
-    maxSynapsesPerSegment: int
-    seed: int
-    initial_permanence: float = .5
-    connected_permanence: float = .4
-    predictedSegmentDecrement: float = .0001
-    permanenceIncrement: float = .1
-    permanenceDecrement: float = .05
-
-    @classmethod
-    def path(cls):
-        return '.agent_tm'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        if 'agent_encoder' in global_config:
-            encoder: SarSdrEncoder = global_config['agent_encoder']
-
-            activation_threshold = encoder.activation_threshold
-
-            action_bits = encoder._encoders.action.value_bits
-            reward_bits = encoder._encoders.reward.value_bits
-            learning_threshold = action_bits + reward_bits + 2
-            assert learning_threshold + 2 < encoder.activation_threshold, \
-                f'{learning_threshold}, {encoder.activation_threshold}'
-
-            config['n_columns'] = encoder.total_bits
-            config['activation_threshold'] = activation_threshold
-            config['learning_threshold'] = learning_threshold
-            config['maxNewSynapseCount'] = encoder.value_bits
-            config['maxSynapsesPerSegment'] = encoder.value_bits
-
-        if 'seed' in global_config:
-            config['seed'] = global_config['seed']
-
-    def make(self, verbosity=False) -> TemporalMemory:
-        trace(
-            verbosity, 1,
-            f'Cells: {self.n_columns}x{self.cells_per_column}; '
-            f'activation: {self.activation_threshold}; '
-            f'learn: {self.learning_threshold}'
-        )
-        tm_kwargs = dataclasses.asdict(self)
-        return TemporalMemory(**tm_kwargs)
-
-
-@dataclass
-class AgentRunnerConfig(BaseConfig):
-    env: Any
-    agent: Agent
-    n_episodes: int
-    max_steps: int
-    verbose: bool
-    pretrain: int = 0
-
-    @classmethod
-    def path(cls):
-        return '.agent_runner'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        config['env'] = global_config['env']
-        config['agent'] = global_config['agent']
-        config['verbose'] = global_config['verbosity'] > 1
-
-    def make(self, verbose=False):
-        return AgentRunner(
-            self.agent, self.env, self.n_episodes, self.max_steps, self.pretrain, self.verbose
-        )
-
-
-@dataclass
-class DqnAgentRunnerConfig(BaseConfig):
-    env: Any
-    agent: DqnAgent
-    n_episodes: int
-    max_steps: int
-    verbose: bool
-
-    @classmethod
-    def path(cls):
-        return '.dqn_agent_runner'
-
-    @classmethod
-    def apply_defaults(cls, config, global_config):
-        config['env'] = global_config['env']
-        config['agent'] = global_config['dqn_agent']
-        config['verbose'] = global_config['verbosity'] > 1
-
-    def make(self, verbose=False):
-        kwargs = dataclasses.asdict(self)
-        return DqnAgentRunner(**kwargs)
+    def reset(self):
+        random.seed(self.seed)
+        np.random.seed(self.seed)
 
 
 class TestRunner:
@@ -190,22 +67,32 @@ class TestRunner:
         self.config = config
 
     def run(self, agent_key: str, run: bool, aggregate: bool):
+        random_seeder: RandomSeedSetter = self.config['random_seed_setter']
+
         run_results_processor: RunResultsProcessor = self.config['run_results_processor']
         if run_results_processor.test_dir is None:
             run_results_processor.test_dir = self.config['test_dir']
 
+        transfer_learning_experiment_runner: TransferLearningExperimentRunner
+        transfer_learning_experiment_runner = self.config.get('transfer_learning_experiment_runner', None)
+
         # by default, if nothing specified then at least `run`
         if run or not aggregate:
             if agent_key is not None:
-                agents = [agent_key]
+                agents = [agent_key] if not isinstance(agent_key, list) else agent_key
             else:
-                agents = self.config['agents'].keys()
+                agents = self.config['agent_runners'].keys()
 
             for agent in agents:
+                random_seeder.reset()
                 # TODO: make IAgentRunner
                 runner = self.config['agent_runners'][agent]
+                runner.name = agent
                 print(f'AGENT: {agent}')
-                runner.run()
+                if transfer_learning_experiment_runner is not None:
+                    transfer_learning_experiment_runner.run_experiment(runner)
+                else:
+                    runner.run()
                 runner.store_results(run_results_processor)
 
         if aggregate:
@@ -251,6 +138,12 @@ class TagProxies:
         return GridworldMdpGenerator.generate_env(**kwargs)
 
     @staticmethod
+    def pov_env(loader: BaseLoader, node):
+        kwargs = loader.construct_mapping(node, deep=True)
+        kwargs['env_type'] = Mdp
+        return PovBasedGridworldMdpGenerator.generate_env(**kwargs)
+
+    @staticmethod
     def property(loader: BaseLoader, node):
         seq: List = loader.construct_sequence(node, deep=True)
         if len(seq) == 2:
@@ -287,6 +180,7 @@ def register_classes(yaml: PatchedYaml):
         TemporalMemory, LegacyMemory, Memory,
         LegacyPlanner, Planner,
         LegacyAgent, Agent, AgentRunner,
+        TransferLearningExperimentRunner,
         RunResultsProcessor,
     ]
     for cls in classes:

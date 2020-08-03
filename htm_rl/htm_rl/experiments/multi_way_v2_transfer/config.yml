@@ -5,25 +5,26 @@ random_seed_setter: !RandomSeedSetter
   seed: &seed 1337
 
 # =========== environment =============
-env: !pov_env &env
-  cell_transitions: !preset_env_transitions multi_way_v0
-  initial_cell: 0
-  initial_direction: 0
-  cell_gonality: 4
-  allow_clockwise_action: False
+env: !env &env
+  cell_transitions: !preset_env_transitions multi_way_v2
+  initial_cell: 7
+  terminal_cell: 20
   seed: *seed
 
 .env_dimensions:
   n_states: !property &n_states [*env, n_states]
   n_actions: !property &n_actions [*env, n_actions]
 
+transfer_learning_experiment_runner: !TransferLearningExperimentRunner
+  terminal_states: [20, 1, 10, 15, 5, 20]
+  verbosity: *verbosity
+
 # test run results processing
 run_results_processor: !RunResultsProcessor
-  env_name: multi_way_v0
-  optimal_len: 7              # hack
+  env_name: multi_way_v2
   moving_average: 20
   verbosity: *verbosity
-  test_dir:                   # leave empty for default behavior - output to the config's dir
+  test_dir:     # leave empty for default behavior - output to the config's dir
 
 # =========== encoder =================
 # encoder can be one for all
@@ -44,36 +45,8 @@ sa_sdr_encoder: !SaSdrEncoder &sa_sdr_encoder
     name: action
     n_values: *n_actions
 
-sar_sdr_encoder: !SarSdrEncoder &sar_sdr_encoder
-  <<: *sa_sdr_encoder
-  reward_encoder: !IntSdrEncoder
-    <<: *base_encoder
-    name: state
-    n_values: 2
-
 # ========== Temporal Memory / Memory ==========
 # should be unique for each agent
-.base_sar_temporal_memory: &base_sar_tm
-  n_columns: !property [*sar_sdr_encoder, total_bits]
-  cells_per_column: 1
-  initial_permanence: .5
-  connected_permanence: .4
-  activation_threshold: 21            # 7*3
-  learning_threshold: 18              # [a+r].value_bits < x < activation_threshold
-  predictedSegmentDecrement: .0001
-  permanenceIncrement: .1
-  permanenceDecrement: .05
-  maxNewSynapseCount: 24              # enc.value_bits
-  maxSynapsesPerSegment: 24           # enc.value_bits
-  seed: *seed
-
-.base_legacy_agent_memory: &base_legacy_agent_memory
-  tm:
-  encoder: *sar_sdr_encoder
-  sdr_formatter: !property [*sar_sdr_encoder, format]
-  sar_superposition_formatter: !sar_superposition_formatter
-  collect_anomalies: False
-
 .base_temporal_memory: &base_tm
   n_columns: !property [*sa_sdr_encoder, total_bits]
   cells_per_column: 1
@@ -96,14 +69,6 @@ sar_sdr_encoder: !SarSdrEncoder &sar_sdr_encoder
   collect_anomalies: False
 
 # =========== Agents and Runners ==============
-.base_legacy_htm_agent: &base_legacy_htm_agent
-  memory:
-  planner:
-    memory:
-    planning_horizon:
-  n_actions: *n_actions
-  use_cooldown: False
-
 .base_htm_agent: &base_htm_agent
   memory:
   planner:
@@ -112,13 +77,18 @@ sar_sdr_encoder: !SarSdrEncoder &sar_sdr_encoder
 .base_htm_planner: &base_htm_planner
   memory:
   planning_horizon:
+  goal_memory_size: 10
+
+.base_htm_planner_1g: &base_htm_planner_1g
+  memory:
+  planning_horizon:
   goal_memory_size: 1
 
 # agent runners
 .base_agent_runner: &base_runner
   env: *env
-  n_episodes: 200
-  max_steps: 100
+  n_episodes: 100
+  max_steps: 400
   agent:
   verbosity: *verbosity
 
@@ -139,103 +109,84 @@ agent_runners:
 
   htm_0: !AgentRunner
     <<: *base_htm_runner
-    agent: !LegacyAgent
-      <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm0
-        <<: *base_legacy_agent_memory
-        tm: !TemporalMemory {<<: *base_sar_tm}
-      planner: !LegacyPlanner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm0
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_1g
         memory: *tm0
         planning_horizon: 0
 
-  htm_1: !AgentRunner
-    <<: *base_htm_runner
-    agent: !LegacyAgent
-      <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm1
-        <<: *base_legacy_agent_memory
-        tm: !TemporalMemory {<<: *base_sar_tm}
-      planner: !LegacyPlanner
-        memory: *tm1
-        planning_horizon: 1
-
   htm_2: !AgentRunner
     <<: *base_htm_runner
-    agent: !LegacyAgent
-      <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm2
-        <<: *base_legacy_agent_memory
-        tm: !TemporalMemory {<<: *base_sar_tm}
-      planner: !LegacyPlanner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm2
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner
         memory: *tm2
         planning_horizon: 2
 
   htm_4: !AgentRunner
     <<: *base_htm_runner
-    agent: !LegacyAgent
-      <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm4
-        <<: *base_legacy_agent_memory
-        tm: !TemporalMemory {<<: *base_sar_tm}
-      planner: !LegacyPlanner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm4
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner
         memory: *tm4
         planning_horizon: 4
 
   htm_8: !AgentRunner
     <<: *base_htm_runner
-    agent: !LegacyAgent
-      <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm8
-        <<: *base_legacy_agent_memory
-        tm: !TemporalMemory {<<: *base_sar_tm}
-      planner: !LegacyPlanner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm8
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner
         memory: *tm8
         planning_horizon: 8
 
-  htm_1_: !AgentRunner
+  htm_2_1g: !AgentRunner
     <<: *base_htm_runner
     agent: !Agent
       <<: *base_htm_agent
-      memory: !Memory &tm1_
+      memory: !Memory &tm2_1g
         <<: *base_agent_memory
         tm: !TemporalMemory {<<: *base_tm}
       planner: !Planner
-        <<: *base_htm_planner
-        memory: *tm1_
-        planning_horizon: 1
-
-  htm_2_: !AgentRunner
-    <<: *base_htm_runner
-    agent: !Agent
-      <<: *base_htm_agent
-      memory: !Memory &tm2_
-        <<: *base_agent_memory
-        tm: !TemporalMemory {<<: *base_tm}
-      planner: !Planner
-        <<: *base_htm_planner
-        memory: *tm2_
+        <<: *base_htm_planner_1g
+        memory: *tm2_1g
         planning_horizon: 2
 
-  htm_4_: !AgentRunner
+  htm_4_1g: !AgentRunner
     <<: *base_htm_runner
     agent: !Agent
       <<: *base_htm_agent
-      memory: !Memory &tm_4_
+      memory: !Memory &tm4_1g
         <<: *base_agent_memory
         tm: !TemporalMemory {<<: *base_tm}
       planner: !Planner
-        <<: *base_htm_planner
-        memory: *tm_4_
+        <<: *base_htm_planner_1g
+        memory: *tm4_1g
         planning_horizon: 4
 
-  htm_8_: !AgentRunner
+  htm_8_1g: !AgentRunner
     <<: *base_htm_runner
     agent: !Agent
       <<: *base_htm_agent
-      memory: !Memory &tm8_
+      memory: !Memory &tm8_1g
         <<: *base_agent_memory
         tm: !TemporalMemory {<<: *base_tm}
       planner: !Planner
-        <<: *base_htm_planner
-        memory: *tm8_
+        <<: *base_htm_planner_1g
+        memory: *tm8_1g
         planning_horizon: 8

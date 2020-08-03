@@ -31,6 +31,7 @@ class LegacyAgent:
         self._init_planning()
 
     def make_step(self, state, reward, is_done, verbosity: int):
+        reward = 1 if reward > 0 else 0
         trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
         action = self._make_action(state, reward, is_done, verbosity)
         trace(verbosity, 2, f'\nMake action: {action}')

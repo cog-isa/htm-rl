@@ -89,6 +89,7 @@ class DqnAgentRunner:
     verbosity: int
     train_stats: RunStats
     test_stats: RunStats
+    name: str
 
     def __init__(self, agent, env, n_episodes, max_steps, verbosity):
         self.agent = agent
@@ -96,8 +97,9 @@ class DqnAgentRunner:
         self.n_episodes = n_episodes
         self.max_steps = max_steps
         self.verbosity = verbosity
-        self.train_stats = RunStats(n_episodes)
-        self.test_stats = RunStats(n_episodes)
+        self.train_stats = RunStats()
+        self.test_stats = RunStats()
+        self.name = 'dqn'
 
     def run(self):
         trace(self.verbosity, 1, '============> RUN DQN AGENT')
@@ -122,6 +124,7 @@ class DqnAgentRunner:
         self.agent.reset(train_mode)
         with torch.set_grad_enabled(train_mode):
             state, step, done = self.env.reset(), 0, False
+            total_reward = 0
             trace(verbosity, 2, f'\nState: {state}')
 
             while step < self.max_steps and not done:
@@ -134,12 +137,13 @@ class DqnAgentRunner:
                 state = next_state
                 trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
                 step += 1
+                total_reward += reward
 
-            return step, reward
+            return step, total_reward
 
     def store_results(self, run_results_processor: RunResultsProcessor):
-        run_results_processor.store_result(self.train_stats, 'dqn_eps')
-        run_results_processor.store_result(self.test_stats, 'dqn_greedy')
+        run_results_processor.store_result(self.train_stats, f'{self.name}_eps')
+        run_results_processor.store_result(self.test_stats, f'{self.name}_greedy')
 
 
 class DqnAgentNetwork(nn.Module):

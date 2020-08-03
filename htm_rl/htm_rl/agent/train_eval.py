@@ -1,6 +1,7 @@
 import os
 from glob import glob
 from pathlib import Path
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,27 +11,23 @@ from htm_rl.common.utils import trace
 
 
 class RunStats:
-    steps: np.array
-    rewards: np.array
-    times: np.array
+    steps: List[int]
+    rewards: List[float]
+    times: List[float]
 
-    def __init__(self, n_episodes):
-        self.steps = np.empty(n_episodes, dtype=np.int)
-        self.rewards = np.empty(n_episodes, dtype=np.float)
-        self.times = np.empty(n_episodes, dtype=np.float)
-        self._i = 0
+    def __init__(self):
+        self.steps = []
+        self.rewards = []
+        self.times = []
 
     def append_stats(self, steps, total_reward, elapsed_time):
-        i = self._i
-        self.steps[i] = steps
-        self.rewards[i] = total_reward
-        self.times[i] = elapsed_time
-        self._i += 1
+        self.steps.append(steps)
+        self.rewards.append(total_reward)
+        self.times.append(elapsed_time)
 
 
 class RunResultsProcessor:
     env_name: str
-    optimal_len: int
     test_dir: str
     moving_average: int
     verbosity: int
@@ -38,10 +35,9 @@ class RunResultsProcessor:
     data_ext = '.csv.tar.gz'
 
     def __init__(
-            self, env_name: str, optimal_len: int, test_dir: str, moving_average: int, verbosity: int
+            self, env_name: str, test_dir: str, moving_average: int, verbosity: int
     ):
         self.env_name = env_name
-        self.optimal_len = optimal_len
         self.test_dir = test_dir
         self.moving_average = moving_average
         self.verbosity = verbosity
@@ -68,12 +64,11 @@ class RunResultsProcessor:
         df_steps: pd.DataFrame = pd.concat(self._get_columns(dfs, 'steps'), axis=1, keys=col_names)
         df_times: pd.DataFrame = pd.concat(self._get_columns(dfs, 'times'), axis=1, keys=col_names)
         df_rewards: pd.DataFrame = pd.concat(self._get_columns(dfs, 'rewards'), axis=1, keys=col_names)
-        df_rewards *= self.optimal_len / df_steps
         # print(df_rewards.max(axis=0))
         # print(df_steps.min(axis=0))
 
         ma = self.moving_average
-        rewards_title = f'{self.env_name}: episode reward, fraction of optimal, MA={ma}'
+        rewards_title = f'{self.env_name}: episode reward, MA={ma}'
         self._plot_figure(df_rewards, rewards_title, 'rewards')
 
         self._plot_figure(df_steps, f'{self.env_name}: episode duration, steps, MA={ma}', 'steps')
@@ -109,10 +104,10 @@ class RunResultsProcessor:
         return [df[col] for _, df in dfs]
 
     def print_results(self, run_stats):
-        avg_len = run_stats.steps.mean()
-        avg_reward = (run_stats.rewards * (self.optimal_len / run_stats.steps)).mean()
-        avg_time = run_stats.times.mean()
-        elapsed = run_stats.times.sum()
+        avg_len = np.array(run_stats.steps).mean()
+        avg_reward = np.array(run_stats.rewards).mean()
+        avg_time = np.array(run_stats.times).mean()
+        elapsed = np.array(run_stats.times).sum()
         trace(
             self.verbosity, 1,
             f'AvgLen: {avg_len: .2f}  AvgReward: {avg_reward: .5f}  '
