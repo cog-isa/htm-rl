@@ -1,5 +1,3 @@
-from typing import List
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -7,7 +5,7 @@ from htm_rl.common.utils import timed, trace
 
 
 class GridworldMapGenerator:
-    directions: List[int] = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+    directions = [(1, 0), (0, -1), (-1, 0), (0, 1)]
 
     seed: int
     size: int
