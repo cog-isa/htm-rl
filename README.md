@@ -196,6 +196,7 @@ Entry point is `run_mdp_test.py`.
   - conventions
   - implementation
   - patches
+- [ ] update FAQ part on Terminology, Encoding, Parameters and Planning
 
 Research + functional tasks
 
@@ -212,7 +213,7 @@ Research + functional tasks
     - [x] Make config for an experiment
     - [x] Run experiment
   - [ ] Report results
-    - [ ] Update method description
+    - [x] Update method description
     - [ ] Add experiment results
 - Not acknowledged and questionable:
   - [ ] Split SAR TM into 2 TMs

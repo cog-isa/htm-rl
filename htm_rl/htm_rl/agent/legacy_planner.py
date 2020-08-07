@@ -218,9 +218,11 @@ class LegacyPlanner:
         while self._merge_clusters(clusters):
             ...
 
-        # unzip list of tuples to tuple of lists
-        column_clusters, cell_clusters = zip(*clusters)
-        return cell_clusters
+        if clusters:
+            # unzip list of tuples to tuple of lists
+            column_clusters, cell_clusters = zip(*clusters)
+            return cell_clusters
+        return []
 
     def _merge_clusters(self, clusters: List):
         """

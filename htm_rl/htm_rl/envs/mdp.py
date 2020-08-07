@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import Type
 
 from gym.utils import seeding
