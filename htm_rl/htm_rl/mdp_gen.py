@@ -1,109 +1,107 @@
-import numpy as np
+from typing import List
+
 import matplotlib.pyplot as plt
+import numpy as np
 
-from htm_rl.common.utils import timed
-
-
-def gen_mdp():
-    seed = 1337
-    np.random.seed(seed)
-
-    mdps = 2
-    density = .55
-    n = 5
-    T = 0
-    for _seed in np.random.randint(2**15, size=mdps):
-        _, t = gen_mdp_with_seed2(n, _seed, density)
-        T += t
-    print(T)
+from htm_rl.common.utils import timed, trace
 
 
-@timed
-def gen_mdp_with_seed2(n, seed, density):
-    np.random.seed(seed)
-    required_cells = int(density * n**2)
-    a = np.zeros((n, n), dtype=np.bool)
-    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+class GridworldMapGenerator:
+    directions: List[int] = [(1, 0), (0, -1), (-1, 0), (0, 1)]
 
-    p = .1/np.sqrt(n)
-    q_fw = 1 - 1./np.sqrt(n)
-    s0 = np.random.randint(n**2)
-    d = np.random.randint(4)
-    i, j = divmod(s0, n)
-    a[i][j] = True
-    n_cells = 0
-    s = 0
-    while n_cells < required_cells:
-        s += 1
-        moved = False
-        if np.random.rand() < q_fw:
-            new_i = max(0, min(n-1, i + dirs[d][0]))
-            new_j = max(0, min(n-1, j + dirs[d][1]))
-            if not a[new_i][new_j]:
-                i, j = new_i, new_j
-                a[i, j] = True
-                n_cells += 1
-                moved = True
+    seed: int
+    size: int
+    density: float
+    verbosity: int
 
-        if not moved:
-            dif_d = int(np.sign(.5 - np.random.rand()))
-            d = (d + dif_d + 4) % 4
+    def __init__(self, seed: int, size: int, density: float, verbosity: int):
+        self.seed = seed
+        self.size = size
+        self.density = density
+        self.verbosity = verbosity
 
-        if np.random.rand() < p:
-            b = np.zeros_like(a, dtype=np.float)
-            b[1:] += a[1:] * (~a[:-1])
-            b[:-1] += a[:-1] * (~a[1:])
-            b[:, 1:] += a[:, 1:] * (~a[:, :-1])
-            b[:, :-1] += a[:, :-1] * (~a[:, 1:])
-            # plt.imshow(b), plt.show()
-            b /= b.sum()
-            visited = np.flatnonzero(b)
-            s0 = np.random.choice(visited, p=b.ravel()[visited])
-            d = np.random.randint(4)
-            i, j = divmod(s0, n)
+    def __iter__(self):
+        rnd_generator = np.random.default_rng(seed=self.seed)
+        while True:
+            seed = rnd_generator.integers(2**31)
+            gridworld_map, t = self.generate(seed)
+            trace(self.verbosity, 3, f'Gridworld {seed} generated in {t:.5f} sec')
+            yield gridworld_map
 
-    # print(s / (n**2))
-    plt.imshow(a)
-    plt.show()
+    @timed
+    def generate(self, seed):
+        n = self.size
+        required_cells = int(self.density * n**2)
+        rnd = np.random.default_rng(seed=seed)
 
+        gridworld = np.zeros((n, n), dtype=np.bool)
+        non_visited_neighbors = np.empty_like(gridworld, dtype=np.float)
 
-def gen_mdp_with_seed(n, seed, density):
-    a = np.zeros((n, n))
-    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
-    np.random.seed(seed)
+        p_change_cell = .1/np.sqrt(n)
+        p_move_forward = 1 - 1./np.sqrt(n)
 
-    k, m = 2*n, n
-    seeds = np.random.randint(2**15, size=k)
-    s = 0
-    for _seed in seeds:
-        np.random.seed(_seed)
+        i, j = divmod(rnd.integers(n**2), n)
+        view_direction = rnd.integers(4)
+        gridworld[i][j] = True
+        n_cells, n_iterations = 0, 0
 
-        s0 = np.random.randint(n**2)
-        d = np.random.randint(4)
-        i, j = divmod(s0, n)
-        a[i][j] = 1
-        step = 0
-        while step < m:
-            s += 1
-            action = np.random.choice(3, p=[.6, .2, .2])
-            if action == 0:
-                new_i = max(0, min(n-1, i + dirs[d][0]))
-                new_j = max(0, min(n-1, j + dirs[d][1]))
-                if new_i != i or new_j != j:
-                    i, j = new_i, new_j
-                    a[i][j] += 1
-                    step += 1
-            else:
-                dif_d = int(np.sign(1.5 - action))
-                d = (d + dif_d + 4) % 4
+        while n_cells < required_cells:
+            n_iterations += 1
+            moved_forward = False
+            if rnd.random() < p_move_forward:
+                _i, _j = self._try_move_forward(i, j, view_direction)
+                if not gridworld[_i][_j]:
+                    i, j = _i, _j
+                    gridworld[i, j] = True
+                    n_cells += 1
+                    moved_forward = True
 
-    ranks = a.ravel().argsort().argsort().reshape((n, n))
-    sparsity = 1 - density
-    cutoff = int(sparsity * n**2)
-    mask = ranks >= cutoff
-    print(s / (n**2))
+            if not moved_forward:
+                view_direction = self._turn(view_direction, rnd)
 
-    plt.imshow(a)
-    plt.show()
-    plt.imshow(mask)
-    plt.show()
+            if rnd.random() < p_change_cell:
+                i, j, cell_flatten_index = self._choose_rnd_cell(
+                    gridworld, non_visited_neighbors, rnd
+                )
+
+        trace(self.verbosity, 3, f'Gridworld map generation efficiency: {n_iterations / (n**2)}')
+        if self.verbosity >= 4:
+            plt.imshow(gridworld)
+            plt.show(block=False)
+
+        return gridworld
+
+    def _try_move_forward(self, i, j, view_direction):
+        i += self.directions[view_direction][0]
+        j += self.directions[view_direction][1]
+
+        i, j = max(0, min(self.size - 1, i)), max(0, min(self.size - 1, j))
+        return i, j
+
+    @staticmethod
+    def _turn(view_direction, rnd):
+        turn_direction = int(np.sign(.5 - rnd.random()))
+        return (view_direction + turn_direction + 4) % 4
+
+    def _choose_rnd_cell(
+            self, gridworld: np.ndarray, non_visited_neighbors: np.ndarray,
+            rnd: np.random.Generator
+    ):
+        # count non-visited neighbors
+        non_visited_neighbors.fill(0)
+        non_visited_neighbors[1:] += gridworld[1:] * (~gridworld[:-1])
+        non_visited_neighbors[:-1] += gridworld[:-1] * (~gridworld[1:])
+        non_visited_neighbors[:, 1:] += gridworld[:, 1:] * (~gridworld[:, :-1])
+        non_visited_neighbors[:, :-1] += gridworld[:, :-1] * (~gridworld[:, 1:])
+        # normalize to become probabilities
+        non_visited_neighbors /= non_visited_neighbors.sum()
+
+        # choose cell
+        flatten_visited_indices = np.flatnonzero(non_visited_neighbors)
+        probabilities = non_visited_neighbors.ravel()[flatten_visited_indices]
+        cell_flatten_index = rnd.choice(flatten_visited_indices, p=probabilities)
+        i, j = divmod(cell_flatten_index, self.size)
+
+        # choose direction
+        view_direction = rnd.integers(4)
+        return i, j, view_direction
