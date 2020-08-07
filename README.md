@@ -207,10 +207,10 @@ Research + functional tasks
   - [ ] Test transfer learning capabilities
     - [ ] Adapt environments for random initial states
     - [ ] Adapt environments for random rewarding states
-    - [ ] Make the set of testing environments
+    - [x] Make the set of testing environments
     - [ ] Adapt test runners for a multi-environment tests
-    - [ ] Make config for an experiment
-    - [ ] Run experiment
+    - [x] Make config for an experiment
+    - [x] Run experiment
   - [ ] Report results
     - [ ] Update method description
     - [ ] Add experiment results

@@ -6,23 +6,19 @@ random_seed_setter: !RandomSeedSetter
 
 # =========== environment =============
 env: !env &env
-  cell_transitions: !preset_env_transitions multi_way_v1
+  cell_transitions: !preset_env_transitions multi_way_v0
   initial_cell: 0
-  terminal_cell: 14
+  terminal_cell: 7
   seed: *seed
 
 .env_dimensions:
   n_states: !property &n_states [*env, n_states]
   n_actions: !property &n_actions [*env, n_actions]
 
-transfer_learning_experiment_runner: !TransferLearningExperimentRunner
-  terminal_states: [5, 10, 4, 14, 9]
-  verbosity: *verbosity
-
 # test run results processing
 run_results_processor: !RunResultsProcessor
-  env_name: multi_way_v1
-  moving_average: 20
+  env_name: multi_way_v0
+  moving_average: 10
   verbosity: *verbosity
   test_dir:     # leave empty for default behavior - output to the config's dir
 
@@ -119,7 +115,7 @@ sar_sdr_encoder: !SarSdrEncoder &sar_sdr_encoder
 .base_agent_runner: &base_runner
   env: *env
   n_episodes: 50
-  max_steps: 100
+  max_steps: 50
   agent:
   verbosity: *verbosity
 
@@ -176,18 +172,6 @@ agent_runners:
         memory: *tm4
         planning_horizon: 4
 
-  htm_8: !AgentRunner
-    <<: *base_htm_runner
-    agent: !Agent
-      <<: *base_htm_agent
-      memory: !Memory &tm8
-        <<: *base_agent_memory
-        tm: !TemporalMemory {<<: *base_tm}
-      planner: !Planner
-        <<: *base_htm_planner
-        memory: *tm8
-        planning_horizon: 8
-
   htm_1_: !AgentRunner
     <<: *base_htm_runner
     agent: !LegacyAgent
@@ -209,7 +193,6 @@ agent_runners:
       planner: !LegacyPlanner
         memory: *tm2_
         planning_horizon: 2
-    pretrain: 1
 
   htm_4_: !AgentRunner
     <<: *base_htm_runner
@@ -221,16 +204,3 @@ agent_runners:
       planner: !LegacyPlanner
         memory: *tm4_
         planning_horizon: 4
-    pretrain: 1
-
-  htm_8_: !AgentRunner
-    <<: *base_htm_runner
-    agent: !LegacyAgent
-      <<: *base_legacy_htm_agent
-      memory: !LegacyMemory &tm8_
-        <<: *base_legacy_agent_memory
-        tm: !TemporalMemory {<<: *base_sar_tm}
-      planner: !LegacyPlanner
-        memory: *tm8_
-        planning_horizon: 8
-    pretrain: 1
