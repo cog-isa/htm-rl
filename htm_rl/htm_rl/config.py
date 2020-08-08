@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
-from htm_rl.agent.agent import Agent, AgentRunner, TransferLearningExperimentRunner
+from htm_rl.agent.agent import Agent, AgentRunner, TransferLearningExperimentRunner, TransferLearningExperimentRunner2
 from htm_rl.agent.legacy_agent import LegacyAgent
 from htm_rl.agent.legacy_memory import LegacyMemory
 from htm_rl.agent.legacy_planner import LegacyPlanner
@@ -22,6 +22,7 @@ from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.utils import trace
+from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
 from htm_rl.envs.mdp import (
     SarSuperpositionFormatter, PovBasedGridworldMdpGenerator, Mdp, SaSuperpositionFormatter,
     GridworldMdpGenerator,
@@ -76,8 +77,13 @@ class TestRunner:
         transfer_learning_experiment_runner: TransferLearningExperimentRunner
         transfer_learning_experiment_runner = self.config.get('transfer_learning_experiment_runner', None)
 
+        dry_run = self.config['dry_run']
+        if transfer_learning_experiment_runner is not None and dry_run:
+            transfer_learning_experiment_runner: TransferLearningExperimentRunner2
+            transfer_learning_experiment_runner.show_environments()
+
         # by default, if nothing specified then at least `run`
-        if run or not aggregate:
+        if not dry_run and (run or not aggregate):
             if agent_key is not None:
                 agents = [agent_key] if not isinstance(agent_key, list) else agent_key
             else:
@@ -181,6 +187,8 @@ def register_classes(yaml: PatchedYaml):
         LegacyPlanner, Planner,
         LegacyAgent, Agent, AgentRunner,
         TransferLearningExperimentRunner,
+        GridworldMapGenerator,
+        TransferLearningExperimentRunner2,
         RunResultsProcessor,
     ]
     for cls in classes:

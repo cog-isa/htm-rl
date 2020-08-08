@@ -35,12 +35,14 @@ class GridworldMdp:
             initial_state = self._get_random_available_state()
             if isnone(self.terminal_state, -1) != initial_state:
                 self.initial_state = initial_state
+                break
 
     def set_terminal_state(self):
         while True:
             terminal_state = self._get_random_available_state()
             if isnone(self.initial_state, -1) != terminal_state:
                 self.terminal_state = terminal_state
+                break
 
     def is_terminal(self, state):
         """ return True if state is terminal or False if it isn't """
@@ -60,7 +62,7 @@ class GridworldMdp:
         i = self._clip(i + self.directions[action][0], self.shape[0])
         j = self._clip(j + self.directions[action][1], self.shape[1])
 
-        if (i, j) != self._current_state and self.gridworld_map[i][j]:
+        if (i, j) != self._current_cell and self.gridworld_map[i, j]:
             self._current_cell = i, j
             self._current_state = self._to_state(i, j)
 
@@ -70,12 +72,12 @@ class GridworldMdp:
 
     def render(self, mode: str = None):
         if mode == 'img':
-            a = np.zeros_like(self.gridworld_map, dtype=np.int8)
-            a[self.gridworld_map] = 20
+            a = np.zeros_like(self.gridworld_map, dtype=np.float)
+            a[self.gridworld_map] = .5
             agent_i, agent_j = self._current_cell
-            a[agent_i, agent_j] = 100
+            a[agent_i, agent_j] = 1.0
             goal_i, goal_j = self._to_cell(self.terminal_state)
-            a[goal_i, goal_j] = 255
+            a[goal_i, goal_j] = .85
 
             plt.imshow(a)
             plt.show(block=True)

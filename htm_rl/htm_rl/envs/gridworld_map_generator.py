@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from htm_rl.common.utils import timed, trace
+from htm_rl.envs.gridworld_mdp import GridworldMdp
 
 
 class GridworldMapGenerator:
@@ -24,7 +25,7 @@ class GridworldMapGenerator:
             seed = rnd_generator.integers(2**31)
             gridworld_map, t = self.generate(seed)
             trace(self.verbosity, 3, f'Gridworld {seed} generated in {t:.5f} sec')
-            yield gridworld_map
+            yield GridworldMdp(gridworld_map, seed)
 
     @timed
     def generate(self, seed):

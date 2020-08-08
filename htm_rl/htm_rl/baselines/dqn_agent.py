@@ -110,6 +110,17 @@ class DqnAgentRunner:
                 trace(self.verbosity, 2, '')
         trace(self.verbosity, 1, '<============')
 
+    def run_iterable(self, iterable):
+        trace(self.verbosity, 1, '============> RUN DQN AGENT')
+
+        for _ in iterable():
+            for train_mode, stats in zip([True, False], [self.train_stats, self.test_stats]):
+                (steps, reward), elapsed_time = self.run_episode(train_mode=train_mode)
+                stats.append_stats(steps, reward, elapsed_time)
+                trace(self.verbosity, 2, '')
+            yield
+        trace(self.verbosity, 1, '<============')
+
     def print_q_values(self):
         self.agent.reset(False)
         with torch.set_grad_enabled(False):

@@ -162,8 +162,8 @@ class Memory:
             # keep only synapses to active presynaptic cells
             active_presynaptic_cells = active_segment & active_cells
 
-            assert len(active_presynaptic_cells) >= tm.activation_threshold
-            active_segments[depolarized_cell].append(active_presynaptic_cells)
+            if len(active_presynaptic_cells) >= tm.activation_threshold:
+                active_segments[depolarized_cell].append(active_presynaptic_cells)
 
         # active segment: (postsynaptic _depolarized_ cell; presynaptic !active+connected! cells)
         return active_segments

@@ -1,4 +1,5 @@
 from collections import deque
+from itertools import islice
 from typing import Any, List
 
 import numpy as np
@@ -9,6 +10,8 @@ from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.common.base_sa import Sa
 from htm_rl.common.utils import timed, trace
+from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
+from htm_rl.envs.gridworld_mdp import GridworldMdp
 from htm_rl.envs.mdp import Mdp
 
 
@@ -137,6 +140,22 @@ class AgentRunner:
             trace(self.verbosity, 2, '')
         trace(self.verbosity, 1, '<============')
 
+    def run_iterable(self, iterable):
+        trace(self.verbosity, 1, '============> RUN HTM AGENT')
+        planning_horizon = self.agent.planner.planning_horizon
+
+        for global_ep, local_ep in iterable():
+            if self.pretrain > 0 == local_ep:
+                self.agent.set_planning_horizon(0)
+            if 0 < self.pretrain == local_ep:
+                self.agent.set_planning_horizon(planning_horizon)
+
+            (steps, reward), elapsed_time = self.run_episode()
+            self.train_stats.append_stats(steps, reward, elapsed_time)
+            trace(self.verbosity, 2, '')
+            yield
+        trace(self.verbosity, 1, '<============')
+
     @timed
     def run_episode(self):
         self.agent.reset()
@@ -172,3 +191,53 @@ class TransferLearningExperimentRunner:
             env.terminal_state = terminal_state
             agent_runner.run()
         trace(self.verbosity, 1, '<========================')
+
+
+class TransferLearningExperimentRunner2:
+    env_generator: GridworldMapGenerator
+    n_episodes_all_fixed: int
+    n_initial_states: int
+    n_terminal_states: int
+    n_environments: int
+    verbosity: int
+
+    def __init__(
+            self, env_generator: GridworldMapGenerator, n_episodes_all_fixed: int,
+            n_initial_states: int, n_terminal_states: int,
+            n_environments: int, verbosity: int
+    ):
+        self.env_generator = env_generator
+        self.n_episodes_all_fixed = n_episodes_all_fixed
+        self.n_initial_states = n_initial_states
+        self.n_terminal_states = n_terminal_states
+        self.n_environments = n_environments
+        self.verbosity = verbosity
+
+    def run_experiment(self, agent_runner: AgentRunner):
+        n_episodes = self.n_environments * self.n_terminal_states * self.n_initial_states
+        n_episodes *= self.n_episodes_all_fixed
+
+        zipped_iterator = lambda: zip(trange(n_episodes), self._get_local_iterator(agent_runner))
+        for _ in agent_runner.run_iterable(zipped_iterator):
+            ...
+
+    def _get_local_iterator(self, agent_runner: AgentRunner):
+        env: GridworldMdp
+        for env in islice(self.env_generator, self.n_environments):
+            agent_runner.env = env
+            for _ in range(self.n_terminal_states):
+                env.set_terminal_state()
+                for _ in range(self.n_initial_states):
+                    env.set_initial_state()
+                    for local_episode in range(self.n_episodes_all_fixed):
+                        yield local_episode
+
+    def show_environments(self):
+        env: GridworldMdp
+        for env in islice(self.env_generator, self.n_environments):
+            for _ in range(self.n_terminal_states):
+                env.set_terminal_state()
+                for _ in range(self.n_initial_states):
+                    env.set_initial_state()
+                    env.reset()
+                    env.render(mode='img')
