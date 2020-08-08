@@ -1,11 +1,10 @@
-import dataclasses
 import random
 from abc import abstractmethod
 from dataclasses import dataclass
 from inspect import getattr_static
 from pathlib import Path
 from pprint import pprint
-from typing import Any, Dict, List
+from typing import Dict, List
 
 import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
@@ -21,14 +20,13 @@ from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
-from htm_rl.common.utils import trace
 from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
 from htm_rl.envs.mdp import (
     SarSuperpositionFormatter, PovBasedGridworldMdpGenerator, Mdp, SaSuperpositionFormatter,
     GridworldMdpGenerator,
 )
-from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 from htm_rl.envs.preset_mdp_cell_transitions import PresetMdpCellTransitions
+from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
 @dataclass

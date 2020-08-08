@@ -1,0 +1,99 @@
+# Research and development log
+
+- [Research and development log](#research-and-development-log)
+  - [2020.08.08 Sat](#20200808-sat)
+    - [TODO](#todo)
+    - [Thoughts](#thoughts)
+    - [Gridworld transfer learning experiment](#gridworld-transfer-learning-experiment)
+
+## 2020.08.08 Sat
+
+### TODO
+
+**Urgent**:
+
+- [x] add ruamel.yaml to requirements
+- [ ] describe config based building details
+  - conventions
+  - implementation
+  - patches
+- [ ] update FAQ part on Terminology, Encoding, Parameters and Planning
+
+Research + functional tasks
+
+- [ ] Adapt planning to goal-based strategy
+  - [x] Switch from reward-based planning to goal-based
+    - [x] Cut out reward from encoding and memorizing
+    - [x] Track history of rewarding states and plan according to any of them
+      - add naive list-based rewarding states tracking
+  - [ ] Test transfer learning capabilities
+    - [x] Adapt environments for random initial states
+    - [x] Adapt environments for random rewarding states
+    - [x] Make the set of testing environments
+    - [x] Adapt test runners for a multi-environment tests
+    - [x] Make config for an experiment
+    - [x] Run experiment
+      - [x] 1-50-4-4 test on 5x5 default seed, 1-2-4 x 1-4-8g
+      - [ ] 1-50-4-4 test on 5x5 non-default seed, 1-2-4 x 1-4g
+      - [ ] 1-100-2-8 test on 5x5 2 seeds, 1-2-4 x 1-4g
+      - [ ] 1-100-2-8 test on 6x6 2 seeds, 1-2-4 x 1-4g
+  - [ ] Report results
+    - [x] Update method description
+    - [ ] Add experiment results
+- Not acknowledged and questionable:
+  - [ ] Split SAR TM into 2 TMs
+    - State TM: (s, a) $\rightarrow$ s'
+    - Action TM: s $\rightarrow$ a
+    - Direct external rewards aren't a thing
+    - Reinforcement isn't tracked ATM
+  - [ ] Investigate `MaxSegmentsPerCell` parameter impact
+  - [ ] Implement integer encoder w/ overlapping buckets
+    - overlapping should be a parameter
+    - it defines the level of uncertainty
+    - MDP planning becomes a light version of POMDP planning because of uncertainty
+  - [ ] Investigate relation between overlapping and sufficient activation thresholds
+  - [ ] Investigate `MaxSynapsesPerSegment` parameter impact
+  - [ ] Start testing on POMDPs
+
+Non-critical issues needing further investigation
+
+Auxialiary tasks, usability improvements and so on
+
+- [x] config based tests
+  - [x] test config + builder classes
+  - [x] improve config based building:
+    - one config file for one test run (=all agents one test)
+    - or even one config file for the whole experiment (=all agents all tests)
+- [x] fine grained trace verbosity levels
+- [x] setup release-based dev cycle
+  - add tagging to git commits
+  - how to add release notes
+  - ?notes for major releases should contain algo details from FAQ
+- [x] release v0.1 version of the SAR-based agent
+- [ ] for v1.x
+  - [ ] ? gym-like env interface
+  - [ ] ? refactor envs and env generators (naming, names)
+  - [ ] start live-logging
+- [ ] for v2.x
+  - [ ] remove legacy SAR-based parts
+
+### Thoughts
+
+- consider using SP between an input an TM
+  - only states need SP, because actions and reward are just ints (naive encoding is enough)
+  - concat them together
+  - it will take care of sparsity
+  - maybe smoothes the difference in size for a range of diff environments
+    - bc even large envs may have a very small signal
+- consider TD($\lambda$)-based approach from Sungur's work
+- split SAR-based TM into State TM + Action TM
+  - both has apical connections to each other
+  - reward or goal-based approach? Could be interchangeable
+- goal-based hierarchies of TM blocks
+- SP hierarchies for large input images
+  - with every SP working similar to convolution filter
+- consider doing live-logging experiments in markdown there
+
+### Gridworld transfer learning experiment
+
+First results show that the agent with 1-goal goal list performs better than the agents with larger goal list size.
