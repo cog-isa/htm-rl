@@ -1,6 +1,6 @@
-# FAQ
+# Project details
 
-- [FAQ](#faq)
+- [Project details](#project-details)
   - [Постановка задачи и среда](#постановка-задачи-и-среда)
     - [Постановка задачи transfer learning в одной среде](#постановка-задачи-transfer-learning-в-одной-среде)
     - [Постановка задачи transfer learning в нескольких средах](#постановка-задачи-transfer-learning-в-нескольких-средах)
@@ -14,6 +14,7 @@
     - [Выводы](#выводы)
   - [Terminology](#terminology)
   - [Encoding](#encoding)
+  - [Configuration based building](#configuration-based-building)
   - [Parameters](#parameters)
     - [Currently in use](#currently-in-use)
     - [Adviced by Numenta community](#adviced-by-numenta-community)
@@ -285,6 +286,32 @@ State SDR encoder
   - Also Integer SDR encoder cut out information about states similarity
 - One possible solution is to encode every pixel [or grid cell] separately then concatenate results
   - It preserves information about similarity between states
+
+## Configuration based building
+
+This section describes configs syntax, rules and how to use it.
+
+For configs we use yaml format, particularly 1.1 and 1.2 versions of its standard (the mix of them). You can read more about the format and its standards [here](TBD).
+
+As for implementation of yaml parser we use [ruamel.yaml](TBD) package. It's a fork of even more popular and seasoned alternative [pyyaml](TBD).
+
+Most shenanigans are based on the custom tags feature, supported by pyyaml and ruamel.yaml python packages.
+
+- standard yaml tags
+- custom tags
+  - building through constructors and factory methods
+  - naming conventions
+  - how to register class tag
+  - how to register factory method
+- DRY
+  - aliases
+  - merging feature from 1.1 standard
+    - how it works
+  - how to use them
+- ruamel patches
+  - use cases with undesired default behavior
+  - how they had been patched
+- examples
 
 ## Parameters
 
