@@ -1,0 +1,237 @@
+verbosity: &verbosity 1
+
+# ============== seed =================
+random_seed_setter: !RandomSeedSetter
+  seed: &seed 1337
+
+# =========== environment =============
+gridworld_map_generator: !GridworldMapGenerator &gridworld_generator
+  seed: *seed
+  size: 6
+  density: .55
+  verbosity: *verbosity
+
+.env_dimensions:
+  n_states: &n_states 36
+  n_actions: &n_actions 4
+
+transfer_learning_experiment_runner: !TransferLearningExperimentRunner2
+  env_generator: *gridworld_generator
+  n_episodes_all_fixed: 1
+  n_initial_states: 50
+  n_terminal_states: 2
+  n_environments: 4
+  verbosity: *verbosity
+
+# agent runners
+.base_agent_runner: &base_runner
+  env:
+  n_episodes:
+  max_steps: 400
+  agent:
+  verbosity: *verbosity
+
+# test run results processing
+run_results_processor: !RunResultsProcessor
+  env_name: gridworld_6x6_50_2_4_1337
+  moving_average: 40
+  verbosity: *verbosity
+  test_dir:                   # leave empty for default behavior - output to the config's dir
+
+# =========== encoder =================
+.base_encoder: &base_encoder
+  name:
+  n_values:
+  value_bits: 8
+  activation_threshold: 7
+  default_format: short
+
+sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
+  state_encoder: !IntSdrEncoder
+    <<: *base_encoder
+    name: state
+    n_values: *n_states
+  action_encoder: !IntSdrEncoder
+    <<: *base_encoder
+    name: action
+    n_values: *n_actions
+
+# ========== Temporal Memory / Memory ==========
+# should be unique for each agent
+.base_temporal_memory: &base_tm
+  n_columns: !property [*sa_sdr_encoder, total_bits]
+  cells_per_column: 1
+  initial_permanence: .5
+  connected_permanence: .4
+  activation_threshold: 14            # 7*2
+  learning_threshold: 11              # action.value_bits < x < activation_threshold
+  predictedSegmentDecrement: .0001
+  permanenceIncrement: .1
+  permanenceDecrement: .05
+  maxNewSynapseCount: !property [*sa_sdr_encoder, value_bits]
+  maxSynapsesPerSegment: !property [*sa_sdr_encoder, value_bits]
+  maxSegmentsPerCell: 4               # as only 4 actions available
+  seed: *seed
+
+.base_agent_memory: &base_agent_memory
+  tm:
+  encoder: *sa_sdr_encoder
+  sdr_formatter: !property [*sa_sdr_encoder, format]
+  sa_superposition_formatter: !sa_superposition_formatter
+  collect_anomalies: False
+
+# =========== Agents and Runners ==============
+.base_htm_agent: &base_htm_agent
+  memory:
+  planner:
+  n_actions: *n_actions
+
+.base_htm_planner_1g: &base_htm_planner_1g
+  memory:
+  planning_horizon:
+  goal_memory_size: 1
+
+.base_htm_planner_4g: &base_htm_planner_4g
+  memory:
+  planning_horizon:
+  goal_memory_size: 4
+
+.base_htm_planner_8g: &base_htm_planner_8g
+  memory:
+  planning_horizon:
+  goal_memory_size: 8
+
+.base_htm_agent_runner: &base_htm_runner
+  <<: *base_runner
+  pretrain: 0
+
+agent_runners:
+  dqn: !DqnAgentRunner
+    <<: *base_runner
+    agent: !DqnAgent
+      n_states: *n_states
+      n_actions: *n_actions
+      epsilon: .15
+      gamma: .975
+      learning_rate: .3e-3
+      seed: *seed
+
+  htm_0: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm0
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_1g
+        memory: *tm0
+        planning_horizon: 0
+
+  htm_1_1g: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm1_1g
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_1g
+        memory: *tm1_1g
+        planning_horizon: 1
+
+  htm_2_1g: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm2_1g
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_1g
+        memory: *tm2_1g
+        planning_horizon: 2
+
+  htm_4_1g: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm4_1g
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_1g
+        memory: *tm4_1g
+        planning_horizon: 4
+
+  htm_8_1g: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm8_1g
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_1g
+        memory: *tm8_1g
+        planning_horizon: 8
+
+  htm_1_4g: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm1_4g
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_4g
+        memory: *tm1_4g
+        planning_horizon: 1
+
+  htm_2_4g: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm2_4g
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_4g
+        memory: *tm2_4g
+        planning_horizon: 2
+
+  htm_4_4g: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm4_4g
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_4g
+        memory: *tm4_4g
+        planning_horizon: 4
+
+  htm_8_4g: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm8_4g
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_4g
+        memory: *tm8_4g
+        planning_horizon: 8
+
+  htm_4_8g: !AgentRunner
+    <<: *base_htm_runner
+    agent: !Agent
+      <<: *base_htm_agent
+      memory: !Memory &tm4_8g
+        <<: *base_agent_memory
+        tm: !TemporalMemory {<<: *base_tm}
+      planner: !Planner
+        <<: *base_htm_planner_8g
+        memory: *tm4_8g
+        planning_horizon: 4
