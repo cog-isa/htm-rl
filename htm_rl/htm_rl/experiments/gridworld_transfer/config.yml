@@ -23,6 +23,14 @@ transfer_learning_experiment_runner: !TransferLearningExperimentRunner2
   n_environments: 4
   verbosity: *verbosity
 
+# agent runners
+.base_agent_runner: &base_runner
+  env:
+  n_episodes: 1
+  max_steps: 100
+  agent:
+  verbosity: *verbosity
+
 # test run results processing
 run_results_processor: !RunResultsProcessor
   env_name: gridworld_5x5
@@ -92,14 +100,6 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   memory:
   planning_horizon:
   goal_memory_size: 4
-
-# agent runners
-.base_agent_runner: &base_runner
-  env:
-  n_episodes: 1
-  max_steps: 100
-  agent:
-  verbosity: *verbosity
 
 .base_htm_agent_runner: &base_htm_runner
   <<: *base_runner

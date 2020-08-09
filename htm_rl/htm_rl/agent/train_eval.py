@@ -54,28 +54,37 @@ class RunResultsProcessor:
 
         self.print_results(run_stats)
 
-    def aggregate_results(self):
-        csv_files_mask = f'*{self.data_ext}'
+    def aggregate_results(self, file_masks, report_suffix):
+        if not file_masks:
+            file_masks = ['*']
+
+        csv_files_masks = [
+            os.path.join(self.test_dir, f'{self.env_name}_{file_mask}{self.data_ext}')
+            for file_mask in file_masks
+        ]
+        trace(self.verbosity, 2, '\n'.join(csv_files_masks))
         dfs = [
             (file_path, pd.read_csv(file_path))
-            for file_path in sorted(glob(os.path.join(self.test_dir, csv_files_mask)))
+            for csv_file_mask in csv_files_masks
+            for file_path in sorted(glob(csv_file_mask))
         ]
         col_names = self._get_names(dfs)
         df_steps: pd.DataFrame = pd.concat(self._get_columns(dfs, 'steps'), axis=1, keys=col_names)
         df_times: pd.DataFrame = pd.concat(self._get_columns(dfs, 'times'), axis=1, keys=col_names)
         df_rewards: pd.DataFrame = pd.concat(self._get_columns(dfs, 'rewards'), axis=1, keys=col_names)
-        # print(df_rewards.max(axis=0))
-        # print(df_steps.min(axis=0))
+
+        report_name = f'{self.env_name}'
+        if report_suffix:
+            report_name += f'__{report_suffix}'
 
         ma = self.moving_average
-        rewards_title = f'{self.env_name}: episode reward, MA={ma}'
-        self._plot_figure(df_rewards, rewards_title, 'rewards')
+        self._plot_figure(df_rewards, f'episode reward, MA={ma}', report_name, 'rewards')
 
-        self._plot_figure(df_steps, f'{self.env_name}: episode duration, steps, MA={ma}', 'steps')
-        self._plot_figure(df_times, f'{self.env_name}: episode execution time, sec, MA={ma}', 'times')
+        self._plot_figure(df_steps, f'episode duration, steps, MA={ma}', report_name, 'steps')
+        self._plot_figure(df_times, f'episode execution time, sec, MA={ma}', report_name, 'times')
         plt.show()
 
-    def _plot_figure(self, df: pd.DataFrame, title: str, fname):
+    def _plot_figure(self, df: pd.DataFrame, title: str, report_name, fname):
         fig: plt.Figure
         ax: plt.Axes
         fig, ax = plt.subplots(1, 1, figsize=(12, 6))
@@ -83,11 +92,11 @@ class RunResultsProcessor:
         df_ma.plot(use_index=True, ax=ax)
 
         ax.legend(loc='right', bbox_to_anchor=(1.2, .5))
-        ax.set_title(title)
+        ax.set_title(f'{report_name}: {title}')
         fig.tight_layout(h_pad=4.)
         fig.show()
 
-        save_path = os.path.join(self.test_dir, f'fig_{fname}.png')
+        save_path = os.path.join(self.test_dir, f'{report_name}__{fname}.png')
         fig.savefig(save_path, dpi=120)
 
     def _get_names(self, dfs):

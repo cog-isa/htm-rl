@@ -100,7 +100,9 @@ class TestRunner:
                 runner.store_results(run_results_processor)
 
         if aggregate:
-            run_results_processor.aggregate_results()
+            aggregate_file_masks = self.config['aggregate_masks']
+            report_name_suffix = self.config['report_name']
+            run_results_processor.aggregate_results(aggregate_file_masks, report_name_suffix)
 
 
 class PatchedSafeConstructor(SafeConstructor):
