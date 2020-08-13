@@ -7,34 +7,34 @@ random_seed_setter: !RandomSeedSetter
 # =========== environment =============
 gridworld_map_generator: !GridworldMapGenerator &gridworld_generator
   seed: *seed
-  size: 6
+  size: 5
   density: .55
   verbosity: *verbosity
 
 .env_dimensions:
-  n_states: &n_states 36
+  n_states: &n_states 25
   n_actions: &n_actions 4
 
 transfer_learning_experiment_runner: !TransferLearningExperimentRunner2
   env_generator: *gridworld_generator
   n_episodes_all_fixed: 1
-  n_initial_states: 50
-  n_terminal_states: 2
-  n_environments: 4
+  n_initial_states: 20
+  n_terminal_states: 1
+  n_environments: 20
   verbosity: *verbosity
 
 # agent runners
 .base_agent_runner: &base_runner
   env:
   n_episodes:
-  max_steps: 400
+  max_steps: 300
   agent:
   verbosity: *verbosity
 
 # test run results processing
 run_results_processor: !RunResultsProcessor
-  env_name: gridworld_6x6_50_2_4_1337
-  moving_average: 20
+  env_name: gridworld_5x5_20_1_20_1337
+  moving_average: 40
   verbosity: *verbosity
   test_dir:                   # leave empty for default behavior - output to the config's dir
 
@@ -96,10 +96,10 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   planning_horizon:
   goal_memory_size: 4
 
-.base_htm_planner_8g: &base_htm_planner_8g
+.base_htm_planner_16g: &base_htm_planner_16g
   memory:
   planning_horizon:
-  goal_memory_size: 8
+  goal_memory_size: 16
 
 .base_htm_agent_runner: &base_htm_runner
   <<: *base_runner
@@ -212,26 +212,26 @@ agent_runners:
         memory: *tm4_4g
         planning_horizon: 4
 
-  htm_8_4g: !AgentRunner
+  htm_2_16g: !AgentRunner
     <<: *base_htm_runner
     agent: !Agent
       <<: *base_htm_agent
-      memory: !Memory &tm8_4g
+      memory: !Memory &tm2_16g
         <<: *base_agent_memory
         tm: !TemporalMemory {<<: *base_tm}
       planner: !Planner
-        <<: *base_htm_planner_4g
-        memory: *tm8_4g
-        planning_horizon: 8
+        <<: *base_htm_planner_16g
+        memory: *tm2_16g
+        planning_horizon: 2
 
-  htm_4_8g: !AgentRunner
+  htm_4_16g: !AgentRunner
     <<: *base_htm_runner
     agent: !Agent
       <<: *base_htm_agent
-      memory: !Memory &tm4_8g
+      memory: !Memory &tm4_16g
         <<: *base_agent_memory
         tm: !TemporalMemory {<<: *base_tm}
       planner: !Planner
-        <<: *base_htm_planner_8g
-        memory: *tm4_8g
+        <<: *base_htm_planner_16g
+        memory: *tm4_16g
         planning_horizon: 4
