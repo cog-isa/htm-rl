@@ -73,15 +73,25 @@ class RunResultsProcessor:
         df_times: pd.DataFrame = pd.concat(self._get_columns(dfs, 'times'), axis=1, keys=col_names)
         df_rewards: pd.DataFrame = pd.concat(self._get_columns(dfs, 'rewards'), axis=1, keys=col_names)
 
+        rel_col = df_steps.columns[0]
+        if 'htm_0' in df_steps:
+            rel_col = 'htm_0'
+        df_steps_rel = df_steps.div(df_steps[rel_col], axis=0)
+        df_steps_rel = np.log(df_steps_rel)
+
         report_name = f'{self.env_name}'
         if report_suffix:
             report_name += f'__{report_suffix}'
 
         ma = self.moving_average
-        self._plot_figure(df_rewards, f'episode reward, MA={ma}', report_name, 'rewards')
-
-        self._plot_figure(df_steps, f'episode duration, steps, MA={ma}', report_name, 'steps')
         self._plot_figure(df_times, f'episode execution time, sec, MA={ma}', report_name, 'times')
+        self._plot_figure(df_rewards, f'episode reward, MA={ma}', report_name, 'rewards')
+        self._plot_figure(df_steps, f'episode duration, steps, MA={ma}', report_name, 'steps')
+        self._plot_figure(
+            df_steps_rel,
+            f'episode duration in steps log-relative to `{rel_col}`, MA={ma}', report_name,
+            f'steps_rel_{rel_col}'
+        )
         plt.show()
 
     def _plot_figure(self, df: pd.DataFrame, title: str, report_name, fname):
