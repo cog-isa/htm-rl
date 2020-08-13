@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+- git LFS support
+- rich yaml configs based building
+- gridworld maps generator
+- transfer learning experiments setup
+- shift to the goal based agent
+  - remove rewards from encoding scheme and memorization
+
 ## [0.1] - 2020.07.24
 
 Naive agent based on htm framework described in [report](./reports/v0_1/report.md). Key features:

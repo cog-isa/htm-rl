@@ -15,6 +15,7 @@
   - [Terminology](#terminology)
   - [Encoding](#encoding)
   - [Configuration based building](#configuration-based-building)
+  - [Run arguments](#run-arguments)
   - [Parameters](#parameters)
     - [Currently in use](#currently-in-use)
     - [Adviced by Numenta community](#adviced-by-numenta-community)
@@ -311,6 +312,14 @@ Most shenanigans are based on the custom tags feature, supported by pyyaml and r
 - ruamel patches
   - use cases with undesired default behavior
   - how they had been patched
+- examples
+
+## Run arguments
+
+TBD:
+
+- the set of arguments
+- their relation
 - examples
 
 ## Parameters
