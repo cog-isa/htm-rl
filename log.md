@@ -5,6 +5,7 @@
     - [TODO](#todo)
     - [Thoughts](#thoughts)
     - [Gridworld transfer learning experiment](#gridworld-transfer-learning-experiment)
+    - [TM related interesting links](#tm-related-interesting-links)
 
 ## 2020.08.08 Sat
 
@@ -97,3 +98,19 @@ Auxialiary tasks, usability improvements and so on
 ### Gridworld transfer learning experiment
 
 First results show that the agent with 1-goal goal list performs better than the agents with larger goal list size.
+
+### TM related interesting links
+
+- [Temporal Pooler](https://github.com/numenta/htmresearch/wiki/Overview-of-the-Temporal-Pooler)
+  - a concept of the algo by htm.research
+  - makes TM more robust to intra-sequence noise
+  - general idea as I understand it - to add exponential averaging of activations over time
+  - but.. found that on the forum (May 2020):
+  > As far as I know, there is no official implementation of a "temporal pooler", just experimental research code. If you are talking about the union pooler logic in the research repo, I’m not sure anyone is actually working on this anymore.
+- [Network API FAQ](https://github.com/htm-community/htm.core/blob/master/docs/NetworkAPI.md)
+- [Tiebreak TM](https://github.com/htm-community/htm.core/blob/master/py/htm/advanced/algorithms/apical_tiebreak_temporal_memory.py)
+  - basal + apical connections
+  - hence two kinds of depolatizations
+  - cell is depolarized iff
+    - apical + basal depolarization
+    - only basal and no apical at all
