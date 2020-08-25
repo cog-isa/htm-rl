@@ -151,29 +151,29 @@ NB: первый этап может обнаружить сразу неско�
 
 Сравнение агента с бейзлайнами:
 
-![episode steps absolute](../../reports/v1_0/multi_way_v0_transfer/multi_way_v0__steps.svg)
-![episode steps log-relative](../../reports/v1_0/multi_way_v0_transfer/multi_way_v0__steps_rel_htm_0.svg)
+![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v0__steps.svg)
+![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v0__steps_rel_htm_0.svg)
 
 Сравнение DQN жадного и $\epsilon$-жадного агента:
 
-![episode steps absolute](../../reports/v1_0/multi_way_v0_transfer/multi_way_v0__dqn__steps.svg)
-![episode steps log-relative](../../reports/v1_0/multi_way_v0_transfer/multi_way_v0__dqn__steps_rel_dqn_greedy.svg)
+![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v0__dqn__steps.svg)
+![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v0__dqn__steps_rel_dqn_greedy.svg)
 
 Сравнение агента с разными горизонтами и размером списка целей:
 
 - горизонт планирования 1
   
-  ![episode steps absolute](../../reports/v1_0/multi_way_v0_transfer/multi_way_v0__1__steps.svg)
-  ![episode steps log-relative](../../reports/v1_0/multi_way_v0_transfer/multi_way_v0__1__steps_rel_htm_1_1g.svg)
+  ![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v0__1__steps.svg)
+  ![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v0__1__steps_rel_htm_1_1g.svg)
 
 - горизонт планирования 2
   
-  ![episode steps absolute](../../reports/v1_0/multi_way_v0_transfer/multi_way_v0__2__steps.svg)
-  ![episode steps log-relative](../../reports/v1_0/multi_way_v0_transfer/multi_way_v0__2__steps_rel_htm_2_1g.svg)
+  ![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v0__2__steps.svg)
+  ![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v0__2__steps_rel_htm_2_1g.svg)
 
 - горизонт планирования 4
   
-  ![episode steps absolute](../../reports/v1_0/multi_way_v0_transfer/multi_way_v0__4__steps.svg)
+  ![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v0__4__steps.svg)
 
 #### multi_way_v1
 
@@ -191,29 +191,29 @@ NB: первый этап может обнаружить сразу неско�
 
 Сравнение агента с бейзлайнами:
 
-![episode steps absolute](../../reports/v1_0/multi_way_v1_transfer/multi_way_v1__steps.svg)
-![episode steps log-relative](../../reports/v1_0/multi_way_v1_transfer/multi_way_v1__steps_rel_htm_0.svg)
+![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v1__steps.svg)
+![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v1__steps_rel_htm_0.svg)
 
 Сравнение DQN жадного и $\epsilon$-жадного агента:
 
-![episode steps absolute](../../reports/v1_0/multi_way_v1_transfer/multi_way_v1__dqn__steps.svg)
-![episode steps log-relative](../../reports/v1_0/multi_way_v1_transfer/multi_way_v1__dqn__steps_rel_dqn_greedy.svg)
+![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v1__dqn__steps.svg)
+![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v1__dqn__steps_rel_dqn_greedy.svg)
 
 Сравнение агента с разными горизонтами и размером списка целей:
 
 - горизонт планирования 1
   
-  ![episode steps absolute](../../reports/v1_0/multi_way_v1_transfer/multi_way_v1__1__steps.svg)
-  ![episode steps log-relative](../../reports/v1_0/multi_way_v1_transfer/multi_way_v1__1__steps_rel_htm_1_1g.svg)
+  ![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v1__1__steps.svg)
+  ![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v1__1__steps_rel_htm_1_1g.svg)
 
 - горизонт планирования 2
   
-  ![episode steps absolute](../../reports/v1_0/multi_way_v1_transfer/multi_way_v1__2__steps.svg)
-  ![episode steps log-relative](../../reports/v1_0/multi_way_v1_transfer/multi_way_v1__2__steps_rel_htm_2_1g.svg)
+  ![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v1__2__steps.svg)
+  ![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v1__2__steps_rel_htm_2_1g.svg)
 
 - горизонт планирования 4
   
-  ![episode steps absolute](../../reports/v1_0/multi_way_v1_transfer/multi_way_v1__4__steps.svg)
+  ![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v1__4__steps.svg)
   
 #### multi_way_v2
 
@@ -233,28 +233,28 @@ NB: первый этап может обнаружить сразу неско�
 
 Сравнение агента с бейзлайнами:
 
-![episode steps absolute](../../reports/v1_0/multi_way_v2_transfer/multi_way_v2__steps.svg)
-![episode steps log-relative](../../reports/v1_0/multi_way_v2_transfer/multi_way_v2__steps_rel_htm_0.svg)
+![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v2__steps.svg)
+![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v2__steps_rel_htm_0.svg)
 
 Сравнение DQN жадного и $\epsilon$-жадного агента:
 
-![episode steps absolute](../../reports/v1_0/multi_way_v2_transfer/multi_way_v2__dqn__steps.svg)
-![episode steps log-relative](../../reports/v1_0/multi_way_v2_transfer/multi_way_v2__dqn__steps_rel_dqn_greedy.svg)
+![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v2__dqn__steps.svg)
+![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v2__dqn__steps_rel_dqn_greedy.svg)
 
 Сравнение агента с разными горизонтами и размером списка целей:
 
 - горизонт планирования 2
   
-  ![episode steps absolute](../../reports/v1_0/multi_way_v2_transfer/multi_way_v2__2__steps.svg)
-  ![episode steps log-relative](../../reports/v1_0/multi_way_v2_transfer/multi_way_v2__2__steps_rel_htm_2_1g.svg)
+  ![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v2__2__steps.svg)
+  ![episode steps log-relative](../../reports/v1_0/multi_way_transfer/multi_way_v2__2__steps_rel_htm_2_1g.svg)
 
 - горизонт планирования 4
   
-  ![episode steps absolute](../../reports/v1_0/multi_way_v2_transfer/multi_way_v2__4__steps.svg)
+  ![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v2__4__steps.svg)
 
 - горизонт планирования 8 и 12
   
-  ![episode steps absolute](../../reports/v1_0/multi_way_v2_transfer/multi_way_v2__8-12__steps.svg)
+  ![episode steps absolute](../../reports/v1_0/multi_way_transfer/multi_way_v2__8-12__steps.svg)
 
 ### Тестирование на задаче transfer learning в нескольких средах
 
