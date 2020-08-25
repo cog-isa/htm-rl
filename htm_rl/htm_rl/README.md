@@ -277,8 +277,15 @@ NB: первый этап может обнаружить сразу неско�
 - желтый - начальная позиция агента
 - салатовый - награда
 
-TBD 5x5 6x6
-gridworld_5x5_100_2_8_1337_map_0_1173222464.svg
+Примеры сред:
+
+- 5x5
+  ![gridworld 5x5 #1](experiments/gridworld_transfer/gridworld_5x5_1_1_200_1337_map_0_1173222464.svg)
+  ![gridworld 5x5 #2](experiments/gridworld_transfer/gridworld_5x5_1_1_200_1337_map_2_1561234712.svg)
+
+- 8x8
+  ![gridworld 8x8 #1](experiments/gridworld_transfer/gridworld_8x8_10_1_10_1337_map_0_1173222464.svg)
+  ![gridworld 8x8 #2](experiments/gridworld_transfer/gridworld_8x8_10_1_10_1337_map_7_2032734714.svg)
 
 Ключевым различием между экспериментами были суммарное число эпизодов с фиксированной наградой и суммарное число эпизодов с фиксированной средой, которые обратно пропорционально влияли на сложность - чем меньше эпизодов в распоряжении агента, тем быстрее ему требуется адаптироваться (к новой награде и/или к новой среде, соответственно).
 
@@ -289,9 +296,42 @@ gridworld_5x5_100_2_8_1337_map_0_1173222464.svg
 - $N_{rew} = 2$
 - $N_{env} = 8$
 
-TBD
-Сравнительные графики для разного размера списка целей (горизонты планирования 1, 2, 4-8). Абс и рел
-Сравнить два сида, насколько они непротиворечивы
+Ниже представлены графики для двух разных сидов.
+
+Сравнение агента с бейзлайнами:
+
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_1337__steps.svg)
+![episode steps log-relative](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_1337__steps_rel_htm_0.svg)
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_42__steps.svg)
+![episode steps log-relative](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_42__steps_rel_htm_0.svg)
+
+Сравнение DQN жадного и $\epsilon$-жадного агента:
+
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_1337__dqn__steps.svg)
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_42__dqn__steps.svg)
+
+Сравнение агента с разными горизонтами и размером списка целей:
+
+- горизонт планирования 1
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_1337__1__steps.svg)
+  ![episode steps log-relative](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_1337__1__steps_rel_htm_1_1g.svg)
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_42__1__steps.svg)
+  ![episode steps log-relative](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_42__1__steps_rel_htm_1_1g.svg)
+
+- горизонт планирования 2
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_1337__2__steps.svg)
+  ![episode steps log-relative](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_1337__2__steps_rel_htm_2_1g.svg)
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_42__2__steps.svg)
+  ![episode steps log-relative](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_42__2__steps_rel_htm_2_1g.svg)
+
+- горизонт планирования 4-8
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_1337__4-8__steps.svg)
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_1337__4-8__steps_rel_htm_4_1g.svg)
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_42__4-8__steps.svg)
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_100_2_8_42__4-8__steps_rel_htm_4_1g.svg)
 
 #### Эксперименты со средней частотой смены наград и сред
 
@@ -300,8 +340,30 @@ TBD
 - $N_{rew} = 4$
 - $N_{env} = 4$
 
-TBD
-Сравнительные графики для разного размера списка целей (горизонты планирования 1, 2, 4-8). Абс и рел
+Сравнение агента с бейзлайнами:
+
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_50_4_4_1337__steps.svg)
+![episode steps log-relative](./experiments/gridworld_transfer/gridworld_5x5_50_4_4_1337__steps_rel_htm_0.svg)
+
+Сравнение DQN жадного и $\epsilon$-жадного агента:
+
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_50_4_4_1337__dqn__steps.svg)
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_50_4_4_1337__dqn__steps_rel_dqn_greedy.svg)
+
+Сравнение агента с разными горизонтами и размером списка целей:
+
+- горизонт планирования 1
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_50_4_4_1337__1__steps.svg)
+
+- горизонт планирования 2
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_50_4_4_1337__2__steps.svg)
+
+- горизонт планирования 4-8
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_50_4_4_1337__4-8__steps.svg)
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_50_4_4_1337__4-8__steps_rel_htm_4_1g.svg)
 
 #### Эксперименты с частой сменой наград и сред
 
@@ -310,8 +372,28 @@ TBD
 - $N_{rew} = 1$
 - $N_{env} = 20$
 
-TBD
-Сравнительные графики для разного размера списка целей (горизонты планирования 1, 2, 4-8). Абс и рел
+Сравнение агента с бейзлайнами:
+
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_20_1_20_1337__steps.svg)
+![episode steps log-relative](./experiments/gridworld_transfer/gridworld_5x5_20_1_20_1337__steps_rel_htm_0.svg)
+
+Сравнение DQN жадного и $\epsilon$-жадного агента:
+
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_20_1_20_1337__dqn__steps.svg)
+
+Сравнение агента с разными горизонтами и размером списка целей:
+
+- горизонт планирования 1
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_20_1_20_1337__1__steps.svg)
+
+- горизонт планирования 2
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_20_1_20_1337__2__steps.svg)
+
+- горизонт планирования 4-8
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_20_1_20_1337__4-8__steps.svg)
 
 #### Эксперименты с ультрачастой сменой наград и сред
 
@@ -322,8 +404,27 @@ TBD
 - $N_{rew} = 1$
 - $N_{env} = 200$
 
-TBD
-Сравнительные графики для разного размера списка целей (горизонты планирования 1, 2, 4-8). Абс и рел
+Сравнение агента с бейзлайнами:
+
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_1_1_200_1337__steps.svg)
+
+Сравнение DQN жадного и $\epsilon$-жадного агента:
+
+![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_1_1_200_1337__dqn__steps.svg)
+
+Сравнение агента с разными горизонтами и размером списка целей:
+
+- горизонт планирования 1
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_1_1_200_1337__1__steps.svg)
+
+- горизонт планирования 2
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_1_1_200_1337__2__steps.svg)
+
+- горизонт планирования 4-8
+  
+  ![episode steps absolute](./experiments/gridworld_transfer/gridworld_5x5_1_1_200_1337__4-8__steps.svg)
 
 ### Выводы
 
