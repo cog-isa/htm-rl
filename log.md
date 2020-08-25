@@ -19,6 +19,14 @@
   - implementation
   - patches
 - [ ] update FAQ part on Terminology, Encoding, Parameters and Planning
+- [ ] extend Quick intro based on recent experience with students
+  - [ ] add task on SP to the Readme
+    - [ ] fix entropy formula
+    - [ ] add questions and requirements to test that learning is working
+    - [ ] the same for boosting
+  - [ ] update intro to TM part
+    - [ ] mini-task on prediction
+    - [ ] mini-task on backtracking
 
 Research + functional tasks
 
