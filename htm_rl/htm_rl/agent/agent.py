@@ -3,6 +3,7 @@ from itertools import islice
 from typing import Any, List
 
 import numpy as np
+import matplotlib.pyplot as plt
 from tqdm import trange
 
 from htm_rl.agent.memory import Memory
@@ -226,18 +227,27 @@ class TransferLearningExperimentRunner2:
         for env in islice(self.env_generator, self.n_environments):
             agent_runner.env = env
             for _ in range(self.n_terminal_states):
-                env.set_terminal_state()
+                env.set_random_terminal_state()
                 for _ in range(self.n_initial_states):
-                    env.set_initial_state()
+                    env.set_random_initial_state()
                     for local_episode in range(self.n_episodes_all_fixed):
                         yield local_episode
 
-    def show_environments(self):
+    def show_environments(self, n):
+        for env_map, _ in self.get_environment_maps(n):
+            plt.imshow(env_map)
+            plt.show(block=True)
+
+    def get_environment_maps(self, n):
         env: GridworldMdp
+        maps = []
         for env in islice(self.env_generator, self.n_environments):
             for _ in range(self.n_terminal_states):
-                env.set_terminal_state()
-                for _ in range(self.n_initial_states):
-                    env.set_initial_state()
-                    env.reset()
-                    env.render(mode='img')
+                env.set_random_terminal_state()
+                # generate just one initial state instead of self.n_initial_states
+                env.set_random_initial_state()
+                env.reset()
+                maps.append(env.get_representation(mode='img'))
+                if len(maps) >= n:
+                    return maps
+        return maps

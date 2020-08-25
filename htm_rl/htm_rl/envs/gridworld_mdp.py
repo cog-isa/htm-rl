@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 from htm_rl.common.utils import isnone
 
@@ -21,23 +20,24 @@ class GridworldMdp:
         self.n_actions = 4
         self.shape = self.gridworld_map.shape
 
+        self.seed = seed
         self.rnd_generator = np.random.default_rng(seed=seed)
         self.initial_state = None
         self.terminal_state = None
         self._current_state, self._current_cell = None, None
 
-        self.set_initial_state()
-        self.set_terminal_state()
+        self.set_random_initial_state()
+        self.set_random_terminal_state()
         self.reset()
 
-    def set_initial_state(self):
+    def set_random_initial_state(self):
         while True:
             initial_state = self._get_random_available_state()
             if isnone(self.terminal_state, -1) != initial_state:
                 self.initial_state = initial_state
                 break
 
-    def set_terminal_state(self):
+    def set_random_terminal_state(self):
         while True:
             terminal_state = self._get_random_available_state()
             if isnone(self.initial_state, -1) != terminal_state:
@@ -70,19 +70,17 @@ class GridworldMdp:
         is_done = self.is_terminal(self._current_state)
         return self._current_state, reward, is_done, {}
 
-    def render(self, mode: str = None):
+    def get_representation(self, mode: str = None):
         if mode == 'img':
             a = np.zeros_like(self.gridworld_map, dtype=np.float)
-            a[self.gridworld_map] = .5
+            a[self.gridworld_map] = .5  # sea blue
             agent_i, agent_j = self._current_cell
-            a[agent_i, agent_j] = 1.0
+            a[agent_i, agent_j] = 1.0   # yellow
             goal_i, goal_j = self._to_cell(self.terminal_state)
-            a[goal_i, goal_j] = .85
-
-            plt.imshow(a)
-            plt.show(block=True)
+            a[goal_i, goal_j] = .85     # light green
+            return a, self.seed
         else:
-            print(f'State: {self._current_state}')
+            return f'State: {self._current_state}'
 
     def _to_state(self, i, j):
         return i * self.shape[0] + j

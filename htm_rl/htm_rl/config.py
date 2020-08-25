@@ -66,7 +66,9 @@ class TestRunner:
         self.config = config
 
     def run(self, agent_key: str, run: bool, aggregate: bool):
+        silent_run = self.config['silent']
         random_seeder: RandomSeedSetter = self.config['random_seed_setter']
+        report_name_suffix = self.config['report_name']
 
         run_results_processor: RunResultsProcessor = self.config['run_results_processor']
         if run_results_processor.test_dir is None:
@@ -78,7 +80,10 @@ class TestRunner:
         dry_run = self.config['dry_run']
         if transfer_learning_experiment_runner is not None and dry_run:
             transfer_learning_experiment_runner: TransferLearningExperimentRunner2
-            transfer_learning_experiment_runner.show_environments()
+            n_envs_to_render = self.config['n_environments_to_render']
+            maps = transfer_learning_experiment_runner.get_environment_maps(n_envs_to_render)
+            run_results_processor.store_environment_maps(maps)
+            return
 
         # by default, if nothing specified then at least `run`
         if not dry_run and (run or not aggregate):
@@ -101,8 +106,7 @@ class TestRunner:
 
         if aggregate:
             aggregate_file_masks = self.config['aggregate_masks']
-            report_name_suffix = self.config['report_name']
-            run_results_processor.aggregate_results(aggregate_file_masks, report_name_suffix)
+            run_results_processor.aggregate_results(aggregate_file_masks, report_name_suffix, silent_run)
 
 
 class PatchedSafeConstructor(SafeConstructor):

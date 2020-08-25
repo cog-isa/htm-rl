@@ -54,7 +54,7 @@ class RunResultsProcessor:
 
         self.print_results(run_stats)
 
-    def aggregate_results(self, file_masks, report_suffix):
+    def aggregate_results(self, file_masks, report_suffix, silent: bool):
         if not file_masks:
             file_masks = ['*']
 
@@ -92,7 +92,8 @@ class RunResultsProcessor:
             f'episode duration in steps log-relative to `{rel_col}`, MA={ma}', report_name,
             f'steps_rel_{rel_col}'
         )
-        plt.show()
+        if not silent:
+            plt.show()
 
     def _plot_figure(self, df: pd.DataFrame, title: str, report_name, fname):
         fig: plt.Figure
@@ -104,9 +105,8 @@ class RunResultsProcessor:
         ax.legend(loc='right', bbox_to_anchor=(1.2, .5))
         ax.set_title(f'{report_name}: {title}')
         fig.tight_layout(h_pad=4.)
-        fig.show()
 
-        save_path = os.path.join(self.test_dir, f'{report_name}__{fname}.png')
+        save_path = os.path.join(self.test_dir, f'{report_name}__{fname}.svg')
         fig.savefig(save_path, dpi=120)
 
     def _get_names(self, dfs):
@@ -132,6 +132,24 @@ class RunResultsProcessor:
             f'AvgLen: {avg_len: .2f}  AvgReward: {avg_reward: .5f}  '
             f'AvgTime: {avg_time: .6f}  TotalTime: {elapsed: .6f}'
         )
+
+    def store_environment_maps(self, maps):
+        for i, (env_map, seed) in enumerate(maps):
+            n = env_map.shape[0]
+
+            fig: plt.Figure
+            ax: plt.Axes
+            fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+            ax.set_xticks(np.arange(-.5, n, 1))
+            ax.set_yticks(np.arange(-.5, n, 1))
+            ax.set_xticklabels(np.arange(n))
+            ax.set_yticklabels(np.arange(n))
+            ax.grid(color='grey', linestyle='-', linewidth=1)
+            ax.set_title(f'{self.env_name}, seed={seed}')
+
+            ax.imshow(env_map)
+            save_path = os.path.join(self.test_dir, f'{self.env_name}_map_{i}_{seed}.svg')
+            fig.savefig(save_path, dpi=120)
 
 
 def plot_anomalies(anomalies):
