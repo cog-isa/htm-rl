@@ -16,18 +16,18 @@
       - [Эксперименты с частой сменой наград и сред](#эксперименты-с-частой-сменой-наград-и-сред)
       - [Эксперименты с ультрачастой сменой наград и сред](#эксперименты-с-ультрачастой-сменой-наград-и-сред)
     - [Выводы](#выводы)
-  - [Terminology](#terminology)
+  - [Project specific terminology](#project-specific-terminology)
   - [Encoding](#encoding)
+  - [Planning alforithm details](#planning-alforithm-details)
+  - [Step 1. Forward prediction](#step-1-forward-prediction)
+    - [Step 1: Forward prediction](#step-1-forward-prediction-1)
+    - [Step 2: Backtracking](#step-2-backtracking)
+    - [Step 3: Re-check](#step-3-re-check)
   - [Configuration based building](#configuration-based-building)
   - [Run arguments](#run-arguments)
   - [Parameters](#parameters)
     - [Currently in use](#currently-in-use)
     - [Adviced by Numenta community](#adviced-by-numenta-community)
-  - [Planning](#planning)
-    - [Pseudocode](#pseudocode)
-    - [Step 1: Forward prediction](#step-1-forward-prediction)
-    - [Step 2: Backtracking](#step-2-backtracking)
-    - [Step 3: Re-check](#step-3-re-check)
 
 ## Постановка задачи и среда
 
@@ -462,295 +462,114 @@ NB: первый этап может обнаружить сразу неско�
   - видимо, польза от выполнения псевдо-целей в среднем ниже штрафа
   - можно объяснить тем, что в среднем псевдо-цели не приближают агента к реальной и только увеличивают ожидаемое число шагов с использованием случайной стратегии
 
-## Terminology
+## Project specific terminology
 
-SAR
+State-action (SA)
 
-- In short: tuple (state, action, reward)
-- Given trajectory: $(s_0, a_0, r_1, s_1, a_1, r_2, s_2, a_2, ...)$
-- $sar_t = (s_t, a_t, r_t)$
-  - $sar_t$ is centered around the current state $s_t$
-  - has reward $r_t$ given for getting __to__ this state
-  - has action $a_t$ taken __from__ this state.
-  - NB: so actually it's better be called RSA, but it's still called SAR
-  - Edge cases are
-    - reward $r_0$ for initial state is 0
-    - action $a_T$ for terminal state is whatever you want
-- TM accepts SAR encoded to SDR as [proximal] input
-  - __Important:__ I call SAR encoded to SDR as SAR SDR, but
-  - as conversion is straightforward both ways
-  - I often just call it SAR when it's obvious or doesn't matter
-- TM remembers SAR sequences: $(sar_0, sar_1, ... )$
+- Given trajectories : $\tau_i = (s_0, a_0, r_1, s_1, a_1, r_2, s_2, a_2, ...)$
+- SA is a tuple $sa_t = (s_t, a_t)$
+  - i.e. action $a_t$ taken from a state $s_t$
+- TM learns agent's trajectories $\tau_i$
+  - it operates with SA [encoded as] SDR sequences $(sa_0, sa_1, ... )$
+  - which results that TM learns both
+    - transitions $(s_{t-1}, a_{t-1}) \rightarrow s_t$
+    - and which actions $a$ agent did from a state $s_t$
+- TM then can make predictions
+  - it can predict next state and all actions agent did from this state
+  - each prediction is an SDR - a union (= bitwise OR) of pairs $(s, a^*)$
+  - we give this union a special name (see below)
 
-SAR Superposition
+SA SDR Superposition
 
-- Union of any number of SAR
-  - For SDR format it's a bitwise OR of corresponding SAR SDRs
-- Why it's even needed
-  - TM works with SAR superpositions both as input and output
-  - For any particular SAR it predicts all possible next SARs
-    - they represented as union
-    - i.e. they can't be separated into single SARs
-    - hence SAR superposition
-  - TM accepts SAR superpositions as input as well
-    - I think it's obvious
-- Even though TM remembers SAR sequences
-  - Depolarization in general: active SDR $\rightarrow$ depolarized SDR
-  - For SARs: active SAR superposition $\rightarrow$ depolarized SAR superposition
+- Union (= bitwise OR) of any number of SA SDRs
+- Rationale
+  - if an agent saw transition $(s_{t-1}, a_{t-1}) \rightarrow s_t$ and did different actions $a_t$ from a state $s_t$
+  - then prediction for a pair $(s_{t-1}, a_{t-1})$ will be a union of all seen pairs $(s_t, a_t)$
+  - aka superposition of these SAs
+- TM can work with SA SDR superpositions both as input and output
+  - In general case (mentioned just before) TM's output is a superposition
+  - TM accepts SA superpositions as input as well
+    - it's possible because SA SDR superposition still is just an SDR
+- *NB*: prediction process is called depolarization
 
 ## Encoding
 
-SAR SDR encoder
+SA SDR encoder
 
-- Encodes SAR to SDR
-- Uses separate state, action and reward SDR encoders
+- Encodes SA to SDR
+- Uses separate state and action SDR encoders
   - Resulting SDRs are concatenated
-- I consider only discrete environments
+- We consider only discrete environments
   - Hence both states and actions are discrete sets
-  - Rewards are discrete too: $r \in \{0, 1\}$
-- So states, actions and rewards can be represented as integer numbers
+- Each state or action can be represented as integer number
   - i.e. $s_t \in [0, |S|)$ and $a_t \in [0, |A|)$
-  - for this Integer SDR encoder is used
+  - to encode states and action we use Integer SDR encoder
 
 Integer SDR encoder
 
-- Encodes integer numbers from [0, `n_values`) to SDR
+- Encodes integer number $x \in$ [0, `n_values`) to SDR
 - Parameters:
-  - `n_values` - size of the range, i.e. it's a number of unique values
-  - `value_bits` - how many bits are used to encode every unique value
-- Resulting SDR has `n_values` $\times$ `value_bits` bits
-  - called `total_bits`
-  - it can be logically divided into `n_values` buckets of `value_bits` contiguous bits
+  - `n_values` - a number of unique values
+  - `value_bits` - a number of bits used to encode each unique value
+- Resulting SDR has `total_bits` = `n_values` $\times$ `value_bits` bits
+  - they can be logically divided into `n_values` buckets of `value_bits` contiguous bits
     - each bucket corresponds to a value from the range
   - e.g. 2 $\rightarrow$ `0000 0000 1111` encoded by 3-by-4 integer encoder
     - 3 buckets are separated by space to make it clear
-    - every bucket encoded by 4 bits
+    - every value id encoded by 4 bits bucket
     - note that buckets don't intersect
 - PROS
   - Easy to encode/decode
-  - Easy to debug
-  - Easy to pretty print
+  - Easy to pretty print and read
+  - Hence easy to debug
+  - Different values have no intersection
+    - eliminates some unnecessary complexities
 - CONS
-  - Cuts out information about states similarity
-    - as different values have no intersection
+  - Different values have no intersection
+    - narrows the use of SDRs
+    - doesn't use information about states similarity
   - You have no direct control on sparsity, which is `1 / n_values`
     - you may have problems with too low or too high sparsity levels
-    - it tested that TM works well with low sparsity
+    - we tested that TM works well with low sparsity
       - which doesn't mean it has not negative effects at all
     - just remember that sparsity may lead to problems
 
 State SDR encoder
 
-- For the most simple MDP environments we use integer encoding
-  - because it's very good for debugging
+- For simple MDP environments we use integer encoding
 - For complex environments encoding states [or observations] becomes tricky
-  - Of course, you still can enumerate all possible states and use Integer SDR encoder
-  - But the number of all possible states grows very fast
-    - so in practice it works well only for small environments
-  - Also Integer SDR encoder cut out information about states similarity
-- One possible solution is to encode every pixel [or grid cell] separately then concatenate results
-  - It preserves information about similarity between states
+  - of course, you still can enumerate all possible states and use Integer SDR encoder
+  - but the number of all possible states grows very fast
+    - in practice it works well only for small environments
+  - also Integer SDR encoder cuts out information about states similarity, which may not be desirable
+  - one possible solution is to encode every pixel [or grid cell] separately then concatenate results, which preserves information about similarity between states
+- At the moment we use only simple MDP environments and hence integer encoding for states
 
-## Configuration based building
+## Planning alforithm details
 
-This section describes configs syntax, rules and how to use it.
+Let's consider that there's an agent playing in some MDP environment. At some moment he is in state, which we will denote as $s_0$, because it will be our starting point for planning.  
+The agent also has a fixed set of goal states, which he wants to reach.
 
-For configs we use yaml format, particularly 1.1 and 1.2 versions of its standard (the mix of them). You can read more about the format and its standards [here](TBD).
+The goal of the planning is to answer two questions. Is it possible to reach any of the goal states with at maximum of $n_max$ steps (i.e. actions)? And if it is, then what is the sequence of actions (i.e. policy) leading that goal state?
 
-As for implementation of yaml parser we use [ruamel.yaml](TBD) package. It's a fork of even more popular and seasoned alternative [pyyaml](TBD).
-
-Most shenanigans are based on the custom tags feature, supported by pyyaml and ruamel.yaml python packages.
-
-- standard yaml tags
-- custom tags
-  - building through constructors and factory methods
-  - naming conventions
-  - how to register class tag
-  - how to register factory method
-- DRY
-  - aliases
-  - merging feature from 1.1 standard
-    - how it works
-  - how to use them
-- ruamel patches
-  - use cases with undesired default behavior
-  - how they had been patched
-- examples
-
-## Run arguments
-
-TBD:
-
-- the set of arguments
-- their relation
-- examples
-
-## Parameters
-
-### Currently in use
-
-**SAR encoder**:
-
-- `n_values`: (>=3, 2, 2)
-- `value_bits`: 24
-- `activation_threshold`: 21
-- Derived params or attributes
-  - `total_bits`: >=56
-  - `sparsity`: ~15-35%
-
-Rationale
-
-- `n_values`
-  - определяется числом уникальных состояний/наблюдений
-  - опробованы среды с n_values 3-100
-- `value_bits`
-  - рекомендовано >= 20
-  - каждая часть SAR - по 8 активных бит, в сумме 24
-- `activation_threshold`
-  - = _value_bits_ - 3
-  - __очень важная характеристика__
-  - каждой части SAR задается свой activation_threshold = *value_bits* - 1 = 7
-    - порог активации одной части SAR, т.е. state/action/reward
-    - -1 оставляется под шум (=12.5% шума для 8 бит) и близкие значения
-    - в сумме на три части: -3
-    - спорное решение - вместо суммы должен браться максимум?
-  - т.к. на вход приходят данные от кодировщика, который разным значениям дает не пересекающиеся векторы, выбор порога пока не так важен и актуален
-
-**Temporal Memory**:
-
-- `n_columns`: >= 56
-- `cells_per_column`: 1 or ??
-- `activation_threshold`: 21
-- `learning_threshold`: 17
-- `initial_permanence`: 0.5
-- `connected_permanence`: 0.4
-- `permanenceIncrement`: 0.1
-- `permanenceDecrement`: 0.05
-- `predictedSegmentDecrement`: 0.0001
-- `maxNewSynapseCount`: 24
-- `maxSynapsesPerSegment`: 24
-
-Rationale:
-
-- `n_columns`
-  - = *sar.total_bits*
-- `cells_per_column`
-  - для MDP достаточно first-order memory
-  - для POMDP нет данных
-- `activation_threshold`
-  - = *sar.activation_threshold* = 21
-- `learning_threshold`
-  - = 85% \* *sar.activation_threshold* = 17
-  - есть нижний порог: *action.value_bits* + *reward.value_bits* = 8 + 8 = 16
-    - именно такое ложно положительное пересечение встречается регулярно
-    - например, SAR вида (x, 0, 0) пересекаются в 16 битах, но не имеют ничего общего, потому что вся уникальность только в состоянии
-    - при этом штрафовать такие пересечения нельзя
-    - следовательно learning_threshold должен быть > 16
-- `initial_permanence`
-  - начальное значение при создании синапса
-  - абсолютное значение initial_permanence не важно
-- `connected_permanence`
-  - порог, определяющий синапс connected или нет
-    - только connected синапсы могут активировать сегмент
-  - разница между initial и connected может иметь значение
-    - и как она соотносится с параметрами обучения
-    - сделать их равными - хороший вариант по умолчанию
-  - нужно изучать отдельно
-- `permanenceIncrement`
-  - имеет значение, нужно изучать
-- `permanenceDecrement`
-  - рекомендуется брать в 2-3 раза меньше инкремента (точно? почему?)
-- `predictedSegmentDecrement`
-  - рекомендуется брать _permanenceIncrement_ * sparsity
-    - логика рекомендации от Numenta в текущем виде не очень применима
-    - т.к. входные векторы имеют перекошенную энтропию
-  - нужно тестировать отдельно
-- `maxNewSynapseCount`
-  - = *sar.value_bits* = 24
-  - плохо понимаю важность этого параметра
-  - по идее имеет смысл делать его как минимум *activation_threshold*, чтобы новый сегмент сразу смог активироваться паттерном (иначе мало синапсов)
-  - ну и бессмысленно делать его больше *maxSynapsesPerSegment*
-- `maxSynapsesPerSegment`
-  - = *sar.value_bits* = 24
-  - оказалось, что это очень важный параметр
-  - очевидно, нижний порог: *activation_threshold*
-  - не очевидно, верхний порог: *sar.value_bits*
-    - каждый сегмент должен распознавать ровно один SAR (отсюда верхний порог)
-    - если он способен распознавать больше одного SAR, то они интерферируют
-    - это очень сильно мешает при бэктрекинге
-    - с другой стороны это ведет к большому числу сегментов, по сути мы запоминаем все переходы
-    - с этим придется разбираться в будущем
-
-### Adviced by Numenta community
-
-**Spatial Pooler**:
-
-- `n_colunms`: >= 2000
-  - more is better
-  - similarity metric - overlap
-    - different "values" => low overlap score
-    - similar "values" => high overlap score
-  - so, there should be enough columns to distinguish levels of similarity, given some noise
-- `sparsity`: 2%
-  - how many bits are active
-  - ok: 1-10%
-  - `n_active_bits` should be >= 20
-  - TODO: add equations from numenta paper
-
-**Temporal Memory**:
-
-- `n_columns`: >= 2000
-  - same as for Spatial Pooler
-- `cells_per_column`: 8
-  - defines number of different ways context is represented (grows exponentially)
-- `activation_threshold`
-  - number of active synapses enough for segment activation
-  - = *n_active_bits* - R
-    - expected number of active columns
-    - minus some accepted similarity radius R (or noise)
-- `learning_threshold`
-  - ??
-- `initial_permanence`: 0.5
-- `connected_permanence`: 0.5
-- `permanenceIncrement`: 0.1
-- `permanenceDecrement`: 2-4 times smaller than *permanenceIncrement*
-- `predictedSegmentDecrement`: *activation_threshold* \* *sparsity*
-  - used to punish on reaching *learning_threshold*
-- `maxNewSynapseCount`: 32
-- `maxSynapsesPerSegment`: 255
-
-## Planning
-
-Initial: agent is in state $s_0$  
-Goal: find a sequence of actions leading to reward from initial state $s_0$ if it's possible with $n_max$ steps
-
-Planning consists of 3 main phases:
-
-- Forward prediction phase - predict every possible outcomes until reward (= rewarding state) is found
-- Backtracking phase - backward unrolling predictions from reward
-- Re-check phase - check that backtracked sequence of transitions is correct
-
-### Pseudocode
-
-Псевдокод алгоритма планирования:
+Planning algorithm consists of 2 high-level steps: forward prediction and backtracking from the goal, which could be written in pseudocode as:
 
 ```python
-def plan_actions(initial_sar: Sar):
+def plan_actions(initial_sa: Sa):
     # Step 1: Forward prediction
-    active_segments_timeline = predict_to_reward(initial_sar)
+    reached_goals = predict_to_goals(initial_sa)
 
-    # Step 2: Backtrack from reward
-    activation_timeline = backtrack_from_reward(active_segments_timeline)
-
-    # Step 3: Forward-check backtracked activations
-    planned_actions = check_activation_timeline_leads_to_reward(
-        initial_sar, activation_timeline
-    )
+    # Step 2: Backtrack from goals
+    planned_actions = backtrack_from_goals(reached_goals)
 
     return planned_actions
 ```
 
-Первый шаг - предсказание награды:
+## Step 1. Forward prediction
+
+We start from the state $s_0$ and want to predict all reachable next states $\{s_1\}$. 
+
+TBD It means we should check among the all learned transitions for this particular goal.
 
 ```python
 def predict_to_reward(initial_sar: Sar):
@@ -938,3 +757,171 @@ What is saved during this phase
   - Action $a_t$ defines a path to make at time $t$
   - Replace action superposition in proximal input with $a_t$
 - Check that given `backtracking_SAR_conditions` lead to reward
+
+## Configuration based building
+
+This section describes configs syntax, rules and how to use it.
+
+For configs we use yaml format, particularly 1.1 and 1.2 versions of its standard (the mix of them). You can read more about the format and its standards [here](TBD).
+
+As for implementation of yaml parser we use [ruamel.yaml](TBD) package. It's a fork of even more popular and seasoned alternative [pyyaml](TBD).
+
+Most shenanigans are based on the custom tags feature, supported by pyyaml and ruamel.yaml python packages.
+
+- standard yaml tags
+- custom tags
+  - building through constructors and factory methods
+  - naming conventions
+  - how to register class tag
+  - how to register factory method
+- DRY
+  - aliases
+  - merging feature from 1.1 standard
+    - how it works
+  - how to use them
+- ruamel patches
+  - use cases with undesired default behavior
+  - how they had been patched
+- examples
+
+## Run arguments
+
+TBD:
+
+- the set of arguments
+- their relation
+- examples
+
+## Parameters
+
+### Currently in use
+
+**SAR encoder**:
+
+- `n_values`: (>=3, 2, 2)
+- `value_bits`: 24
+- `activation_threshold`: 21
+- Derived params or attributes
+  - `total_bits`: >=56
+  - `sparsity`: ~15-35%
+
+Rationale
+
+- `n_values`
+  - определяется числом уникальных состояний/наблюдений
+  - опробованы среды с n_values 3-100
+- `value_bits`
+  - рекомендовано >= 20
+  - каждая часть SAR - по 8 активных бит, в сумме 24
+- `activation_threshold`
+  - = _value_bits_ - 3
+  - __очень важная характеристика__
+  - каждой части SAR задается свой activation_threshold = *value_bits* - 1 = 7
+    - порог активации одной части SAR, т.е. state/action/reward
+    - -1 оставляется под шум (=12.5% шума для 8 бит) и близкие значения
+    - в сумме на три части: -3
+    - спорное решение - вместо суммы должен браться максимум?
+  - т.к. на вход приходят данные от кодировщика, который разным значениям дает не пересекающиеся векторы, выбор порога пока не так важен и актуален
+
+**Temporal Memory**:
+
+- `n_columns`: >= 56
+- `cells_per_column`: 1 or ??
+- `activation_threshold`: 21
+- `learning_threshold`: 17
+- `initial_permanence`: 0.5
+- `connected_permanence`: 0.4
+- `permanenceIncrement`: 0.1
+- `permanenceDecrement`: 0.05
+- `predictedSegmentDecrement`: 0.0001
+- `maxNewSynapseCount`: 24
+- `maxSynapsesPerSegment`: 24
+
+Rationale:
+
+- `n_columns`
+  - = *sar.total_bits*
+- `cells_per_column`
+  - для MDP достаточно first-order memory
+  - для POMDP нет данных
+- `activation_threshold`
+  - = *sar.activation_threshold* = 21
+- `learning_threshold`
+  - = 85% \* *sar.activation_threshold* = 17
+  - есть нижний порог: *action.value_bits* + *reward.value_bits* = 8 + 8 = 16
+    - именно такое ложно положительное пересечение встречается регулярно
+    - например, SAR вида (x, 0, 0) пересекаются в 16 битах, но не имеют ничего общего, потому что вся уникальность только в состоянии
+    - при этом штрафовать такие пересечения нельзя
+    - следовательно learning_threshold должен быть > 16
+- `initial_permanence`
+  - начальное значение при создании синапса
+  - абсолютное значение initial_permanence не важно
+- `connected_permanence`
+  - порог, определяющий синапс connected или нет
+    - только connected синапсы могут активировать сегмент
+  - разница между initial и connected может иметь значение
+    - и как она соотносится с параметрами обучения
+    - сделать их равными - хороший вариант по умолчанию
+  - нужно изучать отдельно
+- `permanenceIncrement`
+  - имеет значение, нужно изучать
+- `permanenceDecrement`
+  - рекомендуется брать в 2-3 раза меньше инкремента (точно? почему?)
+- `predictedSegmentDecrement`
+  - рекомендуется брать _permanenceIncrement_ * sparsity
+    - логика рекомендации от Numenta в текущем виде не очень применима
+    - т.к. входные векторы имеют перекошенную энтропию
+  - нужно тестировать отдельно
+- `maxNewSynapseCount`
+  - = *sar.value_bits* = 24
+  - плохо понимаю важность этого параметра
+  - по идее имеет смысл делать его как минимум *activation_threshold*, чтобы новый сегмент сразу смог активироваться паттерном (иначе мало синапсов)
+  - ну и бессмысленно делать его больше *maxSynapsesPerSegment*
+- `maxSynapsesPerSegment`
+  - = *sar.value_bits* = 24
+  - оказалось, что это очень важный параметр
+  - очевидно, нижний порог: *activation_threshold*
+  - не очевидно, верхний порог: *sar.value_bits*
+    - каждый сегмент должен распознавать ровно один SAR (отсюда верхний порог)
+    - если он способен распознавать больше одного SAR, то они интерферируют
+    - это очень сильно мешает при бэктрекинге
+    - с другой стороны это ведет к большому числу сегментов, по сути мы запоминаем все переходы
+    - с этим придется разбираться в будущем
+
+### Adviced by Numenta community
+
+**Spatial Pooler**:
+
+- `n_colunms`: >= 2000
+  - more is better
+  - similarity metric - overlap
+    - different "values" => low overlap score
+    - similar "values" => high overlap score
+  - so, there should be enough columns to distinguish levels of similarity, given some noise
+- `sparsity`: 2%
+  - how many bits are active
+  - ok: 1-10%
+  - `n_active_bits` should be >= 20
+  - TODO: add equations from numenta paper
+
+**Temporal Memory**:
+
+- `n_columns`: >= 2000
+  - same as for Spatial Pooler
+- `cells_per_column`: 8
+  - defines number of different ways context is represented (grows exponentially)
+- `activation_threshold`
+  - number of active synapses enough for segment activation
+  - = *n_active_bits* - R
+    - expected number of active columns
+    - minus some accepted similarity radius R (or noise)
+- `learning_threshold`
+  - ??
+- `initial_permanence`: 0.5
+- `connected_permanence`: 0.5
+- `permanenceIncrement`: 0.1
+- `permanenceDecrement`: 2-4 times smaller than *permanenceIncrement*
+- `predictedSegmentDecrement`: *activation_threshold* \* *sparsity*
+  - used to punish on reaching *learning_threshold*
+- `maxNewSynapseCount`: 32
+- `maxSynapsesPerSegment`: 255
