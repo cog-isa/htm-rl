@@ -19,7 +19,8 @@
   - [Project specific terminology](#project-specific-terminology)
   - [Encoding](#encoding)
   - [Planning alforithm details](#planning-alforithm-details)
-  - [Step 1. Forward prediction](#step-1-forward-prediction)
+    - [Step 1. Forward prediction](#step-1-forward-prediction)
+    - [Step 2. Backtracking from goal states](#step-2-backtracking-from-goal-states)
     - [Step 1: Forward prediction](#step-1-forward-prediction-1)
     - [Step 2: Backtracking](#step-2-backtracking)
     - [Step 3: Re-check](#step-3-re-check)
@@ -547,51 +548,113 @@ State SDR encoder
 
 ## Planning alforithm details
 
-Let's consider that there's an agent playing in some MDP environment. At some moment he is in state, which we will denote as $s_0$, because it will be our starting point for planning.  
-The agent also has a fixed set of goal states, which he wants to reach.
+Let's consider an agent playing in some MDP environment. At some moment he is in a state, which we will denote as $s_0$, because it will be our starting point for planning.  
+The agent also has a fixed set of goal states $\{g_i\}$, which he wants to reach.
 
-The goal of the planning is to answer two questions. Is it possible to reach any of the goal states with at maximum of $n_max$ steps (i.e. actions)? And if it is, then what is the sequence of actions (i.e. policy) leading that goal state?
+The goal of the planning is to answer two questions. Is it possible to reach any of the goal states with at maximum of $n_max$ steps (i.e. actions)? And if it is possible, then what is the sequence of actions (i.e. policy) leading to that goal state?
 
-Planning algorithm consists of 2 high-level steps: forward prediction and backtracking from the goal, which could be written in pseudocode as:
+Planning algorithm consists of 2 high-level steps: forward prediction and backtracking from the goal, which could be written in Python-like pseudocode as:
 
 ```python
-def plan_actions(initial_sa: Sa):
-    # Step 1: Forward prediction
-    reached_goals = predict_to_goals(initial_sa)
-
-    # Step 2: Backtrack from goals
-    planned_actions = backtrack_from_goals(reached_goals)
+def plan_actions(initial_state):
+    reached_goals, active_segments_timeline = predict_to_goals(initial_state)
+    planned_actions = backtrack_from_goals(
+      reached_goals, active_segments_timeline
+    )
 
     return planned_actions
 ```
 
-## Step 1. Forward prediction
+### Step 1. Forward prediction
 
-We start from the state $s_0$ and want to predict all reachable next states $\{s_1\}$. 
+We start from the state $s_0$ and want to predict all reachable next states $\{s_1^i\}$. To do this we could check all learned transitions $(s_0, a_0^i) \rightarrow s_1^i$. It's achievable simultaneously if we use $sa_0 = (s_0, \cup a^i)$ as a starting input for the agent's TM. $sa_0$ is then a SA SDR superposition and semantically means exactly a superposition of all possible state-action pairs $(s_0, a_0^i)$ which activate predictions for all desired transitions.
 
-TBD It means we should check among the all learned transitions for this particular goal.
+__TBD: make simple MDP graph example__
+
+As a prediction TM gives another SA SDR superposition $sa_1 = \cup (s_1, a_1^i)$ - a superposition of all next_state-next_action pairs. $sa_1$ can be further used as an input to TM, which gets us $sa_2$ prediction and so on.
+
+As you see, for each step $k$, $sa_k$ contains a superposition of all states reachable in exactly $k$ actions (=moves). As a side note, the whole resulting process looks very similar to parallel breadth-first-search graph algorithm.
+
+Recall that the goal of forward prediction is to find reachable goal states. Therefore at each step $k$ we look if any of the goal states $g_i$ are among the states in $sa_k$ superposition by checking their overlap $o = overlap(g_i, sa_k)$. We want to find only the closest goals, so if any of the goal states are matched, we stop forward prediction process and set these goal states as a result.
+
+Also during forward prediction we need to record active segments at each steps $k$ denoted as `active_segments_timeline`. It's needed for the second step of planning. Note also, that segments activation is a part of prediction phase in TM, i.e. active segment depolarizes cell (= predicts its future activation) instead of activating it.
+
+Below is a pseudocode for forward prediction phase.
 
 ```python
-def predict_to_reward(initial_sar: Sar):
-    # Start prediction with all possible actions
-    initial_sar.action = encoder.AllValues
-    proximal_input = agent.encoder.encode(all_actions_sar)
+def predict_to_reward(initial_state):
+    # initializes starting $sa_0$ as superposition with all possible actions
+    initial_sa = Sa(initial_state, AllActions)
+    proximal_input = encoder.encode(initial_sa)
 
+    reached_goals = []
     active_segments_timeline = []
     for i in range(max_steps):
-
-        if is_rewarding(proximal_input):
-            return active_segments_timeline
-
-        active_cells, depolarized_cells = agent.process(
+        # activates & depolarizes cells
+        active_cells, depolarized_cells = memory.process(
             proximal_input, learn=False
         )
 
-        active_segments_t = agent.active_segments(active_cells)
-        active_segments_timeline.append(active_segments_t)
+        # records active segments for $i$-th step
+        active_segments_timeline.append(
+          memory.active_segments(active_cells)
+        )
 
+        # gets $sa_{i+1}$ SA SDR superposition
         proximal_input = columns_from_cells(depolarized_cells)
+
+        # gets list of matched goal states
+        reached_goals = [
+          goal_state
+          for goal_state in agent.goal_states
+          if is_matched(goal_state, proximal_input)
+        ]
+        if reached_goals:
+            break
+
+    return reached_goals, active_segments_timeline
 ```
+
+### Step 2. Backtracking from goal states
+
+
+Backtracking step
+
+- Given a set of depolarized cells `dep_cells` [at time $t$]
+- Call active segment as _potential_ if it induces enough depolarization among `dep_cells`
+  - _ehough_ means $\geq$ activation threshold
+  - i.e. a number of depolarized cells will be enough for subsequent depolarizations
+- Take presynaptic active cells of a potential segment as depolarized cells [at time $t-1$]
+
+Backtracking algorithm
+
+- Start from depolarized cells in reward = 1 columns [at time T]
+- Recursively take backtracking steps for any potential segment until time 0 is reached
+
+Details
+
+- Given a set of depolarized cells `dep_cells` [at time $t$]
+  - Each depolarized cell have at least one active segment
+  - Each active segment is associated with a set of active presynaptic cells
+    - This set defines some SAR SDR
+    - i.e. each segment is conditioned on some correct SAR
+- I want to find all potential sets of active presynaptic cells that induce enough depolarization of `dep_cells`
+  - perfect case
+    - `dep_cells` conditioned on the same SAR
+    - i.e. this SAR induces full `dep_cells` depolarization
+  - perfect multiple case
+    - `dep_cells` conditioned on more than one SAR
+    - i.e. each of these SAR induces full `dep_cells` depolarization
+- real world relaxations
+  - some SARs don't induce enough depolarization
+    - i.e. $\lt$ threshold
+  - segments don't exactly match each other
+    - cells are conditioned on very similar SARs but not exactly the same
+
+What is saved during this phase
+
+- active [presynaptic] cells at time $t$ are saved as `backtracking_SAR_conditions[t]`
+- they define condition on SAR at time $t-1$ to get desired depolarization at time $t$
 
 Второй шаг - рекурсивный бэктрекинг из столбцов, соответствующих награде, назад во времени:
 
