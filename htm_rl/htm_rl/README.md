@@ -557,12 +557,12 @@ Planning algorithm consists of 2 high-level steps: forward prediction and backtr
 
 ```python
 def plan_actions(initial_state):
-    reached_goals, active_segments_timeline = predict_to_goals(initial_state)
-    planned_actions = backtrack_from_goals(
-      reached_goals, active_segments_timeline
-    )
+  reached_goals, active_segments_timeline = predict_to_goals(initial_state)
+  planned_actions = backtrack_from_goals(
+    reached_goals, active_segments_timeline
+  )
 
-    return planned_actions
+  return planned_actions
 ```
 
 ### Step 1. Forward prediction
@@ -577,48 +577,85 @@ As you see, for each step $k$, $sa_k$ contains a superposition of all states rea
 
 Recall that the goal of forward prediction is to find reachable goal states. Therefore at each step $k$ we look if any of the goal states $g_i$ are among the states in $sa_k$ superposition by checking their overlap $o = overlap(g_i, sa_k)$. We want to find only the closest goals, so if any of the goal states are matched, we stop forward prediction process and set these goal states as a result.
 
-Also during forward prediction we need to record active segments at each steps $k$ denoted as `active_segments_timeline`. It's needed for the second step of planning. Note also, that segments activation is a part of prediction phase in TM, i.e. active segment depolarizes cell (= predicts its future activation) instead of activating it.
+Also during forward prediction we need to record active segments at each step $k$ denoted as `active_segments_timeline`. It's required by the second step of planning.
+
+Note also, that cell activation and segment activation, despite named similar, refer to the different phases of TM workflow. The latter is a part of prediction, not activation - active segment depolarizes cell, i.e. predicts its future activation instead of activating it.
 
 Below is a pseudocode for forward prediction phase.
 
 ```python
 def predict_to_reward(initial_state):
-    # initializes starting $sa_0$ as superposition with all possible actions
-    initial_sa = Sa(initial_state, AllActions)
-    proximal_input = encoder.encode(initial_sa)
+  # initializes starting $sa_0$ as superposition with all possible actions
+  initial_sa = Sa(initial_state, AllActions)
+  proximal_input = encoder.encode(initial_sa)
 
-    reached_goals = []
-    active_segments_timeline = []
-    for i in range(max_steps):
-        # activates & depolarizes cells
-        active_cells, depolarized_cells = memory.process(
-            proximal_input, learn=False
-        )
+  reached_goals = []
+  active_segments_timeline = []
+  for i in range(max_steps):
+    # activates & depolarizes cells
+    active_cells, depolarized_cells = memory.process(
+      proximal_input, learn=False
+    )
 
-        # records active segments for $i$-th step
-        active_segments_timeline.append(
-          memory.active_segments(active_cells)
-        )
+    # records active segments for $i$-th step
+    active_segments_timeline.append(
+      memory.active_segments(active_cells)
+    )
 
-        # gets $sa_{i+1}$ SA SDR superposition
-        proximal_input = columns_from_cells(depolarized_cells)
+    # gets $sa_{i+1}$ SA SDR superposition
+    proximal_input = columns_from_cells(depolarized_cells)
 
-        # gets list of matched goal states
-        reached_goals = [
-          goal_state
-          for goal_state in agent.goal_states
-          if is_matched(goal_state, proximal_input)
-        ]
-        if reached_goals:
-            break
+    # gets list of matched goal states
+    reached_goals = [
+      goal_state
+      for goal_state in agent.goal_states
+      if is_matched(goal_state, proximal_input)
+    ]
+    if reached_goals:
+      break
 
-    return reached_goals, active_segments_timeline
+  return reached_goals, active_segments_timeline
 ```
 
 ### Step 2. Backtracking from goal states
 
+As a result of forward prediction phase we have a list of goal states reachable in $T$ actions along with recorded segments activation timeline. The goal of backtracking phase is to restore a correct sequence of actions leading to any of these goal states.
 
-Backtracking step
+At high level view we start from any of the goal states and try moving backward [through time] to the initial state using segments activation timeline graph:
+
+```python
+def backtrack_from_goals(reached_goal_states, active_segments_timeline):
+  T = len(active_segments_timeline)
+  # cells predicted to be active at timestep T, when the goal states were reached
+  depolarized_cells = active_segments_timeline[T-1].keys()
+
+  for goal_state in reached_goal_states:
+    # gets predicted cells related to the goal state
+    depolarized_goal_cells = intersect(goal_state, depolarized_cells)
+
+    # try backtracking from the goal state to the initial state
+    planning_successful, planned_actions = backtrack_from_state(
+        depolarized_goal_cells, T-1
+    )
+    if planning_successful:
+      return planned_actions
+```
+
+The key thing for this phase is moving backward in an implicitly built graph of active cells. Consider having chosen some goal state $g$. Let's start with the first step of backtracking - timestep $T-1$ - when the goal state $g$ was __predicted__.
+
+Here we should pause a bit and expand the meaning ot "the goal state was predicted". Recall that we work with numeric MDP states encoded as SDR with Integer SDR encoder. A single value $x$ is decoded from an SDR $S$ means that $S$ has enough ON bits related to $x$, with "enough" is defined by `activation threshold` hyperparameter. So "the goal state $g$ was predicted" means that there were at least `activation_threshold` ON bits related to it in a prediction.
+
+From forward prediction phase we know the set of active cells at timestep $T-1$. And the fact that the goal state $g$ was predicted at that timestep creates a condition for backtracking - we have to make sure that it stays true. Obviously, the whole set of active cells at $T-1$ doesn't break this prediction condition.
+
+But there's another condition - at each timestep there's only one transition $(s, a) \rightarrow s'$ allowed, because that's how MDP works. On the other hand the forward prediction process works with superpositions, and the set of active cells $sa_{T-1}$ may contain multiple different $(s, a)$ pairs, from which we may choose only those single pairs that don't break the prediction condition. The question is how to find these pairs?
+
+The segments activations timeline allows us to take all active segments of the goal state $g$ cells at time $T-1$. Each active segment is associated with a set of active cells that activated it. By design each TM segment is supposed to recognize a single pattern, which is a state-action pair in our case.
+
+__NB__: In general that's not true. A segment might recognize a set of patterns, and the most robust to the punishment during learning are those sets that have non-zero intersection, which minimizes expected punishment rate. It means, that each segment learns a cluster [or clusters] of patterns. But we can bound the segment's allowed size, which is a number of synapses, to fit no more than a single state-action pair size - then each segment will be learning to recognize only a single pattern. Still, this doesn't mean that all segment's synapses are always connected to the same state or action cells, although learning tends to fit them this way.
+
+We might expect that the active cells sets $\{S_i^{T-1}\}$ associated with the active segments $\{A_i^{T-1}\}$ at time $T-1$ contain clusters, where each pair of active cells set has a high overlap score. Formally, we want to clusterize $\{A_i^{T-1}\}$ into clusters $\{C_k^{T-1}| A_i, A_j \in C_k^{T-1}: overlap(A_i, A_j) \geq N_{cl}\}$
+
+At any step $k$ we have the set of cells that should be activated at $k+1$ timestep in order to reach the goal state. It means that some key portion of these cells should be predicted at timestep $k$ - at least `activation threshold` cells - which gives us
 
 - Given a set of depolarized cells `dep_cells` [at time $t$]
 - Call active segment as _potential_ if it induces enough depolarization among `dep_cells`
