@@ -18,37 +18,27 @@
   - conventions
   - implementation
   - patches
-- [ ] update FAQ part on Terminology, Encoding, Parameters and Planning
-- [ ] extend Quick intro based on recent experience with students
-  - [ ] add task on SP to the Readme
-    - [ ] fix entropy formula
-    - [ ] add questions and requirements to test that learning is working
-    - [ ] the same for boosting
-  - [ ] update intro to TM part
-    - [ ] mini-task on prediction
-    - [ ] mini-task on backtracking
+- [x] update FAQ part on Terminology, Encoding, Planning
+- [ ] update FAQ part on Parameters
 
 Research + functional tasks
 
-- [ ] Adapt planning to goal-based strategy
+- [x] Adapt planning to goal-based strategy
   - [x] Switch from reward-based planning to goal-based
     - [x] Cut out reward from encoding and memorizing
     - [x] Track history of rewarding states and plan according to any of them
       - add naive list-based rewarding states tracking
-  - [ ] Test transfer learning capabilities
+  - [x] Test transfer learning capabilities
     - [x] Adapt environments for random initial states
     - [x] Adapt environments for random rewarding states
     - [x] Make the set of testing environments
     - [x] Adapt test runners for a multi-environment tests
     - [x] Make config for an experiment
-    - [x] Run experiment
-      - [x] 1-50-4-4 test on 5x5 default seed, 1-2-4 x 1-4-8g
-      - [ ] 1-50-4-4 test on 5x5 non-default seed, 1-2-4 x 1-4g
-      - [ ] 1-100-2-8 test on 5x5 2 seeds, 1-2-4 x 1-4g
-      - [ ] 1-100-2-8 test on 6x6 2 seeds, 1-2-4 x 1-4g
-  - [ ] Report results
+    - [x] Run experiments
+  - [x] Report results
     - [x] Update method description
-    - [ ] Add experiment results
+    - [x] Add experiment results
+    - [ ] TBD
 - Not acknowledged and questionable:
   - [ ] Split SAR TM into 2 TMs
     - State TM: (s, a) $\rightarrow$ s'
@@ -85,6 +75,14 @@ Auxialiary tasks, usability improvements and so on
   - [ ] start live-logging
 - [ ] for v2.x
   - [ ] remove legacy SAR-based parts
+- [ ] extend Quick intro based on recent experience with students
+  - [ ] add task on SP to the Readme
+    - [x] fix entropy formula
+    - [ ] add questions and requirements to test that learning is working
+    - [ ] the same for boosting
+  - [ ] update intro to TM part
+    - [ ] mini-task on prediction
+    - [ ] mini-task on backtracking
 
 ### Thoughts
 

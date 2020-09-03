@@ -653,7 +653,7 @@ The segments activations timeline allows us to take all active segments of the g
 
 __NB__: In general that's not true. A segment might recognize a set of patterns, and the most robust to the punishment during learning are those sets that have non-zero intersection, which minimizes expected punishment rate. It means, that each segment learns a cluster [or clusters] of patterns. But we can bound the segment's allowed size, which is a number of synapses, to fit no more than a single state-action pair size - then each segment will be learning to recognize only a single pattern. Still, this doesn't mean that all segment's synapses are always connected to the same state or action cells, although learning tends to fit them this way.
 
-We might expect that the active cells sets $\{S_i^{T-1}\}$ associated with the active segments $\{A_i^{T-1}\}$ at time $T-1$ contain clusters, where each pair of active cells set has a high overlap score. Formally, we want to clusterize $\{A_i^{T-1}\}$ into clusters $\{C_k^{T-1}| A_i, A_j \in C_k^{T-1}: overlap(A_i, A_j) \geq N_{cl}\}$
+We might expect that the active cells sets $\{S_i^{T-1}\}$ associated with the active segments $\{A_i^{T-1}\}$ at time $T-1$ contain clusters, where each pair of active cells set has a high overlap score. Formally, we want to split $\{A_i^{T-1}\}$ into clusters $\{C_k^{T-1}| A_i, A_j \in C_k^{T-1}: overlap(A_i, A_j) \geq N_{cl}\}$ and keep only those that 
 
 At any step $k$ we have the set of cells that should be activated at $k+1$ timestep in order to reach the goal state. It means that some key portion of these cells should be predicted at timestep $k$ - at least `activation threshold` cells - which gives us
 
@@ -896,97 +896,91 @@ TBD:
 
 ### Currently in use
 
-**SAR encoder**:
+**SA encoder**:
 
-- `n_values`: (>=3, 2, 2)
-- `value_bits`: 24
-- `activation_threshold`: 21
+- `n_values`: (>=3, 3)
+- `value_bits`: 16
+- `activation_threshold`: 14
 - Derived params or attributes
-  - `total_bits`: >=56
+  - `total_bits`: >=48
   - `sparsity`: ~15-35%
 
 Rationale
 
 - `n_values`
-  - определяется числом уникальных состояний/наблюдений
-  - опробованы среды с n_values 3-100
+  - defined by the number of unique states/observations
+  - tried envs with n_values 3-100
 - `value_bits`
-  - рекомендовано >= 20
-  - каждая часть SAR - по 8 активных бит, в сумме 24
+  - advised >= 20
 - `activation_threshold`
-  - = _value_bits_ - 3
-  - __очень важная характеристика__
-  - каждой части SAR задается свой activation_threshold = *value_bits* - 1 = 7
-    - порог активации одной части SAR, т.е. state/action/reward
-    - -1 оставляется под шум (=12.5% шума для 8 бит) и близкие значения
-    - в сумме на три части: -3
-    - спорное решение - вместо суммы должен браться максимум?
-  - т.к. на вход приходят данные от кодировщика, который разным значениям дает не пересекающиеся векторы, выбор порога пока не так важен и актуален
+  - = _value_bits_ - 2
+  - __highly important__
+  - each part of SA (state and action) has their own activation_threshold = *value_bits* - 1 = 7
+    - -1 is for noise or similar values (=12.5% of noise for 8 bit)
+    - that's -2 in total for both parts
+    - doubtful decision to sum up, maybe it's better to take max?
+  - for now choosing actual value for threshold is not _that_ important, as we use encoder which maps different values to non-overlapped SDRs and everything is denoised.
 
 **Temporal Memory**:
 
-- `n_columns`: >= 56
+- `n_columns`: >= 48
 - `cells_per_column`: 1 or ??
-- `activation_threshold`: 21
-- `learning_threshold`: 17
+- `activation_threshold`: 14
+- `learning_threshold`: 11
 - `initial_permanence`: 0.5
 - `connected_permanence`: 0.4
 - `permanenceIncrement`: 0.1
 - `permanenceDecrement`: 0.05
 - `predictedSegmentDecrement`: 0.0001
-- `maxNewSynapseCount`: 24
-- `maxSynapsesPerSegment`: 24
+- `maxNewSynapseCount`: 16
+- `maxSynapsesPerSegment`: 16
+- `maxSegmentsPerCell`: 4
 
 Rationale:
 
 - `n_columns`
-  - = *sar.total_bits*
+  - = *sa.total_bits*
 - `cells_per_column`
-  - для MDP достаточно first-order memory
-  - для POMDP нет данных
+  - for MDP first-order memory is enough
+  - for POMDP - don't know yet
 - `activation_threshold`
-  - = *sar.activation_threshold* = 21
+  - = *sa.activation_threshold* = 14
 - `learning_threshold`
-  - = 85% \* *sar.activation_threshold* = 17
-  - есть нижний порог: *action.value_bits* + *reward.value_bits* = 8 + 8 = 16
-    - именно такое ложно положительное пересечение встречается регулярно
-    - например, SAR вида (x, 0, 0) пересекаются в 16 битах, но не имеют ничего общего, потому что вся уникальность только в состоянии
-    - при этом штрафовать такие пересечения нельзя
-    - следовательно learning_threshold должен быть > 16
+  - lower bound is: *action.value_bits* = 8
+    - it's a very common case to have this exact overlap
+    - e.g. SAs $\{(x_i, 0)\}$ with fixed action all have 8 bits of overlap with each other
+    - and we shouldn't penalize these pairs
+    - hence 8 < *learning_threshold* < *activation_threshold*
 - `initial_permanence`
-  - начальное значение при создании синапса
-  - абсолютное значение initial_permanence не важно
+  - initial permanence value after its creation
 - `connected_permanence`
-  - порог, определяющий синапс connected или нет
-    - только connected синапсы могут активировать сегмент
-  - разница между initial и connected может иметь значение
-    - и как она соотносится с параметрами обучения
-    - сделать их равными - хороший вариант по умолчанию
-  - нужно изучать отдельно
+  - threshold defining whether a synapse is connected or not
+    - only connected synapses can activate segments
+  - the difference between initial and connected may be important
+    - and also its relation with learning parameters
+    - to make initial and connected to be equal is a good default strategy
+  - needs investigation in general case
 - `permanenceIncrement`
-  - имеет значение, нужно изучать
+  - have non-zero importance, requires further investigation
 - `permanenceDecrement`
-  - рекомендуется брать в 2-3 раза меньше инкремента (точно? почему?)
+  - recommended: 1/2 - 1/3 of an increment (sure? why?)
 - `predictedSegmentDecrement`
-  - рекомендуется брать _permanenceIncrement_ * sparsity
-    - логика рекомендации от Numenta в текущем виде не очень применима
-    - т.к. входные векторы имеют перекошенную энтропию
-  - нужно тестировать отдельно
+  - recommended: _permanenceIncrement_ * sparsity
+    - Numenta's logic behind it is not very applicable to our case ATM
+    - as input vectors have skewed entropy
 - `maxNewSynapseCount`
-  - = *sar.value_bits* = 24
-  - плохо понимаю важность этого параметра
-  - по идее имеет смысл делать его как минимум *activation_threshold*, чтобы новый сегмент сразу смог активироваться паттерном (иначе мало синапсов)
-  - ну и бессмысленно делать его больше *maxSynapsesPerSegment*
+  - = *sa.value_bits* = 16
+  - weak understanding of the importance
+  - seems reasonable to set it to at least *activation_threshold*, such that each new segment could be activated right after creation (otherwise there won't be enough synapses)
+  - obviously it's upper bounded with *maxSynapsesPerSegment*
 - `maxSynapsesPerSegment`
-  - = *sar.value_bits* = 24
-  - оказалось, что это очень важный параметр
-  - очевидно, нижний порог: *activation_threshold*
-  - не очевидно, верхний порог: *sar.value_bits*
-    - каждый сегмент должен распознавать ровно один SAR (отсюда верхний порог)
-    - если он способен распознавать больше одного SAR, то они интерферируют
-    - это очень сильно мешает при бэктрекинге
-    - с другой стороны это ведет к большому числу сегментов, по сути мы запоминаем все переходы
-    - с этим придется разбираться в будущем
+  - = *sa.value_bits* = 16
+  - **important parameter**
+  - obvious lower bound: *activation_threshold*
+  - not so obvious upper bound: *sar.value_bits*
+    - each segment should recognize no more than one SA pattern, because otherwise they could interfer, which makes backtracking difficult
+    - on the other hand it leads to a larger number of segments, i.e. TM just memorizes all transitions (atm that's true and desired)
+    - should be investigated in future
 
 ### Adviced by Numenta community
 
@@ -1009,7 +1003,7 @@ Rationale:
 - `n_columns`: >= 2000
   - same as for Spatial Pooler
 - `cells_per_column`: 8
-  - defines number of different ways context is represented (grows exponentially)
+  - defines the number of different ways a context is represented (grows exponentially)
 - `activation_threshold`
   - number of active synapses enough for segment activation
   - = *n_active_bits* - R
