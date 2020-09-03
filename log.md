@@ -18,8 +18,8 @@
   - conventions
   - implementation
   - patches
-- [x] update FAQ part on Terminology, Encoding, Planning
-- [ ] update FAQ part on Parameters
+- [ ] describe run arguments
+- [x] update FAQ part on Terminology, Encoding, Planning, Parameters
 
 Research + functional tasks
 
