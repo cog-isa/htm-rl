@@ -25,6 +25,7 @@
     - [Step 2: Backtracking](#step-2-backtracking)
     - [Step 3: Re-check](#step-3-re-check)
   - [Configuration based building](#configuration-based-building)
+    - [YAML custom tags](#yaml-custom-tags)
   - [Run arguments](#run-arguments)
   - [Parameters](#parameters)
     - [Currently in use](#currently-in-use)
@@ -862,11 +863,48 @@ What is saved during this phase
 
 This section describes configs syntax, rules and how to use it.
 
-For configs we use yaml format, particularly 1.1 and 1.2 versions of its standard (the mix of them). You can read more about the format and its standards [here](TBD).
+We use [YAML 1.2](https://yaml.org/spec/1.2/spec.html) format to represent configs and work with them with [ruamel.yaml](https://yaml.readthedocs.io/en/latest/overview.html) python package.
 
-As for implementation of yaml parser we use [ruamel.yaml](TBD) package. It's a fork of even more popular and seasoned alternative [pyyaml](TBD).
+If you're new to the YAML, check out [design section](https://en.wikipedia.org/wiki/YAML#Design) on Wikipedia - it provides basics of the format in a very short form and covers required minimum to understand the rest of the topic.
 
-Most shenanigans are based on the custom tags feature, supported by pyyaml and ruamel.yaml python packages.
+___
+_Here's a little side note covering all information sources:_
+
+For more details on YAML format we encourage you to use [1.2 standard specification](https://yaml.org/spec/1.2/spec.html).
+
+`ruamel.yaml` itself has a very shallow [documentation](https://yaml.readthedocs.io/en/latest/overview.html) which is not of a much use. But, since it's a fork of PyYAML package, you can use PyYAML's [docs](https://pyyaml.org/wiki/PyYAMLDocumentation) as well - both packages have just slightly different API and internals.
+
+There're also some useful answers on Stackoverflow from the author of `ruamel.yaml` (mostly in questions on PyYAML). And the last bastion of truth is, of course, `ruamel.yaml` code sources.
+___
+
+### YAML custom tags
+
+Most shenanigans are based on the custom tags feature (see PyYAML docs). Mostly they're used to construct objects. For example, here is `!RandomSeedSetter` custom tag is used to construct `RandomSeedSetter` object and assign it to the key `random_seed_setter`:
+
+```yaml
+random_seed_setter: !RandomSeedSetter
+  seed: 1337
+```
+
+As
+
+Parser provides you a way to register custom tag with the dedicated callback behavior. In our project custom tags are used in two ways:
+
+- as a direct object constructor
+  - you only register a class
+  - custom tag with the class name will be implicitly registered
+  - implicit callback will contruct new object, call corresponding `__init__(**kwargs)` and return constructed object
+  - in example above applying custom tag is semantically equal to:
+  
+    ```yaml
+    random_seed_setter: RandomSeedSetter(seed=1337)
+    ```
+
+- as an indirect object constructor
+  - you register both a custom tag and a callback function
+  - your callback will be 
+
+___
 
 - standard yaml tags
 - custom tags
