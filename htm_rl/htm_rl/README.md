@@ -877,9 +877,75 @@ For more details on YAML format we encourage you to use [1.2 standard specificat
 There're also some useful answers on Stackoverflow from the author of `ruamel.yaml` (mostly in questions on PyYAML). And the last bastion of truth is, of course, `ruamel.yaml` code sources.
 ___
 
+The most important features we use are:
+
+- custom tags
+- aliases
+- merging
+
 ### YAML custom tags
 
-Most shenanigans are based on the custom tags feature (see PyYAML docs). Mostly they're used to construct objects. For example, here is `!RandomSeedSetter` custom tag is used to construct `RandomSeedSetter` object and assign it to the key `random_seed_setter`:
+Custom tags are used for a value postprocessing. Consider following example:
+
+```yaml
+actor:
+  first_name: Nicholas
+  last_name: Cage
+```
+
+Parsing this YAML will result in an `actor` being a dictionary.
+
+In some cases we would like to represent `actor` as an object of a custom class or just to do some modification. For example we could have a `Person` class and a factory function, which can be registered as the callback for a particular custom tag:
+
+```python
+class Person:
+  name: str
+
+  def __init__(self, first_name, last_name):
+    self.name = f'{first_name} {last_name}'
+
+def create_person(loader: BaseLoader, node)
+  kwargs = loader.construct_mapping(node)
+  return Person(**kwargs)
+
+yaml = Yaml()
+yaml.add_constructor(f'!create_person', create_person)
+```
+
+Each node marked by `!create_person` tag will be processed with the registered callback function during parsing and the result will be used as the value of the node:
+
+```yaml
+# After parsing `actor` will be an object of type `Person`
+actor: !create_person
+  first_name: Nicholas
+  last_name: Cage
+```
+
+This particular case is a popular one - when you have a factory function callback, which just extracts a dictionary from the node and directly propagates it to the object constructor in order to initialize it. That's why there's a special way to register custom tag in `ruamel.yaml` - by registering a class. Instead of defining and registering `create_person` function we could just do that:
+
+```python
+yaml.register_class(Person)
+```
+
+
+You can register callback function to a tag, and it will be called
+
+
+The most frequent usage is to create an object of a custom class from a value. For this particular case
+
+```yaml
+simple_map:
+  key1: value1
+  key2: value2
+
+# using custom tag !Person to build a Person object
+actor: !Person
+  first_name: Nicholas
+  last_name: Cage
+```
+
+
+One of the most extensively used features is _custom tags_ (see PyYAML docs). We use it mostly to construct objects. For example, here is `!RandomSeedSetter` custom tag is used to construct `RandomSeedSetter` object and assign it to the key `random_seed_setter`:
 
 ```yaml
 random_seed_setter: !RandomSeedSetter
