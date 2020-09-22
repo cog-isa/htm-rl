@@ -863,21 +863,21 @@ What is saved during this phase
 
 This section describes configs syntax, rules and how to use it.
 
-We use [YAML 1.2](https://yaml.org/spec/1.2/spec.html) format to represent configs and work with them with [ruamel.yaml](https://yaml.readthedocs.io/en/latest/overview.html) python package.
+We use [YAML 1.2](https://yaml.org/spec/1.2/spec.html) format to represent configs and parse them with [ruamel.yaml](https://yaml.readthedocs.io/en/latest/overview.html) python package.
 
-If you're new to the YAML, check out [design section](https://en.wikipedia.org/wiki/YAML#Design) on Wikipedia - it provides basics of the format in a very short form and covers required minimum to understand the rest of the topic.
+If you're new to YAML, check out [design section](https://en.wikipedia.org/wiki/YAML#Design) on Wikipedia - it provides required basics of the format in a very short form.
 
 ___
 _Here's a little side note covering all information sources:_
 
 For more details on YAML format we encourage you to use [1.2 standard specification](https://yaml.org/spec/1.2/spec.html).
 
-`ruamel.yaml` itself has a very shallow [documentation](https://yaml.readthedocs.io/en/latest/overview.html) which is not of a much use. But, since it's a fork of PyYAML package, you can use PyYAML's [docs](https://pyyaml.org/wiki/PyYAMLDocumentation) as well - both packages have just slightly different API and internals.
+`ruamel.yaml` itself has a very shallow [documentation](https://yaml.readthedocs.io/en/latest/overview.html) which is not of a much use. But, since it's a fork of PyYAML package, PyYAML's [docs](https://pyyaml.org/wiki/PyYAMLDocumentation) are mostly applicable as well. Both packages have slightly different API and internals.
 
 There're also some useful answers on Stackoverflow from the author of `ruamel.yaml` (mostly in questions on PyYAML). And the last bastion of truth is, of course, `ruamel.yaml` code sources.
 ___
 
-The most important features we use are:
+The most important non-obvious features we use are:
 
 - custom tags
 - aliases
@@ -885,90 +885,94 @@ The most important features we use are:
 
 ### YAML custom tags
 
-Custom tags are used for a value postprocessing. Consider following example:
+Custom tags are used for value postprocessing. Consider following example:
 
 ```yaml
 actor:
-  first_name: Nicholas
+  first_name: Picolas
   last_name: Cage
 ```
 
-Parsing this YAML will result in an `actor` being a dictionary.
-
-In some cases we would like to represent `actor` as an object of a custom class or just to do some modification. For example we could have a `Person` class and a factory function, which can be registered as the callback for a particular custom tag:
+Parsing this YAML will result in an `actor` being a dictionary `{first_name: "Picolas", last_name: "Cage"}`:
 
 ```python
-class Person:
-  name: str
+from ruamel.yaml import YAML
 
+text = """
+actor:
+  first_name: Picolas
+  last_name: Cage
+"""
+
+yaml = YAML()
+data = yaml.load(text)
+actor = data['actor']
+assert isinstance(actor, dict) and actor['first_name'] == 'Picolas'
+```
+
+What if we wanted both `first_name` and `last_name` to be lower case? Or what if we wanted an `actor` to be represented as an object (e.g. of custom class `Person` or just a plain string `'Picolas Cage'`)? That's exactly what custom tags allow you to do.
+
+In order to use custom tag you should tell a parser both a tag and a callback function.
+
+```python
+from ruamel.yaml import YAML, BaseLoader
+
+text = """
+actor: !my_awesome_tag
+  first_name: Picolas
+  last_name: Cage
+"""
+
+tag = '!my_awesome_tag'
+def awesome_callback(loader: ruamel.yaml.BaseLoader, node):
+  actor_dict = loader.construct_mapping(node)
+  fname = actor_dict['first_name']
+  lname = actor_dict['last_name']
+  return f'{fname} {lname}'
+
+yaml = YAML()
+yaml.constructor.add_constructor(tag, awesome_callback)   # tag registration
+
+data = yaml.load(text)
+assert data['actor'] == 'Picolas Cage'
+```
+
+Callback function should have specific interface as in the example above. `loader` has construction methods for all supported basic classes ('_mapping', '_sequence', '_scalar' and etc.). Custom tag should start with `!`; tags starting with `!!` are reserved and provided by the standard.
+
+Building a custom class object out of the dictionary node is a popular case. Note that most of the time you don't need a complex factory method. Often you just want to pass a node dictionary as kwargs to an object `__init__` method:
+
+```python
+from ruamel.yaml import YAML, BaseLoader
+
+class Person:
   def __init__(self, first_name, last_name):
     self.name = f'{first_name} {last_name}'
 
-def create_person(loader: BaseLoader, node)
+tag = '!create_person`
+def create_person(loader: BaseLoader, node):
   kwargs = loader.construct_mapping(node)
   return Person(**kwargs)
 
-yaml = Yaml()
-yaml.add_constructor(f'!create_person', create_person)
-```
-
-Each node marked by `!create_person` tag will be processed with the registered callback function during parsing and the result will be used as the value of the node:
-
-```yaml
-# After parsing `actor` will be an object of type `Person`
+yaml = YAML()
+yaml.constructor.add_constructor(tag, create_person)
+actor = yaml.load("""
 actor: !create_person
-  first_name: Nicholas
+  first_name: Picolas
   last_name: Cage
+""")
+assert isinstance(actor, Person) and actor.name == 'Picolas Cage'
 ```
 
-This particular case is a popular one - when you have a factory function callback, which just extracts a dictionary from the node and directly propagates it to the object constructor in order to initialize it. That's why there's a special way to register custom tag in `ruamel.yaml` - by registering a class. Instead of defining and registering `create_person` function we could just do that:
+By convention all tags are registered in `config.py` file with two methods:
 
-```python
-yaml.register_class(Person)
-```
+- `register_static_methods_as_tags(cls, yaml)` - registers each static function `xyz` of the provided class as a callback to a tag `!xyz`
+  - note all lower case symbols in tag name as function names conventionally lower cased
+  - there's only one class with such callbacks - `TagProxies`
+- `register_classes(yaml)` - registers specified list of classes. For each class `Xyz` it registers a tag `!Xyz`.
+  - note upper case first letter in a tag as in class names conventionally camel cased
+  - so, you can deduce the type of a tag directly from its name
 
-
-You can register callback function to a tag, and it will be called
-
-
-The most frequent usage is to create an object of a custom class from a value. For this particular case
-
-```yaml
-simple_map:
-  key1: value1
-  key2: value2
-
-# using custom tag !Person to build a Person object
-actor: !Person
-  first_name: Nicholas
-  last_name: Cage
-```
-
-
-One of the most extensively used features is _custom tags_ (see PyYAML docs). We use it mostly to construct objects. For example, here is `!RandomSeedSetter` custom tag is used to construct `RandomSeedSetter` object and assign it to the key `random_seed_setter`:
-
-```yaml
-random_seed_setter: !RandomSeedSetter
-  seed: 1337
-```
-
-As
-
-Parser provides you a way to register custom tag with the dedicated callback behavior. In our project custom tags are used in two ways:
-
-- as a direct object constructor
-  - you only register a class
-  - custom tag with the class name will be implicitly registered
-  - implicit callback will contruct new object, call corresponding `__init__(**kwargs)` and return constructed object
-  - in example above applying custom tag is semantically equal to:
-  
-    ```yaml
-    random_seed_setter: RandomSeedSetter(seed=1337)
-    ```
-
-- as an indirect object constructor
-  - you register both a custom tag and a callback function
-  - your callback will be 
+So, if you don't know a tag a) look its definition if it has explicit callback or b) look corresponding class constructor.
 
 ___
 
