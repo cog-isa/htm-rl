@@ -24,6 +24,8 @@ class GridWorld:
                 0: floor
                 1: wall
                 2: reward
+        world_size:
+            tuple: (rows: int, columns: int)
         agent_initial_position:
             dict with grid coordinates:
                 {'row': int, 'column': int}
@@ -39,24 +41,33 @@ class GridWorld:
     """
 
     def __init__(self, world_description,
-                 agent_initial_position=None,
+                 world_size: tuple,
+                 agent_initial_position: dict,
                  agent_initial_direction=0,
                  max_sight_range=None):
 
-        if agent_initial_position is None:
-            agent_initial_position = {'row': 0, 'column': 0}
+        self.world_size = world_size
+        self.world_description = np.ones((world_size[0]+2, world_size[1]+2))
+        self.world_description[1:-1, 1:-1] = np.array(world_description)
 
-        self.world_description = np.array(world_description)
-        self.agent_position = agent_initial_position
+        if max_sight_range is None:
+            max_sight_range = max(self.world_description.shape)
+
+        converted_agent_position = {
+            'row': agent_initial_position['row'] + 1,
+            'column': agent_initial_position['column'] + 1}
+
+        self.agent_position = converted_agent_position
+
         self.agent_direction = agent_initial_direction
         self.max_sight_range = max_sight_range
         self.observable_state = None
 
-        self._agent_initial_position = agent_initial_position
+        self._agent_initial_position = converted_agent_position.copy()
         self._agent_initial_direction = agent_initial_direction
         self.observation()
 
-    def step(self, action):
+    def step(self, action: int):
         """
             actions:
                 0: rotate clockwise
@@ -96,7 +107,7 @@ class GridWorld:
         else:
             raise ValueError
 
-        return self.observation(), self.reward()
+        return self.observation(), self.reward(), self.is_terminal(), {}
 
     def observation(self):
         # we see only cells that are in front of us and we can't see
@@ -177,8 +188,9 @@ class GridWorld:
             return False
 
     def reset(self):
-        self.agent_position = self._agent_initial_position
+        self.agent_position = self._agent_initial_position.copy()
         self.agent_direction = self._agent_initial_direction
+        self.observation()
         return self.agent_position, self.agent_direction
 
     def render(self):
