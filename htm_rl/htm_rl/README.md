@@ -1009,7 +1009,7 @@ another_actor: !Person &ben
 This's useful for the following scenario - there're multiple nodes sharing the same subset of attributes. On solution is to make an alias to the subset and then _append_ or _extract_ it to each node. That's what merging feature allows you to do:
 
 ```yaml
-shared_attrs: &base
+.base_attrs: &base
   x: ...
   y: ...
 
@@ -1027,7 +1027,7 @@ Note that this feature works only with dictionaries.
 Another popular use case - to create the same distinct objects:
 
 ```yaml
-obj_x: &obj_x
+.obj_x: &obj_x
   a: 1
 
 obj_y:
@@ -1041,15 +1041,36 @@ obj_z:
 
 In the example above `obj_y` and `obj_z` will have different `obj_x` objects, although they will be initialized the same.
 
+You may noticed here (or in repo configs) unusual node names starting with dot. We use following _root node_ naming convention:
+
+- `xyz` - for scalars and objects that you will use at runtime in your code. That's the endpoints of the configuration process.
+- `.xyz` - for auxilary dictionaries with initialization parameters used at parsing and object construction.
+
 **NB**: too long, hard to read configs is a code smell, i.e. a good cue that underlying architecture needs refactoring.
 
 ## Run arguments
 
-TBD:
+- `-c`, `--config` - path to the config file; e.g. `-c ./experiments/gridworld_transfer/gridworld_5x5.yml`
+  - the only **required** argument
 
-- the set of arguments
-- their relation
-- examples
+There're 3 working modes:
+
+- `-r`, `--run` - run experiments flag
+  - fallback (=default) mode if none is specified
+  - sequentially runs experiments for each agent runner specified in `agent_runners` dict in the config
+  - if you want to run experiments only for a subset of agents, additionally use `-a`, `--agent` to specify their names; e.g. `-r -a htm_0 dqn_greedy htm_2_1g`
+  - experiment results are saved to the folder with the config file
+- `-d`, `--dry` - dry (=fake) run experiments glag
+  - the real purpose is to generate environment mazes and save their map images without running experiments in these envs
+  - hence this flag makes sence only for experiments with randomly generated environments (checked by the presence of `transfer_learning_experiment_runner` in config)
+  - exclusive with `-r`
+  - environment map images are saved to the folder with the config file
+- `-g`, `--aggregate` - aggregate results flag
+  - plots performance charts using all available experiment results related to the config
+  - you can specify which results to use, e.g. `-g htm_0 "dqn_*" "htm_*_1g" htm_2_4g` - yes, you can use masks here
+  - you can further specify the name prefix of the plots to make distinguishable aggregations, e.g. `-n 1g_vs_all`; by default no prefix is used
+  - you can also turn off showing the plots with `-s`, `--silent` flag
+
 
 ## Parameters
 
