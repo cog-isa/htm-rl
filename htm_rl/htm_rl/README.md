@@ -26,6 +26,8 @@
     - [Step 3: Re-check](#step-3-re-check)
   - [Configuration based building](#configuration-based-building)
     - [YAML custom tags](#yaml-custom-tags)
+    - [YAML aliases - DRY](#yaml-aliases---dry)
+    - [YAML merging - DRY #2](#yaml-merging---dry-2)
   - [Run arguments](#run-arguments)
   - [Parameters](#parameters)
     - [Currently in use](#currently-in-use)
@@ -974,23 +976,72 @@ By convention all tags are registered in `config.py` file with two methods:
 
 So, if you don't know a tag a) look its definition if it has explicit callback or b) look corresponding class constructor.
 
-___
+### YAML aliases - DRY
 
-- standard yaml tags
-- custom tags
-  - building through constructors and factory methods
-  - naming conventions
-  - how to register class tag
-  - how to register factory method
-- DRY
-  - aliases
-  - merging feature from 1.1 standard
-    - how it works
-  - how to use them
-- ruamel patches
-  - use cases with undesired default behavior
-  - how they had been patched
-- examples
+Let's consider following example: you have to specify the same value multiple times in your config. DRY principle encourage you to specify this value only once and then reference to it any time further. That's what YAML aliases support means and allows you to do. Aliases are defined with `&` sign. To reference defined alias use `*` sign:
+
+```yaml
+random_seed: &seed 42   # alias named "seed" to the value 42 stored in "random_seed"
+actor: &cage            # alias named "cage" to the dict stored in "actor"
+  first_name: Picolas
+  last_name: Cage
+
+random_movie:
+  main_actor: *cage     # reference to the dict stored in "actor"
+  rnd_name_seed: *seed  # value 42
+```
+
+This feature provides you more centralized way to manage parameters. Alias is implemented as a copy-by-reference to the origin, i.e. everyone references to the same origin object. You can also use tags to build custom class objects and reference to them further in the document:
+
+```yaml
+actor: !Person &cage    # alias to the Person object stored in "actor"
+  first_name: Picolas
+  last_name: Cage
+
+another_actor: !Person &ben
+  first_name: Benedict
+  last_name: Cucumberbatch
+  meme_sibling: *cage   # reference to the Person object stored in "actor"
+```
+
+### YAML merging - DRY #2
+
+This's useful for the following scenario - there're multiple nodes sharing the same subset of attributes. On solution is to make an alias to the subset and then _append_ or _extract_ it to each node. That's what merging feature allows you to do:
+
+```yaml
+shared_attrs: &base
+  x: ...
+  y: ...
+
+object_one:
+  <<: *base   # "base" node is extracted, i.e. "x" and "y" will be appended to this node
+  z: ...
+
+object_two:
+  <<: *base
+  w: ...
+  u: ...
+```
+
+Note that this feature works only with dictionaries.
+Another popular use case - to create the same distinct objects:
+
+```yaml
+obj_x: &obj_x
+  a: 1
+
+obj_y:
+  obj_x: !X
+    <<: *obj_x    # extract init params and then create distinct object by custom class tag (line above)
+
+obj_z:
+  obj_x: !X
+    <<: *obj_x
+```
+
+In the example above `obj_y` and `obj_z` will have different `obj_x` objects, although they will be initialized the same.
+
+**NB**: too long, hard to read configs is a code smell, i.e. a good cue that underlying architecture needs refactoring.
 
 ## Run arguments
 
