@@ -7,6 +7,7 @@
     - [Gridworld transfer learning experiment](#gridworld-transfer-learning-experiment)
     - [TM related interesting links](#tm-related-interesting-links)
   - [2020.09.06 Sun](#20200906-sun)
+  - [2020.09.18 Fri](#20200918-fri)
 
 ## 2020.08.08 Sat
 
@@ -21,6 +22,8 @@
   - patches
 - [ ] describe run arguments
 - [x] update FAQ part on Terminology, Encoding, Planning, Parameters
+- [ ] add pytorch, tdqm to requirements
+- [ ] mention vs code setup for markdown
 
 Research + functional tasks
 
@@ -209,3 +212,13 @@ Model-based, planning, MCTS:
 Техническое направление:
 
 - Добавить визуализацию SDR/SP/TM, используя готовые инструменты
+
+## 2020.09.18 Fri
+
+- check REAL
+- раз в неделю созваниваться командой
+  - первый созвон сделать в ближайшее время
+  - обсудить репозиторий и задачи
+- ссылку на оверлиф
+- смысл: функция полезности
+- дать доступ в репо
