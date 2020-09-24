@@ -29,6 +29,8 @@
     - [YAML aliases - DRY](#yaml-aliases---dry)
     - [YAML merging - DRY #2](#yaml-merging---dry-2)
   - [Run arguments](#run-arguments)
+    - [Run examples](#run-examples)
+  - [Entities](#entities)
   - [Parameters](#parameters)
     - [Currently in use](#currently-in-use)
     - [Adviced by Numenta community](#adviced-by-numenta-community)
@@ -1063,6 +1065,7 @@ There're 3 working modes:
 - `-d`, `--dry` - dry (=fake) run experiments glag
   - the real purpose is to generate environment mazes and save their map images without running experiments in these envs
   - hence this flag makes sence only for experiments with randomly generated environments (checked by the presence of `transfer_learning_experiment_runner` in config)
+  - you can restrict the number of images to generate, e.g. `-d 5`
   - exclusive with `-r`
   - environment map images are saved to the folder with the config file
 - `-g`, `--aggregate` - aggregate results flag
@@ -1071,6 +1074,49 @@ There're 3 working modes:
   - you can further specify the name prefix of the plots to make distinguishable aggregations, e.g. `-n 1g_vs_all`; by default no prefix is used
   - you can also turn off showing the plots with `-s`, `--silent` flag
 
+### Run examples
+
+```bash
+# saves images of the first 10 different environment setups to the config folder
+python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -d 10
+
+# runs experiment for 3 agents and then generate report for them named `dqn_vs_htm`
+python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -ra htm_0 dqn htm_4_1g -g -n dqn_vs_htm
+
+# runs experiment for additional 2 agents
+python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -ra htm_2_1g htm_8_1g
+
+# silently aggregates results for htm_*_1g, i.e. saves plots without showing them
+python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -g htm_0 "htm_*_1g" -n 1g -s
+```
+
+## Entities
+
+There're two agents ATM: DQN and HTM. DQN agent is in `./baselines` folder, it's implemented in pytorch. HTM agent is more complex structure.
+
+HTM agent consists of:
+
+- memory
+  - high level wrapper over TM
+  - SA SDR Encoder/Decoder
+- planner
+  - uses memory
+  - implement planning logic
+  - adds goals memory (naive circular queue of goal states)
+
+**NB** Threre're legacy counterparts for HTM agent and its parts due to recent move from SAR encoding to SA. The difference is mostly with what SDR they work. Legacy implementation will be removed soon and is kept now only for testing and comparison.
+
+There're two implementations of MDP:
+
+- general `Mdp`
+  - works with MDP transition graph, hence you can make non-gridworld MDPs too
+  - useful at early stages - when you need very small custom test envs for particular cases
+  - MDPs are mostly handcrafted
+  - accompanied with `PresetMdpCellTransitions` helper class with preset MDPs and simple passage generator
+- more specialized `GridworldMdp`
+  - works with gridworld map - 2d array representing empty cells and walls on a square grid.
+  - useful later to scale experiments, to validate on random env or to test transferability
+  - accompanied with `GridworldMapGenerator` helper class to generate mazes with custom density (empty cells to walls ratio)
 
 ## Parameters
 
