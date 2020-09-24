@@ -191,7 +191,7 @@ class GridWorld:
         self.agent_position = self._agent_initial_position.copy()
         self.agent_direction = self._agent_initial_direction
         self.observation()
-        return self.agent_position, self.agent_direction
+        return self.observable_state['distance'], self.observable_state['surface']
 
     def render(self):
         for i, row in enumerate(self.world_description):
