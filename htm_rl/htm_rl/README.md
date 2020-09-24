@@ -1092,7 +1092,7 @@ python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.
 
 ## Entities
 
-There're two agents ATM: DQN and HTM. DQN agent is in `./baselines` folder, it's implemented in pytorch. HTM agent is more complex structure.
+There're two agents: DQN and HTM. DQN agent is in `./baselines` folder, it's implemented in pytorch. HTM agent is in `./agent` and has more compound structure.
 
 HTM agent consists of:
 
@@ -1101,10 +1101,10 @@ HTM agent consists of:
   - SA SDR Encoder/Decoder
 - planner
   - uses memory
-  - implement planning logic
-  - adds goals memory (naive circular queue of goal states)
+  - implements planning logic
+  - has goals memory (naive circular queue of goal states)
 
-**NB** Threre're legacy counterparts for HTM agent and its parts due to recent move from SAR encoding to SA. The difference is mostly with what SDR they work. Legacy implementation will be removed soon and is kept now only for testing and comparison.
+**NB** Threre're legacy counterparts for HTM agent and its parts due to recent move from SAR encoding to SA. The difference is mostly with what SDR they work. Legacy implementation will be removed soon and is kept now only for testing and comparison. Agent also has tricky _cooldown_ logic - it's still present although not used. Just ignore it, it will be removed soon too.
 
 There're two implementations of MDP:
 
@@ -1117,6 +1117,10 @@ There're two implementations of MDP:
   - works with gridworld map - 2d array representing empty cells and walls on a square grid.
   - useful later to scale experiments, to validate on random env or to test transferability
   - accompanied with `GridworldMapGenerator` helper class to generate mazes with custom density (empty cells to walls ratio)
+
+Each agent has its own runner: `AgentRunner` for HTM and `DqnAgentRunner` for DQN. They do the same and even implement the same interface. The core functionality is to run episode and collect its result. It also has functionality to run multiple episodes as an experiment and store all collected results. Agent runners were made with the static environment params in mind.
+
+Later on `TransferLearningExperimentRunner` and `TransferLearningExperimentRunner2` appeared as a hack to run experiments containing different initial and terminal states and even environment itself. `TransferLearningExperimentRunner` was made first as an extension to run experiment with a sequence of terminal states but still on a fixed preset MDP. `TransferLearningExperimentRunner2` has more freedom over experiment params. This whole running experiment part is in quite bad state right now.
 
 ## Parameters
 
