@@ -8,6 +8,7 @@
     - [TM related interesting links](#tm-related-interesting-links)
   - [2020.09.06 Sun](#20200906-sun)
   - [2020.09.18 Fri](#20200918-fri)
+  - [2020.09.25 Fri](#20200925-fri)
 
 ## 2020.08.08 Sat
 
@@ -215,10 +216,33 @@ Model-based, planning, MCTS:
 
 ## 2020.09.18 Fri
 
-- check REAL
+- check [REAL](https://github.com/AIcrowd/REAL2020_starter_kit/tree/master/baseline)
 - раз в неделю созваниваться командой
   - первый созвон сделать в ближайшее время
   - обсудить репозиторий и задачи
 - ссылку на оверлиф
 - смысл: функция полезности
 - дать доступ в репо
+
+## 2020.09.25 Fri
+
+- Artem
+  - htmschool: 3d + 2d in one repository
+  - PandaVis: slow, hanging
+    - let's choose it for now
+    - try it for our experiments
+- Eugene
+  - lidar: distance + type of obstacle (wall or reward)
+
+- Petr
+  - report
+    - till 01.10 reg to the conf ?? (ask link)
+    - till 15.10 report
+  - REAL
+    - check planner more
+    - no goal is interesting
+    - linked lab - interesting works on intrinsic motivation (maybe to contact them)
+  - MCTS
+    - make pseudocode or images
+    - to the next call: prepare a talk for all
+    - explicit goal setting
