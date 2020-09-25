@@ -18,6 +18,10 @@ htm_rl/htm_rl/scratch.py
 /htm_rl/**/*.svg
 /htm_rl/**/*.csv.tar.gz
 
+# LaTeX
+# needed for source-to-pdf cursor sync
+*.synctex.gz
+
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # please, place all project specific rules above this line
 # =====================================================
