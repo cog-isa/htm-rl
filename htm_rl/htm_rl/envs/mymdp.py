@@ -49,6 +49,7 @@ class GridWorld:
         self.world_size = world_size
         self.world_description = np.ones((world_size[0]+2, world_size[1]+2))
         self.world_description[1:-1, 1:-1] = np.array(world_description)
+        self.n_actions = 3
 
         if max_sight_range is None:
             max_sight_range = max(self.world_description.shape)
@@ -182,7 +183,7 @@ class GridWorld:
             return -1e-2
 
     def is_terminal(self):
-        if self.world_description[[self.agent_position['row'], self.agent_position['column']]] == 2:
+        if self.world_description[self.agent_position['row'], self.agent_position['column']] == 2:
             return True
         else:
             return False
