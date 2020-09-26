@@ -4,6 +4,13 @@ from typing import Iterable, List
 from htm_rl.common.base_sar import Superposition
 from htm_rl.common.sdr import SparseSdr, sparse_to_dense
 from htm_rl.common.utils import isnone
+from typing import TypeVar, Generic
+from itertools import product, count
+
+import numpy as np
+
+ValueEncoder = TypeVar('ValueEncoder')
+SequenceEncoder = TypeVar('SequenceEncoder')
 
 
 @dataclass(frozen=True)
@@ -28,7 +35,31 @@ class BitRange:
         return range(self.l, self.r)
 
 
-class IntSdrEncoder:
+class BitRangePack:
+    """
+        Shorthand for representing contiguous index ranges [l1, r1), [l2, r2), ... of 1 bits.
+        Used to represent an active bucket during encoding. Use `unfold` method to get actual set of indices.
+    """
+    bit_ranges: List[BitRange]
+
+    def __init__(self, bit_ranges: List[BitRange]):
+        self.bit_ranges = bit_ranges
+
+    def shift(self, shift: int) -> 'BitRangePack':
+        new_bit_ranges = list()
+        for bit_range in self.bit_ranges:
+            new_bit_ranges.append(bit_range.shift(shift))
+        return BitRangePack(new_bit_ranges)
+
+    def unfold(self) -> Iterable[int]:
+        unfolded = list()
+        for bit_range in self.bit_ranges:
+            unfolded.extend(bit_range.unfold())
+
+        return unfolded
+
+
+class IntSdrEncoder(Generic[ValueEncoder]):
     """
     Encodes integer values from range [0, `n_values`) as SDR w/ `total_bits` bits.
     Every single value x from the range is encoded as `value_bits` contiguous 1 bits called
@@ -144,6 +175,84 @@ class IntSdrEncoder:
         return f'({name}: v{n_values} x b{value_bits})'
 
 
+class SequenceSdrEncoder(Generic[SequenceEncoder]):
+    """
+        Encodes sequence as SDR. Sequence should consist of numbers of types that have encoders.
+        Every single value from sequence is encoded by sdr encoders that correspond to
+        the sequence's values types.
+        Example:
+            TODO
+    """
+    name: str
+    encoders: List[ValueEncoder]
+    size: int
+    total_bits: int
+
+    def __init__(
+            self, name: str, encoders: List[ValueEncoder], size: int,
+            default_format: str = 'full'
+    ):
+        """
+            Initializes encoder.
+
+            :param name: a name for Sequence encoded
+            :param encoders: encoder that will be used for encoding every value in the sequence
+            :param size: size of the Sequence
+            :param default_format: printing format
+
+            TODO: topology
+        """
+
+        self.name = name
+        self.encoders = encoders
+        self.size = size
+        self.value_bits = sum([encoder.value_bits for encoder in self.encoders])
+        self.total_bits = sum([encoder.total_bits for encoder in self.encoders])
+        self.activation_threshold = sum([encoder.activation_threshold for encoder in self.encoders])
+        self._shifts = self._get_shifts()
+        self.default_format = default_format
+
+    def encode(self, sequence: Iterable) -> BitRangePack:
+        sequence = np.array(sequence, dtype=np.int64)
+        bit_ranges = list()
+        for i, value, encoder in zip(count(), sequence, self.encoders):
+            bit_ranges.append(encoder.encode(value).shift(self._shifts[i]))
+
+        return BitRangePack(bit_ranges)
+
+    def decode(self, sparse_sdr: SparseSdr):
+        values = list()
+        sparse_sdr = np.array(sparse_sdr, dtype=np.int64)
+        for i, encoder in enumerate(self.encoders):
+            values.append(encoder.decode(
+                sparse_sdr[(self._shifts[i] <= sparse_sdr) &
+                           (sparse_sdr < self._shifts[i + 1])]
+            )
+            )
+        return product(*values)
+
+    def format(self, sparse_sdr: SparseSdr, format_: str = None) -> str:
+        """
+        Formats sparse SDR to string with one of the supported formats.
+
+        Supported formats are: 'full' and 'short'. If None then encoder's default is used.
+        """
+        format_ = isnone(format_, self.default_format)
+        supported_formats = {
+            'full': IntSdrFormatter,
+            'short': IntSdrShortFormatter,
+        }
+        return supported_formats[format_].format(sparse_sdr, self)
+
+    def _get_shifts(self):
+        shifts = [0] * (1 + self.size)
+        shift = 0
+        for i in range(1, len(self.encoders) + 1):
+            shift += self.encoders[i-1].total_bits
+            shifts[i] = shift
+        return shifts
+
+
 class IntSdrFormatter:
     """
     Formats SDR as a dense array:
@@ -172,9 +281,9 @@ class IntSdrShortFormatter:
         + - - . - +
     """
     format_chars = [
-        '-',    # empty: zero 1 bits
-        '.',    # partial:  0 < x < value_bits 1 bits
-        '+',    # full value: value_bits 1 bits
+        '-',  # empty: zero 1 bits
+        '.',  # partial:  0 < x < value_bits 1 bits
+        '+',  # full value: value_bits 1 bits
     ]
 
     @classmethod
