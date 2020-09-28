@@ -15,11 +15,8 @@
 **Urgent**:
 
 - [x] add ruamel.yaml to requirements
-- [ ] describe config based building details
-  - conventions
-  - implementation
-  - patches
-- [ ] describe run arguments
+- [x] describe config based building details - conventions and implementation
+- [x] describe run arguments
 - [x] update FAQ part on Terminology, Encoding, Planning, Parameters
 - [ ] add pytorch, tdqm to requirements
 - [ ] mention vs code setup for markdown
@@ -89,7 +86,7 @@ Auxialiary tasks, usability improvements and so on
 
 ## Thoughts and ideas
 
-- consider using SP between an input an TM
+- consider using SP between an input and TM
   - only states need SP, because actions and reward are just ints (naive encoding is enough)
   - concat them together
   - it will take care of sparsity
