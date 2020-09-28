@@ -309,7 +309,7 @@ class SequenceSdrEncoder(Generic[SequenceEncoder]):
         for i, encoder in enumerate(self.encoders):
             values.append(encoder.decode(
                 sparse_sdr[(self._shifts[i] <= sparse_sdr) &
-                           (sparse_sdr < self._shifts[i + 1])]
+                           (sparse_sdr < self._shifts[i + 1])] - self._shifts[i]
             )
             )
         return product(*values)
