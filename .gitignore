@@ -21,6 +21,8 @@ htm_rl/htm_rl/scratch.py
 # LaTeX
 # needed for source-to-pdf cursor sync
 *.synctex.gz
+# pdfs generated from tex
+/reports/**/*.pdf
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # please, place all project specific rules above this line
