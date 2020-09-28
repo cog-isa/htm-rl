@@ -12,6 +12,9 @@ notebooks/00_scratchpad.ipynb
 # temporal scratchpad script
 htm_rl/htm_rl/scratch.py
 
+# non-tracked temp notebooks
+notebooks/**/_*.ipynb
+
 # data files in experiments folder
 /htm_rl/**/*.pkl
 /htm_rl/**/*.png
