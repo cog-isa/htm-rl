@@ -1,18 +1,16 @@
 # Research and development log
 
 - [Research and development log](#research-and-development-log)
+  - [TODO](#todo)
+  - [Thoughts and ideas](#thoughts-and-ideas)
   - [2020.08.08 Sat](#20200808-sat)
-    - [TODO](#todo)
-    - [Thoughts](#thoughts)
     - [Gridworld transfer learning experiment](#gridworld-transfer-learning-experiment)
     - [TM related interesting links](#tm-related-interesting-links)
   - [2020.09.06 Sun](#20200906-sun)
   - [2020.09.18 Fri](#20200918-fri)
   - [2020.09.25 Fri](#20200925-fri)
 
-## 2020.08.08 Sat
-
-### TODO
+## TODO
 
 **Urgent**:
 
@@ -89,7 +87,7 @@ Auxialiary tasks, usability improvements and so on
     - [ ] mini-task on prediction
     - [ ] mini-task on backtracking
 
-### Thoughts
+## Thoughts and ideas
 
 - consider using SP between an input an TM
   - only states need SP, because actions and reward are just ints (naive encoding is enough)
@@ -105,6 +103,8 @@ Auxialiary tasks, usability improvements and so on
 - SP hierarchies for large input images
   - with every SP working similar to convolution filter
 - consider doing live-logging experiments in markdown there
+
+## 2020.08.08 Sat
 
 ### Gridworld transfer learning experiment
 
@@ -233,16 +233,15 @@ Model-based, planning, MCTS:
     - try it for our experiments
 - Eugene
   - lidar: distance + type of obstacle (wall or reward)
-
 - Petr
   - report
-    - till 01.10 reg to the conf ?? (ask link)
-    - till 15.10 report
+    - to 01.10 reg to the [conf](http://iiti.rgups.ru/ru/important-dates/)
+    - to 15.10 report
   - REAL
-    - check planner more
-    - no goal is interesting
-    - linked lab - interesting works on intrinsic motivation (maybe to contact them)
+    - planner - dig deeper
+    - absence of goal looks interesting
+    - linked [lab](https://www.istc.cnr.it/group/locen) - interesting works on intrinsic motivation; maybe to contact them in future
   - MCTS
     - make pseudocode or images
-    - to the next call: prepare a talk for all
+    - to the next call: prepare a talk
     - explicit goal setting
