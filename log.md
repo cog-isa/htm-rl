@@ -9,6 +9,7 @@
   - [2020.09.06 Sun](#20200906-sun)
   - [2020.09.18 Fri](#20200918-fri)
   - [2020.09.25 Fri](#20200925-fri)
+  - [2020.10.02 Fri](#20201002-fri)
 
 ## TODO
 
@@ -230,6 +231,7 @@ Model-based, planning, MCTS:
     - try it for our experiments
 - Eugene
   - lidar: distance + type of obstacle (wall or reward)
+    - made encoder
 - Petr
   - report
     - to 01.10 reg to the [conf](http://iiti.rgups.ru/ru/important-dates/)
@@ -242,3 +244,63 @@ Model-based, planning, MCTS:
     - make pseudocode or images
     - to the next call: prepare a talk
     - explicit goal setting
+
+REAL:
+
+- planner
+  - actions list
+  - last goal
+  - abstractor
+  - $a^i_k \rightarrow [(a_k, s^{pre}_k, s^{post}_k]$
+  - $k \rightarrow [a^i_k| s^{pre}_k \neq s^{post}_k]$
+  - что-то вроде A*
+- plan
+  - $a \rightarrow a_1$
+  - find $[a^1, .., a^T]$ from current s_0 to goal s_g
+    - if yes, return, elst rise level k
+  - если есть невырожденные переходы в цель
+    - берем невырожденные переходы из начального состояния
+    - строим ноды с cost & value: d(s, s'), d(s', g)
+    - кидаем в хип и в фронт. В хипе сортировка по cost + value
+      - у каждой ноды есть атрибуты предок и потомки - это ноды в пути от начала в сторону цели.
+  - пока фронт не пустой
+    - достаем наилучшую не посещенную ноду (=переход)
+    - проверяем, что уровень абстракции не превышен
+      - иначе удаляем из фронта вместе со всем путем в нее из начала
+    - удаляем из фронта и помечаем как посещенную
+    - если она ведет в цель и уменьшает расстояние до цели (по сравнению с изначальным расстоянием)
+      - завершаем цикл по хипу
+    - инициализируем если нужно список допустимых переходов следом за текущим переходом
+      - т.е. те переходы у которых начало совпадает с концом текущей ноды
+    - берем еще не посещенные допустимые переходы
+      - если не во фронте, добавляем ноду перехода во фронт и хип
+      - иначе обновляем value ноды (если может быть улучшено текущим путем)
+  - если получилось прийти к цели, восстанавливаем путь и возвращаем
+    - иначе пустой путь
+- NB:
+  - ripple based abstraction: техника уменьшения масштаба
+    - из набора случайных точек или определенных точек планируем вперед на n шагов, фронт предсказания или полное предсказание - это и есть масштабированная версия точки
+    - с ними можно работать либо как есть, либо кодировать SP в новое пространство
+
+MCTS
+
+- goal-based MCTS [idea](https://arxiv.org/pdf/2004.11410.pdf)
+
+## 2020.10.02 Fri
+
+- Artem
+  - make pandavis run with our repo
+
+- Eugene
+  - still doesn't work
+  - sees goals in 2nd step
+  - call tue and debug online
+
+- Petr
+  - report: send report by evening
+  - REAL:
+    - check lab works
+    - dig deeper
+  - MCTS:
+    - TM is the tree
+    - how to store and update node value and times visited.
