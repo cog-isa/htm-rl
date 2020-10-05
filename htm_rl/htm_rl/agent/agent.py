@@ -46,12 +46,17 @@ class Agent:
         self.memory.tm.reset()
         self._init_planning()
 
-    def make_step(self, state, reward, is_done, verbosity: int):
+    def make_step(self, state, reward, is_done, verbosity: int, info=None):
         trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
         action = self._make_action(state, is_done, verbosity)
         trace(verbosity, 2, f'\nMake action: {action}')
 
-        self.memory.train(Sa(state, action), verbosity)
+        if info is None:
+            self.memory.train(Sa(state, action), verbosity)
+        else:
+            if (info['previous_action'] != action) or (reward > -100):
+                self.memory.train(Sa(state, action), verbosity)
+
         if reward > 0:
             self.planner.add_goal(state)
         return action
@@ -167,7 +172,7 @@ class AgentRunner:
         total_reward = 0.
         while step < self.max_steps and not done:
             state, reward, done, info = self.env.step(action)
-            action = self.agent.make_step(state, reward, done, self.verbosity)
+            action = self.agent.make_step(state, reward, done, self.verbosity, info)
             step += 1
             total_reward += reward
 
