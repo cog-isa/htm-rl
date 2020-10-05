@@ -203,7 +203,7 @@ class Planner:
             desired_depolarization: SparseSdr, t: int,
             sufficient_activation_threshold: int, verbosity: int
     ):
-        if n_containing_segments < 5:   # obviously noise clusters
+        if n_containing_segments < 2:   # obviously noise clusters ??
             return
 
         active_cells = cell_cluster
@@ -215,13 +215,13 @@ class Planner:
                 active_cells, desired_depolarization, t
             )
 
-            if n_depolarized_cells != n_containing_segments:
-                # hypothesis: they should be equal every time, hence we never reach this branch!
-                trace(verbosity, 2, f'{n_containing_segments} -> {n_depolarized_cells}')
-                self.memory.print_cells(
-                    verbosity, 2, active_cells,
-                    f'n: {n_depolarized_cells} of {sufficient_activation_threshold}'
-                )
+            # if n_depolarized_cells != n_containing_segments:
+            #     # seems like n_depolarized_cells > n_containing_segments is normal situation
+            #     trace(verbosity, 2, f'{n_containing_segments} -> {n_depolarized_cells}')
+            #     self.memory.print_cells(
+            #         verbosity, 2, active_cells,
+            #         f'n: {n_depolarized_cells} of {sufficient_activation_threshold}'
+            #     )
 
         self.memory.print_cells(
             verbosity, 3, active_cells,
