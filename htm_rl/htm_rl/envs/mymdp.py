@@ -75,6 +75,8 @@ class GridWorld:
                 1: rotate counterclockwise
                 2: step forward
         """
+        punish = 0
+
         if action == 0:
             self.agent_direction -= 1
             if self.agent_direction < 0:
@@ -88,27 +90,35 @@ class GridWorld:
                 # if not wall then go
                 if self.world_description[self.agent_position['row'], new_column] != 1:
                     self.agent_position['column'] = new_column
+                else:
+                    punish += 100
             elif self.agent_direction == 1:
                 # up
                 new_row = self.agent_position['row'] - 1
                 if self.world_description[new_row, self.agent_position['column']] != 1:
                     self.agent_position['row'] = new_row
+                else:
+                    punish += 100
             elif self.agent_direction == 2:
                 # left
                 new_column = self.agent_position['column'] - 1
                 if self.world_description[self.agent_position['row'], new_column] != 1:
                     self.agent_position['column'] = new_column
+                else:
+                    punish += 100
             elif self.agent_direction == 3:
                 # down
                 new_row = self.agent_position['row'] + 1
                 if self.world_description[new_row, self.agent_position['column']] != 1:
                     self.agent_position['row'] = new_row
+                else:
+                    punish += 100
             else:
                 raise ValueError
         else:
             raise ValueError
 
-        return self.observation(), self.reward(), self.is_terminal(), {}
+        return self.observation(), self.reward() - punish, self.is_terminal(), {'previous_action': action}
 
     def observation(self):
         # we see only cells that are in front of us and we can't see
@@ -118,7 +128,7 @@ class GridWorld:
 
         if self.agent_direction == 2:
             # for left
-            line = self.world_description[self.agent_position['row'], :self.agent_position['column']+1]
+            line = self.world_description[self.agent_position['row'], :self.agent_position['column']]
 
             # maze must have wall as border
             obstacle_pos = np.argwhere(line > 0)
@@ -130,7 +140,7 @@ class GridWorld:
 
         elif self.agent_direction == 0:
             # for right
-            line = self.world_description[self.agent_position['row'], self.agent_position['column']:]
+            line = self.world_description[self.agent_position['row'], self.agent_position['column']+1:]
 
             # maze must have wall as border
             obstacle_pos = np.argwhere(line > 0)
@@ -138,11 +148,11 @@ class GridWorld:
             # for right
             stop_pos = obstacle_pos.min()
 
-            distance = stop_pos
+            distance = stop_pos + 1
 
         elif self.agent_direction == 1:
             # for up
-            line = self.world_description[:self.agent_position['row']+1, self.agent_position['column']]
+            line = self.world_description[:self.agent_position['row'], self.agent_position['column']]
 
             # maze must have wall as border
             obstacle_pos = np.argwhere(line > 0)
@@ -154,7 +164,7 @@ class GridWorld:
 
         elif self.agent_direction == 3:
             # for down
-            line = self.world_description[self.agent_position['row']:, self.agent_position['column']]
+            line = self.world_description[self.agent_position['row']+1:, self.agent_position['column']]
 
             # maze must have wall as border
             obstacle_pos = np.argwhere(line > 0)
@@ -162,7 +172,7 @@ class GridWorld:
             # for down
             stop_pos = obstacle_pos.min()
 
-            distance = stop_pos
+            distance = stop_pos + 1
         else:
             raise ValueError
 
@@ -172,12 +182,12 @@ class GridWorld:
         else:
             surface = line[stop_pos]
 
-        self.observable_state = {'distance': distance, 'surface': surface}
+        self.observable_state = {'distance': distance - 1, 'surface': surface}
 
-        return distance, surface
+        return distance - 1, surface
 
     def reward(self):
-        if self.observable_state['surface'] == 2:
+        if self.observable_state['surface'] == 2 and self.observable_state['distance'] == 0:
             return 1/(self.observable_state['distance'] + 1e-6)
         else:
             return -1e-2
