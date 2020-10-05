@@ -125,3 +125,25 @@ class SaSdrEncoder:
     def _get_shifts(encoders) -> SaRelatedComposition:
         actions_shift = encoders.state.total_bits
         return SaRelatedComposition(0, actions_shift)
+
+
+def format_sa_superposition(sa_superposition: SaSuperposition) -> str:
+    """
+    Formats SA superposition
+    """
+    states = sa_superposition.state
+    actions = sa_superposition.action
+
+    format_ = 'SA superposition: \n ------------------ \n'
+
+    format_ += 'Possible states:\n'
+    for state in states:
+        format_ += str(state) + ' '
+
+    format_ += '\nPossible actions:\n'
+    for action in actions:
+        format_ += str(action) + ' '
+
+    format_ += '\n'
+
+    return format_

@@ -312,7 +312,7 @@ class SequenceSdrEncoder(Generic[SequenceEncoder]):
                            (sparse_sdr < self._shifts[i + 1])] - self._shifts[i]
             )
             )
-        return product(*values)
+        return list(product(*values))
 
     def format(self, sparse_sdr: SparseSdr, format_: str = None) -> str:
         """
