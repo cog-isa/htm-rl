@@ -26,6 +26,8 @@ notebooks/**/_*.ipynb
 *.synctex.gz
 # pdfs generated from tex
 /reports/**/*.pdf
+# inkscape aux folder
+svg-inkscape/
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # please, place all project specific rules above this line
