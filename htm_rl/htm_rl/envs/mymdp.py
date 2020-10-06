@@ -59,7 +59,7 @@ class GridWorld:
             'column': agent_initial_position['column'] + 1}
 
         self.agent_position = converted_agent_position
-
+        self.step_number = 0
         self.agent_direction = agent_initial_direction
         self.max_sight_range = max_sight_range
         self.observable_state = None
@@ -117,6 +117,8 @@ class GridWorld:
                 raise ValueError
         else:
             raise ValueError
+
+        self.step_number += 1
 
         return self.observation(), self.reward() - punish, self.is_terminal(), {'previous_action': action}
 
@@ -182,9 +184,9 @@ class GridWorld:
         else:
             surface = line[stop_pos]
 
-        self.observable_state = {'distance': distance - 1, 'surface': surface}
+        self.observable_state = {'distance': distance - 1, 'surface': surface, 'step': self.step_number}
 
-        return distance - 1, surface
+        return distance - 1, surface, self.step_number
 
     def reward(self):
         if self.observable_state['surface'] == 2 and self.observable_state['distance'] == 0:
@@ -201,8 +203,9 @@ class GridWorld:
     def reset(self):
         self.agent_position = self._agent_initial_position.copy()
         self.agent_direction = self._agent_initial_direction
+        self.step_number = 0
         self.observation()
-        return self.observable_state['distance'], self.observable_state['surface']
+        return self.observable_state['distance'], self.observable_state['surface'], self.step_number
 
     def render(self):
         for i, row in enumerate(self.world_description):
