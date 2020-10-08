@@ -10,6 +10,8 @@
   - [2020.09.18 Fri](#20200918-fri)
   - [2020.09.25 Fri](#20200925-fri)
   - [2020.10.02 Fri](#20201002-fri)
+    - [MCTS ideas](#mcts-ideas)
+    - [Bandits experiment](#bandits-experiment)
 
 ## TODO
 
@@ -290,6 +292,7 @@ MCTS
 
 - Artem
   - make pandavis run with our repo
+  - made his own visualizer, OpenGL + Python wrapper, short (500 lines), saving is slow
 
 - Eugene
   - still doesn't work
@@ -304,3 +307,41 @@ MCTS
   - MCTS:
     - TM is the tree
     - how to store and update node value and times visited.
+    - share in rl_papers MCTS+HER paper
+
+### MCTS ideas
+
+- learn distribution
+  - check Schvechikov's [lecture](https://www.youtube.com/watch?v=uOFfeSdApN8).
+  - wasserstein dist
+  - learn histogram (probs for fixed grid) vs learn quantiles (positions for fixed prob mass)
+  - quantile regression
+- check memory-based and model-based approaches
+  - from Sorokin's [lecture](https://www.youtube.com/watch?v=ngREh9jbsw4)
+  - from Kashin's [lecture](https://www.youtube.com/watch?v=1Y7frp-R76M)
+- main ideas
+  - keep statistics R and N for every cell independently
+  - learn Q(s, a) = V(s) + A(s, a): V for state and A for action part SA SDR
+  - learn mapping to a histogram
+
+### Bandits experiment
+
+Consider the simplest task - bandits. No state, only $m$ actions. Test against regret loss function. Testing the 1st idea of spreading action statistics over the set of corresponding cells. Each action activation updates only k cells, i.e. only k of n action cells are updated in the same manner $R += r$, $N += 1$.
+
+- approaches to accumulate UCB1 sum terms Q and U:
+  - treat all cells as the one
+    - Q: sum R, sum N
+    - U: use avg N, but rescale it with $\frac{n}{k}$ as only that fraction of action cells is updated each activation step.
+    - **results**: for orthogonal actions encoding results are the same as for single cell UCB1
+    - interesting results when each activation is considered as k independent activations (even though there're not independent)
+      - i.e. in U term calculation overal number of experiments is not $T$, but $T * k$: $U = \sqrt{\frac{2\log (T \cdot k)}{\sum N_i}}$
+      - results are steadily noticeably better than UCB1. I assume it's because of much less optimistic U
+      - I think this approach is mistaken, still very interesting outcome
+      - I think its advantage is in faster convergence. Which could be too fast and crude for richer bandit reward distributions
+  - it means each action has $N_{cells}$ approximators, only $k$ of them being updated
+  - and $avg_return = \frac{\sum R_i}{\sum N_i}$ and $U = \sqrt{\frac{2\log (N \cdot N_{cells})}{\sum N_i}}$
+  - shows better results than UCB1 over single approximators
+  - treat each cell independently
+    - calculate Q and U independently for each cell
+    - then take a) average of them - like ensembling; b) min - pessimistic estimate, c) max - optimistic estimate
+    - **resutls**: mean - is very close to UCB1, min - can do a bit better for small k, max - steadily worse than UCB1
