@@ -28,6 +28,7 @@ notebooks/**/_*.ipynb
 /reports/**/*.pdf
 # inkscape aux folder
 svg-inkscape/
+assets/
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # please, place all project specific rules above this line
