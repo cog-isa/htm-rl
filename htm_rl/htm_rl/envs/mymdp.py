@@ -184,9 +184,20 @@ class GridWorld:
         else:
             surface = line[stop_pos]
 
-        self.observable_state = {'distance': distance - 1, 'surface': surface, 'step': self.step_number}
+        relative_coordinates = (self.agent_position['row'] - self._agent_initial_position['row'],
+                                self.agent_position['column'] - self._agent_initial_position['column'])
 
-        return distance - 1, surface, self.step_number
+        relative_direction = self.agent_direction - self._agent_initial_direction
+        if relative_direction < 0:
+            relative_direction += 4
+
+        self.observable_state = {'distance': distance - 1,
+                                 'surface': surface,
+                                 'relative_row': relative_coordinates[0],
+                                 'relative_column': relative_coordinates[1],
+                                 'relative_direction': relative_direction}
+
+        return tuple(self.observable_state.values())
 
     def reward(self):
         if self.observable_state['surface'] == 2 and self.observable_state['distance'] == 0:
@@ -195,7 +206,7 @@ class GridWorld:
             return -1e-2
 
     def is_terminal(self):
-        if self.world_description[self.agent_position['row'], self.agent_position['column']] == 2:
+        if self.observable_state['surface'] == 2 and self.observable_state['distance'] == 0:
             return True
         else:
             return False
@@ -205,7 +216,7 @@ class GridWorld:
         self.agent_direction = self._agent_initial_direction
         self.step_number = 0
         self.observation()
-        return self.observable_state['distance'], self.observable_state['surface'], self.step_number
+        return tuple(self.observable_state.values())
 
     def render(self):
         for i, row in enumerate(self.world_description):
