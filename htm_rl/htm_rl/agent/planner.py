@@ -203,18 +203,19 @@ class Planner:
             desired_depolarization: SparseSdr, t: int,
             sufficient_activation_threshold: int, verbosity: int
     ):
-        if n_containing_segments < 2:   # obviously noise clusters ??
+        if n_containing_segments < sufficient_activation_threshold * 0.5:   # obviously noise clusters ??
             return
 
         active_cells = cell_cluster
-        n_depolarized_cells = n_containing_segments     # just an estimate!
+        # n_depolarized_cells = n_containing_segments     # just an estimate!
 
-        if n_containing_segments >= sufficient_activation_threshold - 2:
-            # expecting insufficient depolarization, hence get precise depolarization
-            n_depolarized_cells = self._count_induced_depolarization(
-                active_cells, desired_depolarization, t
-            )
+        # if n_containing_segments >= sufficient_activation_threshold - 2:
+        #     # expecting insufficient depolarization, hence get precise depolarization
+        n_depolarized_cells = self._count_induced_depolarization(
+            active_cells, desired_depolarization, t
+        )
 
+        trace(verbosity, 2, f'containing segments {n_containing_segments} -> depolarized cells {n_depolarized_cells}')
             # if n_depolarized_cells != n_containing_segments:
             #     # seems like n_depolarized_cells > n_containing_segments is normal situation
             #     trace(verbosity, 2, f'{n_containing_segments} -> {n_depolarized_cells}')
