@@ -169,8 +169,8 @@ class AgentRunner:
         while step < self.max_steps and not done:
             state, reward, done, info = self.env.step(action)
             # if pretrain, than learn only possible transitions
-            if self.agent.planner.planning_horizon == 0 and (reward <= (-100)):
-                break
+            # if self.agent.planner.planning_horizon == 0 and (reward <= (-100)):
+            #     break
             action = self.agent.make_step(state, reward, done, self.verbosity, info)
             step += 1
             total_reward += reward
