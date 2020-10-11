@@ -1,5 +1,5 @@
 from dataclasses import dataclass, astuple
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 
 from htm_rl.common.base_sar import Superposition
 from htm_rl.common.sdr import SparseSdr, sparse_to_dense
@@ -173,6 +173,53 @@ class IntSdrEncoder(Generic[ValueEncoder]):
     def __str__(self):
         name, n_values, value_bits = self.name, self.n_values, self.value_bits
         return f'({name}: v{n_values} x b{value_bits})'
+
+
+class IntRangeEncoder:
+    """
+    TODO
+    """
+    name: str
+    encoder: ValueEncoder
+    range_: Tuple[int, int]
+    value_bits: int
+    total_bits: int
+    activation_threshold: int
+
+    def __init__(self, name: str, range_: Tuple[int, int], value_bits: int,
+                 activation_threshold: int,
+                 default_format: str = 'full'):
+        self.name = name
+        self.range_ = range_
+        self.value_bits = value_bits
+        self.activation_threshold = activation_threshold
+        self.default_format = default_format
+
+        self.encoder = IntSdrEncoder(name,
+                                     n_values=range_[1] - range_[0] + 1,
+                                     value_bits=value_bits,
+                                     activation_threshold=activation_threshold,
+                                     default_format=default_format)
+
+        self.total_bits = self.encoder.total_bits
+        self.value_bits = self.encoder.value_bits
+        self.activation_threshold = self.encoder.activation_threshold
+
+    def transform(self, value: int) -> int:
+        return value - self.range_[0]
+
+    def encode(self, x: int) -> BitRange:
+        return self.encoder.encode(self.transform(x))
+
+    def decode(self, sparse_sdr: SparseSdr) -> Superposition:
+        decoded_values = self.encoder.decode(sparse_sdr)
+        return [x+self.range_[0] for x in decoded_values]
+
+    def has_value(self, sparse_sdr: SparseSdr) -> List[int]:
+        return self.encoder.has_value(sparse_sdr)
+
+    def format(self, sparse_sdr: SparseSdr, format_: str = None) -> str:
+        return self.encoder.format(sparse_sdr, format_)
 
 
 class IntSemanticSdrEncoder(IntSdrEncoder):
