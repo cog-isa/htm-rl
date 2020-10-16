@@ -12,6 +12,7 @@
   - [2020.10.02 Fri](#20201002-fri)
     - [MCTS ideas](#mcts-ideas)
     - [Bandits experiment](#bandits-experiment)
+  - [2020.10.09 Fri](#20201009-fri)
 
 ## TODO
 
@@ -345,3 +346,17 @@ Consider the simplest task - bandits. No state, only $m$ actions. Test against r
     - calculate Q and U independently for each cell
     - then take a) average of them - like ensembling; b) min - pessimistic estimate, c) max - optimistic estimate
     - **resutls**: mean - is very close to UCB1, min - can do a bit better for small k, max - steadily worse than UCB1
+
+## 2020.10.09 Fri
+
+- check out [congress](http://caics.ru/)
+- Artem
+  - make legend, change colors (think about b/w papers)
+  - make some images for the current work
+  - make readme, share repo, think about next problem, for now classification on SP
+- Eugene
+  - make a plan of how to fix
+  - will do report and notebooks with tests
+  - further on he wants to test different activation and learning threshold
+- Petr
+  - check the lab work to repeat some baseline w/ Artem
