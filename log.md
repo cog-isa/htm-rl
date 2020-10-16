@@ -12,6 +12,7 @@
   - [2020.10.02 Fri](#20201002-fri)
     - [MCTS ideas](#mcts-ideas)
     - [Bandits experiment](#bandits-experiment)
+      - [Approaches to accumulate UCB1 sum terms Q and U](#approaches-to-accumulate-ucb1-sum-terms-q-and-u)
   - [2020.10.09 Fri](#20201009-fri)
 
 ## TODO
@@ -329,23 +330,39 @@ MCTS
 
 Consider the simplest task - bandits. No state, only $m$ actions. Test against regret loss function. Testing the 1st idea of spreading action statistics over the set of corresponding cells. Each action activation updates only k cells, i.e. only k of n action cells are updated in the same manner $R += r$, $N += 1$.
 
-- approaches to accumulate UCB1 sum terms Q and U:
-  - treat all cells as the one
-    - Q: sum R, sum N
-    - U: use avg N, but rescale it with $\frac{n}{k}$ as only that fraction of action cells is updated each activation step.
-    - **results**: for orthogonal actions encoding results are the same as for single cell UCB1
-    - interesting results when each activation is considered as k independent activations (even though there're not independent)
-      - i.e. in U term calculation overal number of experiments is not $T$, but $T * k$: $U = \sqrt{\frac{2\log (T \cdot k)}{\sum N_i}}$
-      - results are steadily noticeably better than UCB1. I assume it's because of much less optimistic U
-      - I think this approach is mistaken, still very interesting outcome
-      - I think its advantage is in faster convergence. Which could be too fast and crude for richer bandit reward distributions
-  - it means each action has $N_{cells}$ approximators, only $k$ of them being updated
-  - and $avg_return = \frac{\sum R_i}{\sum N_i}$ and $U = \sqrt{\frac{2\log (N \cdot N_{cells})}{\sum N_i}}$
-  - shows better results than UCB1 over single approximators
-  - treat each cell independently
-    - calculate Q and U independently for each cell
-    - then take a) average of them - like ensembling; b) min - pessimistic estimate, c) max - optimistic estimate
-    - **resutls**: mean - is very close to UCB1, min - can do a bit better for small k, max - steadily worse than UCB1
+#### Approaches to accumulate UCB1 sum terms Q and U
+
+Shared cells
+
+- action cells are treated as one, i.e. their stats are accumulated with avg before UCB1 calculations
+- i.e. it's still single cell UCB1, but stats are spread into n cells, and each time only k cells are updated.
+  - rescale avg N with $\frac{n}{k}$ as only that fraction of action cells is updated each activation step
+  - $Q = \frac{\sum R_i}{\sum N_i}$
+  - $U = \sqrt{\frac{2 \log (N)}{\sum N_i \cdot \frac{n}{k}}}$
+- in this method each action has n stats approximators, but one UCB1 approximator
+- **results**: for orthogonal actions encoding results are the same as for single cell UCB1
+  - they're exactly the same if you rescale avg N
+- interesting results I got when each activation is considered as k independent activations (even though there're not independent)
+  - therefore in U term calculation the total number of experiments is additionaly multiplied by $k$
+  - results are steadily noticeably better than UCB1. I assume it's because of much less optimistic U
+  - I think this approach is mistaken, still very interesting outcome
+  - I think its advantage is in faster convergence. Which could be too fast and crude for richer bandit reward distributions
+
+Independent cells
+
+- each cell is independent and uses both its own stats and UCB1
+- UCB for action is a accumulated UCB1 of its activated cells
+  - like avg or some percentile
+  - e.g. average - like ensembling; min - pessimistic estimate, max - optimistic estimate
+  - another idea - clip tails, i.e. don't consider in avg cells with max and min ucb
+- **resutls**: mean - is very close to UCB1, min - can do a bit better for small k, max - steadily worse than UCB1
+
+Experiment with intersecting actions
+
+- Shared cells are substantially worse than ucb
+- Independent cells (avg) are on par with ucb
+  - different overlap and k updated cells produce very similar results
+  - 10-30% worse than ucb which is a good result, I think
 
 ## 2020.10.09 Fri
 
