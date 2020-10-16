@@ -133,7 +133,7 @@ class AgentRunner:
             planning_horizon = self.agent.planner.planning_horizon
             self.agent.set_planning_horizon(0)
 
-        for ep in trange(self.n_episodes):
+        for ep in range(self.n_episodes):
             if 0 < self.pretrain == ep:
                 self.agent.set_planning_horizon(planning_horizon)
 
