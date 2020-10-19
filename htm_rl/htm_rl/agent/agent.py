@@ -43,7 +43,7 @@ class Agent:
         self._cooldown_scaler = self._planning_horizon / .2
 
     def reset(self):
-        self.memory.tm.reset()
+        self.memory.reset()
         self._init_planning()
 
     def make_step(self, state, reward, is_done, verbosity: int, info=None):
