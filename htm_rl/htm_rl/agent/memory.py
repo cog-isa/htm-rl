@@ -23,8 +23,10 @@ class Memory:
             self, tm: TemporalMemory, encoder: SaSdrEncoder,
             sdr_formatter: Callable[[SparseSdr], str],
             sa_superposition_formatter: Callable[[SaSuperposition], str],
-            collect_anomalies: bool = False
+            collect_anomalies: bool = False,
+            start_indicator: Sa = None
     ):
+        self.start_indicator = start_indicator
         self.tm = tm
         self.encoder = encoder
         self.format_sdr = sdr_formatter
@@ -34,6 +36,8 @@ class Memory:
 
     def reset(self):
         self.tm.reset()
+        if self.start_indicator is not None:
+            self.train(self.start_indicator, verbosity=0)
 
     def train(self, sa: Sa, verbosity: int):
         proximal_input = self.encoder.encode(sa)
