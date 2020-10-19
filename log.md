@@ -14,6 +14,7 @@
     - [Bandits experiment](#bandits-experiment)
       - [Approaches to accumulate UCB1 sum terms Q and U](#approaches-to-accumulate-ucb1-sum-terms-q-and-u)
   - [2020.10.09 Fri](#20201009-fri)
+  - [2020.10.19 Mon](#20201019-mon)
 
 ## TODO
 
@@ -377,3 +378,34 @@ Experiment with intersecting actions
   - further on he wants to test different activation and learning threshold
 - Petr
   - check the lab work to repeat some baseline w/ Artem
+
+## 2020.10.19 Mon
+
+Tasks to choose for Artem:
+
+- explore TM behavior for overlapped input
+  - useful as a starting learning task - how TM internals work
+  - the same as Eugene's task, but you start from the most simple cases
+  - use handcrafted trajectories (no need to make envs) - make agent adaptation from playing in env to work with preset sequences. Start from non-overlapping encoding and set up experiments with controllable overlapping - test what's changing, investigate step by step the causes - which planning step it affects, how we could remedy planning?
+  - investigate in details how TM and encoding hyperparameters affect prediction and backtracking quality - we still know little about it, so it's very useful
+- explore SP encoding quality and properties
+  - at some point (I hope very soon) we will need to encode states, because naive encoding produces large vectors which become computationally harder to work with. They have a lot of excessive information and are possible to be compressed with SP
+  - so we need to understand compressing capabilities and properties of SP, how its hyperparameters affect it
+  - for example you could take different encoding schemes, where you put different information to the states similar to what Eugene did:
+    - it could be some restricted rectangle of cells before/around an agent
+    - lidar data
+    - any other useful sensors that somehow help to encode the whole state of the game
+    - even the whole map with the position of an agent encoded in extreme case (maybe it's the best thing to begin with)
+  - the main things about your states and their encoding:
+    - they should be distinguishable, i.e. each pair of different game states shouldn't be encoded with the same vector
+    - but at the same time they should have semantically reasonable overlapping, i.e. similarity between them could be interpretable.
+  - run random agent to produce trajectories and make SP learning on them, watch for learned mapping
+  - investigate how similarities are transformed and affected by SP mapping
+    - is there any different states that are mapped into the same vector
+    - how similarity is kept - analyze and compare overlapping stats of the origin and transformed vectors
+    - which and how hyperparameters affect it
+  - this study could be extended further - find possible ways of visual data encoding - as at some point we will start to work with visual environments too. E.g. for a long time I want to test different strategies of using small SP as an analogue of convolutional network filter, differential (= contrastive) encoding, subsampling and so on.
+- supervised learning algorithm for classification for SP
+  - possible way to learn which actions or/and predictions to choose
+  - honestly, I don't have any examples of applications right now, but it seems important for me
+  - there also could be a subtask - how to augment or/and adapt SP to represent quantities as an output. For example, if we had continuous control problem - how to represent intensity of an action (or any signal in general). This task could require developing a learning method too.
