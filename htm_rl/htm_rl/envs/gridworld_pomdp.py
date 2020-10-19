@@ -37,15 +37,19 @@ class GridWorld:
                 3: down
         max_sight_range:
             int max number of cells that agent can see on line
-
+        observable_vars:
+            ordered subset of {'distance', 'surface', 'relative_row', 'relative_column', 'relative_direction'}
+            as list, output order will be the same as in observable_vars
     """
 
     def __init__(self, world_description,
                  world_size: tuple,
                  agent_initial_position: dict,
                  agent_initial_direction=0,
-                 max_sight_range=None):
+                 max_sight_range=None,
+                 observable_vars=None):
 
+        self.observable_vars = observable_vars
         self.world_size = world_size
         self.world_description = np.ones((world_size[0]+2, world_size[1]+2))
         self.world_description[1:-1, 1:-1] = np.array(world_description)
@@ -63,10 +67,11 @@ class GridWorld:
         self.agent_direction = agent_initial_direction
         self.max_sight_range = max_sight_range
         self.observable_state = None
+        self.filtered_observation = None
 
         self._agent_initial_position = converted_agent_position.copy()
         self._agent_initial_direction = agent_initial_direction
-        self.observation()
+        self.observe()
 
     def step(self, action: int):
         """
@@ -120,9 +125,9 @@ class GridWorld:
 
         self.step_number += 1
 
-        return self.observation(), self.reward() - punish, self.is_terminal(), {'previous_action': action}
+        return self.observe(), self.reward() - punish, self.is_terminal(), {'previous_action': action}
 
-    def observation(self):
+    def observe(self):
         # we see only cells that are in front of us and we can't see
         # through walls
         # we have locator that can say what type of surface we see
@@ -197,7 +202,17 @@ class GridWorld:
                                  'relative_column': relative_coordinates[1],
                                  'relative_direction': relative_direction}
 
-        return tuple(self.observable_state.values())
+        if self.observable_vars is not None:
+            filtered_observation = dict()
+            for key in self.observable_vars:
+                filtered_observation[key] = self.observable_state[key]
+            observation = filtered_observation
+        else:
+            observation = self.observable_state
+
+        self.filtered_observation = observation
+
+        return tuple(self.filtered_observation.values())
 
     def reward(self):
         if self.observable_state['surface'] == 2 and self.observable_state['distance'] == 0:
@@ -215,8 +230,8 @@ class GridWorld:
         self.agent_position = self._agent_initial_position.copy()
         self.agent_direction = self._agent_initial_direction
         self.step_number = 0
-        self.observation()
-        return tuple(self.observable_state.values())
+        self.observe()
+        return tuple(self.filtered_observation.values())
 
     def render(self):
         for i, row in enumerate(self.world_description):
