@@ -1,0 +1,8 @@
+glfw
+PyOpenGl
+pyrr
+freetype-py
+numpy
+
+
+
