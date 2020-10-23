@@ -346,7 +346,7 @@ Shared cells
   - they're exactly the same if you rescale avg N
 - interesting results I got when each activation is considered as k independent activations (even though there're not independent)
   - therefore in U term calculation the total number of experiments is additionaly multiplied by $k$
-  - results are steadily noticeably better than UCB1. I assume it's because of much less optimistic U
+  - results are steadily better than UCB1. I assume it's because of much less optimistic U
   - I think this approach is mistaken, still very interesting outcome
   - I think its advantage is in faster convergence. Which could be too fast and crude for richer bandit reward distributions
 
@@ -370,6 +370,9 @@ Experiment with N-step bandits
 
 - tested on 2- and 3-step bandits
 - results are similar to 1-step, UCB1 over cells shows very similar results to simple UCB1 (10-30% worse after 100k trials)
+
+![N-step bandits experiment: comparison with $\epsilon$-greedy strategy](./assets/n_step_bandits_experiment_vs_eps_greedy.png)
+![N-step bandits experiment: comparison with general (non-cells) UCB1 strategy](./assets/n_step_bandits_experiment_vs_general_ucb1.png)
 
 All experiments with bandits are presented as notebooks in `.\notebooks\` folder: `08_bandits_mdp` and `08_n_step_bandits_mdp`.
 
