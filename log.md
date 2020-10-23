@@ -110,6 +110,8 @@ Auxialiary tasks, usability improvements and so on
 
 ## 2020.10.23 Fri
 
+- To discuss
+  - mention git commit messages common styles (active, present or past)
 - Artem
   - finish Watcher: color-blind mode, shapes, centering
 - Eugene
