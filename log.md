@@ -251,6 +251,8 @@ Experiment with N-step bandits
 - tested on 2- and 3-step bandits
 - results are similar to 1-step, UCB1 over cells shows very similar results to simple UCB1 (10-30% worse after 100k trials)
 
+3-step bandits experiment results. $\epsilon$ - is for $\epsilon$-greedy strategy. UCB1 cells results are shown as $k$-$n_o$, where $k$ - # of cells updated each trial and $n_o$ - # of overlapping cells each action has; the number of base cells (in addition to overlapping) is 12.
+
 ![N-step bandits experiment: comparison with $\epsilon$-greedy strategy](./assets/n_step_bandits_experiment_vs_eps_greedy.png)
 ![N-step bandits experiment: comparison with general (non-cells) UCB1 strategy](./assets/n_step_bandits_experiment_vs_general_ucb1.png)
 
