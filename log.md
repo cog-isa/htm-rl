@@ -364,7 +364,14 @@ Experiment with intersecting actions
 - Shared cells are substantially worse than ucb
 - Independent cells (avg) are on par with ucb
   - different overlap and k updated cells produce very similar results
-  - 10-30% worse than ucb which is a good result, I think
+  - 10-30% worse than ucb (after 100k trials) which is a good result, I think
+
+Experiment with N-step bandits
+
+- tested on 2- and 3-step bandits
+- results are similar to 1-step, UCB1 over cells shows very similar results to simple UCB1 (10-30% worse after 100k trials)
+
+All experiments with bandits are presented as notebooks in `.\notebooks\` folder: `08_bandits_mdp` and `08_n_step_bandits_mdp`.
 
 ## 2020.10.09 Fri
 
