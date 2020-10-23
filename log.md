@@ -15,6 +15,7 @@
       - [Approaches to accumulate UCB1 sum terms Q and U](#approaches-to-accumulate-ucb1-sum-terms-q-and-u)
   - [2020.10.09 Fri](#20201009-fri)
   - [2020.10.19 Mon](#20201019-mon)
+  - [2020.10.23 Fri](#20201023-fri)
 
 ## TODO
 
@@ -414,3 +415,15 @@ Tasks to choose for Artem:
 - add hierarchy of TMs to the current implementation of an agent - e.g. x2 each step, and apply planning from top to bottom. High level plan defines path A-B-C-D..., and lower level provides a plan from A to B, from B to C and so on. High level SA - SA cells (not columns).
 
 - reimplement Sungur work
+
+## 2020.10.23 Fri
+
+- Artem
+  - finish Watcher: color-blind mode, shapes, centering
+- Eugene
+  - encoder params, TM experiment with winner cells
+- Petr
+  - anounce Watcher to numenta forum
+  - 16:00 Mon - check up call on paper and report
+  - Congress - check out Schumskiy, Anohin, Vidyaev, Long-Term memory (2nd talk)
+  - LOCEN - check and distribute lab works to read and present to each other
