@@ -5,10 +5,10 @@ from utils.camera import Camera
 
 class Window():
 
-    def __init__(self, width, height):
+    def __init__(self, width, height, cam_target):
         self.width = width
         self.height = height
-        self.cam = Camera()
+        self.cam = Camera(cam_target)
 
         # control variables
         self.left = False

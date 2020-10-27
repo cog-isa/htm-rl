@@ -6,15 +6,16 @@ import numpy as np
 
 from utils.picker import Picker
 from utils.text import TextDrawer
+from utils.window import Window
 
 
 class Drawer:
 
-    def __init__(self, path, window):
+    def __init__(self, path, win_params):
         # data
         with open(path, "r") as outfile:
             self.data_base = json.load(outfile)
-        self.window = window
+
         self.active_cell = -1
         self.current = 0
 
@@ -23,6 +24,10 @@ class Drawer:
 
         self.start_point = [0, 0, 0]
         self.size = int(np.sqrt(self.num_of_cells / self.cells_in_column))
+        distance = 5.
+
+        target = (distance * self.size / 2., 3 * distance * self.cells_in_column / 2., distance * self.size / 2.)
+        self.window = Window(win_params[0], win_params[1], target)
         self.pick = Picker(self.window.width, self.window.height, self.num_of_cells)
 
         # color settings
@@ -55,7 +60,7 @@ class Drawer:
             'bright_off': self.bright_off,
             'bright_less': self.bright_less,
             'draw_cells': [None],
-            'distance': 3,
+            'distance': distance,
             'win_width': self.window.width,
             'win_height': self.window.height
         }

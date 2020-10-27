@@ -1,16 +1,15 @@
 from pyrr import Vector3, vector, vector3, matrix44
-from math import sin, cos, radians
+from math import sin, cos, radians, sqrt, atan, pi
 
 class Camera:
-    def __init__(self):
-        self.camera_pos = Vector3([80., 30.0, 80.0])
-        self.camera_front = Vector3([-1.0, -1.0, -1.0])
-        self.camera_up = Vector3([0.0, 1.0, 0.0])
-        self.camera_right = Vector3([1.0, 0.0, 0.0])
+    def __init__(self, target):
+        r = sqrt(target[0] ** 2 + target[2] ** 2)
 
+        self.camera_pos = Vector3([-2*target[0], 3*target[1], -2*target[2]])
         self.mouse_sensitivity = 0.25
-        self.jaw = -90
-        self.pitch = 0
+        self.jaw = 45
+        self.pitch = - atan(5*target[1]/(6*r)) * 180 / pi
+        self.update_camera_vectors()
 
     def get_view_matrix(self):
         return matrix44.create_look_at(self.camera_pos, self.camera_pos + self.camera_front, self.camera_up)
@@ -23,10 +22,10 @@ class Camera:
         self.pitch += yoffset
 
         if constrain_pitch:
-            if self.pitch > 45:
-                self.pitch = 45
-            if self.pitch < -45:
-                self.pitch = -45
+            if self.pitch > 90:
+                self.pitch = 90
+            if self.pitch < -90:
+                self.pitch = -90
 
         self.update_camera_vectors()
 
