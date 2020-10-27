@@ -38,7 +38,9 @@ class GridWorld:
         max_sight_range:
             int max number of cells that agent can see on line
         observable_vars:
-            ordered subset of {'distance', 'surface', 'relative_row', 'relative_column', 'relative_direction'}
+            ordered subset of {'distance', 'surface', 'relative_row',
+                                'relative_column', 'relative_direction',
+                                'state_id'}
             as list, output order will be the same as in observable_vars
     """
 
@@ -196,11 +198,15 @@ class GridWorld:
         if relative_direction < 0:
             relative_direction += 4
 
+        state_id = (self.agent_position['column'] - 1 + (self.agent_position['row'] - 1) * self.world_size[1]
+                    + self.agent_direction * self.world_size[0] * self.world_size[1])
+
         self.observable_state = {'distance': distance - 1,
                                  'surface': surface,
                                  'relative_row': relative_coordinates[0],
                                  'relative_column': relative_coordinates[1],
-                                 'relative_direction': relative_direction}
+                                 'relative_direction': relative_direction,
+                                 'state_id': state_id}
 
         if self.observable_vars is not None:
             filtered_observation = dict()
