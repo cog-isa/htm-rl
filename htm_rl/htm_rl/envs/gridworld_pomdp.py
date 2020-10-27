@@ -3,10 +3,10 @@ import numpy as np
 legend = {
     'map':
         {
-             0: ' ',
-             1: "#",
-             2: '*'
-         },
+            0: ' ',
+            1: "#",
+            2: '*'
+        },
     'agent':
         {
             0: '>',
@@ -40,8 +40,15 @@ class GridWorld:
         observable_vars:
             ordered subset of {'distance', 'surface', 'relative_row',
                                 'relative_column', 'relative_direction',
-                                'state_id'}
+                                'state_id',
+                                'flatten_index',
+                                'row',
+                                'column',
+                                'direction'}
             as list, output order will be the same as in observable_vars
+            'state_id' correspond to mdp framework, unique id for every state.
+        one_value_state:
+            bool convert tuple of state to one value
     """
 
     def __init__(self, world_description,
@@ -49,13 +56,16 @@ class GridWorld:
                  agent_initial_position: dict,
                  agent_initial_direction=0,
                  max_sight_range=None,
-                 observable_vars=None):
+                 observable_vars=None,
+                 one_value_state=False):
 
+        self.one_value_state = one_value_state
         self.observable_vars = observable_vars
         self.world_size = world_size
-        self.world_description = np.ones((world_size[0]+2, world_size[1]+2))
-        self.world_description[1:-1, 1:-1] = np.array(world_description)
+        self.world_description = np.ones((world_size[0] + 2, world_size[1] + 2), dtype=np.int)
+        self.world_description[1:-1, 1:-1] = np.array(world_description, dtype=np.int)
         self.n_actions = 3
+        self.n_states = world_size[0] * world_size[1] * 4
 
         if max_sight_range is None:
             max_sight_range = max(self.world_description.shape)
@@ -70,6 +80,23 @@ class GridWorld:
         self.max_sight_range = max_sight_range
         self.observable_state = None
         self.filtered_observation = None
+
+        self.dimensions = {
+            'distance': max(self.world_size),
+            'surface': 3,
+            'relative_row': 2 * (self.world_size[0] + 1),
+            'relative_column': 2 * (self.world_size[1] + 1),
+            'relative_direction': 4,
+            'state_id': self.n_states,
+            'flatten_index': self.world_size[0] * self.world_size[1],
+            'row': self.world_size[0] + 1,
+            'column': self.world_size[1] + 1,
+            'direction': 4
+        }
+
+        self.n_obs_states = 1
+        for key in self.observable_vars:
+            self.n_obs_states *= self.dimensions[key]
 
         self._agent_initial_position = converted_agent_position.copy()
         self._agent_initial_direction = agent_initial_direction
@@ -149,7 +176,7 @@ class GridWorld:
 
         elif self.agent_direction == 0:
             # for right
-            line = self.world_description[self.agent_position['row'], self.agent_position['column']+1:]
+            line = self.world_description[self.agent_position['row'], self.agent_position['column'] + 1:]
 
             # maze must have wall as border
             obstacle_pos = np.argwhere(line > 0)
@@ -173,7 +200,7 @@ class GridWorld:
 
         elif self.agent_direction == 3:
             # for down
-            line = self.world_description[self.agent_position['row']+1:, self.agent_position['column']]
+            line = self.world_description[self.agent_position['row'] + 1:, self.agent_position['column']]
 
             # maze must have wall as border
             obstacle_pos = np.argwhere(line > 0)
@@ -198,7 +225,9 @@ class GridWorld:
         if relative_direction < 0:
             relative_direction += 4
 
-        state_id = (self.agent_position['column'] - 1 + (self.agent_position['row'] - 1) * self.world_size[1]
+        flatten_index = self.agent_position['column'] - 1 + (self.agent_position['row'] - 1) * self.world_size[1]
+
+        state_id = (flatten_index
                     + self.agent_direction * self.world_size[0] * self.world_size[1])
 
         self.observable_state = {'distance': distance - 1,
@@ -206,7 +235,12 @@ class GridWorld:
                                  'relative_row': relative_coordinates[0],
                                  'relative_column': relative_coordinates[1],
                                  'relative_direction': relative_direction,
-                                 'state_id': state_id}
+                                 'state_id': state_id,
+                                 'flatten_index': flatten_index,
+                                 'row': self.agent_position['row'] - 1,
+                                 'column': self.agent_position['column'] - 1,
+                                 'direction': self.agent_direction
+                                 }
 
         if self.observable_vars is not None:
             filtered_observation = dict()
@@ -218,11 +252,11 @@ class GridWorld:
 
         self.filtered_observation = observation
 
-        return tuple(self.filtered_observation.values())
+        return self.unpack(self.filtered_observation)
 
     def reward(self):
         if self.observable_state['surface'] == 2 and self.observable_state['distance'] == 0:
-            return 1/(self.observable_state['distance'] + 1e-6)
+            return 1 / (self.observable_state['distance'] + 1e-6)
         else:
             return -1e-2
 
@@ -237,7 +271,7 @@ class GridWorld:
         self.agent_direction = self._agent_initial_direction
         self.step_number = 0
         self.observe()
-        return tuple(self.filtered_observation.values())
+        return self.unpack(self.filtered_observation)
 
     def render(self):
         for i, row in enumerate(self.world_description):
@@ -247,3 +281,16 @@ class GridWorld:
                 else:
                     print(f"{legend['agent'][self.agent_direction]}", end='|')
             print()
+
+    def unpack(self, state: dict):
+        if len(state.values()) == 1:
+            return tuple(state.values())[0]
+        elif self.one_value_state:
+            n = 1
+            s = 0
+            for key, value in state.items():
+                s += n * value
+                n *= self.dimensions[key]
+            return s
+        else:
+            return tuple(state.values())
