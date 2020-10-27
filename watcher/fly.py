@@ -15,7 +15,7 @@ if __name__ == '__main__':
     drawer = Drawer('data/'+args.name, win)
 
     while not win.should_close():
-        drawer.update_instance_cubes_color_array()
+        drawer.update()
         # the main application loop
         while not drawer.window.should_close() and not drawer.window.next and not drawer.window.previous:
             drawer.process()
