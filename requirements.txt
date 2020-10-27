@@ -1,14 +1,18 @@
-numpy
-matplotlib
+numpy~=1.19.2
+matplotlib~=3.3.2
 jupyterlab
 
 hexy
 mock
 prettytable
 pytest==4.6.5
-htm.core==2.0.18
+htm.core
 
 gym==0.17.2
 gym-minigrid==1.0.1
 
 ruamel.yaml==0.16.10
+
+tqdm~=4.49.0
+pandas~=1.1.2
+setuptools~=49.6.0
