@@ -34,6 +34,7 @@ class Drawer:
         self.background_color = [0.98, 1.0, 0.98]
         self.active_cells_color = [0.9, 0., 0.]
         self.predictive_cells_color = [0., 0.9, 0.]
+        self.winner_cells_color = [0.99, 0.06, 0.75]
         self.active_and_predictive_cells_color = [0.9, 0.9, 0.]
         self.active_segments_color = [0., 0., 0.]
         self.picked_color = [0., 0., 0.9]
@@ -53,6 +54,7 @@ class Drawer:
             'background_color': self.background_color,
             'active_cells_color': self.active_cells_color,
             'predictive_cells_color': self.predictive_cells_color,
+            'winner_cells_color': self.winner_cells_color,
             'active_and_predictive_cells_color': self.active_and_predictive_cells_color,
             'active_segments_color': self.active_segments_color,
             'picked_color': self.picked_color,
@@ -213,11 +215,11 @@ class Drawer:
         active_predictive = []
         not_colored = []
         for cell in range(self.num_of_cells):
-            if self.data_base[str(self.current)][str(cell)]['St'] == 1:
+            if abs(self.data_base[str(self.current)][str(cell)]['St']) == 1:
                 active.append(cell)
-            elif self.data_base[str(self.current)][str(cell)]['St'] == 2:
+            elif abs(self.data_base[str(self.current)][str(cell)]['St']) == 2:
                 predictive.append(cell)
-            elif self.data_base[str(self.current)][str(cell)]['St'] == 3:
+            elif abs(self.data_base[str(self.current)][str(cell)]['St']) == 3:
                 active_predictive.append(cell)
             else:
                 not_colored.append(cell)
@@ -280,7 +282,7 @@ class Drawer:
                                       backColor=self.active_segments_color)
         else:
             if self.active_cell >= 0:
-                self.textDrawer.draw_text('Not connected cells', (self.window.width - left, self.window.width - 310),
+                self.textDrawer.draw_text('Not connected cells', (self.window.width - left, self.window.width - 380),
                                           (self.window.width, self.window.width), scale=(1.0, 1.),
                                           foreColor=np.array(self.default_color) * self.bright_less,
                                           backColor=np.array(self.default_color) * self.bright_less)
@@ -292,11 +294,15 @@ class Drawer:
                                       (self.window.width, self.window.width), scale=(1.0, 1.),
                                       foreColor=self.predictive_cells_color,
                                       backColor=self.predictive_cells_color)
-            self.textDrawer.draw_text('Active & Predictive cells', (self.window.width - left, self.window.width - 170),
+            self.textDrawer.draw_text('Winner cells', (self.window.width - left, self.window.width - 170),
+                                      (self.window.width, self.window.width), scale=(1.0, 1.),
+                                      foreColor=self.winner_cells_color,
+                                      backColor=self.winner_cells_color)
+            self.textDrawer.draw_text('Active & Predictive cells', (self.window.width - left, self.window.width - 240),
                                       (self.window.width, self.window.width), scale=(1.0, 1.),
                                       foreColor=self.active_and_predictive_cells_color,
                                       backColor=self.active_and_predictive_cells_color)
-            self.textDrawer.draw_text('Picked out cell', (self.window.width - left, self.window.width - 240),
+            self.textDrawer.draw_text('Picked out cell', (self.window.width - left, self.window.width - 310),
                                       (self.window.width, self.window.width), scale=(1.0, 1.),
                                       foreColor=self.picked_color,
                                       backColor=self.picked_color)
@@ -469,6 +475,7 @@ class Cells(Primitives):
         self.default_color = params['default_color']
         self.active_cells_color = params['active_cells_color']
         self.predictive_cells_color = params['predictive_cells_color']
+        self.winner_cells_color = params['winner_cells_color']
         self.active_and_predictive_cells_color = params['active_and_predictive_cells_color']
         self.active_segments_color = params['active_segments_color']
         self.picked_color = params['picked_color']
@@ -488,12 +495,13 @@ class Cells(Primitives):
             if cell in self.draw_cells or None in self.draw_cells:
                 cell_key = str(cell)
                 default_color = pyrr.Vector3(self.default_color)
-                if self.data_base[str(current)][cell_key]['St'] == 1: default_color = pyrr.Vector3(
+                if abs(self.data_base[str(current)][cell_key]['St']) == 1: default_color = pyrr.Vector3(
                     self.active_cells_color)
-                if self.data_base[str(current)][cell_key]['St'] == 2: default_color = pyrr.Vector3(
+                if abs(self.data_base[str(current)][cell_key]['St']) == 2: default_color = pyrr.Vector3(
                     self.predictive_cells_color)
-                if self.data_base[str(current)][cell_key]['St'] == 3: default_color = pyrr.Vector3(
+                if abs(self.data_base[str(current)][cell_key]['St']) == 3: default_color = pyrr.Vector3(
                     self.active_and_predictive_cells_color)
+                if self.data_base[str(current)][cell_key]['St'] < 0: default_color = pyrr.Vector3([self.winner_cells_color])
                 if active_cell == cell:
                     default_color = pyrr.Vector3(self.picked_color)
                 if active_cell >= 0:

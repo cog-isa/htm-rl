@@ -5,9 +5,9 @@ class Camera:
     def __init__(self, target):
         r = sqrt(target[0] ** 2 + target[2] ** 2)
 
-        self.camera_pos = Vector3([-2*target[0], 3*target[1], -2*target[2]])
+        self.camera_pos = Vector3([4*target[0], 3*target[1], 4*target[2]])
         self.mouse_sensitivity = 0.25
-        self.jaw = 45
+        self.jaw = 225
         self.pitch = - atan(5*target[1]/(6*r)) * 180 / pi
         self.update_camera_vectors()
 

@@ -13,6 +13,7 @@ class Writer():
     def write(self):
         active_cells = self.tm.getActiveCells().sparse
         predictive_cells = self.tm.getPredictiveCells().sparse
+        winner_cells = self.tm.getWinnerCells().sparse
         active_segments = self.tm.getActiveSegments()
 
         cells = {}
@@ -22,6 +23,7 @@ class Writer():
             if cell in active_cells: cell_dict['St'] = 1
             if cell in predictive_cells: cell_dict['St'] = 2
             if cell in active_cells and cell in predictive_cells: cell_dict['St'] = 3
+            if cell in winner_cells: cell_dict['St'] = - cell_dict['St']
             segments = self.tm.connections.segmentsForCell(cell)
             dict_segments = {}
             for segment in segments:
