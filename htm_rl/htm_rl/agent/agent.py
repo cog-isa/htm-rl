@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
 
+from htm_rl.agent.mcts_actor_critic import MctsActorCritic
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
@@ -23,7 +24,9 @@ class Agent:
     _use_cooldown: bool
     _planning_horizon: int
 
-    def __init__(self, memory: Memory, planner: Planner, n_actions, use_cooldown=False):
+    def __init__(self, memory: Memory, planner: Planner, n_actions, use_cooldown=False,
+            mcts_actor_critic: MctsActorCritic = None
+    ):
         self.memory = memory
         self.planner = planner
         self._n_actions = n_actions
@@ -31,6 +34,7 @@ class Agent:
         self._planning_horizon = self.planner.planning_horizon
         self.set_planning_horizon(self._planning_horizon)
         self._goal_state = None
+        self._mcts_actor_critic = mcts_actor_critic
 
     def set_planning_horizon(self, planning_horizon: int):
         self.planner.planning_horizon = planning_horizon
@@ -45,9 +49,23 @@ class Agent:
     def reset(self):
         self.memory.tm.reset()
         self._init_planning()
+        if self._mcts_actor_critic is not None:
+            self._mcts_actor_critic.reset()
+            ac = self._mcts_actor_critic
+            q = np.round(ac.cell_value / ac.cell_visited_count, 2)
+            value_bit_buckets = (q[i: i + 8] for i in range(0, q.size, 8))
+            q_str = '\n'.join(
+                ' '.join(map(str, value_bits)) for value_bits in value_bit_buckets
+            )
+            trace(3, 1, q_str)
+            trace(3, 1, '='*20)
 
     def make_step(self, state, reward, is_done, verbosity: int):
         trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
+        if self._mcts_actor_critic is not None:
+            encoded_state = self.memory.encoder.encode(Sa(state, None))
+            self._mcts_actor_critic.add_step(encoded_state, max(reward, 0))
+
         action = self._make_action(state, is_done, verbosity)
         trace(verbosity, 2, f'\nMake action: {action}')
 
