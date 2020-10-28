@@ -24,6 +24,7 @@ class Window():
         self.follow_cursor = False
 
         self.picker = False
+        self.picker_right = False
         self.lastX = self.width / 2
         self.lastY = self.height / 2
         self.mouseX = 0
@@ -113,6 +114,8 @@ class Window():
     def mouse_button_callback(self, window, button, action, mods):
         if button == glfw.MOUSE_BUTTON_LEFT and action == glfw.PRESS:
             self.picker = True
+        if button == glfw.MOUSE_BUTTON_RIGHT and action == glfw.PRESS:
+            self.picker_right = True
         if button == glfw.MOUSE_BUTTON_MIDDLE and action == glfw.PRESS:
             self.follow_cursor = True
         elif button == glfw.MOUSE_BUTTON_MIDDLE and action == glfw.RELEASE:

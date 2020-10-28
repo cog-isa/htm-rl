@@ -17,6 +17,7 @@ class Drawer:
             self.data_base = json.load(outfile)
 
         self.active_cell = -1
+        self.active_connection = -1
         self.current = 0
 
         self.cells_in_column = self.data_base['params']['cells_per_column']
@@ -228,40 +229,29 @@ class Drawer:
     def update(self):
         self.cells_active.draw_cells, self.cells_predictive.draw_cells, self.cells_active_predictive.draw_cells, self.cells_not.draw_cells = self.cells_type()
 
-        self.cells_active.update(self.current,
-                          self.window.show_segments,
-                          self.window.show_active_segments,
-                          self.active_cell)
-        self.cells_predictive.update(self.current,
-                          self.window.show_segments,
-                          self.window.show_active_segments,
-                          self.active_cell)
-        self.cells_active_predictive.update(self.current,
-                                     self.window.show_segments,
-                                     self.window.show_active_segments,
-                                     self.active_cell)
-        self.cells_not.update(self.current,
-                                     self.window.show_segments,
-                                     self.window.show_active_segments,
-                                     self.active_cell)
+        self.update_color()
 
     def update_color(self):
-        self.cells_active.update_instance_cubes_color_array(self.current,
-                                                     self.window.show_segments,
-                                                     self.window.show_active_segments,
-                                                     self.active_cell)
-        self.cells_predictive.update_instance_cubes_color_array(self.current,
-                                                     self.window.show_segments,
-                                                     self.window.show_active_segments,
-                                                     self.active_cell)
-        self.cells_active_predictive.update_instance_cubes_color_array(self.current,
-                                                                self.window.show_segments,
-                                                                self.window.show_active_segments,
-                                                                self.active_cell)
-        self.cells_not.update_instance_cubes_color_array(self.current,
-                                                                self.window.show_segments,
-                                                                self.window.show_active_segments,
-                                                                self.active_cell)
+        self.cells_active.update(self.current,
+                                 self.window.show_segments,
+                                 self.window.show_active_segments,
+                                 self.active_cell,
+                                 self.active_connection)
+        self.cells_predictive.update(self.current,
+                                     self.window.show_segments,
+                                     self.window.show_active_segments,
+                                     self.active_cell,
+                                     self.active_connection)
+        self.cells_active_predictive.update(self.current,
+                                            self.window.show_segments,
+                                            self.window.show_active_segments,
+                                            self.active_cell,
+                                            self.active_connection)
+        self.cells_not.update(self.current,
+                              self.window.show_segments,
+                              self.window.show_active_segments,
+                              self.active_cell,
+                              self.active_connection)
 
     def move(self, velocity=0.1):
         if self.window.left:
@@ -274,38 +264,57 @@ class Drawer:
             self.window.cam.process_keyboard("BACKWARD", velocity)
 
     def draw_legend(self):
-        left = 500
+        left = 325
+        top = 100
+
+        text = self.data_base[str(self.current)]['text']
+        scale = (.8, 0.8)
+
+        self.textDrawer.draw_text(text, (self.window.width/2 - 20 * len(text)/2, self.window.height-40),
+                                  (self.window.width, self.window.height), scale=(1.2, 1.2),
+                                  foreColor=[0, 0, 0],
+                                  backColor=self.background_color)
         if self.window.show_segments and not self.window.not_show_segments:
-            self.textDrawer.draw_text('Active segments', (self.window.width - left, self.window.width - 30),
-                                      (self.window.width, self.window.width), scale=(1.0, 1.),
+            self.textDrawer.draw_text('Active segments', (self.window.width - left, self.window.height - top),
+                                      (self.window.width, self.window.height), scale=scale,
                                       foreColor=self.active_segments_color,
-                                      backColor=self.active_segments_color)
+                                      backColor=self.background_color)
         else:
             if self.active_cell >= 0:
-                self.textDrawer.draw_text('Not connected cells', (self.window.width - left, self.window.width - 380),
-                                          (self.window.width, self.window.width), scale=(1.0, 1.),
+                self.textDrawer.draw_text('Not connected cells', (self.window.width - left, self.window.height - top - 200),
+                                          (self.window.width, self.window.height), scale=scale,
                                           foreColor=np.array(self.default_color) * self.bright_less,
-                                          backColor=np.array(self.default_color) * self.bright_less)
-            self.textDrawer.draw_text('Active cells', (self.window.width - left, self.window.width - 30),
-                                      (self.window.width, self.window.width), scale=(1.0, 1.),
+                                          backColor=self.background_color)
+            self.textDrawer.draw_text('Active cells', (self.window.width - left, self.window.height - top),
+                                      (self.window.width, self.window.height), scale=scale,
                                       foreColor=self.active_cells_color,
-                                      backColor=self.active_cells_color)
-            self.textDrawer.draw_text('Predictive cells', (self.window.width - left, self.window.width - 100),
-                                      (self.window.width, self.window.width), scale=(1.0, 1.),
+                                      backColor=self.background_color)
+            self.textDrawer.draw_text('Predictive cells', (self.window.width - left, self.window.height - top - 40),
+                                      (self.window.width, self.window.height), scale=scale,
                                       foreColor=self.predictive_cells_color,
-                                      backColor=self.predictive_cells_color)
-            self.textDrawer.draw_text('Winner cells', (self.window.width - left, self.window.width - 170),
-                                      (self.window.width, self.window.width), scale=(1.0, 1.),
+                                      backColor=self.background_color)
+            self.textDrawer.draw_text('Winner cells', (self.window.width - left, self.window.height - top - 80),
+                                      (self.window.width, self.window.height), scale=scale,
                                       foreColor=self.winner_cells_color,
-                                      backColor=self.winner_cells_color)
-            self.textDrawer.draw_text('Active & Predictive cells', (self.window.width - left, self.window.width - 240),
-                                      (self.window.width, self.window.width), scale=(1.0, 1.),
+                                      backColor=self.background_color)
+            self.textDrawer.draw_text('Active-predictive cells', (self.window.width - left, self.window.height - top - 120),
+                                      (self.window.width, self.window.height), scale=scale,
                                       foreColor=self.active_and_predictive_cells_color,
-                                      backColor=self.active_and_predictive_cells_color)
-            self.textDrawer.draw_text('Picked out cell', (self.window.width - left, self.window.width - 310),
-                                      (self.window.width, self.window.width), scale=(1.0, 1.),
+                                      backColor=self.background_color)
+            self.textDrawer.draw_text('Picked out cell', (self.window.width - left, self.window.height - top - 160),
+                                      (self.window.width, self.window.height), scale=scale,
                                       foreColor=self.picked_color,
-                                      backColor=self.picked_color)
+                                      backColor=self.background_color)
+            if self.active_connection > 0:
+                dict_segments = self.data_base[str(self.current)][str(self.active_cell)]['Se']
+                for segment in dict_segments.keys():
+                    if str(self.active_connection) in dict_segments[segment]['Ce'].keys():
+                        permanence = str(round(dict_segments[segment]['Ce'][str(self.active_connection)], 3))
+                        permanence = 'permanenceForSynapse: ' + permanence
+                        self.textDrawer.draw_text(str(permanence), (10, self.window.height - top),
+                                                  (self.window.width, self.window.height), scale=scale,
+                                                  foreColor=[0., 0., 0.],
+                                                  backColor=self.background_color)
 
     def process(self):
         self.window.poll_events()
@@ -328,11 +337,25 @@ class Drawer:
             # print(active_ind[0], active_ind[0], active_ind[0])
             if active_ind[0] == 255 and active_ind[1] == 255 and active_ind[2] == 255:
                 self.active_cell = -1
+                self.active_connection = -1
             else:
                 self.active_cell = active_ind[2] + 256 * active_ind[1] + 256 * 256 * active_ind[0]
             # print(self.active_cell)
             self.pick.DisableWriting()
             self.window.picker = False
+            self.update_color()
+
+        if self.window.picker_right:
+            self.pick_cells.draw(view, self.pick.EnableWriting)
+            active_ind = self.pick.read(self.window.mouseX, self.window.height - self.window.mouseY)
+            # print(active_ind[0], active_ind[0], active_ind[0])
+            if active_ind[0] == 255 and active_ind[1] == 255 and active_ind[2] == 255:
+                self.active_connection = -1
+            else:
+                self.active_connection = active_ind[2] + 256 * active_ind[1] + 256 * 256 * active_ind[0]
+            # print(self.active_cell)
+            self.pick.DisableWriting()
+            self.window.picker_right = False
             self.update_color()
 
         if self.window.show_segments and self.window.not_show_segments:
@@ -481,12 +504,12 @@ class Cells(Primitives):
         self.picked_color = params['picked_color']
         self.bright_less = params['bright_less']
 
-    def update(self, current, show_segments, show_active_segments, active_cell):
+    def update(self, current, show_segments, show_active_segments, active_cell, connection_cell):
         self.create_instance_cubes_array()
         self.instance_cube_color = glGenBuffers(1)
-        self.update_instance_cubes_color_array(current, show_segments, show_active_segments, active_cell)
+        self.update_instance_cubes_color_array(current, show_segments, show_active_segments, active_cell, connection_cell)
 
-    def update_instance_cubes_color_array(self, current, show_segments, show_active_segments, active_cell):
+    def update_instance_cubes_color_array(self, current, show_segments, show_active_segments, active_cell, connection_cell):
         glBindVertexArray(self.vao)
         if active_cell >= 0:
             dict_segments = self.data_base[str(current)][str(active_cell)]['Se']
@@ -502,7 +525,7 @@ class Cells(Primitives):
                 if abs(self.data_base[str(current)][cell_key]['St']) == 3: default_color = pyrr.Vector3(
                     self.active_and_predictive_cells_color)
                 if self.data_base[str(current)][cell_key]['St'] < 0: default_color = pyrr.Vector3([self.winner_cells_color])
-                if active_cell == cell:
+                if active_cell == cell or connection_cell == cell:
                     default_color = pyrr.Vector3(self.picked_color)
                 if active_cell >= 0:
                     color = default_color
@@ -516,6 +539,7 @@ class Cells(Primitives):
                         for segment in dict_segments.keys():
                             state = dict_segments[segment]['St']
                             connected_cells = dict_segments[segment]['Ce']
+                            connected_cells = [int(cell) for cell in  connected_cells.keys()]
                             if cell in connected_cells:
                                 if show_segments:
                                     base = base0 + (counter // 6) * 40
