@@ -9,7 +9,6 @@ each segment of this cell and cells belonging to the segment.
 The project uses Python 3.7 and [OpenGl](https://pypi.org/project/PyOpenGL/). For using download repository and install requirements:
 
 ```bash
-git clone https://github.com/Arkol7/Watcher.git
 pip install -r requirements.txt
 ``` 
 
@@ -24,7 +23,8 @@ For this purpose there is `writer.py`. This utility will help you. For using it 
 need to have `writer.py` in the directory there you make your TM experiments. Then
 you need to initialize class `Writer` after initializing of the TM model, which you want 
 to display. After that use method `write` to record the state of the model after it make
-computation step. And finally close record and save data in file by `save` method.
+computation step. If you want to label your step, you can use `write(text='some label')`.
+And finally close record and save data in file by `save` method.
 
 Example:
 ```python
@@ -40,12 +40,12 @@ tm = TM(
 # initializing Writer
 writer = Writer(tm)
 
-for value in sequence:
+for value, value_label in sequence:
     input_sdr.dense = encode_sdr_val(value)
     tm.compute(input_sdr, learn=learn)
     tm.activateDendrites(learn)
     # make the record
-    writer.write()
+    writer.write(text=value_label)
 
 # close after using and save to data.json file
 writer.save('data.json')
@@ -74,11 +74,14 @@ Movement:
 - `S` - backward
 - `A` - left
 - `D` - right
+- `Scroll` - for change velocity
 - your cursor controls camera view
   - `LEFT SHIFT` or `MIDDLE BUTTON` unblock your camera
   
 Special functions:
-- `RIGHT BUTTON` picks out cell there your cursor is
+- `LEFT BUTTON` picks out cell there your cursor is
+- `RIGHT BUTTON` picks out cell there your cursor is, use it only after `LEFT BUTTON`, if you want to see
+ information about connection between this 2 picked out cells (synapse's permanence for 2nd cell) 
 - `Q` - displays by different color cells belonging to different segments. 
 Uses only if some cell is picked out.
 - `E` - displays among segments the active segment. Uses only with `Q`
@@ -90,6 +93,7 @@ Exit:
 
 ## Some remarks
 
-In the data directory there are same datafiles, which you can use as examples. If you don't see 
-your model try to use `LEFT SHIFT` and move your cursor, then you can find them.
+In the data directory there are same datafiles, which you can use as examples.
 ![watcher](img/watcher.png)
+![sequence](img/abcde.gif)
+![video](img/Watcher_abcde.gif)
