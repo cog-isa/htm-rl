@@ -8,7 +8,7 @@
   - [Repository structure](#repository-structure)
   - [Quick intro](#quick-intro)
     - [HTM](#htm)
-- [Visualization](https://github.com/cog-isa/htm-rl/blob/master/watcher/README.md)
+- [Visualization](https://github.com/cog-isa/htm-rl/blob/master/watcher)
 
 ## Links
 
