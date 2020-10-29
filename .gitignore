@@ -29,6 +29,8 @@ notebooks/**/_*.ipynb
 # inkscape aux folder
 svg-inkscape/
 reports/**/assets/
+# temporal solution
+*.eps
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # please, place all project specific rules above this line
