@@ -1,37 +1,59 @@
-\documentclass[runningheads]{llncs}
+\documentclass[a4paper,twoside]{article}
+
+\usepackage{epsfig}
+\usepackage{subcaption}
+\usepackage{calc}
+\usepackage{amssymb}
+\usepackage{amstext}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{multicol}
+\usepackage{pslatex}
+\usepackage{apalike}
+\usepackage{epspdfconversion}
+\usepackage{mathptmx}
+
 \usepackage{style_eng}
-\bibliographystyle{splncs04}
+
+\usepackage{SCITEPRESS}     % Please add other packages that you may need BEFORE the SCITEPRESS.sty package.
+
+\bibliographystyle{apalike}
 
 \begin{document}
 
-\title {Planning with Hierarchical Temporal Memory for deterministic Markov Decision Problem}
-\author {Petr Kuderov \inst{1} \and Aleksandr I. Panov \inst{1}}
+\title {Planning with Hierarchical Temporal Memory for Deterministic Markov Decision Problem}
 
-\authorrunning{P. Kuderov, A. Panov}
-% First names are abbreviated in the running head.
-% If there are more than two authors, 'et al.' is used.
-%
-\institute{Moscow Institute of Physics and Technology, Russia}
 
-\maketitle
+\author{
+  \authorname{
+    Petr Kuderov\sup{1}\orcidAuthor{0000-0001-7055-3426}, Aleksandr I. Panov\sup{1}\orcidAuthor{0000-0002-9747-3837}
+  }
+  \affiliation{
+    \sup{1}Moscow Institute of Physics and Technology, Russia
+  }
+  \email{
+    kuderov.pv@phystech.edu, panov.ai@mipt.ru
+  }
+}
 
-\begin{abstract}
-  Sequential decision making is among the key problems in Artificial Intelligence. It can be formalized as Markov Decision Process (MDP). One approach to solve it, called model-based Reinforcement Learning (RL), combines learning the model of the environment and the global policy. Having a good model of the environment opens up such properties as data efficiency and targeted exploration.
-  
-  While most of the memory-based approaches are based on using Artificial Neural Networks (ANNs), in our work we instead draw the ideas from Hierarchical Temporary Memory (HTM) framework, which is based on human-like memory model. We utilize it to build an agent's memory that learns the environment dynamics. We also accompany it with an example of planning algorithm, that enables the agent to solve RL tasks.
-\end{abstract}
+\keywords{Model-based reinforcement learning, Markov Decision Process, planning, Hierarchical Temporal Memory, Sparse Distributed Representation.}
 
-\keywords{Model-based reinforcement learning \and Markov Decision Process \and planning \and Hierarchical Temporal Memory \and Sparse Distributed Representation.}
+\abstract{
+Sequential decision making is among the key problems in Artificial Intelligence. It can be formalized as Markov Decision Process (MDP). One approach to solve it, called model-based Reinforcement Learning (RL), combines learning the model of the environment and the global policy. Having a good model of the environment opens up such properties as data efficiency and targeted exploration. While most of the memory-based approaches are based on using Artificial Neural Networks (ANNs), in our work we instead draw the ideas from Hierarchical Temporary Memory (HTM) framework, which is based on human-like memory model. We utilize it to build an agent's memory that learns the environment dynamics. We also accompany it with an example of planning algorithm, that enables the agent to solve RL tasks.}
 
-\section{Introduction}
 
-Reinforcement Learning (RL) seek to find methods that enable robots or virtual agents to act autonomously in order to solve human-defined tasks. It requires from such methods to learn a policy for sequential decision-making problems, which are commonly formalized as MDP optimization \cite{Puterman_1994}. Recently RL has achieved notable landmarks in various task domains such as classical board games (chess \cite{Campbell_Hoane_Hsu_2002_DeepBlue}, Go \cite{Silver_Go}, poker \cite{Brown_Sandholm_2017_Poker}) and visually rich computer games (Atari \cite{Mnih_2015_Atari}, Dota 2 \cite{openai_2019_dota}). At the core of some of the methods used, especially for board games, were planning algorithms, which rely on the knowledge of the environment dynamics.
+\onecolumn \maketitle \normalsize \setcounter{footnote}{0}
+\vfill
 
-In general case, though, the model of the environment is unknown, and there are two common opposite approaches in RL to deal with it: a model-free and a model-based. The former approach doesn't explicitly learn and make use of the knowledge of the environment. Instead, it directly learns the global policy from interactions with the environment. While model-free approach has many successful examples (\cite{Mnih_2015_Atari,haarnoja_2018_sac,schulman_2017_ppo}), among its disadvantages are data inefficiency, as it requires high amount of interactions with the environment, and struggle for precise lookahead.
+\section{\uppercase{Introduction}}
 
-Model-based RL can address issues of both planning and model-free RL by first learning the environment dynamics, and then to exploit it for more efficient learning of the agent's policy (\cite{moerland_2020_modelbased}). Typically, the model is represented by MDP and consists of two components: a state transition model and a reward model. After the model has been learned, MDP planning method such as MCTS (\cite{Coulom_2007_mcts}) can be applied to infer the optimal policy. Many model-based RL approaches build a model that operates at the pixel-level (\cite{kaiser_2020_modelbased}), which is hungry for computational resources and attentive to unimportant details. Another approach is to try building a latent-space model. For example, a latent-space model can represent an abstract MDP that's equivalent to the real one in terms of state values, i.e. the cumulative reward of the planned trajectory (\cite{silver_2020_muzero}).
+Reinforcement Learning (RL) seek to find methods that enable robots or virtual agents to act autonomously in order to solve human-defined tasks. It requires from such methods to learn a policy for sequential decision-making problems, which are commonly formalized as MDP optimization \cite{Puterman_1994}. Recently RL has achieved notable landmarks in various task domains such as classical board games chess \cite{Campbell_Hoane_Hsu_2002_DeepBlue}, Go \cite{Silver_Go}, poker \cite{Brown_Sandholm_2017_Poker} and visually rich computer games like Atari \cite{Mnih_2015_Atari} and Dota 2 \cite{openai_2019_dota}. At the core of some of the methods used, especially for board games, were planning algorithms, which rely on the knowledge of the environment dynamics.
 
-To model the environment it's common to use ANNs (\cite{silver_2020_muzero,Ha_Schmidhuber_2018_worldmodels}). It's also very tempting to take more inspiration from human brains, especially for how our memory functions (\cite{Hassabis_2017_neuro}). One example of such human-like memory model is Hierarchical Temporal Memory (HTM) framework (\cite{George_Hawkins_2009}). This framework utilizes discrete binary sparse distributed representations (SDR) (\cite{Cui_Ahmad_Hawkins_2017_sdr}), which enables more efficient data processing, high noise tolerance and a natural way to set similarity metric between data embeddings. It also provides a model of the sequential temporal memory (TM) (\cite{hawkins_TM}). Learning in TM isn't based on the gradient descend, and typically it learns with a faster rate compared to common ANNs.
+In general case, though, the model of the environment is unknown, and there are two common opposite approaches in RL to deal with it: a model-free and a model-based. The former approach doesn't explicitly learn and make use of the knowledge of the environment. Instead, it directly learns the global policy from interactions with the environment. While model-free approach has many successful examples \cite{Mnih_2015_Atari,haarnoja_2018_sac,schulman_2017_ppo}, among its disadvantages are data inefficiency, as it requires high amount of interactions with the environment, and struggle for precise lookahead.
+
+Model-based RL can address issues of both planning and model-free RL by first learning the environment dynamics, and then to exploit it for more efficient learning of the agent's policy \cite{moerland_2020_modelbased}. Typically, the model is represented by MDP and consists of two components: a state transition model and a reward model. After the model has been learned, MDP planning method such as MCTS \cite{Coulom_2007_mcts} can be applied to infer the optimal policy. Many model-based RL approaches build a model that operates at the pixel-level \cite{kaiser_2020_modelbased}, which is hungry for computational resources and attentive to unimportant details. Another approach is to try building a latent-space model. For example, a latent-space model can represent an abstract MDP that's equivalent to the real one in terms of state values, i.e. the cumulative reward of the planned trajectory \cite{silver_2020_muzero}.
+
+To model the environment it's common to use ANNs \cite{silver_2020_muzero,Ha_Schmidhuber_2018_worldmodels}. It's also very tempting to take more inspiration from human brains, especially for how our memory functions \cite{Hassabis_2017_neuro}. One example of such human-like memory model is Hierarchical Temporal Memory (HTM) framework \cite{George_Hawkins_2009}. This framework utilizes discrete binary sparse distributed representations (SDR) \cite{Cui_Ahmad_Hawkins_2017_sdr}, which enables more efficient data processing, high noise tolerance and a natural way to set similarity metric between data embeddings. It also provides a model of the sequential temporal memory (TM) \cite{hawkins_TM}. Learning in TM isn't based on the gradient descend, and typically it learns with a faster rate compared to common ANNs.
 
 In our work we present a simplified memory-based framework based on the ideas of HTM that can be used to model the environment dynamics, supplied with the planning algorithm to infer the optimal global policy. We study applicability of the presented memory model and viability of the planning method in different maze environments.
 
@@ -46,17 +68,17 @@ In our work we present a simplified memory-based framework based on the ideas of
   \caption{Example of generated maze environments of 5x5 and 8x8 sizes. Walls - dark purple, starting agent's position - yellow, rewarding goal state - salad.} \label{fig_maze_examples}
 \end{figure}
 
-\section{Background}
+\section{\uppercase{Background}}
 
 \subsection{Reinforcement Learning}
 
 In this paper we consider the classic decision-making problem with an agent operating in an environment, which is formalized as Markov Decision Process (MDP). As a starting point in the research we simplify the problem assuming that the environment is fully observable and deterministic. We also consider only environments with the distinctive goal-oriented tasks, where an agent is expected to reach desirable goal states in a limited time.
 
-Therefore, MDP is defined as a tuple $M = (\St, \A, R, P, s_0, s_g)$, where $\St = \{1, \dots, s_n\}$ is the state space of the environment, $\A = \{1, \dots, a_m\}$ is the action space available to an agent, and $s_0$ and $s_g$ are the initial and the goal state distributions respectively. At each time step $t$, an agent observes a state $s_t \in \St$ and selects an action $a_t \in \A$. As a result, it receives the reward $r_t \in R(s_t, a_t)$ and transitions to the new state $s_{t+1} = P(s_t, a_t)$. An agent's policy $\pi: S \rightarrow A$ is a mapping from a state to an action. The agent's goal is to maximize the expected return $\E \left[ \sum_{t=0}^{\infty} r_t \right]$. 
+Therefore, MDP is defined as a tuple $M = (\St, \A, R, P, s_0, s_g)$, where $\St = \{1, \dots, s_n\}$ is the state space of the environment, $\A = \{1, \dots, a_m\}$ is the action space available to an agent, and $s_0$ and $s_g$ are the initial and the goal state distributions respectively. At each time step $t$, an agent observes a state $s_t \in \St$ and selects an action $a_t \in \A$. As a result, it receives the reward $r_t \in R(s_t, a_t)$ and transitions to the new state $s_{t+1} = P(s_t, a_t)$. An agent's policy $\pi: \St \rightarrow \A$ is a mapping from a state to an action. The agent's goal is to maximize the expected return $\E \left[ \sum_{t=0}^{\infty} r_t \right]$. 
 
 We don't use discount factor $\gamma$ in the return calculation. Instead, we assume that the reward function is designed the way that it highly rewards reaching the goal states and slightly punishes in any other states, which should reflect the goal-oriented nature of the environments that were taken into consideration.
 
-\subsection{Temporal Memory}
+\subsection{Temporal Memory} \label{sec_TM}
 
 Temporal Memory (TM) from Hierarchical Temporal Memory (HTM) framework is a model of the sequential memory. It works with sparse distributed representations (SDR), which are sparse binary vectors, typically high-dimensional. Therefore, the data encoding scheme should be chosen too.
 
@@ -72,173 +94,145 @@ $$
 
 As you see, resulting vector is split into buckets of bits, and the size of buckets is a hyperparameter (in the example above it's 4).
 
-For SDR vectors a union operation is defined as a bitwise OR applied to the corresponding vectors. Also we define a similarity metric, which is the number of the same one-bits of the vectors in consideration.
+For SDR vectors a union operation is defined as a bitwise OR applied to the corresponding vectors. Also we define a similarity metric, which is the number of the same one-bits of the vectors in consideration, which is, again, the same as the dot product of such vectors.
 
 Temporal Memory model not only provides an algorithm to learn sequences of SDR vectors $[v_0, v_1, v_2, \dots ]$ but also to make predictions about what SDR vector $v'$ comes next based on the past experience. The prediction is represented also as an SDR vector, which is a union of SDR vectors $v' = \cup v_{o_i}$, where each vector $v_{o_i}$ represents a single separate expected outcome. Notice that as the union of SDR vectors is also an SDR vector, TM model allows you to work simultaneously with the unions of sequences as well.
 
-\section{Planning with Temporal Memory}
+\section{\uppercase{Planning with Temporal Memory}}
 
 In our method we train an agent to reach rewarding goal states $s_g$. An agent is supplied with the memory module to learn the environment's dynamics and a planning algorithm which heavily relies on the learned model. The planning algorithm constructs a plan of actions $p = [a_t, a_{t+1}, \dots, a_{t+h-1}]$ that leads to the desired state $s_g = s_{t+h}$ from the current state $s_t$. In the case when the planning algorithm fails to provide a plan we switch the agent to the exploration strategy $\pi_r$ in order to improve the learned model. As the result, at each timestep an agent operates either according to a constructed plan $p$ or according to the random uniformly-distributed exploration policy $\pi_r$.
 
 \begin{figure}
   \centering
-  \includegraphics[width=0.8\linewidth]{agent_scheme}
+  \includegraphics[width=\linewidth]{agent_scheme}
   \caption{Schematic view of our agent and its training loop.} \label{fig_agent_scheme}
 \end{figure}
 
-\subsection{Memory module}
+\subsection{Memory module} \label{sec_MemoryModule}
 
-The agent's memory module consists of two submodules. One submodule, called \textit{transition memory}, learns the transition model $f: \St \times \A \rightarrow \St$ of the environment, while the other, called \textit{goal states memory} keeps track of the rewarding goal states $s_g$.
+The agent's memory module consists of two submodules. One submodule, called \textit{transition memory}, learns the transition model $f: \St \times \A \rightarrow \St$ of the environment, while the other, called \textit{goal states memory}, keeps track of the rewarding goal states $s_g$.
 
-Consider an agent's trajectory $\tau = [s_0, a_0, r_1, s_1, a_1, r_2, \dots, r_{T-1}, s_T]$. Each pair $(s_t, a_t)$ at the moment $t$ defines the precondition to the transition in the environment $(s_t, a_t) \rightarrow s_{t+1}$. Therefore, we made transition memory to learn the sequences of such transitions $Tr = [(s_0, a_0), (s_1, a_1), \dots]$ from the trajectories that the agent produces. The learning is performed in an online fashion, i.e. at each timestep.
+Consider a trajectory of an agent $\tau = [s_0, a_0, r_0, s_1, a_1, r_1, \dots, r_{T-1}, s_T]$. Each pair $(s_t, a_t)$ at the moment $t$ defines the precondition to the transition in the environment $(s_t, a_t) \rightarrow s_{t+1}$. Therefore, we made transition memory to learn the sequences of such transitions $Tr = [(s_0, a_0), (s_1, a_1), \dots]$ from the trajectories that the agent produces. The learning is performed in an online fashion, i.e. at each timestep.
 
-The transition memory submodule is based on a Temporal Memory.Recall that TM works with sparse distributed representations (SDR). To encode each state-action pair $(s, a)$ we use two separate integer encoders for states and actions respectively to obtain binary sparse vectors. The states encoder maps integer numbers from $[0, |\St|)$ range, and the actions encoder maps integer numbers from $[0, |\A|)$ range. As most of the time our method works with SDR, for simplicity further on we use the same notation $s$ and $a$ for their corresponding SDR too. To work with pairs $(s, a)$ we just concatenate their SDR vectors together into one.
+The transition memory submodule is based on a Temporal Memory. Recall that TM works with sparse distributed representations (SDRs). To encode each state-action pair $(s, a)$ we use two separate integer encoders for states and actions respectively to obtain binary sparse vectors. The states encoder maps integer numbers from $[0, |\St|)$ range, and the actions encoder maps integer numbers from $[0, |\A|)$ range. As most of the time our method works with SDR, for simplicity further on we use the same notation $s$ and $a$ for state's and action's corresponding SDR too. To work with pairs $(s, a)$ we just concatenate their respective SDR vectors together into one.
 
-For any given state-action pair $(s, a)$ the transition memory module can give a prediction on what state $s'$ is coming next.
+For any given state-action pair $(s, a)$ the transition memory submodule can give a prediction on what state $s'$ is coming next.
 Precisely, it allows prediction queries of the form:
 
 \begin{quote}
   \textit{given a superposition \footnotemark of states $S = \cup s_i$ and a superposition of actions $A = \cup a_j$, what superposition of next states $S'= \cup s'_m$ all possible state-action pairs $(s_i, a_j)$ lead to?}
 \end{quote}
 
-\footnotetext{TM can work with unions of SDR vectors. When SDR vectors in a union are semantically meaningful, e.g. when they represent states or actions, we call such unions \textit{superpositions} of states or actions respectively \footnotemark.}
+  \footnotetext{In the Sec.~\ref{sec_TM} we explained that TM can work with unions of SDR vectors. When SDR vectors in a union aren't just random vectors, when they represent states or actions, we call such unions \textit{superpositions} of states or actions respectively. Note that once a superposition vector is made you cannot simply split it back into the origin SDR vectors of the union. \footnotemark}
 
-\footnotetext{As you see, in our current encoding scheme the different states or actions are encoded with non-overlapping bits which makes them distinguishable from each other in a superposition. Whilst it's true, the current planning algorithm only requires a separation of the state bits from the action bits in a state-action pair SDR. This is done intentionally. Non-overlapping scheme makes things simpler to read and debug, but cannot keep the similarity between states (or observations). For the future work we plan to experiment with more complex environments and therefore to switch to overlapping mappings.}
+\footnotetext{However, our current encoding scheme maps the different states or actions with non-overlapping bits, which keeps them easily distinguishable from each other even in a superposition. Whilst it's true, the current planning algorithm only requires a separation of the state bits from the action bits in a state-action pair SDR. This is done intentionally. Non-overlapping scheme makes things simpler to read and debug. The downside is it cannot keep the similarity between states (or observations). That's why for the future work, when we plan to experiment with more complex environments, transition to overlapping mapping seems inevitable.}
 
-In some specific circumstances the transition memory submodule can be used backward - as a reverse of an environment transition function $f$. This feature becomes available after getting the result to a prediction query and only for the states $s'_m$ that match the result $S' = \cup s'_m$. For each such state $s'$ it can provide which state-action pairs from the original query lead to $s'$: $\{(s, a)\} = f^{-1}(s')$. Notice that in general case it's possible that \textit{a multiple} state-action pairs lead to $s'$.
+Under certain conditions the transition memory submodule can be used backward - as an inverse of an environment transition function $f$. This feature becomes available after getting the result to a prediction query and only for the states $s'_m$ that match the result $S' = \cup s'_m$. For each such state $s'$ it can provide which state-action pairs from the original query lead to $s'$: $\{(s, a)\} = f^{-1}(s')$. Notice that in general case it's possible that \textit{a multiple} state-action pairs lead to $s'$.
 
 \subsection{Planning algorithm}
 
-Planning process is split into two stages (see function ~\ref{func_PlanActions}):
+The goal of planning is to find a plan of actions $p = [a_t, a_{t+1}, \dots, a_{t+h-1}]$ that leads to the desired state $s_g = s_{t+h}$ from the current state $s_t$. We restrict resulting plan to have no more than $H$ actions. Therefore, $H$ defines planning horizon of an agent.
 
-\begin{enumerate}
-  \item Forward planning from the current state until reward is reached.
-  \item Deducing the backward path from the reward state to the current.
-\end{enumerate}
-
-\begin{function}
-  \caption{PlanActions($s_0$)}\label{func_PlanActions}
-  \SetAlgoNoLine
-  $s_0$: initial state \;
-  $g: $ reached goal \;
-  $H: $ Temporal Memory active segments history \;
-  \quad \\
-
-  $g, H \leftarrow PredictToGoal(s_0)$ \;
-  $plan \leftarrow BacktrackFromGoal(g, s_0, H)$ \;
-
-  \Return{$[a_0, a_1, .. a_T] = plan$}
-\end{function}
+Planning process is split into two stages. It starts with forward planning from the current state $s_t$ until a rewarding goal state $s_g$ is reached. At this stage the planning algorithm operates with superpositions and cannot track the exact path to the goal state. Because of that we switch it to backtracking stage, during which the exact path from the reached goal state back to the starting state $s_t$ is deduced.
 
 \subsubsection{Forward planning}
 
-Agent uses its experience and expects the reward to be in one of the previous rewarding states. But even if it is wrong, we expect that direct goal-based exploration is more optimal than random walking. Hence it keeps the goal list and gives such goal states a priority.
+In our method an agent uses its experience and expects the reward to be in one of the rewarding goals states from previous episodes. But even if that's not true, we still expect that the direct goal-based exploration could be more optimal than pure random walking. Hence we set the agent to keep track of previous rewarding states using its goal tracking memory submodule. We give such goal states a priority.
 
-Consider that at some timestep $t_0$ the agent is in state $s_0$. To find out if there is a reachable goal state in a radius of $N$ actions, it start planning from the superposition $(S_0 = s_0, A = \cup a^i)$, where $A$ is a union of all available actions (we use superscripts for indices here as subscripts are used to denote timestep). It is similar to making all possible actions simultaneously in parallel. To achieve this planner uses the memory and gets a superposition of next state-action pairs.
+Consider that at some timestep $t_0$ an agent is in state $s_0$. To find out if there is a reachable goal state in a radius of $H$ actions, we start planning from the state-action superposition $(S_0 = s_0, A = \cup a^i)$ \footnotemark, where $A$ is a superposition of all available actions (see Alg.~\ref{alg_ForwardPlanning}). One step of the planning is just the transition memory submodule making a prediction. This gives us a superposition of the state-action pairs expected to go next. Predicting for a superposition $(S_0 = s_0, A = \cup a^i)$ is similar to making all possible actions from the state $s_0$ simultaneously in parallel and getting the result of all possible outcomes entangled together into a single superposition SDR vector. However, we still can split the resulting superposition into the pair of states superposition and actions superpositions, because it is just a concatenation of independent parts.
 
-After the first planning step the planner has a superposition of the next states $S_1 = \cup s^i$, reachable in one agent's action. To get all reachable states in two agent's action, planner makes another prediction step - now from the superposition $(S_1, A)$, and so on (see function ~\ref{func_PredictToGoal}).
+\footnotetext{We use superscripts for action indices here to avoid messing with subscripts denoting the timestep.}
 
-\begin{function}
-  \caption{PredictToGoal($s_0$)} \label{func_PredictToGoal}
+After the first planning step we have a superposition of the next states $S_1 = \cup s_1^i$, reachable in one agent's action. To get all reachable states in two agent's action, we repeat prediction step, now from the superposition $(S_1, A)$. Again, it's similar to making all possible actions from each of the next states in $S_1$.
+
+\begin{algorithm}
+  \caption{Forward Planning} \label{alg_ForwardPlanning}
   \SetNoFillComment
   \KwData{$s_0$ - initial state}
+  \quad \\
 
-  $sa_0 \leftarrow Encode((s_0, \cup a^i))$ \tcp*{Init starting superposition}
-  $H \leftarrow []$ \tcp*{Init active segments history}
+  $sa_0 \gets (s_0, A)$ \tcp{starting superposition}
+  $\Theta \gets []$ \tcp{active segments history}
 
-  \ForEach {timestep $i$} {
+  \For{$i \gets 0, \dots, H-1$} {
     $memory.ActivatePredict(sa_i)$ \;
+    $\Theta[i] \gets memory.active\_segments$ \;
     \quad \\
 
-    $H[i] \leftarrow memory.active\_segments$ \;
-    $sa_{i+1} \leftarrow PredictionFromSegments(H[i])$ \;
+    $(S_i, A_i) \gets PredictionFromSegments(\Theta[i])$\;
+    $sa_{i+1} \gets (S_i, A)$ \;
     \quad \\
-    
-    $s, a \leftarrow Decode(sa_{i+1})$ \tcp*{Both $s$ and $a$ are superpositions!}
-    $reached\_goal \leftarrow MatchGoals(s)$ \;
+
+    $reached\_goal \gets MatchGoals(S_i)$ \;
     \If(){$reached\_goal \neq \emptyset$} {
-      \Return {$reached\_goal, H$} \;
+      \Return {$reached\_goal, \Theta$} \;
     }{}
   }
   \Return{$\emptyset$}
-\end{function}
+\end{algorithm}
 
-This process is continued until either some state from the goal list is reached, or planner exceeds its planning horizon limit. In the former case planner proceeds to the next state of planning process. In the latter, agent uses its random strategy to make a move before it tries to plan again. To test if the goal state is in superposition we intersect their sparse vectors and sum active bits, which is the same as dot product of such vectors. If they match is over some predefined threshold, the state is considered presented in this superposition.
+This prediction process continues until either one of the tracked goal states is reached, or planning horizon limit is exceeded. In the former case the planning algorithm proceeds to the next stage. In the latter, we cancel it, and an agent has to use random strategy to make a move before it tries to plan again. To test if any of the tracked goal states is reached at $i$-th planning step, we calculate similarity between each of their SDR vectors and $i$-th superposition $S_i$. The goal state is considered presented in $S_i$ superposition, and therefore reached during the forward planning, if its similirity is over some predefined threshold.
 
-During this stage planner collects a history of active superpositions $H = [S_0, S_1, \dots S_T]$. In more details, he keeps the track of Temporal Memory cells' segments activations. Each segment is a pair $(p, \{c_i\})$, where $p$ - index of predicted cell and $\{c_i\}$ is a set of cell indices that induce prediction of $p$. This information allows planner to use inversed environment transition function to get which $\{(s, a)\}$ has lead to a state $s'$ by tracking which cells predict $s'$ cells.
+During this stage we also collect a history of active superpositions $\Theta = [S_0, S_1, \dots S_h]$. In more details, we keep the track of Temporal Memory cells' segments activations. Each segment is a pair $(p, \{c_i\})$, where $p$ - an index of the predicted cell and $\{c_i\}$ is a set of cell indices that induce prediction of $p$. This information allows us to provide the transition memory submodule with an inversed transition function $f^{-1}$ discussed in Sec.~\ref{sec_MemoryModule}. Thus, the transition memory submodule can answer which $\{(s, a)\}$ has lead to a state $s'$ by tracking which cells predicted $s'$ cells.
 
-It's possible to find multiple reachable goals at the end of this stage. In our current implementation we use the first matched from the goal list.
+It's possible to find multiple reachable goals at the end of this stage. In our current implementation we use the first matched from the set of tracked goals.
 
 \subsubsection{Backtracking}
 
-After the first stage planner ``believes'' that some goal state $g = s_T$ can be reached in $T$ steps. The problem is that he doesn't know how to get there as until now he worked with superpositions. So the main goal of this stage is to restore the sequence of actions leading from $s_0$ to $s_T$. Further on this sequence of action is meant to be the agent's plan in environment.
+After the first stage the planning algorithm ``believes'' that some goal state $g = s_h$ can be reached in $h$ steps. The problem is that it doesn't know how to get there because until now it worked with superpositions. Therefore, the main goal of this stage is to restore the sequence of actions leading from $s_0$ to $s_h$. Further on this sequence of action is meant to be the agent's plan in the environment.
 
-Planner solves the problem from the end. It moves backward in the history of segments activations graph, trying to get to the starting state $s_0$ at the first timestep. Due to its ``backward moving'' nature we call this stage \textit{backtracking} (see function ~\ref{func_BacktrackFromGoal}).
+We solve the problem from the end. We move backward in the history of segments activations graph, trying to get to the starting state $s_0$ at the first timestep. Due to its ``backward moving'' nature we call this stage \textit{backtracking}.
 
-\begin{function}
-  \caption{BacktrackFromGoal($g$, $H$)} \label{func_BacktrackFromGoal}
-  % \SetAlgoNoLine
-  \KwData{$g = s_T$ - goal state; $H$ - active segments history}
+Recall that we kept track of all state superpositions $\Theta = [S_0, S_1, \dots S_h]$ the planning algorithm has reached at each step. For any state $s'$ from each of these superpositions $S_i$ the transition memory submodule can answer which state-action pairs has lead to it. Therefore, given the reached goal state $g = s_h$ we can infer which state-action pair $(s_{h-1}, a_{h-1})$ has lead to it. Hence we know for $(h-1)$-th step which action is required to get from $s_{h-1}$ to the desired state $s_h$. And also we can recursively reduce the $s_0 \leadsto s_h$ pathfinding problem to the  $s_0 \leadsto s_{h-1}$. We can repeat this procedure and for each timestep $t$ sequentially find state-action pairs $(s_{t-1}, a_{t-1}) = f^{-1}(s_t)$ until we return to the initial state at the first timestep. See Alg.~\ref{alg_Backtracking} for a more detailed and formal description of the backtracking recursive algorithm.
 
-  $T \leftarrow |H| + 1$ \tcp*{As the last recorded transition is for $T-1 \rightarrow T$}
-  $S_T \leftarrow PredictionFromSegments(H[T-1])$ \tcp*{State superposition at $T$}
-  $s_T \leftarrow s_T \cap S_T$ \tcp*{Keeps only matched bits}
+In general case $f^{-1}(s_{t+1})$ gives multiple pairs $(s_t, a_t)$, and each leads to $s_{t+1}$. But not every pair is actually reachable in exactly $t$ steps from the $s_0$, which means that not from every pair you can backtrack to the initial state at time $0$. Hence we sequentially test each pair until we find the first successful.
+
+As the result of the backtracking stage the planning algorithm forms a plan of actions $p = [a_t, a_{t+1}, \dots a_{t+h}]$ which is ``believed'' to lead the agent from the current state $s_t$ to the target state $g = s_{t+h}$.
+
+\begin{algorithm}
+  \caption{Backtracking} \label{alg_Backtracking}
+  \KwData{$t$ - current timestep, $p_t$ - cells SDR that is required to be predicted at time $t$, $\Theta$ - a history of active segments}
   \quad \\
-  $is\_successful, actions \leftarrow Backtrack(s_T, T-1, H)$ \;
-  \Return {$is\_successful, actions$}
-\end{function}
-
-Recall that planner keeps track of all state superpositions $H = [S_0, S_1, \dots S_T]$ it has reached on each step $t$, and for any state $s'$ from each of these superpositions $S_i$ the memory can answer which state-action pairs has lead to it.
-
-Therefore, given the reached goal state $g = s_T$ planner can get which state-action pair $(s_{T-1}, a_{T-1})$ has lead to it. Hence he knows for $T-1$ step which action is required to get from $s_{T-1}$ to the goal state $s_T$. And also he can recursively reduce the $s_0 \leadsto s_T$ pathfinding problem to the  $s_0 \leadsto s_{T-1}$. Planner repeats this procedure and for each timestep $t$ sequentially finds state-action pairs $(s_{t-1}, a_{t-1}) = f^{-1}(s_t)$ until he returns to the initial state at the first timestep (see ~\ref{func_Backtrack} function).
-
-In general case $f^{-1}(s_{t+1})$ gives multiple pairs $(s_t, a_t)$, and each leads to $s_{t+1}$. But not every pair is actually reachable in exactly $t$ steps from the $s_0$, i.e. not from every pair you can backtrack to the initial state at time $0$. Hence planner sequentially tests each pair until he find the first successful.
-
-As the result of the backtracking stage planner forms a plan of actions $plan = [a_0, a_1, \dots a_{T-1}]$ which he ``believes'' [in terms of his approximation of the environment dynamics] will lead the agent from the initial state $s_0$ to the target state $g = s_T$.
-
-\begin{function}
-  \caption{Backtrack($p_t$, $t$, $H$)} \label{func_Backtrack}
-  \KwData{$p_t$ - indices of required predicted cells at time $t$, $t$ - current timestep, $H$ - history of active segments}
   
   \If(){$t \leq 0$} {
     \Return{True, $[]$}
   }{}
 
-  $P \leftarrow H[t][p_t]$ \tcp*{List of cell sets, each predicts one of $p_t$ cells}
-  $C \leftarrow P$ \tcp*{Initializes cell clusters - candidates for backtracking}
+  \tcp{Inits candidates for backtracking with the list of cell SDRs, each predicting one of $p_t$ cells}
+  $C \gets \Theta[t][p_t]$ \;
   \quad \\
 
-  \tcp{Iteratively merges any two sufficiently matching cell clusters}
-  \While{$\exists c_i, c_j \in C: match(c_i, c_j) \geq \Theta$} {
+  \tcp{Iteratively unites any two sufficiently similar cell SDRs}
+  \While{$\exists c_i, c_j \in C: match(c_i, c_j) \geq \Omega_1$} {
     $C[c_i] = c_i \cup c_j$ \;
     $C[c_j].remove()$ \;
   }
   \quad \\
 
   \ForEach{$c \in C$}{
-    \tcp{Filters by the amount of $p_t$ cells cluster $c$ predicts}
-    $p = PredictionFromCluster(c, H[t])$ \;
-    \If(){$match(p, p_t) \le \Omega$}{
+    \tcp{Filters by the amount of $p_t$ cells that $c$ predicts}
+    $p = PredictionFromSegment(c, \Theta[t])$ \;
+    \If(){$match(p, p_t) \le \Omega_2$}{
       \textbf{continue}
     }{}
     \quad \\
     
-    \tcp{Recursively checks candidate cluster $c$}
-    $s_t, a_t \leftarrow Decode(ColumnsFromCells(c))$ \;
+    \tcp{Recursively checks candidate $c$}
+    $s_t, a_t \leftarrow ColumnsFromCells(c)$ \;
     
-    $is\_successful, actions \leftarrow Backtrack(s_t, t-1, H)$ \;
+    $is\_successful, plan \leftarrow Backtrack(s_t, t-1, \Theta)$ \;
     \If() {is\_successful} {
-      $actions.append(a_t)$ \;
-      \Return{True, actions}
+      $plan.append(Decode(a_t))$ \;
+      \Return{True, plan}
     }
   }
 
   \Return{False, $[]$}
-\end{function}
+\end{algorithm}
 
-After successful backtracking the planner has a policy for the next $T$ steps, which an agent uses. And if it ends up in a rewarding state, an episode finishes. Otherwise it continues and the planner removes that state from its goal list for the rest of the episode.
+After successful backtracking the planning algorithm returns a policy for the next $h$ steps, which an agent uses. If the agent ends up in a rewarding state, an episode finishes. Otherwise it continues and the goal tracking memory submodule removes that goal state from the tracking set for the rest of the episode.
 
-\section{Experiments}
+\section{\uppercase{Experiments}}
 
 In our experiments we decided to use classic GridWorld environments, which are represented as mazes on a square grid (see Figure ~\ref{fig_maze_examples}). Each state can be defined with the position of an agent, i.e. in which cell it stands. Thus, state space $\St$ consists of all possible agent's positions. We enumerate all positions (and therefore states) with integer numbers. An agent starts from the fixed state $s_0$, and its goal is to find a single reward placed at some fixed position $s_g$. Each environments has deterministic transition function $P: \St \times \A \rightarrow \St$. The action space consists of 4 actions $\A = \{ 0, 1, 2, 3 \}$ defining agent's move directions: 0 - east, 1 - north, 2 - west, 3 - south. Each action moves an agent to the adjacent grid cell in the corresponding direction, except when the agent tries to move into the maze wall - in this case it stays in the current cell.
 
@@ -342,24 +336,21 @@ From this set of experiments we conclude that in average our agent adapts to cha
 
 In contradiction to our results for the experiments in the fixed handcrafted environments we found that the increase of the number of the tracked goals makes our method to perform worse.
 
-\section{Conclusion}
+\section{\uppercase{Conclusions}}
 
 We introduced a novel memory-based method that combines learning the model of the environment with the planning algorithm to infer a local policy. We showed that under certain conditions (enough planning horizon) the resulting global policy is optimal or at least very close to it. We also showed that in such cases, compared to DQN, our method learns with the comparable speed or slightly faster. The planning algorithm with any non-zero planning horizon performs better than random strategy. However, for small planning horizons and hard tasks results are sufficiently degraded and not that far from the pure random strategy.
 
 To model the environment dynamics we used human-like model of the memory called HTM. We showed that it's capable to quickly and reliably learn the transition model of the visited states in just a few episodes. As far as we know it is the first time HTM model was used for the model-based RL method. So, even though we applied it to model very simple deterministic environments with perfectly distinguishable states the results are promising, and we look forward to adapt our method to more complex environments.
 
-\bibliography{citations}
+{\small\bibliography{citations}}
 
-\appendix
+\section*{\uppercase{Appendix}}
 
-\section{Appendix}
 \subsection{Handcrafted mazes} \label{apx_handcrafted_mazes}
 
 The notation we use in the schematic views of the environments: \verb|-| - empty cell, \verb|#| - wall, \verb|@| - agent, \verb|X| - reward.
 
-\subsubsection{multi\_way\_v0}
-
-Each experiment had 4 different rewarding places being sequentially changed every 100 episodes:
+\texttt{multi\_way\_v0}. Each experiment had 4 different rewarding places being sequentially changed every 100 episodes:
 
 \begin{verbatim}
   #####   #####   #####   #####
@@ -369,20 +360,28 @@ Each experiment had 4 different rewarding places being sequentially changed ever
   #####   #####   #####   #####
 \end{verbatim}
 
-\subsubsection{multi\_way\_v2}
-
-Each experiment had 6 rewarding places being changed every 200 episodes:
+\texttt{multi\_way\_v2}. Each experiment had 6 rewarding places being changed every 200 episodes:
 
 \begin{verbatim}
-  #########  #########  #########  #########  #########  #########
-  #---#####  #-X-#####  #---#####  #---#####  #---#####  #---#####
-  #-#-#####  #-#-#####  #-#-#####  #-#-#####  #-#-#####  #-#-#####
-  #--@---##  #--@---##  #--@--X##  #--@---##  #X-@---##  #--@---##
-  ###--####  ###--####  ###--####  ###--####  ###--####  ###--####
-  ###-#--X#  ###-#---#  ###-#---#  ###-#---#  ###-#---#  ###-#--X#
-  ###---###  ###---###  ###---###  ###---###  ###---###  ###---###
-  ###-#####  ###-#####  ###-#####  ###X#####  ###-#####  ###-#####
-  #########  #########  #########  #########  #########  #########
+  #########  #########  #########
+  #---#####  #-X-#####  #---#####
+  #-#-#####  #-#-#####  #-#-#####
+  #--@---##  #--@---##  #--@--X##
+  ###--####  ###--####  ###--####
+  ###-#--X#  ###-#---#  ###-#---#
+  ###---###  ###---###  ###---###
+  ###-#####  ###-#####  ###-#####
+  #########  #########  #########
+
+  #########  #########  #########
+  #---#####  #---#####  #---#####
+  #-#-#####  #-#-#####  #-#-#####
+  #--@---##  #X-@---##  #--@---##
+  ###--####  ###--####  ###--####
+  ###-#---#  ###-#---#  ###-#--X#
+  ###---###  ###---###  ###---###
+  ###X#####  ###-#####  ###-#####
+  #########  #########  #########
 \end{verbatim}
 
 \end{document}
