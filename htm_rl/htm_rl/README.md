@@ -26,7 +26,11 @@
     - [Step 3: Re-check](#step-3-re-check)
   - [Configuration based building](#configuration-based-building)
     - [YAML custom tags](#yaml-custom-tags)
+    - [YAML aliases - DRY](#yaml-aliases---dry)
+    - [YAML merging - DRY #2](#yaml-merging---dry-2)
   - [Run arguments](#run-arguments)
+    - [Run examples](#run-examples)
+  - [Entities](#entities)
   - [Parameters](#parameters)
     - [Currently in use](#currently-in-use)
     - [Adviced by Numenta community](#adviced-by-numenta-community)
@@ -863,21 +867,21 @@ What is saved during this phase
 
 This section describes configs syntax, rules and how to use it.
 
-We use [YAML 1.2](https://yaml.org/spec/1.2/spec.html) format to represent configs and work with them with [ruamel.yaml](https://yaml.readthedocs.io/en/latest/overview.html) python package.
+We use [YAML 1.2](https://yaml.org/spec/1.2/spec.html) format to represent configs and parse them with [ruamel.yaml](https://yaml.readthedocs.io/en/latest/overview.html) python package.
 
-If you're new to the YAML, check out [design section](https://en.wikipedia.org/wiki/YAML#Design) on Wikipedia - it provides basics of the format in a very short form and covers required minimum to understand the rest of the topic.
+If you're new to YAML, check out [design section](https://en.wikipedia.org/wiki/YAML#Design) on Wikipedia - it provides required basics of the format in a very short form.
 
 ___
 _Here's a little side note covering all information sources:_
 
 For more details on YAML format we encourage you to use [1.2 standard specification](https://yaml.org/spec/1.2/spec.html).
 
-`ruamel.yaml` itself has a very shallow [documentation](https://yaml.readthedocs.io/en/latest/overview.html) which is not of a much use. But, since it's a fork of PyYAML package, you can use PyYAML's [docs](https://pyyaml.org/wiki/PyYAMLDocumentation) as well - both packages have just slightly different API and internals.
+`ruamel.yaml` itself has a very shallow [documentation](https://yaml.readthedocs.io/en/latest/overview.html) which is not of a much use. But, since it's a fork of PyYAML package, PyYAML's [docs](https://pyyaml.org/wiki/PyYAMLDocumentation) are mostly applicable as well. Both packages have slightly different API and internals.
 
 There're also some useful answers on Stackoverflow from the author of `ruamel.yaml` (mostly in questions on PyYAML). And the last bastion of truth is, of course, `ruamel.yaml` code sources.
 ___
 
-The most important features we use are:
+The most important non-obvious features we use are:
 
 - custom tags
 - aliases
@@ -885,116 +889,238 @@ The most important features we use are:
 
 ### YAML custom tags
 
-Custom tags are used for a value postprocessing. Consider following example:
+Custom tags are used for value postprocessing. Consider following example:
 
 ```yaml
 actor:
-  first_name: Nicholas
+  first_name: Picolas
   last_name: Cage
 ```
 
-Parsing this YAML will result in an `actor` being a dictionary.
-
-In some cases we would like to represent `actor` as an object of a custom class or just to do some modification. For example we could have a `Person` class and a factory function, which can be registered as the callback for a particular custom tag:
+Parsing this YAML will result in an `actor` being a dictionary `{first_name: "Picolas", last_name: "Cage"}`:
 
 ```python
-class Person:
-  name: str
+from ruamel.yaml import YAML
 
+text = """
+actor:
+  first_name: Picolas
+  last_name: Cage
+"""
+
+yaml = YAML()
+data = yaml.load(text)
+actor = data['actor']
+assert isinstance(actor, dict) and actor['first_name'] == 'Picolas'
+```
+
+What if we wanted both `first_name` and `last_name` to be lower case? Or what if we wanted an `actor` to be represented as an object (e.g. of custom class `Person` or just a plain string `'Picolas Cage'`)? That's exactly what custom tags allow you to do.
+
+In order to use custom tag you should tell a parser both a tag and a callback function.
+
+```python
+from ruamel.yaml import YAML, BaseLoader
+
+text = """
+actor: !my_awesome_tag
+  first_name: Picolas
+  last_name: Cage
+"""
+
+tag = '!my_awesome_tag'
+def awesome_callback(loader: ruamel.yaml.BaseLoader, node):
+  actor_dict = loader.construct_mapping(node)
+  fname = actor_dict['first_name']
+  lname = actor_dict['last_name']
+  return f'{fname} {lname}'
+
+yaml = YAML()
+yaml.constructor.add_constructor(tag, awesome_callback)   # tag registration
+
+data = yaml.load(text)
+assert data['actor'] == 'Picolas Cage'
+```
+
+Callback function should have specific interface as in the example above. `loader` has construction methods for all supported basic classes ('_mapping', '_sequence', '_scalar' and etc.). Custom tag should start with `!`; tags starting with `!!` are reserved and provided by the standard.
+
+Building a custom class object out of the dictionary node is a popular case. Note that most of the time you don't need a complex factory method. Often you just want to pass a node dictionary as kwargs to an object `__init__` method:
+
+```python
+from ruamel.yaml import YAML, BaseLoader
+
+class Person:
   def __init__(self, first_name, last_name):
     self.name = f'{first_name} {last_name}'
 
-def create_person(loader: BaseLoader, node)
+tag = '!create_person`
+def create_person(loader: BaseLoader, node):
   kwargs = loader.construct_mapping(node)
   return Person(**kwargs)
 
-yaml = Yaml()
-yaml.add_constructor(f'!create_person', create_person)
-```
-
-Each node marked by `!create_person` tag will be processed with the registered callback function during parsing and the result will be used as the value of the node:
-
-```yaml
-# After parsing `actor` will be an object of type `Person`
+yaml = YAML()
+yaml.constructor.add_constructor(tag, create_person)
+actor = yaml.load("""
 actor: !create_person
-  first_name: Nicholas
+  first_name: Picolas
   last_name: Cage
+""")
+assert isinstance(actor, Person) and actor.name == 'Picolas Cage'
 ```
 
-This particular case is a popular one - when you have a factory function callback, which just extracts a dictionary from the node and directly propagates it to the object constructor in order to initialize it. That's why there's a special way to register custom tag in `ruamel.yaml` - by registering a class. Instead of defining and registering `create_person` function we could just do that:
+By convention all tags are registered in `config.py` file with two methods:
 
-```python
-yaml.register_class(Person)
-```
+- `register_static_methods_as_tags(cls, yaml)` - registers each static function `xyz` of the provided class as a callback to a tag `!xyz`
+  - note all lower case symbols in tag name as function names conventionally lower cased
+  - there's only one class with such callbacks - `TagProxies`
+- `register_classes(yaml)` - registers specified list of classes. For each class `Xyz` it registers a tag `!Xyz`.
+  - note upper case first letter in a tag as in class names conventionally camel cased
+  - so, you can deduce the type of a tag directly from its name
 
+So, if you don't know a tag a) look its definition if it has explicit callback or b) look corresponding class constructor.
 
-You can register callback function to a tag, and it will be called
+### YAML aliases - DRY
 
-
-The most frequent usage is to create an object of a custom class from a value. For this particular case
+Let's consider following example: you have to specify the same value multiple times in your config. DRY principle encourage you to specify this value only once and then reference to it any time further. That's what YAML aliases support means and allows you to do. Aliases are defined with `&` sign. To reference defined alias use `*` sign:
 
 ```yaml
-simple_map:
-  key1: value1
-  key2: value2
-
-# using custom tag !Person to build a Person object
-actor: !Person
-  first_name: Nicholas
+random_seed: &seed 42   # alias named "seed" to the value 42 stored in "random_seed"
+actor: &cage            # alias named "cage" to the dict stored in "actor"
+  first_name: Picolas
   last_name: Cage
+
+random_movie:
+  main_actor: *cage     # reference to the dict stored in "actor"
+  rnd_name_seed: *seed  # value 42
 ```
 
-
-One of the most extensively used features is _custom tags_ (see PyYAML docs). We use it mostly to construct objects. For example, here is `!RandomSeedSetter` custom tag is used to construct `RandomSeedSetter` object and assign it to the key `random_seed_setter`:
+This feature provides you more centralized way to manage parameters. Alias is implemented as a copy-by-reference to the origin, i.e. everyone references to the same origin object. You can also use tags to build custom class objects and reference to them further in the document:
 
 ```yaml
-random_seed_setter: !RandomSeedSetter
-  seed: 1337
+actor: !Person &cage    # alias to the Person object stored in "actor"
+  first_name: Picolas
+  last_name: Cage
+
+another_actor: !Person &ben
+  first_name: Benedict
+  last_name: Cucumberbatch
+  meme_sibling: *cage   # reference to the Person object stored in "actor"
 ```
 
-As
+### YAML merging - DRY #2
 
-Parser provides you a way to register custom tag with the dedicated callback behavior. In our project custom tags are used in two ways:
+This's useful for the following scenario - there're multiple nodes sharing the same subset of attributes. On solution is to make an alias to the subset and then _append_ or _extract_ it to each node. That's what merging feature allows you to do:
 
-- as a direct object constructor
-  - you only register a class
-  - custom tag with the class name will be implicitly registered
-  - implicit callback will contruct new object, call corresponding `__init__(**kwargs)` and return constructed object
-  - in example above applying custom tag is semantically equal to:
-  
-    ```yaml
-    random_seed_setter: RandomSeedSetter(seed=1337)
-    ```
+```yaml
+.base_attrs: &base
+  x: ...
+  y: ...
 
-- as an indirect object constructor
-  - you register both a custom tag and a callback function
-  - your callback will be 
+object_one:
+  <<: *base   # "base" node is extracted, i.e. "x" and "y" will be appended to this node
+  z: ...
 
-___
+object_two:
+  <<: *base
+  w: ...
+  u: ...
+```
 
-- standard yaml tags
-- custom tags
-  - building through constructors and factory methods
-  - naming conventions
-  - how to register class tag
-  - how to register factory method
-- DRY
-  - aliases
-  - merging feature from 1.1 standard
-    - how it works
-  - how to use them
-- ruamel patches
-  - use cases with undesired default behavior
-  - how they had been patched
-- examples
+Note that this feature works only with dictionaries.
+Another popular use case - to create the same distinct objects:
+
+```yaml
+.obj_x: &obj_x
+  a: 1
+
+obj_y:
+  obj_x: !X
+    <<: *obj_x    # extract init params and then create distinct object by custom class tag (line above)
+
+obj_z:
+  obj_x: !X
+    <<: *obj_x
+```
+
+In the example above `obj_y` and `obj_z` will have different `obj_x` objects, although they will be initialized the same.
+
+You may noticed here (or in repo configs) unusual node names starting with dot. We use following _root node_ naming convention:
+
+- `xyz` - for scalars and objects that you will use at runtime in your code. That's the endpoints of the configuration process.
+- `.xyz` - for auxilary dictionaries with initialization parameters used at parsing and object construction.
+
+**NB**: too long, hard to read configs is a code smell, i.e. a good cue that underlying architecture needs refactoring.
 
 ## Run arguments
 
-TBD:
+- `-c`, `--config` - path to the config file; e.g. `-c ./experiments/gridworld_transfer/gridworld_5x5.yml`
+  - the only **required** argument
 
-- the set of arguments
-- their relation
-- examples
+There're 3 working modes:
+
+- `-r`, `--run` - run experiments flag
+  - fallback (=default) mode if none is specified
+  - sequentially runs experiments for each agent runner specified in `agent_runners` dict in the config
+  - if you want to run experiments only for a subset of agents, additionally use `-a`, `--agent` to specify their names; e.g. `-r -a htm_0 dqn_greedy htm_2_1g`
+  - experiment results are saved to the folder with the config file
+- `-d`, `--dry` - dry (=fake) run experiments glag
+  - the real purpose is to generate environment mazes and save their map images without running experiments in these envs
+  - hence this flag makes sence only for experiments with randomly generated environments (checked by the presence of `transfer_learning_experiment_runner` in config)
+  - you can restrict the number of images to generate, e.g. `-d 5`
+  - exclusive with `-r`
+  - environment map images are saved to the folder with the config file
+- `-g`, `--aggregate` - aggregate results flag
+  - plots performance charts using all available experiment results related to the config
+  - you can specify which results to use, e.g. `-g htm_0 "dqn_*" "htm_*_1g" htm_2_4g` - yes, you can use masks here
+  - you can further specify the name prefix of the plots to make distinguishable aggregations, e.g. `-n 1g_vs_all`; by default no prefix is used
+  - you can also turn off showing the plots with `-s`, `--silent` flag
+
+### Run examples
+
+```bash
+# saves images of the first 10 different environment setups to the config folder
+python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -d 10
+
+# runs experiment for 3 agents and then generate report for them named `dqn_vs_htm`
+python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -ra htm_0 dqn htm_4_1g -g -n dqn_vs_htm
+
+# runs experiment for additional 2 agents
+python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -ra htm_2_1g htm_8_1g
+
+# silently aggregates results for htm_*_1g, i.e. saves plots without showing them
+python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -g htm_0 "htm_*_1g" -n 1g -s
+```
+
+## Entities
+
+There're two agents: DQN and HTM. DQN agent is in `./baselines` folder, it's implemented in pytorch. HTM agent is in `./agent` and has more compound structure.
+
+HTM agent consists of:
+
+- memory
+  - high level wrapper over TM
+  - SA SDR Encoder/Decoder
+- planner
+  - uses memory
+  - implements planning logic
+  - has goals memory (naive circular queue of goal states)
+
+**NB** Threre're legacy counterparts for HTM agent and its parts due to recent move from SAR encoding to SA. The difference is mostly with what SDR they work. Legacy implementation will be removed soon and is kept now only for testing and comparison. Agent also has tricky _cooldown_ logic - it's still present although not used. Just ignore it, it will be removed soon too.
+
+There're two implementations of MDP:
+
+- general `Mdp`
+  - works with MDP transition graph, hence you can make non-gridworld MDPs too
+  - useful at early stages - when you need very small custom test envs for particular cases
+  - MDPs are mostly handcrafted
+  - accompanied with `PresetMdpCellTransitions` helper class with preset MDPs and simple passage generator
+- more specialized `GridworldMdp`
+  - works with gridworld map - 2d array representing empty cells and walls on a square grid.
+  - useful later to scale experiments, to validate on random env or to test transferability
+  - accompanied with `GridworldMapGenerator` helper class to generate mazes with custom density (empty cells to walls ratio)
+
+Each agent has its own runner: `AgentRunner` for HTM and `DqnAgentRunner` for DQN. They do the same and even implement the same interface. The core functionality is to run episode and collect its result. It also has functionality to run multiple episodes as an experiment and store all collected results. Agent runners were made with the static environment params in mind.
+
+Later on `TransferLearningExperimentRunner` and `TransferLearningExperimentRunner2` appeared as a hack to run experiments containing different initial and terminal states and even environment itself. `TransferLearningExperimentRunner` was made first as an extension to run experiment with a sequence of terminal states but still on a fixed preset MDP. `TransferLearningExperimentRunner2` has more freedom over experiment params. This whole running experiment part is in quite bad state right now.
 
 ## Parameters
 

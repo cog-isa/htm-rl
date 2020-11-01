@@ -109,26 +109,6 @@ class TestRunner:
             run_results_processor.aggregate_results(aggregate_file_masks, report_name_suffix, silent_run)
 
 
-class PatchedSafeConstructor(SafeConstructor):
-    def construct_yaml_object_with_init(self, node, cls):
-        kwargs = self.construct_mapping(node, deep=True)
-        return cls(**kwargs)
-
-
-class PatchedYaml(YAML):
-    def __init__(self):
-        super(PatchedYaml, self).__init__(typ='safe')
-        self.Constructor = PatchedSafeConstructor
-
-    def register_class_for_initialization(self, cls):
-        tag = f'!{cls.__name__}'
-
-        def from_yaml(constructor: PatchedSafeConstructor, node):
-            return constructor.construct_yaml_object_with_init(node, cls)
-
-        self.constructor.add_constructor(tag, from_yaml)
-
-
 class TagProxies:
     @staticmethod
     def passage_transitions(loader: BaseLoader, node):
@@ -173,7 +153,7 @@ class TagProxies:
 
 
 def read_config(file_path: Path, verbose=False):
-    yaml: PatchedYaml = PatchedYaml()
+    yaml: YAML = YAML(typ='safe')
     register_static_methods_as_tags(TagProxies, yaml)
     register_classes(yaml)
     config = yaml.load(file_path)
@@ -182,7 +162,7 @@ def read_config(file_path: Path, verbose=False):
     return config
 
 
-def register_classes(yaml: PatchedYaml):
+def register_classes(yaml: YAML):
     classes = [
         RandomSeedSetter,
         DqnAgent, DqnAgentRunner,
@@ -195,12 +175,24 @@ def register_classes(yaml: PatchedYaml):
         TransferLearningExperimentRunner2,
         RunResultsProcessor,
     ]
+
+    constructor: SafeConstructor = yaml.constructor
+    constructor.deep_construct = True
+
+    def create_class_factory(cls):
+        def construct_and_init_object(loader: BaseLoader, node):
+            kwargs = loader.construct_mapping(node, deep=True)
+            return cls(**kwargs)
+
+        return construct_and_init_object
+
     for cls in classes:
-        yaml.register_class_for_initialization(cls)
+        tag = f'!{cls.__name__}'
+        constructor.add_constructor(tag, create_class_factory(cls))
 
 
-def register_static_methods_as_tags(cls, yaml: PatchedYaml):
-    constructor: PatchedSafeConstructor = yaml.constructor
+def register_static_methods_as_tags(cls, yaml: YAML):
+    constructor: SafeConstructor = yaml.constructor
     constructor.deep_construct = True
 
     all_funcs = [
@@ -214,3 +206,6 @@ def register_static_methods_as_tags(cls, yaml: PatchedYaml):
     ]
     for tag, func in funcs:
         constructor.add_constructor(f'!{tag}', func)
+
+
+

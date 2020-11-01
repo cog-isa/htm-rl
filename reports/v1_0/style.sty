@@ -1,0 +1,71 @@
+% \usepackage[T1]{fontenc}
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}   % allows UTF symbols
+\usepackage[english, russian]{babel}    % the last one becomes main language 
+
+\usepackage{hyphenat}
+\usepackage[parfill]{parskip}
+\usepackage[hmargin=0.8in, vmargin=0.8in]{geometry}
+
+% hrefs
+\usepackage[unicode]{hyperref}
+\hypersetup{
+    colorlinks=true,
+    allcolors=blue
+}
+
+% математика
+\usepackage{mathtools}         % ?!?
+\usepackage{amsmath,amsfonts,amssymb,amsthm}  % math equations, theorems, symbols
+
+% algos
+\usepackage[ruled,vlined]{algorithm2e}
+\DontPrintSemicolon
+\SetKwRepeat{Do}{do}{until}
+
+\usepackage{graphicx}      % Required for including pictures
+\usepackage{tikz}          % Required for including pictures
+
+% Specifies the directory where pictures are stored
+% \graphicspath{{figures/}{anims/}}
+\usepackage{svg}
+\usepackage{subcaption}
+\usepackage{media9}        % animations
+
+\usepackage{framed}
+
+
+%----------------------------------------------------------------------------------------
+%	DESIGN...
+%----------------------------------------------------------------------------------------
+
+% переопределение понятия выделения через \emph
+% \let\emph\relax
+\newcommand{\umpl}[1]{\textbf{\underline{#1}}}
+
+%----------------------------------------------------------------------------------------
+%	MATH
+%----------------------------------------------------------------------------------------
+\def\cdfeq{\mathrel{\stackrel{\rm c.d.f.}=}}
+\def\cdfcoloneqq{\mathrel{\stackrel{\rm c.d.f.}\coloneqq}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Traj}{\mathcal{T}}
+\newcommand{\Trans}{\mathbb{T}}
+\newcommand{\A}{\mathcal{A}}
+\newcommand{\St}{\mathcal{S}}
+\newcommand{\Proba}{\mathcal{P}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\const}{\operatorname{const}}
+\newcommand{\Loss}{\operatorname{Loss}}
+\newcommand{\done}{\operatorname{done}}
+\newcommand{\old}{\operatorname{old}}
+\newcommand{\new}{\operatorname{new}}
+\newcommand{\argmax}{\mathop{argmax}}
+\newcommand{\argmin}{\mathop{argmin}}
+\newcommand{\softmax}{\mathop{softmax}}
+\newcommand{\KL}{\operatorname{KL}}
+\newcommand{\Uniform}{\operatorname{Uniform}}
+\newcommand{\expert}{\operatorname{expert}}
+\newcommand{\extr}{\operatorname{extr}}
+\newcommand{\intr}{\operatorname{intr}}
