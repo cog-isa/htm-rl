@@ -19,6 +19,7 @@ def main():
     parser.add_argument('-n', '--name', dest='report_name', default='')
     parser.add_argument('-d', '--dry', dest='dry', default=None, type=int)
     parser.add_argument('-s', '--silent', dest='silent', action='store_true', default=False)
+    parser.add_argument('-p', '--paper', dest='paper', action='store_true', default=False)
     args = parser.parse_args()
 
     config_path = Path(args.config)
@@ -27,6 +28,7 @@ def main():
     config['test_dir'] = test_dir
 
     config['silent'] = args.silent
+    config['paper'] = args.paper
 
     dry_run = args.dry is not None
     config['dry_run'] = dry_run

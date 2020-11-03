@@ -106,7 +106,10 @@ class TestRunner:
 
         if aggregate:
             aggregate_file_masks = self.config['aggregate_masks']
-            run_results_processor.aggregate_results(aggregate_file_masks, report_name_suffix, silent_run)
+            for_paper = self.config['paper']
+            run_results_processor.aggregate_results(
+                aggregate_file_masks, report_name_suffix, silent_run, for_paper
+            )
 
 
 class TagProxies:
