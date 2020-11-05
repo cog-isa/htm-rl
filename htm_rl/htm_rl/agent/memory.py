@@ -12,6 +12,8 @@ from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import trace
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
+from watcher.writer import Writer
+
 
 class Memory:
     tm: TemporalMemory
@@ -24,7 +26,8 @@ class Memory:
             sdr_formatter: Callable[[SparseSdr], str],
             sa_superposition_formatter: Callable[[SaSuperposition], str],
             collect_anomalies: bool = False,
-            start_indicator: Sa = None
+            start_indicator: Sa = None,
+            output_file: str = None
     ):
         self.start_indicator = start_indicator
         self.tm = tm
@@ -33,6 +36,12 @@ class Memory:
         self.format_sa_superposition = sa_superposition_formatter
         self.anomalies = [] if collect_anomalies else None
         self._proximal_input_sdr = SDR(self.tm.n_columns)
+
+        self.output_file = output_file
+        if self.output_file is not None:
+            self.writer = Writer(self.tm)
+        else:
+            self.writer = None
 
     def reset(self):
         self.tm.reset()
@@ -203,6 +212,13 @@ class Memory:
             sa_superposition = self.encoder.decode(proximal_input)
             trace(verbosity, req_level, self.format_sa_superposition(sa_superposition))
 
+    def print_tm_state(self, verbosity: int, req_level: int,  label: str):
+        if (self.output_file is None) or (verbosity < req_level):
+            return
+
+        self.writer.write(label)
+        self.writer.save(self.output_file)
+
     def save_tm_state(self):
         """Saves TM state."""
         return pickle.dumps(self.tm)
@@ -210,3 +226,5 @@ class Memory:
     def restore_tm_state(self, tm_dump):
         """Restores saved TM state."""
         self.tm = pickle.loads(tm_dump)
+
+
