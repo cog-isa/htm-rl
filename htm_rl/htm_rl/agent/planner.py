@@ -66,10 +66,12 @@ class Planner:
         reached_goals = []
         active_segments_timeline = []
 
-        for _ in range(self.planning_horizon):
+        for i in range(self.planning_horizon):
             active_cells, depolarized_cells = self.memory.process(
                 proximal_input, learn=False, verbosity=verbosity
             )
+
+            self.memory.print_tm_state(verbosity, 1, f'forward planning step: {i}')
 
             active_segments_t = self.memory.active_segments(active_cells)
             active_segments_timeline.append(active_segments_t)
