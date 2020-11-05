@@ -114,13 +114,22 @@ Auxialiary tasks, usability improvements and so on
   - mention git commit messages common styles (active, present or past)
 - Artem
   - finish Watcher: color-blind mode, shapes, centering
+  - intrinsic motivation. Формирование механизмов внутренней мотивации
 - Eugene
   - encoder params, TM experiment with winner cells
+  - results:
+    - become more resilient on one number for state
+    - if the state is split into two numbers for states - becomes less resilient
+    - pomdp with 1 number - is bad, because the context is lost
+    - planned detailed investigation, why it doesn't work
+    - PROBLEM: how to fix TM to mix contexts better? we need example!
+    - for future: biological goal-oriented RL. Алгоритмы целенаправленного поведения с использованием механизмов временной памяти
 - Petr
   - anounce Watcher to numenta forum
   - 16:00 Mon - check up call on paper and report
   - Congress - check out Schumskiy, Anohin, Vidyaev, Long-Term memory (2nd talk)
   - LOCEN - check and distribute lab works to read and present to each other
+  - my specialization: rewarding scheme and reinforcement
 
 ## 2020.10.19 Mon
 
