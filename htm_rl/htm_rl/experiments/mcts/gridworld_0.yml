@@ -91,19 +91,17 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   planning_horizon:
   goal_memory_size: 1
 
-.base_htm_planner_4g: &base_htm_planner_4g
-  memory:
-  planning_horizon:
-  goal_memory_size: 4
-
-.base_htm_planner_8g: &base_htm_planner_8g
-  memory:
-  planning_horizon:
-  goal_memory_size: 8
-
 .base_htm_agent_runner: &base_htm_runner
   <<: *base_runner
   pretrain: 0
+
+
+.base_mcts_actor_critic: &base_mcts_actor_critic
+  cells_sdr_size: 128
+  update_cell_ratio: .4
+  discount_factor: .95
+  seed: *seed
+  online: True
 
 agent_runners:
   dqn: !DqnAgentRunner
@@ -127,12 +125,6 @@ agent_runners:
         <<: *base_htm_planner_1g
         memory: *tm0
         planning_horizon: 0
-      mcts_actor_critic: !MctsActorCritic
-        cells_sdr_size: 128
-        update_cell_ratio: .4
-        discount_factor: .95
-        seed: *seed
-        online: True
 
   htm_1_1g: !AgentRunner
     <<: *base_htm_runner
@@ -182,50 +174,16 @@ agent_runners:
         memory: *tm8_1g
         planning_horizon: 8
 
-  htm_1_4g: !AgentRunner
+  mcts: !MctsAgentRunner
     <<: *base_htm_runner
-    agent: !Agent
+    agent: !MctsAgent
       <<: *base_htm_agent
-      memory: !Memory &tm1_4g
+      memory: !Memory &tm_mcts
         <<: *base_agent_memory
         tm: !TemporalMemory {<<: *base_tm}
-      planner: !Planner
-        <<: *base_htm_planner_4g
-        memory: *tm1_4g
+      planner: !MctsPlanner
+        <<: *base_htm_planner_1g
+        memory: *tm_mcts
         planning_horizon: 1
-
-  htm_2_4g: !AgentRunner
-    <<: *base_htm_runner
-    agent: !Agent
-      <<: *base_htm_agent
-      memory: !Memory &tm2_4g
-        <<: *base_agent_memory
-        tm: !TemporalMemory {<<: *base_tm}
-      planner: !Planner
-        <<: *base_htm_planner_4g
-        memory: *tm2_4g
-        planning_horizon: 2
-
-  htm_4_4g: !AgentRunner
-    <<: *base_htm_runner
-    agent: !Agent
-      <<: *base_htm_agent
-      memory: !Memory &tm4_4g
-        <<: *base_agent_memory
-        tm: !TemporalMemory {<<: *base_tm}
-      planner: !Planner
-        <<: *base_htm_planner_4g
-        memory: *tm4_4g
-        planning_horizon: 4
-
-  htm_4_8g: !AgentRunner
-    <<: *base_htm_runner
-    agent: !Agent
-      <<: *base_htm_agent
-      memory: !Memory &tm4_8g
-        <<: *base_agent_memory
-        tm: !TemporalMemory {<<: *base_tm}
-      planner: !Planner
-        <<: *base_htm_planner_8g
-        memory: *tm4_8g
-        planning_horizon: 4
+      mcts_actor_critic: !MctsActorCritic
+        <<: *base_mcts_actor_critic

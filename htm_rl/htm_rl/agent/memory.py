@@ -116,8 +116,12 @@ class Memory:
         cpc = self.tm.cells_per_column
         left, right = columns_range
         # to cells range
-        left, right = left * cpc, right * cpc
-        return [cell for cell in cells if left <= cell < right]
+        cells_range = BitRange(left * cpc, right * cpc)
+        return [
+            cell
+            for cell in cells
+            if cell in cells_range
+        ]
 
     def filter_cells_by_columns(self, cells: SparseSdr, columns: SparseSdr) -> SparseSdr:
         columns = frozenset(columns)

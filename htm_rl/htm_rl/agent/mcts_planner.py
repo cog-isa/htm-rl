@@ -1,5 +1,5 @@
 from collections import deque
-from typing import List, Mapping, Set, Tuple, Deque
+from typing import List, Mapping, Set, Tuple, Deque, Dict
 
 from htm_rl.agent.memory import Memory
 from htm_rl.common.base_sa import Sa
@@ -16,81 +16,78 @@ class MctsPlanner:
     memory: Memory
     planning_horizon: int
     encoder: SaSdrEncoder
-    episode_goal_memory: 'CircularSet'
-    inter_episode_goal_memory: 'CircularSet'
 
     # segments[time][cell] = segments = [ segment ] = [ [presynaptic_cell] ]
-    _active_segments_timeline: List[Mapping[int, List[Set[int]]]]
+    _n_actions: int
     _clusters_merging_threshold: int
 
-    def __init__(self, memory: Memory, planning_horizon: int, goal_memory_size: int):
+    def __init__(self, memory: Memory, n_actions: int, planning_horizon: int):
         self.memory = memory
         self.encoder = memory.encoder
         self.planning_horizon = planning_horizon
-        self.episode_goal_memory = CircularSet(goal_memory_size)
-        self.inter_episode_goal_memory = CircularSet(goal_memory_size)
-
-        self._active_segments_timeline = []
-        self._initial_tm_state = None
+        self._n_actions = n_actions
 
         # TODO: WARN! Handcrafted threshold
         self._clusters_merging_threshold = self.memory.tm.activation_threshold - 2
 
-    def plan_actions(self, initial_sa: Sa, verbosity: int):
-        planned_actions, goal_state = [], None
-        if self.planning_horizon == 0 or not self.episode_goal_memory:
-            return planned_actions, goal_state
-
-        # TODO: check if it should be there
-        if initial_sa.state in self.episode_goal_memory:
-            self.episode_goal_memory.remove(initial_sa.state)
+    def predict_states(self, initial_sa: Sa, verbosity: int):
+        predicted_states = []
+        if self.planning_horizon == 0:
+            return predicted_states
 
         trace(verbosity, 2, '\n======> Planning')
 
-        # saves initial TM state at the start of planning.
-        self._initial_tm_state = self.memory.save_tm_state()
-
-        reached_goals = self._predict_to_goals(initial_sa, verbosity)
-        planned_actions, goal_state = self._backtrack(reached_goals, verbosity)
+        active_segments = self._predict_one_step_forward(initial_sa, verbosity)
+        predicted_states, goal_state = self._backtrack(reached_goals, verbosity)
 
         trace(verbosity, 2, '<====== Planning complete')
-        return planned_actions, goal_state
+        return predicted_states, goal_state
 
-    def _predict_to_goals(self, initial_sa: Sa, verbosity: int) -> List[int]:
-        trace(verbosity, 2, '===> Forward pass')
+    def _predict_one_step_forward(self, initial_sa: Sa, verbosity: int) -> Dict[int, List[Set[int]]]:
+        """Gets active segments for one all-actions-step prediction."""
+        trace(verbosity, 2, '===> Predict one step forward')
+
+        # saves initial TM state at the start of planning.
+        initial_tm_state = self.memory.save_tm_state()
 
         # to consider all possible prediction paths, prediction is started with all possible actions
         all_actions_sa = Sa(initial_sa.state, IntSdrEncoder.ALL)
-
         proximal_input = self.encoder.encode(all_actions_sa)
-        reached_goals = []
-        active_segments_timeline = []
 
-        for _ in range(self.planning_horizon):
-            active_cells, depolarized_cells = self.memory.process(
-                proximal_input, learn=False, verbosity=verbosity
-            )
+        active_cells, depolarized_cells = self.memory.process(
+            proximal_input, learn=False, verbosity=verbosity
+        )
 
-            active_segments_t = self.memory.active_segments(active_cells)
-            active_segments_timeline.append(active_segments_t)
+        active_segments = self.memory.active_segments(active_cells)
+        self.memory.restore_tm_state(initial_tm_state)
 
-            proximal_input = self.memory.columns_from_cells(depolarized_cells)
-            sa_superposition = self.encoder.decode(proximal_input)
-            reached_goals = self._reached_goals(sa_superposition.state)
-            trace(verbosity, 3, '')
-            if reached_goals or not sa_superposition.state or not sa_superposition.action:
-                break
+        trace(verbosity, 2, '<=== Obtained active segments for prediction')
+        return active_segments
 
-        self.memory.restore_tm_state(self._initial_tm_state)
-        self._active_segments_timeline = active_segments_timeline
+    def _split_states_for_actions(
+            self, active_segments: Dict[int, List[Set[int]]], verbosity: int
+    ) -> List[SparseSdr]:
+        """
+        Split prediction, represented as active segments, by actions, i.e. which
+        state is predicted for which action. Returns list of state SparseSdr, each
+        state for every action.
+        """
+        action_outcomes: List[SparseSdr] = [[] for _ in range(self._n_actions)]
+        state_cells = self.memory.filter_cells_by_columns_range(
+            active_segments, self.encoder.states_indices_range()
+        )
 
-        if reached_goals:
-            T = len(active_segments_timeline)
-            trace(verbosity, 2, f'<=== Predict reaching goals {reached_goals} in {T} steps')
-        else:
-            trace(verbosity, 2, f'<=== Predicting NO goals in {self.planning_horizon} steps')
+        for cell in state_cells:
+            for presynaptic_cells in active_segments[cell]:
+                presynaptic_columns = self.memory.columns_from_cells(presynaptic_cells)
+                # which state-action pair activates `cell` in a form of superposition
+                initial_sa_superposition = self.encoder.decode(presynaptic_columns)
+                # iterating here is redundant - it should be always only one action
+                for action in initial_sa_superposition.action:
+                    action_outcomes[action].append(cell)
 
-        return reached_goals
+        return action_outcomes
+
 
     def _backtrack(self, reached_goal_states: List[int], verbosity: int):
         """
@@ -345,58 +342,3 @@ class MctsPlanner:
         assert len(backtracked_actions) == 1
         action = backtracked_actions[0]
         return action
-
-    def _reached_goals(self, states):
-        return [state for state in states if state in self.episode_goal_memory]
-
-    def add_goal(self, goal_state):
-        self.episode_goal_memory.add(goal_state)
-        self.inter_episode_goal_memory.add(goal_state)
-
-    def remove_goal(self, goal_state):
-        self.episode_goal_memory.remove(goal_state)
-
-    def restore_goal_list(self):
-        self.episode_goal_memory = self.inter_episode_goal_memory.copy()
-
-
-class CircularSet:
-    max_size: int
-
-    _set: Set[int]
-    _deque: Deque[int]
-
-    def __init__(self, max_size: int):
-        self.max_size = max_size
-
-        self._set = set()
-        self._deque = deque(maxlen=max_size)
-
-    def __len__(self):
-        return len(self._set)
-
-    def add(self, item):
-        # check if it's already exist
-        # Speed up by checking against the last added element first
-        if self._deque and item == self._deque[-1] or item in self._set:
-            return
-
-        if len(self._deque) == self.max_size:
-            # full => remove from set first
-            self._set.remove(self._deque[0])
-
-        self._deque.append(item)
-        self._set.add(item)
-
-    def remove(self, item):
-        self._set.remove(item)
-        self._deque.remove(item)
-
-    def copy(self) -> 'CircularSet':
-        cp = CircularSet(self.max_size)
-        cp._deque = self._deque.copy()
-        cp._set = self._set.copy()
-        return cp
-
-    def __contains__(self, item):
-        return item in self._set

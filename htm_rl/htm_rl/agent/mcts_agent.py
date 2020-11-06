@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from tqdm import trange
 
 from htm_rl.agent.mcts_actor_critic import MctsActorCritic
+from htm_rl.agent.mcts_planner import MctsPlanner
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
@@ -19,50 +20,39 @@ from htm_rl.envs.mdp import Mdp
 
 class MctsAgent:
     memory: Memory
-    planner: Planner
+    planner: MctsPlanner
     _n_actions: int
     _planning_horizon: int
 
     def __init__(
-            self, memory: Memory, planner: Planner,
+            self, memory: Memory, planner: MctsPlanner,
             mcts_actor_critic: MctsActorCritic, n_actions
     ):
         self.memory = memory
         self.planner = planner
         self._mcts_actor_critic = mcts_actor_critic
         self._n_actions = n_actions
-        self._planning_horizon = self.planner.planning_horizon
-        self._planning_enabled = self._planning_horizon > 0
-        self._planned_actions = deque(maxlen=self._planning_horizon + 1)
-        self._goal_state = None
+
+    @property
+    def _planning_enabled(self):
+        return self.planner.planning_horizon > 0
 
     def set_planning_horizon(self, planning_horizon: int):
         self.planner.planning_horizon = planning_horizon
-        self._planning_horizon = planning_horizon
-        self._planning_enabled = planning_horizon > 0
-        self._init_planning()
 
     def reset(self):
         self.memory.tm.reset()
-        self._init_planning()
-        if self._mcts_actor_critic is not None:
-            self._mcts_actor_critic.reset()
-            ac = self._mcts_actor_critic
-            q = np.round(ac.cell_value / ac.cell_visited_count, 2)
-            value_bit_buckets = (q[i: i + 8] for i in range(0, q.size, 8))
-            q_str = '\n'.join(
-                ' '.join(map(str, value_bits)) for value_bits in value_bit_buckets
-            )
-            trace(3, 1, q_str)
-            trace(3, 1, '=' * 20)
+        self._mcts_actor_critic.reset()
+        self._trace_mcts_stats()
 
     def make_step(self, state, reward, is_done, verbosity: int):
         trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
-        if self._mcts_actor_critic is not None:
-            encoded_state = self.memory.encoder.encode(Sa(state, None))
-            self._mcts_actor_critic.add_step(encoded_state, max(reward, 0))
 
-        action = self._make_action(state, is_done, verbosity)
+        # TODO remove max(0)
+        encoded_state = self.memory.encoder.encode(Sa(state, None))
+        self._mcts_actor_critic.add_step(encoded_state, max(reward, 0))
+
+        action = self._make_action(state, verbosity)
         trace(verbosity, 2, f'\nMake action: {action}')
 
         self.memory.train(Sa(state, action), verbosity)
@@ -70,31 +60,24 @@ class MctsAgent:
             self.planner.add_goal(state)
         return action
 
-    def _init_planning(self):
-        self._planned_actions = deque(maxlen=self._planning_horizon + 1)
-        self._goal_state = None
-        self.planner.restore_goal_list()
+    def _make_action(self, state, verbosity: int):
+        if self._planning_enabled:
+            current_sa = Sa(state, None)
+            planned_actions, self._goal_state = self.planner.plan_actions(current_sa, verbosity)
+        else:
+            action = np.random.choice(self._n_actions)
 
-    def _make_action(self, state, is_done, verbosity: int):
-        if self._should_plan and not is_done:
-            if self._goal_state is not None:
-                if self._goal_state == state:
-                    self.planner.remove_goal(self._goal_state)
-                self._goal_state = None
+        return action
 
-            from_sa = Sa(state, None)
-            planned_actions, self._goal_state = self.planner.plan_actions(from_sa, verbosity)
-            self._planned_actions.extend(planned_actions)
-
-        if not self._planned_actions:
-            self._planned_actions.append(np.random.choice(self._n_actions))
-
-        return self._planned_actions.popleft()
-
-    @property
-    def _should_plan(self):
-        enabled, planned = self._planning_enabled, self._planned_actions
-        return enabled and not planned
+    def _trace_mcts_stats(self):
+        ac = self._mcts_actor_critic
+        q = np.round(ac.cell_value / ac.cell_visited_count, 2)
+        value_bit_buckets = (q[i: i + 8] for i in range(0, q.size, 8))
+        q_str = '\n'.join(
+            ' '.join(map(str, value_bits)) for value_bits in value_bit_buckets
+        )
+        trace(3, 1, q_str)
+        trace(3, 1, '=' * 20)
 
 
 class MctsAgentRunner:
@@ -166,79 +149,3 @@ class MctsAgentRunner:
 
     def store_results(self, run_results_processor: RunResultsProcessor):
         run_results_processor.store_result(self.train_stats, f'{self.name}')
-
-
-class TransferLearningExperimentRunner:
-    terminal_states: List[int]
-    verbosity: int
-
-    def __init__(self, terminal_states: List[int], verbosity: int):
-        self.terminal_states = terminal_states
-        self.verbosity = verbosity
-
-    def run_experiment(self, agent_runner: AgentRunner):
-        trace(self.verbosity, 1, '========================> RUN TRANSFER LEARNING EXPERIMENT')
-        env: Mdp = agent_runner.env
-        for terminal_state in self.terminal_states:
-            env.terminal_state = terminal_state
-            agent_runner.run()
-        trace(self.verbosity, 1, '<========================')
-
-
-class TransferLearningExperimentRunner2:
-    env_generator: GridworldMapGenerator
-    n_episodes_all_fixed: int
-    n_initial_states: int
-    n_terminal_states: int
-    n_environments: int
-    verbosity: int
-
-    def __init__(
-            self, env_generator: GridworldMapGenerator, n_episodes_all_fixed: int,
-            n_initial_states: int, n_terminal_states: int,
-            n_environments: int, verbosity: int
-    ):
-        self.env_generator = env_generator
-        self.n_episodes_all_fixed = n_episodes_all_fixed
-        self.n_initial_states = n_initial_states
-        self.n_terminal_states = n_terminal_states
-        self.n_environments = n_environments
-        self.verbosity = verbosity
-
-    def run_experiment(self, agent_runner: AgentRunner):
-        n_episodes = self.n_environments * self.n_terminal_states * self.n_initial_states
-        n_episodes *= self.n_episodes_all_fixed
-
-        zipped_iterator = lambda: zip(trange(n_episodes), self._get_local_iterator(agent_runner))
-        for _ in agent_runner.run_iterable(zipped_iterator):
-            ...
-
-    def _get_local_iterator(self, agent_runner: AgentRunner):
-        env: GridworldMdp
-        for env in islice(self.env_generator, self.n_environments):
-            agent_runner.env = env
-            for _ in range(self.n_terminal_states):
-                env.set_random_terminal_state()
-                for _ in range(self.n_initial_states):
-                    env.set_random_initial_state()
-                    for local_episode in range(self.n_episodes_all_fixed):
-                        yield local_episode
-
-    def show_environments(self, n):
-        for env_map, _ in self.get_environment_maps(n):
-            plt.imshow(env_map)
-            plt.show(block=True)
-
-    def get_environment_maps(self, n):
-        env: GridworldMdp
-        maps = []
-        for env in islice(self.env_generator, self.n_environments):
-            for _ in range(self.n_terminal_states):
-                env.set_random_terminal_state()
-                # generate just one initial state instead of self.n_initial_states
-                env.set_random_initial_state()
-                env.reset()
-                maps.append(env.get_representation(mode='img'))
-                if len(maps) >= n:
-                    return maps
-        return maps

@@ -14,6 +14,8 @@ from htm_rl.agent.legacy_agent import LegacyAgent
 from htm_rl.agent.legacy_memory import LegacyMemory
 from htm_rl.agent.legacy_planner import LegacyPlanner
 from htm_rl.agent.mcts_actor_critic import MctsActorCritic
+from htm_rl.agent.mcts_agent import MctsAgent, MctsAgentRunner
+from htm_rl.agent.mcts_planner import MctsPlanner
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunResultsProcessor
@@ -175,6 +177,7 @@ def register_classes(yaml: YAML):
         GridworldMapGenerator,
         TransferLearningExperimentRunner2,
         RunResultsProcessor,
+        MctsAgent, MctsAgentRunner, MctsPlanner,
         MctsActorCritic,
     ]
 
