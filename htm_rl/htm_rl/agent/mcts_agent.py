@@ -1,21 +1,14 @@
-from collections import deque
-from itertools import islice
-from typing import Any, List
+from typing import Any
 
 import numpy as np
-import matplotlib.pyplot as plt
 from tqdm import trange
 
 from htm_rl.agent.mcts_actor_critic import MctsActorCritic
 from htm_rl.agent.mcts_planner import MctsPlanner
 from htm_rl.agent.memory import Memory
-from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.common.base_sa import Sa
 from htm_rl.common.utils import timed, trace
-from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
-from htm_rl.envs.gridworld_mdp import GridworldMdp
-from htm_rl.envs.mdp import Mdp
 
 
 class MctsAgent:
@@ -43,7 +36,7 @@ class MctsAgent:
     def reset(self):
         self.memory.tm.reset()
         self._mcts_actor_critic.reset()
-        self._trace_mcts_stats()
+        # self._trace_mcts_stats()
 
     def make_step(self, state, reward, is_done, verbosity: int):
         trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
@@ -56,16 +49,16 @@ class MctsAgent:
         trace(verbosity, 2, f'\nMake action: {action}')
 
         self.memory.train(Sa(state, action), verbosity)
-        if reward > 0:
-            self.planner.add_goal(state)
         return action
 
     def _make_action(self, state, verbosity: int):
         if self._planning_enabled:
             current_sa = Sa(state, None)
-            planned_actions, self._goal_state = self.planner.plan_actions(current_sa, verbosity)
+            options = self.planner.predict_states(current_sa, verbosity)
+            action = self._mcts_actor_critic.choose(options)
         else:
             action = np.random.choice(self._n_actions)
+            trace(3, 1, 'RANDOM')
 
         return action
 
@@ -76,8 +69,8 @@ class MctsAgent:
         q_str = '\n'.join(
             ' '.join(map(str, value_bits)) for value_bits in value_bit_buckets
         )
-        trace(3, 1, q_str)
-        trace(3, 1, '=' * 20)
+        trace(2, 1, q_str)
+        trace(2, 1, '=' * 20)
 
 
 class MctsAgentRunner:

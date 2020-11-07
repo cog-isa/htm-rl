@@ -55,24 +55,43 @@ class MctsActorCritic:
         self._cell_eligibility_trace[updated_cells] += 1.
         self._cell_value += self._cell_eligibility_trace * reward
 
-    def choose(self, options: List[SparseSdr]):
+    def choose(self, options: List[SparseSdr]) -> int:
+        T = self._total_visited_count(options)
+
         ucb1_values = np.array([
-            self.value(cells_sdr) for cells_sdr in options
+            self.value(cells_sdr, T) for cells_sdr in options
         ])
         return np.argmax(ucb1_values)
 
-    def value(self, cells_sdr: SparseSdr):
-        T = self._total_steps
+    def value(self, cells_sdr: SparseSdr, options_total_steps):
+        if not cells_sdr:
+            return np.infty
 
+        T = options_total_steps
         N = self._cell_visited_count[cells_sdr]
-        # similar to importance sampling - each step even an active cell is updated with some probability
-        N *= self.update_cell_ratio
+        N /= self.update_cell_ratio
 
         R = self._cell_value[cells_sdr]
         Q = R / N
-        U = (2 * np.log(T) / N)**.5
+        U = (2 * np.log(T + 1) / N)**.5
         V = Q + U
         return V.mean()
+
+    def _total_visited_count(self, options: List[SparseSdr]) -> int:
+        # state visited counter - averaged visited counter of its cells
+        n_times_each_option_visited = np.array([
+            np.mean(self._cell_visited_count[state])
+            for state in options
+            if state
+        ])
+
+        # total visited counter - sum of option counters
+        T = n_times_each_option_visited.sum()
+
+        # similar to importance sampling - each state activation (as a whole) only fraction
+        # of its cells is updated, hence all counters should be rescaled (or only T, which is the same)
+        T /= self.update_cell_ratio
+        return T
 
     def reset(self):
         self._cell_eligibility_trace.fill(0.)

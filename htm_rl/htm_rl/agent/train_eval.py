@@ -84,14 +84,14 @@ class RunResultsProcessor:
             report_name += f'__{report_suffix}'
 
         ma = self.moving_average
-        self._plot_figure(df_times, f'episode execution time, sec, MA={ma}', report_name, 'times')
-        self._plot_figure(df_rewards, f'episode reward, MA={ma}', report_name, 'rewards')
+        # self._plot_figure(df_times, f'episode execution time, sec, MA={ma}', report_name, 'times')
+        # self._plot_figure(df_rewards, f'episode reward, MA={ma}', report_name, 'rewards')
         self._plot_figure(df_steps, f'episode duration, steps, MA={ma}', report_name, 'steps')
-        self._plot_figure(
-            df_steps_rel,
-            f'episode duration in steps log-relative to `{rel_col}`, MA={ma}', report_name,
-            f'steps_rel_{rel_col}'
-        )
+        # self._plot_figure(
+        #     df_steps_rel,
+        #     f'episode duration in steps log-relative to `{rel_col}`, MA={ma}', report_name,
+        #     f'steps_rel_{rel_col}'
+        # )
         if not silent:
             plt.show()
 
