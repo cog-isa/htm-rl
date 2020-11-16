@@ -212,12 +212,13 @@ class Memory:
             sa_superposition = self.encoder.decode(proximal_input)
             trace(verbosity, req_level, self.format_sa_superposition(sa_superposition))
 
-    def print_tm_state(self, verbosity: int, req_level: int,  label: str):
+    def print_tm_state(self, verbosity: int, req_level: int,  label: str, save_on_disk=False):
         if (self.output_file is None) or (verbosity < req_level):
             return
 
         self.writer.write(label)
-        self.writer.save(self.output_file)
+        if save_on_disk:
+            self.writer.save(self.output_file)
 
     def save_tm_state(self):
         """Saves TM state."""
