@@ -5,6 +5,7 @@ from typing import Any, List
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
+from tqdm import tqdm
 
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
@@ -133,7 +134,8 @@ class AgentRunner:
             planning_horizon = self.agent.planner.planning_horizon
             self.agent.set_planning_horizon(0)
 
-        for ep in range(self.n_episodes):
+        # log_steps = tqdm(total=0, position=1, bar_format='{desc}')
+        for ep in trange(self.n_episodes):
             if 0 < self.pretrain == ep:
                 self.agent.set_planning_horizon(planning_horizon)
 
