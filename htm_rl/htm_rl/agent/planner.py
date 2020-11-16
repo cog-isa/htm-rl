@@ -34,7 +34,7 @@ class Planner:
         self._initial_tm_state = None
 
         # TODO: WARN! Handcrafted threshold
-        self._clusters_merging_threshold = self.memory.tm.activation_threshold - 2
+        self._clusters_merging_threshold = self.memory.tm.activation_threshold
 
     def plan_actions(self, initial_sa: Sa, verbosity: int):
         planned_actions, goal_state = [], None
@@ -66,12 +66,13 @@ class Planner:
         reached_goals = []
         active_segments_timeline = []
 
+        self.memory.print_tm_state(verbosity, 1,
+                                   f'forward planning initial state: {all_actions_sa.state} action: {all_actions_sa.action}')
+
         for i in range(self.planning_horizon):
             active_cells, depolarized_cells = self.memory.process(
                 proximal_input, learn=False, verbosity=verbosity
             )
-
-            self.memory.print_tm_state(verbosity, 1, f'forward planning step: {i}')
 
             active_segments_t = self.memory.active_segments(active_cells)
             active_segments_timeline.append(active_segments_t)
@@ -80,8 +81,16 @@ class Planner:
             sa_superposition = self.encoder.decode(proximal_input)
             reached_goals = self._reached_goals(sa_superposition.state)
             trace(verbosity, 3, '')
+
+            self.memory.print_tm_state(verbosity, 1,
+            f'forward planning step: {i} state: {sa_superposition.state} action: {sa_superposition.action}')
+
             if reached_goals or not sa_superposition.state or not sa_superposition.action:
                 break
+
+        self.memory.print_tm_state(verbosity, 1,
+                                   f'forward planning end',
+                                   save_on_disk=True)
 
         self.memory.restore_tm_state(self._initial_tm_state)
         self._active_segments_timeline = active_segments_timeline
