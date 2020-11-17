@@ -1,5 +1,6 @@
 from collections import deque
-from typing import List, Mapping, Set, Tuple, Deque
+from typing import List, Mapping, Set, Tuple, Deque, TypeVar, Generic
+from random import sample
 
 from htm_rl.agent.memory import Memory
 from htm_rl.common.base_sa import Sa
@@ -16,18 +17,21 @@ class Planner:
     memory: Memory
     planning_horizon: int
     encoder: SaSdrEncoder
-    episode_goal_memory: 'CircularSet'
+    episode_goal_memory: 'GoalMemory'
     inter_episode_goal_memory: 'CircularSet'
+    alpha: float
 
     # segments[time][cell] = segments = [ segment ] = [ [presynaptic_cell] ]
     _active_segments_timeline: List[Mapping[int, List[Set[int]]]]
     _clusters_merging_threshold: int
 
-    def __init__(self, memory: Memory, planning_horizon: int, goal_memory_size: int):
+    def __init__(self, memory: Memory, planning_horizon: int, goal_memory_size: int, alpha: float):
+        self.alpha = alpha
         self.memory = memory
         self.encoder = memory.encoder
         self.planning_horizon = planning_horizon
-        self.episode_goal_memory = CircularSet(goal_memory_size)
+        self.episode_goal_memory = GoalMemory(goal_memory_size, memory.tm.n_columns,
+                                              alpha, memory.tm.activation_threshold)
         self.inter_episode_goal_memory = CircularSet(goal_memory_size)
 
         self._active_segments_timeline = []
@@ -42,8 +46,7 @@ class Planner:
             return planned_actions, goal_state
 
         # TODO: check if it should be there
-        if initial_sa.state in self.episode_goal_memory:
-            self.episode_goal_memory.remove(initial_sa.state)
+        self.episode_goal_memory.remove(initial_sa.state in self.episode_goal_memory)
 
         trace(verbosity, 2, '\n======> Planning')
 
@@ -78,14 +81,14 @@ class Planner:
             active_segments_timeline.append(active_segments_t)
 
             proximal_input = self.memory.columns_from_cells(depolarized_cells)
-            sa_superposition = self.encoder.decode(proximal_input)
-            reached_goals = self._reached_goals(sa_superposition.state)
+            state_superposition_sdr, _ = self.encoder.split_sa(proximal_input)
+            reached_goals = self._reached_goals(state_superposition_sdr)
             trace(verbosity, 3, '')
 
             self.memory.print_tm_state(verbosity, 1,
-            f'forward planning step: {i} state: {sa_superposition.state} action: {sa_superposition.action}')
+                                       f'forward planning step: {i}')
 
-            if reached_goals or not sa_superposition.state or not sa_superposition.action:
+            if reached_goals or not proximal_input:
                 break
 
         self.memory.print_tm_state(verbosity, 1,
@@ -358,8 +361,8 @@ class Planner:
         action = backtracked_actions[0]
         return action
 
-    def _reached_goals(self, states):
-        return [state for state in states if state in self.episode_goal_memory]
+    def _reached_goals(self, proximal_input):
+        return proximal_input in self.episode_goal_memory
 
     def add_goal(self, goal_state):
         self.episode_goal_memory.add(goal_state)
@@ -370,6 +373,63 @@ class Planner:
 
     def restore_goal_list(self):
         self.episode_goal_memory = self.inter_episode_goal_memory.copy()
+
+
+class SparseSDRUnion:
+    alpha: float
+    size: int
+
+    def __init__(self, sparse_sdr: SparseSdr, alpha: float, size: int):
+        self.alpha = alpha
+        self.size = size
+        self.union = set(SparseSdr)
+
+    def __len__(self):
+        return self.size
+
+    def add(self, sparse_sdr: SparseSdr):
+        self.union = self.union.difference(sample(self.union, round(self.alpha * len(self.union))))
+        self.union.add(SparseSdr)
+
+
+class GoalMemory:
+    threshold: int
+    alpha: float
+    goals: List[SparseSDRUnion]
+
+    def __init__(self, n_goals, goal_size, alpha, threshold):
+        self.threshold = threshold
+        self.alpha = alpha
+        self.goals = list()
+        self.goal_size = goal_size
+        self.n_goals = n_goals
+
+    def add_goal(self, sparse_sdr: SparseSdr):
+        # filter columns that don't correspond to goal
+        for goal in self.goals:
+            if len(goal.union.intersection(sparse_sdr)) >= self.threshold:
+                goal.add(sparse_sdr)
+                break
+        else:
+            self.goals.append(SparseSDRUnion(sparse_sdr, self.alpha, self.goal_size))
+            if len(self.goals) > self.n_goals:
+                self.goals.pop(0)
+
+    def remove(self, goals: List[SparseSDRUnion]):
+        for goal in goals:
+            self.goals.remove(goal)
+
+    def __contains__(self, sparse_sdr: SparseSdr):
+        # returns all goals that constitute sparse_sdr
+        subset = list()
+        for goal in self.goals:
+            if len(goal.union.intersection(sparse_sdr)) >= self.threshold:
+                subset.append(goal)
+        return subset
+
+    def __len__(self):
+        return len(self.goals)
+
 
 
 class CircularSet:
