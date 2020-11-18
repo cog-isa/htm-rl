@@ -1,5 +1,5 @@
 from collections import deque
-from typing import List, Mapping, Set, Tuple, Deque, TypeVar, Generic
+from typing import List, Mapping, Set, Tuple, Deque
 from random import sample
 
 from htm_rl.agent.memory import Memory
@@ -18,7 +18,7 @@ class Planner:
     planning_horizon: int
     encoder: SaSdrEncoder
     episode_goal_memory: 'GoalMemory'
-    inter_episode_goal_memory: 'CircularSet'
+    inter_episode_goal_memory: 'GoalMemory'
     alpha: float
 
     # segments[time][cell] = segments = [ segment ] = [ [presynaptic_cell] ]
@@ -32,7 +32,8 @@ class Planner:
         self.planning_horizon = planning_horizon
         self.episode_goal_memory = GoalMemory(goal_memory_size, memory.tm.n_columns,
                                               alpha, memory.tm.activation_threshold)
-        self.inter_episode_goal_memory = CircularSet(goal_memory_size)
+        self.inter_episode_goal_memory = GoalMemory(goal_memory_size, memory.tm.n_columns,
+                                                    alpha, memory.tm.activation_threshold)
 
         self._active_segments_timeline = []
         self._initial_tm_state = None
@@ -59,7 +60,7 @@ class Planner:
         trace(verbosity, 2, '<====== Planning complete')
         return planned_actions, goal_state
 
-    def _predict_to_goals(self, initial_sa: Sa, verbosity: int) -> List[int]:
+    def _predict_to_goals(self, initial_sa: Sa, verbosity: int) -> List['SparseSDRUnion']:
         trace(verbosity, 2, '===> Forward pass')
 
         # to consider all possible prediction paths, prediction is started with all possible actions
@@ -115,6 +116,7 @@ class Planner:
             Activation timeline is a list of active cells sparse SDR at each previous timestep t.
         """
         trace(verbosity, 2, '\n===> Backward pass')
+
         planned_actions, goal_state = [], None
 
         T = len(self._active_segments_timeline)
@@ -404,7 +406,7 @@ class GoalMemory:
         self.goal_size = goal_size
         self.n_goals = n_goals
 
-    def add_goal(self, sparse_sdr: SparseSdr):
+    def add(self, sparse_sdr: SparseSdr):
         # filter columns that don't correspond to goal
         for goal in self.goals:
             if len(goal.union.intersection(sparse_sdr)) >= self.threshold:
@@ -418,6 +420,12 @@ class GoalMemory:
     def remove(self, goals: List[SparseSDRUnion]):
         for goal in goals:
             self.goals.remove(goal)
+
+    def copy(self) -> 'GoalMemory':
+        cp = GoalMemory(self.n_goals, self.goal_size,
+                        self.alpha, self.threshold)
+        cp.goals = self.goals
+        return cp
 
     def __contains__(self, sparse_sdr: SparseSdr) -> List[SparseSDRUnion]:
         # returns all goals that constitute sparse_sdr
