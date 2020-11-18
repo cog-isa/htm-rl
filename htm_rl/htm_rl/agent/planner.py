@@ -106,7 +106,7 @@ class Planner:
 
         return reached_goals
 
-    def _backtrack(self, reached_goal_states: List[int], verbosity: int):
+    def _backtrack(self, reached_goal_states: List['SparseSDRUnion'], verbosity: int):
         """
         Performs recursive backtracking for each possible pathway starting from reached goal states.
 
@@ -123,7 +123,7 @@ class Planner:
 
         depolarized_cells = self._active_segments_timeline[T-1].keys()
         for goal_state in reached_goal_states:
-            goal_state_columns_sdr = self.encoder.encode(Sa(goal_state, None))
+            goal_state_columns_sdr = goal_state.union
             active_goal_cells = self.memory.filter_cells_by_columns(
                 cells=depolarized_cells, columns=goal_state_columns_sdr
             )
@@ -419,7 +419,7 @@ class GoalMemory:
         for goal in goals:
             self.goals.remove(goal)
 
-    def __contains__(self, sparse_sdr: SparseSdr):
+    def __contains__(self, sparse_sdr: SparseSdr) -> List[SparseSDRUnion]:
         # returns all goals that constitute sparse_sdr
         subset = list()
         for goal in self.goals:
