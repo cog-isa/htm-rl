@@ -134,14 +134,13 @@ def format_sa_superposition(sa_superposition: SaSuperposition) -> str:
     """
     Formats SA superposition
     """
-    states = sa_superposition.state
+    state = sa_superposition.state
     actions = sa_superposition.action
 
     format_ = 'SA superposition: \n ------------------ \n'
 
     format_ += 'States: '
-    for state in states:
-        format_ += str(state) + ' '
+    format_ += str(state) + ' '
 
     format_ += 'Actions: '
     for action in actions:
