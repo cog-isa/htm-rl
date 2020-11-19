@@ -7,7 +7,9 @@ from htm_rl.common.base_sa import Sa
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.common.s_sdr_encoder import StateSDREncoder
 from htm_rl.common.utils import range_reverse, trace
+import numpy as np
 
 
 # noinspection PyPep8Naming
@@ -19,21 +21,24 @@ class Planner:
     encoder: SaSdrEncoder
     episode_goal_memory: 'GoalMemory'
     inter_episode_goal_memory: 'GoalMemory'
+    state_encoder: StateSDREncoder
     alpha: float
 
     # segments[time][cell] = segments = [ segment ] = [ [presynaptic_cell] ]
     _active_segments_timeline: List[Mapping[int, List[Set[int]]]]
     _clusters_merging_threshold: int
 
-    def __init__(self, memory: Memory, planning_horizon: int, goal_memory_size: int, alpha: float):
+    def __init__(self, memory: Memory, planning_horizon: int, goal_memory_size: int, alpha: float,
+                 state_encoder: StateSDREncoder):
         self.alpha = alpha
         self.memory = memory
         self.encoder = memory.encoder
+        self.state_encoder = state_encoder
         self.planning_horizon = planning_horizon
         self.episode_goal_memory = GoalMemory(goal_memory_size, memory.tm.n_columns,
-                                              alpha, memory.tm.activation_threshold)
+                                              alpha, memory.encoder.state_activation_threshold, state_encoder)
         self.inter_episode_goal_memory = GoalMemory(goal_memory_size, memory.tm.n_columns,
-                                                    alpha, memory.tm.activation_threshold)
+                                                    alpha, memory.encoder.state_activation_threshold, state_encoder)
 
         self._active_segments_timeline = []
         self._initial_tm_state = None
@@ -47,7 +52,7 @@ class Planner:
             return planned_actions, goal_state
 
         # TODO: check if it should be there
-        self.episode_goal_memory.remove(initial_sa.state in self.episode_goal_memory)
+        self.episode_goal_memory.remove(initial_sa.state)
 
         trace(verbosity, 2, '\n======> Planning')
 
@@ -363,8 +368,12 @@ class Planner:
         action = backtracked_actions[0]
         return action
 
-    def _reached_goals(self, proximal_input):
-        return proximal_input in self.episode_goal_memory
+    def _reached_goals(self, proximal_input: SparseSdr):
+        subset = list()
+        for goal in self.episode_goal_memory.goals:
+            if goal == proximal_input:
+                subset.append(goal)
+        return subset
 
     def add_goal(self, goal_state):
         self.episode_goal_memory.add(goal_state)
@@ -380,64 +389,78 @@ class Planner:
 class SparseSDRUnion:
     alpha: float
     size: int
+    union: Set[int]
+    threshold: int
 
-    def __init__(self, sparse_sdr: SparseSdr, alpha: float, size: int):
+    def __init__(self, sparse_sdr: SparseSdr, alpha: float, size: int, threshold: int):
         self.alpha = alpha
         self.size = size
-        self.union = set(SparseSdr)
+        self.union = set(sparse_sdr)
+        self.threshold = threshold
 
     def __len__(self):
         return self.size
 
     def add(self, sparse_sdr: SparseSdr):
         self.union = self.union.difference(sample(self.union, round(self.alpha * len(self.union))))
-        self.union.add(SparseSdr)
+        self.union = self.union.union(set(sparse_sdr))
+
+    def __eq__(self, other: SparseSdr):
+        if len(self.union.intersection(other)) >= self.threshold:
+            return True
+        else:
+            return False
 
 
 class GoalMemory:
     threshold: int
     alpha: float
     goals: List[SparseSDRUnion]
+    encoder: StateSDREncoder
 
-    def __init__(self, n_goals, goal_size, alpha, threshold):
+    def __init__(self, n_goals, goal_size, alpha, threshold, encoder: StateSDREncoder):
         self.threshold = threshold
         self.alpha = alpha
         self.goals = list()
         self.goal_size = goal_size
         self.n_goals = n_goals
+        self.encoder = encoder
 
-    def add(self, sparse_sdr: SparseSdr):
+    def add(self, array: np.array):
         # filter columns that don't correspond to goal
+        sparse_sdr = self.encoder.encode(array)
         for goal in self.goals:
-            if len(goal.union.intersection(sparse_sdr)) >= self.threshold:
+            if goal == sparse_sdr:
                 goal.add(sparse_sdr)
                 break
         else:
-            self.goals.append(SparseSDRUnion(sparse_sdr, self.alpha, self.goal_size))
+            self.goals.append(SparseSDRUnion(sparse_sdr, self.alpha, self.goal_size, self.threshold))
             if len(self.goals) > self.n_goals:
                 self.goals.pop(0)
 
-    def remove(self, goals: List[SparseSDRUnion]):
-        for goal in goals:
-            self.goals.remove(goal)
+    def remove(self, array: np.array):
+        sparse_sdr = self.encoder.encode(array)
+        for goal in self.goals:
+            if goal == sparse_sdr:
+                self.goals.remove(goal)
 
     def copy(self) -> 'GoalMemory':
         cp = GoalMemory(self.n_goals, self.goal_size,
-                        self.alpha, self.threshold)
-        cp.goals = self.goals
+                        self.alpha, self.threshold, self.encoder)
+        cp.goals = [SparseSDRUnion(x.union, x.alpha, x.size, x.threshold) for x in self.goals]
         return cp
 
-    def __contains__(self, sparse_sdr: SparseSdr) -> List[SparseSDRUnion]:
-        # returns all goals that constitute sparse_sdr
-        subset = list()
+    def __contains__(self, array: np.array):
+        # returns true is there are goals that constitute sparse_sdr
+        sparse_sdr = self.encoder.encode(array)
         for goal in self.goals:
-            if len(goal.union.intersection(sparse_sdr)) >= self.threshold:
-                subset.append(goal)
-        return subset
+            if goal == sparse_sdr:
+                return True
+        else:
+            return False
 
     def __len__(self):
         return len(self.goals)
-
 
 
 class CircularSet:
