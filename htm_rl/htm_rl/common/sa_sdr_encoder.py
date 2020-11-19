@@ -1,5 +1,5 @@
 from htm_rl.common.base_sa import SaRelatedComposition, Sa, SaSuperposition
-from htm_rl.common.int_sdr_encoder import BitRange
+from htm_rl.common.int_sdr_encoder import BitRange, BitRangePack
 from htm_rl.common.sdr import SparseSdr
 
 SaShifts = SaRelatedComposition[int, int]
@@ -33,11 +33,14 @@ class SaSdrEncoder:
         """
         Encodes SA to sparse SDR.
         """
-        return [
-            bit_index
-            for x, encoder, shift in zip(sa, self._encoders, self._shifts)
-            for bit_index in encoder.encode(x).shift(shift).unfold()
-        ]
+        code = list()
+        for x, encoder, shift in zip(sa, self._encoders, self._shifts):
+            sparse_code = encoder.encode(x)
+            if isinstance(sparse_code, (BitRange, BitRangePack)):
+                code.extend(sparse_code.shift(shift).unfold())
+            else:
+                code.extend([x+shift for x in sparse_code])
+        return code
 
     def decode(self, sparse_sdr: SparseSdr) -> SaSuperposition:
         """
@@ -136,11 +139,11 @@ def format_sa_superposition(sa_superposition: SaSuperposition) -> str:
 
     format_ = 'SA superposition: \n ------------------ \n'
 
-    format_ += 'Possible states:\n'
+    format_ += 'States: '
     for state in states:
         format_ += str(state) + ' '
 
-    format_ += '\nPossible actions:\n'
+    format_ += 'Actions: '
     for action in actions:
         format_ += str(action) + ' '
 
