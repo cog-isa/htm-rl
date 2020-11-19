@@ -66,10 +66,10 @@ class Agent:
 
     def _make_action(self, state, is_done, verbosity: int):
         if self._should_plan and not is_done:
-            if self._goal_state is not None:
-                if self._goal_state == state:
-                    self.planner.remove_goal(self._goal_state)
-                self._goal_state = None
+        #     if self._goal_state is not None:
+        #         if self._goal_state == state:
+        #             self.planner.remove_goal(self._goal_state)
+        #         self._goal_state = None
 
             from_sa = Sa(state, None)
             planned_actions, self._goal_state = self.planner.plan_actions(from_sa, verbosity)
