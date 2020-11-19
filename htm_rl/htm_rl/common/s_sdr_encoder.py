@@ -48,11 +48,11 @@ class StateSDREncoder:
     def format(self, sparse_sdr: SparseSdr, format_: str = None) -> str:
         """TODO"""
         size = self.shape[0] * self.shape[1]
-        res = ['0' if not ((i + 1) % self.shape[0] == 0) else '0\n' for i in range(size)]
+        res = ['0' for i in range(size)]
         for x in sparse_sdr:
             number = x // size
             coord = x % size
-            if (coord+1) % self.shape[0]:
+            if (coord+1) % self.shape[1] == 0:
                 postfix = '\n'
             else:
                 postfix = ''
