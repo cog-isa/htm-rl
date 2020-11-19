@@ -16,7 +16,9 @@ class StateSDREncoder:
     activation_threshold: int
 
     def __init__(
-            self, name: str, n_values: int, shape: Tuple[int, int], activation_threshold: int,
+            self, name: str,
+            n_values: int, shape: Tuple[int, int],
+            threshold: float,
             default_format: str = 'full'
     ):
         """
@@ -26,8 +28,9 @@ class StateSDREncoder:
         self.n_values = n_values
         self.shape = shape
         self.total_bits = n_values * shape[0] * shape[1]
-        self.activation_threshold = activation_threshold
         self.default_format = default_format
+        self.value_bits = shape[0] * shape[1]
+        self.activation_threshold = int(threshold * self.value_bits)
 
     def encode(self, x: np.array) -> SparseSdr:
         """
