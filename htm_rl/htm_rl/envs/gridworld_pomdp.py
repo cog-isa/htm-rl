@@ -5,7 +5,8 @@ legend = {
         {
             0: ' ',
             1: "#",
-            2: '*'
+            2: '*',
+            3: '?'
         },
     'agent':
         {
@@ -24,6 +25,7 @@ class GridWorld:
                 0: floor
                 1: wall
                 2: reward
+                3: fog
         world_size:
             tuple: (rows: int, columns: int)
         agent_initial_position:
@@ -37,6 +39,9 @@ class GridWorld:
                 3: down
         max_sight_range:
             int max number of cells that agent can see on line
+        transparent_obstacles:
+            bool used by 'window' observation, if true: agent sees map behind obstacle as it is,
+            else: agent sees fog behind walls
         observable_vars:
             ordered subset of {'distance', 'surface', 'relative_row',
                                 'relative_column', 'relative_direction',
@@ -44,9 +49,21 @@ class GridWorld:
                                 'flatten_index',
                                 'row',
                                 'column',
-                                'direction'}
+                                'direction',
+                                'window'}
             as list, output order will be the same as in observable_vars
             'state_id' correspond to mdp framework, unique id for every state.
+        window_coords:
+            dict {'top_left': (1, -1), 'bottom_right': (0, 1)}
+            window coordinates relative to agent's position
+            (0, 0) is the agent's position
+                          (1,0)
+                            |
+                            |
+               (0,-1)-----(0,0)-----(0,1)
+                            |
+                            |
+                         (-1,0)
         one_value_state:
             bool convert tuple of state to one value
     """
@@ -57,7 +74,9 @@ class GridWorld:
                  agent_initial_direction=0,
                  max_sight_range=None,
                  observable_vars=None,
-                 one_value_state=False):
+                 one_value_state=False,
+                 transparent_obstacles=True,
+                 window_coords=None):
 
         self.one_value_state = one_value_state
         self.observable_vars = observable_vars
@@ -78,8 +97,17 @@ class GridWorld:
         self.step_number = 0
         self.agent_direction = agent_initial_direction
         self.max_sight_range = max_sight_range
+        self.transparent_obstacles = transparent_obstacles
         self.observable_state = None
         self.filtered_observation = None
+
+        if window_coords is None:
+            self.window_coords = {
+                'top_left': (1, -1),
+                'bottom_right': (0, 1)
+            }
+        else:
+            self.window_coords = window_coords
 
         self.dimensions = {
             'distance': max(self.world_size),
@@ -91,7 +119,8 @@ class GridWorld:
             'flatten_index': self.world_size[0] * self.world_size[1],
             'row': self.world_size[0] + 1,
             'column': self.world_size[1] + 1,
-            'direction': 4
+            'direction': 4,
+            'window': 4 ** (self.max_sight_range * self.max_sight_range)
         }
 
         self.n_obs_states = 1
@@ -230,6 +259,8 @@ class GridWorld:
         state_id = (flatten_index
                     + self.agent_direction * self.world_size[0] * self.world_size[1])
 
+        # window
+
         self.observable_state = {'distance': distance - 1,
                                  'surface': surface,
                                  'relative_row': relative_coordinates[0],
@@ -239,7 +270,8 @@ class GridWorld:
                                  'flatten_index': flatten_index,
                                  'row': self.agent_position['row'] - 1,
                                  'column': self.agent_position['column'] - 1,
-                                 'direction': self.agent_direction
+                                 'direction': self.agent_direction,
+                                 'window': self.get_window()
                                  }
 
         if self.observable_vars is not None:
@@ -294,3 +326,60 @@ class GridWorld:
             return s
         else:
             return tuple(state.values())
+
+    def get_window(self):
+        top_left = self.window_coords['top_left']
+        bottom_right = self.window_coords['bottom_right']
+        width = abs(top_left[1] - bottom_right[1])
+        height = abs(top_left[0] - bottom_right[0])
+        obs = np.zeros((height+1, width+1)) + 3
+
+        if self.agent_direction == 0:
+            wd = self.world_description.T[::-1, :]
+            agent_row = self.agent_position['column']
+            agent_column = self.agent_position['row']
+            agent_row = wd.shape[0]-1 - agent_row
+        elif self.agent_direction == 2:
+            wd = self.world_description.T[:, ::-1]
+            agent_row = self.agent_position['column']
+            agent_column = wd.shape[1]-1 - self.agent_position['row']
+        elif self.agent_direction == 3:
+            wd = self.world_description[::-1, ::-1]
+            agent_row = wd.shape[0]-1 - self.agent_position['row']
+            agent_column = wd.shape[1]-1 - self.agent_position['column']
+        else:
+            wd = self.world_description
+            agent_row = self.agent_position['row']
+            agent_column = self.agent_position['column']
+
+        top_left_orig = (agent_row - top_left[0],
+                         agent_column + top_left[1])
+        bottom_right_orig = (agent_row - bottom_right[0],
+                             agent_column + bottom_right[1])
+
+        if top_left_orig[0] < 0:
+            top_left_row_obs = -top_left_orig[0]
+        else:
+            top_left_row_obs = 0
+        if top_left_orig[1] < 0:
+            top_left_col_obs = -top_left_orig[1]
+        else:
+            top_left_col_obs = 0
+
+        top_left_clip = (np.clip(top_left_orig[0], 0,
+                                 wd.shape[0]-1),
+                         np.clip(top_left_orig[1], 0,
+                                 wd.shape[1]-1))
+        bottom_right_clip = (np.clip(bottom_right_orig[0], 0,
+                                     wd.shape[0]-1),
+                             np.clip(bottom_right_orig[1], 0,
+                                     wd.shape[1]-1))
+        orig = wd[top_left_clip[0]: bottom_right_clip[0]+1, top_left_clip[1]: bottom_right_clip[1]+1]
+
+        bottom_right_row_obs = top_left_row_obs + orig.shape[0]
+        bottom_right_col_obs = top_left_col_obs + orig.shape[1]
+
+        obs[top_left_row_obs: bottom_right_row_obs, top_left_col_obs: bottom_right_col_obs] = orig
+        return obs
+
+
