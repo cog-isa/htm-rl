@@ -1,4 +1,5 @@
 import numpy as np
+from typing import Tuple
 
 legend = {
     'map':
@@ -383,3 +384,65 @@ class GridWorld:
         return obs
 
 
+class MapGenerator:
+    def __init__(self, shape: Tuple[int, int], complexity=0.75, density=0.75, seed: int=0):
+        self.shape = shape
+        self.complexity = complexity
+        self.density = density
+        self.seed = seed
+        self.random_gen = np.random.default_rng(seed)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        seed = self.random_gen.integers(2 ** 31)
+        world = self.generate_maze(seed)
+        world = self.place_reward(world, seed)
+        return world
+
+    @staticmethod
+    def place_reward(maze, seed):
+        np.random.default_rng(seed)
+        rows, columns = np.nonzero(maze == 0)
+        row = np.random.choice(rows, 1)
+        column = np.random.choice(columns, 1)
+        maze[row, column] = 2
+        return maze
+
+    def generate_maze(self, seed):
+        r"""Generate a random maze array.
+
+        It only contains two kind of objects, obstacle and free space. The numerical value for obstacle
+        is ``1`` and for free space is ``0``.
+
+        Code from https://en.wikipedia.org/wiki/Maze_generation_algorithm
+        """
+        np.random.default_rng(seed)
+        shape = (((self.shape[1] + 2) // 2) * 2 + 1, ((self.shape[0] + 2) // 2) * 2 + 1)
+        # Adjust complexity and density relative to maze size
+        complexity = int(self.complexity * (5 * (shape[0] + shape[1])))
+        density = int(self.density * ((shape[0] // 2) * (shape[1] // 2)))
+        # Build actual maze
+        maze = np.zeros(shape, dtype=bool)
+        # Fill borders
+        maze[0, :] = maze[-1, :] = 1
+        maze[:, 0] = maze[:, -1] = 1
+        # Make aisles
+        for i in range(density):
+            x, y = np.random.randint(0, shape[1] // 2 + 1) * 2, np.random.randint(0, shape[0] // 2 + 1) * 2
+            maze[y, x] = 1
+            for j in range(complexity):
+                neighbours = []
+                if x > 1:             neighbours.append((y, x - 2))
+                if x < shape[1] - 2:  neighbours.append((y, x + 2))
+                if y > 1:             neighbours.append((y - 2, x))
+                if y < shape[0] - 2:  neighbours.append((y + 2, x))
+                if len(neighbours):
+                    y_, x_ = neighbours[np.random.randint(0, len(neighbours))]
+                    if maze[y_, x_] == 0:
+                        maze[y_, x_] = 1
+                        maze[y_ + (y - y_) // 2, x_ + (x - x_) // 2] = 1
+                        x, y = x_, y_
+
+        return maze[1:-1, :][:, 1:-1].astype(int)
