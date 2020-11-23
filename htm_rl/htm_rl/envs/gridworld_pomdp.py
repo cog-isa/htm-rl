@@ -410,6 +410,14 @@ class MapGenerator:
         maze[row, column] = 2
         return maze
 
+    @staticmethod
+    def generate_position(maze, seed):
+        np.random.default_rng(seed)
+        rows, columns = np.nonzero(maze == 0)
+        row = np.random.choice(rows, 1)
+        column = np.random.choice(columns, 1)
+        return row, column
+
     def generate_maze(self, seed):
         r"""Generate a random maze array.
 
