@@ -55,9 +55,9 @@ class StateSDREncoder:
             if (coord+1) % self.shape[1] == 0:
                 postfix = '\n'
             else:
-                postfix = ''
+                postfix = '|'
             res[coord] = legend['map'][number] + postfix
-        return ''.join(res)
+        return ''.join(res)[:-1]
 
     def __str__(self):
         name, n_values, shape = self.name, self.n_values, self.shape

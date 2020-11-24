@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Tuple
-
+from random import sample, seed
 legend = {
     'map':
         {
@@ -109,6 +109,12 @@ class GridWorld:
             }
         else:
             self.window_coords = window_coords
+
+        top_left = self.window_coords['top_left']
+        bottom_right = self.window_coords['bottom_right']
+        width = abs(top_left[1] - bottom_right[1])
+        height = abs(top_left[0] - bottom_right[0])
+        self.window_size = (height+1, width+1)
 
         self.dimensions = {
             'distance': max(self.world_size),
@@ -306,14 +312,16 @@ class GridWorld:
         self.observe()
         return self.unpack(self.filtered_observation)
 
-    def render(self):
+    def render(self) -> str:
+        res = str()
         for i, row in enumerate(self.world_description):
             for j, x in enumerate(row):
                 if (i, j) != (self.agent_position['row'], self.agent_position['column']):
-                    print(f"{legend['map'][x]}", end='|')
+                    res += f"{legend['map'][x]}|"
                 else:
-                    print(f"{legend['agent'][self.agent_direction]}", end='|')
-            print()
+                    res += f"{legend['agent'][self.agent_direction]}|"
+            res += '\n'
+        return res
 
     def unpack(self, state: dict):
         if len(state.values()) == 1:
@@ -331,9 +339,8 @@ class GridWorld:
     def get_window(self):
         top_left = self.window_coords['top_left']
         bottom_right = self.window_coords['bottom_right']
-        width = abs(top_left[1] - bottom_right[1])
-        height = abs(top_left[0] - bottom_right[0])
-        obs = np.zeros((height+1, width+1)) + 3
+
+        obs = np.zeros(self.window_size) + 3
 
         if self.agent_direction == 0:
             wd = self.world_description.T[::-1, :]
@@ -385,40 +392,45 @@ class GridWorld:
 
 
 class MapGenerator:
-    def __init__(self, shape: Tuple[int, int], complexity=0.75, density=0.75, seed: int=0):
+    def __init__(self, shape: Tuple[int, int], complexity: float = 0.75, density: float = 0.75, s: int = 0):
         self.shape = shape
         self.complexity = complexity
         self.density = density
-        self.seed = seed
-        self.random_gen = np.random.default_rng(seed)
+        self.seed = s
+        self.random_gen = np.random.default_rng(s)
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        seed = self.random_gen.integers(2 ** 31)
-        world = self.generate_maze(seed)
-        world = self.place_reward(world, seed)
+        s = self.get_seed()
+        world = self.generate_maze(s)
+        world = self.place_reward(world, s)
         return world
 
+    def get_seed(self):
+        return self.random_gen.integers(2 ** 31)
+
     @staticmethod
-    def place_reward(maze, seed):
-        np.random.default_rng(seed)
+    def place_reward(maze, s=None):
+        if s is not None:
+            seed(s)
         rows, columns = np.nonzero(maze == 0)
-        row = np.random.choice(rows, 1)
-        column = np.random.choice(columns, 1)
-        maze[row, column] = 2
+        pairs = [(r, c) for r, c in zip(rows, columns)]
+        [pair] = sample(pairs, 1)
+        maze[pair[0], pair[1]] = 2
         return maze
 
     @staticmethod
-    def generate_position(maze, seed):
-        np.random.default_rng(seed)
+    def generate_position(maze, s):
+        seed(s)
         rows, columns = np.nonzero(maze == 0)
-        row = np.random.choice(rows, 1)
-        column = np.random.choice(columns, 1)
-        return row, column
 
-    def generate_maze(self, seed):
+        pairs = [(r, c) for r, c in zip(rows, columns)]
+        [pair] = sample(pairs, 1)
+        return pair
+
+    def generate_maze(self, s):
         r"""Generate a random maze array.
 
         It only contains two kind of objects, obstacle and free space. The numerical value for obstacle
@@ -426,7 +438,7 @@ class MapGenerator:
 
         Code from https://en.wikipedia.org/wiki/Maze_generation_algorithm
         """
-        np.random.default_rng(seed)
+        np.random.default_rng(s)
         shape = (((self.shape[1] + 2) // 2) * 2 + 1, ((self.shape[0] + 2) // 2) * 2 + 1)
         # Adjust complexity and density relative to maze size
         complexity = int(self.complexity * (5 * (shape[0] + shape[1])))

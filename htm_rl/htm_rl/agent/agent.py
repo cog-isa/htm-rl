@@ -134,8 +134,12 @@ class AgentRunner:
             planning_horizon = self.agent.planner.planning_horizon
             self.agent.set_planning_horizon(0)
 
-        # log_steps = tqdm(total=0, position=1, bar_format='{desc}')
-        for ep in trange(self.n_episodes):
+        if self.verbosity > 0:
+            super_range = trange
+        else:
+            super_range = range
+
+        for ep in super_range(self.n_episodes):
             if 0 < self.pretrain == ep:
                 self.agent.set_planning_horizon(planning_horizon)
 
@@ -170,9 +174,7 @@ class AgentRunner:
         total_reward = 0.
         while step < self.max_steps and not done:
             state, reward, done, info = self.env.step(action)
-            # if pretrain, than learn only possible transitions
-            # if self.agent.planner.planning_horizon == 0 and (reward <= (-100)):
-            #     break
+            trace(self.verbosity, 3, self.env.render())
             action = self.agent.make_step(state, reward, done, self.verbosity, info)
             step += 1
             total_reward += reward
