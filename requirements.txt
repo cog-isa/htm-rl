@@ -1,5 +1,5 @@
-numpy~=1.19.2
-matplotlib~=3.3.2
+numpy
+matplotlib
 jupyterlab
 
 hexy
@@ -8,11 +8,17 @@ prettytable
 pytest==4.6.5
 htm.core
 
-gym==0.17.2
+gym
 gym-minigrid==1.0.1
 
 ruamel.yaml==0.16.10
 
-tqdm~=4.49.0
-pandas~=1.1.2
-setuptools~=49.6.0
+tqdm
+pandas
+setuptools
+dataclasses
+torch
+watcher
+freetype
+pyrr
+glfw
