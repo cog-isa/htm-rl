@@ -6,6 +6,7 @@ from htm_rl.common.sa_sdr_encoder import SaSdrEncoder, format_sa_superposition
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.envs.gridworld_pomdp import GridWorld
 from htm_rl.envs.gridworld_pomdp import MapGenerator
+from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 
 default_parameters = dict(
     tm_pars=dict(n_columns=None,
@@ -41,6 +42,9 @@ default_parameters = dict(
         window_coords={'top_left': (1, -1),
                        'bottom_right': (0, 1)}
     ),
+    dqn_param=dict(epsilon=0.15,
+                   gamma=0.975,
+                   learning_rate=.3e-3),
     seed=1,
     start_indicator=None,
     fixed_direction=None,
@@ -52,19 +56,17 @@ default_parameters = dict(
     shape=(3, 3),
     complexity=0.75,
     density=0.75,
-    transit_memory=False,
-    transit_goals=False
+    transfer_memory=False,
+    transfer_goals=False
 )
 
 
 class TestRunner:
-    def __init__(self, params):
+    def __init__(self, params, agent_type='HTM', agent_name='HTM_Agent'):
+        self.agent_type = agent_type
+        self.agent_name = agent_name
         self.seed = params['seed']
         self.run_param = params['run_param']
-        self.planner_param = params['planner_param']
-        self.start_indicator = params['start_indicator']
-        self.tm_pars = params['tm_pars']
-        self.encoder_param = params['encoder_param']
         self.env_param = params['env_param']
         self.fixed_direction = params['fixed_direction']
         self.fixed_pos = params['fixed_pos']
@@ -78,31 +80,72 @@ class TestRunner:
                                           complexity=params['complexity'],
                                           density=params['density'],
                                           s=self.seed)
-        self.transit_memory = params['transit_memory']
-        self.transit_goals = params['transit_goals']
+        self.transfer_memory = params['transfer_memory']
         self.test_number = 0
+
+        if agent_type == 'HTM':
+            self.planner_param = params['planner_param']
+            self.start_indicator = params['start_indicator']
+            self.tm_pars = params['tm_pars']
+            self.encoder_param = params['encoder_param']
+            self.transfer_goals = params['transfer_goals']
+        elif agent_type == 'DQN':
+            self.dqn_param = params['dqn_param']
+        else:
+            raise NotImplemented
 
     def run(self, n_tests=None):
         if n_tests is None:
             n_tests = self.n_tests
 
-        for _ in range(n_tests):
-            self._init_run()
-            self.runner.run()
-            self.steps.append(self.runner.train_stats.steps)
-            self.env.reset()
-            self.maps.append(dict(world=self.env.world_description,
-                                  position=self.env.agent_position,
-                                  direction=self.env.agent_direction,
-                                  string_repr=self.env.render()))
-            self.test_number += 1
+        if self.agent_type == 'HTM':
+            for _ in range(n_tests):
+                self._init_run()
+                self.runner.run()
+                self.steps.append(self.runner.train_stats.steps)
+                self.env.reset()
+                self.maps.append(dict(world=self.env.world_description,
+                                      position=self.env.agent_position,
+                                      direction=self.env.agent_direction,
+                                      string_repr=self.env.render()))
+                self.test_number += 1
+        elif self.agent_type == 'DQN':
+            for _ in range(n_tests):
+                self._init_dqn_run()
+                self.runner.run()
+                self.steps.append(self.runner.test_stats.steps)
+                self.env.reset()
+                self.maps.append(dict(world=self.env.world_description,
+                                      position=self.env.agent_position,
+                                      direction=self.env.agent_direction,
+                                      string_repr=self.env.render()))
+                self.test_number += 1
+        else:
+            raise NotImplemented
+
+    def _init_dqn_agent(self):
+        self.agent = DqnAgent(self.env.window_size[0] * self.env.window_size[1],
+                              self.env.n_actions,
+                              seed=self.seed,
+                              **self.dqn_param)
+
+    def _init_dqn_runner(self):
+        self.runner = DqnAgentRunner(agent=self.agent,
+                                     env=self.env,
+                                     **self.run_param)
+
+    def _init_dqn_run(self):
+        self._init_environment()
+        if not self.transfer_memory or self.test_number == 0:
+            self._init_dqn_agent()
+        self._init_dqn_runner()
 
     def _init_run(self):
         self._init_environment()
         self._init_encoders()
-        if not self.transit_memory or self.test_number == 0:
+        if not self.transfer_memory or self.test_number == 0:
             self._init_memory()
-        if not self.transit_goals or self.test_number == 0:
+        if not self.transfer_goals or self.test_number == 0:
             self._init_planner()
         self._init_agent()
         self._init_agent_runner()
