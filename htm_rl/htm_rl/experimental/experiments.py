@@ -7,6 +7,8 @@ from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.envs.gridworld_pomdp import GridWorld
 from htm_rl.envs.gridworld_pomdp import MapGenerator
 from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
+from htm_rl.agent.train_eval import RunResultsProcessor
+import os
 
 default_parameters = dict(
     tm_pars=dict(n_columns=None,
@@ -57,14 +59,24 @@ default_parameters = dict(
     complexity=0.75,
     density=0.75,
     transfer_memory=False,
-    transfer_goals=False
+    transfer_goals=False,
+    test_name='agent_test',
+    agent_type='HTM',
+    test_dir='agent_test',
+    moving_average=20,
 )
 
 
 class TestRunner:
-    def __init__(self, params, agent_type='HTM', agent_name='HTM_Agent'):
-        self.agent_type = agent_type
-        self.agent_name = agent_name
+    def __init__(self, params):
+        self.agent_type = params['agent_type']
+        self.test_name = params['test_name']
+        self.test_dir = params['test_dir']
+        try:
+            os.mkdir(self.test_dir)
+        except FileExistsError:
+            pass
+        self.moving_average = params['moving_average']
         self.seed = params['seed']
         self.run_param = params['run_param']
         self.env_param = params['env_param']
@@ -83,45 +95,56 @@ class TestRunner:
         self.transfer_memory = params['transfer_memory']
         self.test_number = 0
 
-        if agent_type == 'HTM':
+        if self.agent_type == 'HTM':
             self.planner_param = params['planner_param']
             self.start_indicator = params['start_indicator']
             self.tm_pars = params['tm_pars']
             self.encoder_param = params['encoder_param']
             self.transfer_goals = params['transfer_goals']
-        elif agent_type == 'DQN':
+            self.agent_name = f'htm_{self.planner_param["planning_horizon"]}_{self.planner_param["goal_memory_size"]}g'
+        elif self.agent_type == 'DQN':
             self.dqn_param = params['dqn_param']
+            self.agent_name = 'dqn'
         else:
             raise NotImplemented
+
+        self.results_processor = RunResultsProcessor(self.test_name,
+                                                     self.test_dir,
+                                                     self.moving_average,
+                                                     self.verbosity)
+        self.map_seed = 0
 
     def run(self, n_tests=None):
         if n_tests is None:
             n_tests = self.n_tests
 
         if self.agent_type == 'HTM':
-            for _ in range(n_tests):
-                self._init_run()
-                self.runner.run()
-                self.steps.append(self.runner.train_stats.steps)
-                self.env.reset()
-                self.maps.append(dict(world=self.env.world_description,
-                                      position=self.env.agent_position,
-                                      direction=self.env.agent_direction,
-                                      string_repr=self.env.render()))
-                self.test_number += 1
+            init = self._init_run
         elif self.agent_type == 'DQN':
-            for _ in range(n_tests):
-                self._init_dqn_run()
-                self.runner.run()
-                self.steps.append(self.runner.test_stats.steps)
-                self.env.reset()
-                self.maps.append(dict(world=self.env.world_description,
-                                      position=self.env.agent_position,
-                                      direction=self.env.agent_direction,
-                                      string_repr=self.env.render()))
-                self.test_number += 1
+            init = self._init_dqn_run
         else:
             raise NotImplemented
+
+        for _ in range(n_tests):
+            init()
+            self.runner.run()
+            # gather data
+            self.results_processor.store_result(self.runner.train_stats,
+                                                self.agent_name + f'_{self.test_number}')
+            self.env.reset()
+            self.maps.append((self.env.world_description,
+                              (self.env.agent_position['row'],
+                               self.env.agent_position['column']),
+                              self.env.agent_direction,
+                              self.map_seed))
+            if self.verbosity >= 2:
+                print(self.env.render())
+
+            self.results_processor.store_environment_maps([])
+
+            self.test_number += 1
+
+        self.results_processor.store_environment_maps(self.maps)
 
     def _init_dqn_agent(self):
         self.agent = DqnAgent(self.env.window_size[0] * self.env.window_size[1],
@@ -151,17 +174,18 @@ class TestRunner:
         self._init_agent_runner()
 
     def _init_environment(self):
+        s = self.map_generator.get_seed()
         if self.fixed_map is not None:
             map_ = self.fixed_map
             if not self.fixed_reward:
-                map_ = self.map_generator.place_reward(map_, self.map_generator.get_seed())
+                map_ = self.map_generator.place_reward(map_, s)
             if self.fixed_pos is None:
-                pos = self.map_generator.generate_position(map_, self.map_generator.get_seed())
+                pos = self.map_generator.generate_position(map_, s)
             else:
                 pos = self.fixed_pos
         else:
             map_ = next(self.map_generator)
-            pos = self.map_generator.generate_position(map_, self.map_generator.get_seed())
+            pos = self.map_generator.generate_position(map_, s)
 
         if self.fixed_direction is None:
             direction = self.map_generator.random_gen.integers(3)
@@ -174,6 +198,7 @@ class TestRunner:
                              agent_initial_direction=direction,
                              world_size=self.map_generator.shape,
                              **self.env_param)
+        self.map_seed = s
 
     def _init_encoders(self):
         action_encoder_param = self.encoder_param['action']
