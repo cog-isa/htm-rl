@@ -438,7 +438,7 @@ class MapGenerator:
 
         Code from https://en.wikipedia.org/wiki/Maze_generation_algorithm
         """
-        np.random.default_rng(s)
+        np.random.seed(s)
         shape = (((self.shape[1] + 2) // 2) * 2 + 1, ((self.shape[0] + 2) // 2) * 2 + 1)
         # Adjust complexity and density relative to maze size
         complexity = int(self.complexity * (5 * (shape[0] + shape[1])))
