@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from htm_rl.common.utils import trace
-
+import pathlib
 
 class RunStats:
     steps: List[int]
@@ -134,20 +134,36 @@ class RunResultsProcessor:
         )
 
     def store_environment_maps(self, maps):
-        for i, (env_map, seed) in enumerate(maps):
+        for i, (env_map, pos, direction, seed) in enumerate(maps):
             n = env_map.shape[0]
 
             fig: plt.Figure
             ax: plt.Axes
             fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-            ax.set_xticks(np.arange(-.5, n, 1))
-            ax.set_yticks(np.arange(-.5, n, 1))
+            ax.set_xticks(np.arange(n)-0.5)
+            ax.set_yticks(np.arange(n)-0.5)
             ax.set_xticklabels(np.arange(n))
             ax.set_yticklabels(np.arange(n))
             ax.grid(color='grey', linestyle='-', linewidth=1)
             ax.set_title(f'{self.env_name}, seed={seed}')
 
             ax.imshow(env_map)
+
+            if direction == 0:
+                dx = 0.5
+                dy = 0
+            elif direction == 1:
+                dx = 0
+                dy = 0.5
+            elif direction == 2:
+                dx = -0.5
+                dy = 0
+            else:
+                dx = 0
+                dy = -0.5
+
+            ax.arrow(pos[1], pos[0], dx, dy, width=0.1, length_includes_head=True)
+
             save_path = os.path.join(self.test_dir, f'{self.env_name}_map_{i}_{seed}.svg')
             fig.savefig(save_path, dpi=120)
 
