@@ -9,6 +9,7 @@ from htm_rl.envs.gridworld_pomdp import MapGenerator
 from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 from htm_rl.agent.train_eval import RunResultsProcessor
 import os
+from htm_rl.agent.train_eval import RunStats
 
 default_parameters = dict(
     tm_pars=dict(n_columns=None,
@@ -68,6 +69,8 @@ default_parameters = dict(
 
 
 class TestRunner:
+    train_stats: RunStats
+
     def __init__(self, params):
         self.agent_type = params['agent_type']
         self.test_name = params['test_name']
@@ -104,10 +107,12 @@ class TestRunner:
             self.agent_name = f'htm_{self.planner_param["planning_horizon"]}_{self.planner_param["goal_memory_size"]}g'
         elif self.agent_type == 'DQN':
             self.dqn_param = params['dqn_param']
+            self.run_param.pop('pretrain', None)
             self.agent_name = 'dqn'
         else:
             raise NotImplemented
 
+        self.train_stats = RunStats()
         self.results_processor = RunResultsProcessor(self.test_name,
                                                      self.test_dir,
                                                      self.moving_average,
@@ -129,8 +134,6 @@ class TestRunner:
             init()
             self.runner.run()
             # gather data
-            self.results_processor.store_result(self.runner.train_stats,
-                                                self.agent_name + f'_{self.test_number}')
             self.env.reset()
             self.maps.append((self.env.world_description,
                               (self.env.agent_position['row'],
@@ -140,10 +143,10 @@ class TestRunner:
             if self.verbosity >= 2:
                 print(self.env.render())
 
-            self.results_processor.store_environment_maps([])
-
             self.test_number += 1
 
+        self.results_processor.store_result(self.train_stats,
+                                            self.agent_name)
         self.results_processor.store_environment_maps(self.maps)
 
     def _init_dqn_agent(self):
@@ -156,6 +159,7 @@ class TestRunner:
         self.runner = DqnAgentRunner(agent=self.agent,
                                      env=self.env,
                                      **self.run_param)
+        self.runner.test_stats = self.train_stats
 
     def _init_dqn_run(self):
         self._init_environment()
@@ -251,3 +255,4 @@ class TestRunner:
     def _init_agent_runner(self):
         self.runner = AgentRunner(agent=self.agent, env=self.env,
                                   **self.run_param)
+        self.runner.train_stats = self.train_stats
