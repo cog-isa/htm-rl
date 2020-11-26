@@ -10,13 +10,13 @@ from htm_rl.common.utils import trace, timed
 
 
 class DqnAgent:
-    def __init__(self, n_states, n_actions, epsilon, gamma, learning_rate, seed):
+    def __init__(self, window_size, n_actions, epsilon, gamma, learning_rate, seed):
         torch.manual_seed(seed)
 
-        self._n_states = n_states
+        self._window_size = window_size
         self._n_actions = n_actions
 
-        self.qn = DqnAgentNetwork((n_states, ), n_actions)
+        self.qn = DqnAgentNetwork((window_size, ), n_actions)
         self._optimizer = torch.optim.Adam(self.qn.parameters(), lr=learning_rate)
 
         self._epsilon = epsilon
@@ -29,11 +29,11 @@ class DqnAgent:
             # sets train or eval (inference) mode
             self.qn.train(train_mode)
 
-    def make_action(self, state):
+    def make_action(self, state: np.array):
         if self._train_mode and np.random.rand() < self._epsilon:
             return np.random.choice(self._n_actions)
 
-        s = self._to_one_hot(state)
+        s = state.flatten()
         qvalues = self.qn.get_qvalues([s])
         return np.argmax(qvalues)
 
@@ -43,7 +43,7 @@ class DqnAgent:
 
         gamma = self._gamma
         # encode input to 1-hot
-        s, ns = self._to_one_hot(s), self._to_one_hot(ns)
+        s, ns = s.flatten(), ns.flatten()
         # to torch tensors
         s, r, ns = tuple(map(self._to_tensor, (s, r, ns)))
         a = self._to_tensor(a, torch.int64)
@@ -74,11 +74,6 @@ class DqnAgent:
     def _to_tensor(x, dtype=torch.float32):
         # also to batch
         return torch.tensor([x], dtype=dtype)
-
-    def _to_one_hot(self, state):
-        one_hot_state = np.zeros(self._n_states, dtype=np.float)
-        one_hot_state[state] = 1.
-        return one_hot_state
 
 
 class DqnAgentRunner:
@@ -120,13 +115,6 @@ class DqnAgentRunner:
                 trace(self.verbosity, 2, '')
             yield
         trace(self.verbosity, 1, '<============')
-
-    def print_q_values(self):
-        self.agent.reset(False)
-        with torch.set_grad_enabled(False):
-            for s in range(self.agent._n_states):
-                a = self.agent.make_action(s)
-                print(s, a)
 
     @timed
     def run_episode(self, train_mode: bool):
