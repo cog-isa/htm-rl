@@ -1,9 +1,14 @@
 from typing import Tuple
 
 from htm.bindings.algorithms import SpatialPooler as SP
+from htm.bindings.sdr import SDR
 
 
-class SpatialPooler(SP):
+class SpatialPooler:
+    spatial_pooler: SP
+    _cached_input_sdr: SDR
+    _cached_output_sdr: SDR
+
     def __init__(
             self, input_size: int, output_size: int, permanence_threshold: float,
             sparsity: float, synapse_permanence_deltas: Tuple[float, float],
@@ -12,11 +17,12 @@ class SpatialPooler(SP):
             seed: int, min_activation_threshold: int = 1
     ):
         permanence_increase, permanence_decrease = synapse_permanence_deltas
-
-        super(SpatialPooler, self).__init__(
-            inputDimensions=[input_size], columnDimensions=[output_size],
-            globalInhibition=True,
+        self.spatial_pooler = SP(
+            inputDimensions=[input_size],
+            columnDimensions=[output_size],
+            potentialRadius=input_size,
             potentialPct=permanence_threshold,
+            globalInhibition=True,
             localAreaDensity=sparsity,
             # min overlapping required to activate output col
             stimulusThreshold=min_activation_threshold,
@@ -28,3 +34,16 @@ class SpatialPooler(SP):
             minPctOverlapDutyCycle=expected_normal_overlap_frequency,
             seed=seed,
         )
+        self._cached_input_sdr = SDR(input_size)
+        self._cached_output_sdr = SDR(output_size)
+
+    def encode(self, sdr, learn: bool = True):
+        if isinstance(sdr, list):
+            self._cached_input_sdr.sparse = sdr
+        else:
+            self._cached_input_sdr.dense = sdr
+
+        self.spatial_pooler.compute(
+            self._cached_input_sdr, learn=learn, output=self._cached_output_sdr
+        )
+        return self._cached_output_sdr.sparse
