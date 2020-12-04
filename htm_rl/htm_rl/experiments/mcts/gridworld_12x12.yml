@@ -116,7 +116,7 @@ agent_runners:
       learning_rate: .3e-3
       seed: *seed
 
-  mcts: !MctsAgentRunner
+  mcts_sp: !MctsAgentRunner
     <<: *base_htm_runner
     agent: !MctsAgent
       <<: *base_htm_agent
