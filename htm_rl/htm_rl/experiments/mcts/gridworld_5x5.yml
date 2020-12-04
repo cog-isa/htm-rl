@@ -54,7 +54,7 @@ run_results_processor: !RunResultsProcessor
 .state_spatial_pooler: &state_spatial_pooler !SpatialPooler
   input_size: *state_bits_pre
   output_size: *state_bits_post
-  permanence_threshold: .8
+  potential_synapses_ratio: .8
   sparsity: .2
   synapse_permanence_deltas: [.1, .02]
   connected_permanence_threshold: .5
@@ -72,9 +72,24 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   action_encoder: !IntSdrEncoder
     name: action
     n_values: *n_actions
-    value_bits: 10
-    activation_threshold: 8
+    value_bits: 4
+    activation_threshold: 3
     default_format: full
+
+.sa_total_bits: &q_sa_total_bits 100
+.q_sa_spatial_pooler: &q_sa_spatial_pooler !SpatialPooler
+  input_size: 66
+  output_size: *q_sa_total_bits
+  potential_synapses_ratio: .8
+  sparsity: .1
+  synapse_permanence_deltas: [ .1, .02 ]
+  connected_permanence_threshold: .5
+  boost_strength: 3
+  boost_sliding_window: 100
+  expected_normal_overlap_frequency: .01
+  seed: *seed
+  min_activation_threshold: 1
+
 
 # ========== Temporal Memory / Memory ==========
 # should be unique for each agent
@@ -136,15 +151,16 @@ agent_runners:
       learning_rate: .3e-3
       seed: *seed
 
-  mcts_sp: !MctsAgentRunner
+  mcts_q: !MctsAgentRunner
     <<: *base_htm_runner
-    agent: !MctsAgent
-      <<: *base_htm_agent
-      memory: !Memory &tm_mcts
-        <<: *base_agent_memory
-        tm: !TemporalMemory { <<: *base_tm }
-      planner: !MctsPlanner
-        <<: *base_mcts_planner
-        memory: *tm_mcts
+    agent: !MctsAgentQ
+      n_actions: *n_actions
+      planner: !MctsPlannerQ
+        n_actions: *n_actions
+        planning_horizon: 1
+        encoder: *sa_sdr_encoder
+        spatial_pooler: *q_sa_spatial_pooler
+
       mcts_actor_critic: !MctsActorCritic
         <<: *base_mcts_actor_critic
+        cells_sdr_size: *q_sa_total_bits
