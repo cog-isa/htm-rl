@@ -49,6 +49,9 @@ Research + functional tasks
     - [x] Update method description
     - [x] Add experiment results
     - [ ] TBD
+- [ ] Deal with high variance of results and the need to use large moving average windows
+- [ ] MCTS
+  - [ ] Make sure update cell ratio is used properly
 - Not acknowledged and questionable:
   - [ ] Split SAR TM into 2 TMs
     - State TM: (s, a) $\rightarrow$ s'
@@ -285,9 +288,10 @@ Shared cells
 
 - action cells are treated as one, i.e. their stats are accumulated with avg before UCB1 calculations
 - i.e. it's still single cell UCB1, but stats are spread into n cells, and each time only k cells are updated.
-  - rescale avg N with $\frac{n}{k}$ as only that fraction of action cells is updated each activation step
+  - let's define $\beta = \frac{k}{t}$, which is a fraction of action cells that are updated each activation step
+  - then we need rescale avg N with $\beta$
   - $Q = \frac{\sum R_i}{\sum N_i}$
-  - $U = \sqrt{\frac{2 \log (N)}{\sum N_i \cdot \frac{n}{k}}}$
+  - $U = \sqrt{\frac{2 \log {T}}{\beta^{-1} \cdot \sum N_i}}$
 - in this method each action has n stats approximators, but one UCB1 approximator
 - **results**: for orthogonal actions encoding results are the same as for single cell UCB1
   - they're exactly the same if you rescale avg N
