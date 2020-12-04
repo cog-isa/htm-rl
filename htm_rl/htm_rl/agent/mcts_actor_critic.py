@@ -4,6 +4,7 @@ import numpy as np
 from numpy.random._generator import Generator
 
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.common.utils import trace
 
 
 class MctsActorCritic:
@@ -18,7 +19,7 @@ class MctsActorCritic:
 
     def __init__(
             self, cells_sdr_size: int, update_cell_ratio: float,
-            discount_factor: float, seed: int, online: bool
+            discount_factor: float, seed: int, online: bool, learning_rate: float = 1e-2
     ):
         self.discount_factor = discount_factor
         self.update_cell_ratio = update_cell_ratio
@@ -56,12 +57,20 @@ class MctsActorCritic:
         self._cell_value += self._cell_eligibility_trace * reward
 
     def choose(self, options: List[SparseSdr]) -> int:
+        # if all(map(len, options)) == 0:
+        #     # no reasonable options
+        #     return self._rng.integers(len(options))
+
+        ucb1_values = self.value_options(options)
+        trace(1, 2, ucb1_values)
+        return np.argmax(ucb1_values)
+
+    def value_options(self, options: List[SparseSdr]):
         T = self._total_visited_count(options)
 
-        ucb1_values = np.array([
+        return np.array([
             self.value(cells_sdr, T) for cells_sdr in options
         ])
-        return np.argmax(ucb1_values)
 
     def value(self, cells_sdr: SparseSdr, options_total_steps):
         if not cells_sdr:

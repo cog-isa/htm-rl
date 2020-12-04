@@ -122,7 +122,25 @@ class MctsAgentRunner:
             self.train_stats.append_stats(steps, reward, elapsed_time)
             trace(self.verbosity, 2, '')
             yield
+
         trace(self.verbosity, 1, '<============')
+        encoder = self.agent.planner.encoder
+        n_states = self.env.n_states
+
+        states = [encoder.encode(Sa(state, None)) for state in range(n_states)]
+        V_s = np.array([
+            self.agent._mcts_actor_critic.value(state, 0)
+            for state in states
+        ]).reshape((int(np.sqrt(n_states)), -1))
+        V_s = (100*V_s).astype(np.int)
+        trace(self.verbosity, 1, V_s)
+
+        V_s = self.agent._mcts_actor_critic.value_options(states).reshape((int(np.sqrt(n_states)), -1))
+        V_s = V_s.astype(np.int)
+        trace(self.verbosity, 1, V_s)
+
+        trace(self.verbosity, 1, '<============')
+        print(self.env.initial_state)
 
     @timed
     def run_episode(self):

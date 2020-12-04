@@ -1,3 +1,5 @@
+from typing import Optional
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -12,12 +14,14 @@ class GridworldMapGenerator:
     size: int
     density: float
     verbosity: int
+    current_env: Optional[GridworldMdp]
 
     def __init__(self, seed: int, size: int, density: float, verbosity: int):
         self.seed = seed
         self.size = size
         self.density = density
         self.verbosity = verbosity
+        self.current_env = None
 
     def __iter__(self):
         rnd_generator = np.random.default_rng(seed=self.seed)
@@ -25,7 +29,8 @@ class GridworldMapGenerator:
             seed = rnd_generator.integers(2**31)
             gridworld_map, t = self.generate(seed)
             trace(self.verbosity, 3, f'Gridworld {seed} generated in {t:.5f} sec')
-            yield GridworldMdp(gridworld_map, seed)
+            self.current_env = GridworldMdp(gridworld_map, seed)
+            yield self.current_env
 
     @timed
     def generate(self, seed):
@@ -37,7 +42,7 @@ class GridworldMapGenerator:
         non_visited_neighbors = np.empty_like(gridworld, dtype=np.float)
 
         p_change_cell = .1/np.sqrt(n)
-        p_move_forward = 1 - 1./np.sqrt(n)
+        p_move_forward = 1. - 1./(n ** 0.75)
 
         i, j = divmod(rnd.integers(n**2), n)
         view_direction = rnd.integers(4)

@@ -84,9 +84,13 @@ class MctsPlanner:
                 presynaptic_columns = self.memory.columns_from_cells(presynaptic_cells)
                 # which state-action pair activates `cell` in a form of superposition
                 initial_sa_superposition = self.encoder.decode(presynaptic_columns)
+                # trace(verbosity, 2, presynaptic_columns)
+                trace(verbosity, 3, initial_sa_superposition)
                 # iterating here is redundant - it should be always only one action
                 for action in initial_sa_superposition.action:
                     action_outcomes[action].append(cell)
+
+        trace(verbosity, 2, action_outcomes)
 
         trace(verbosity, 2, '<===')
         return action_outcomes
