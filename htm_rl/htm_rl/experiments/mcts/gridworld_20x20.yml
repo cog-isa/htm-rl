@@ -39,17 +39,36 @@ run_results_processor: !RunResultsProcessor
   test_dir:                   # leave empty for default behavior - output to the config's dir
 
 # =========== encoder =================
-.state_bits: &state_bits 500
+.state_bits_pre: &state_bits_pre 500
+.state_bits_post: &state_bits_post 500
+
+.state_random_encoder: &state_rnd_encoder !RandomSdrEncoder
+  name: state
+  n_states: *n_states
+  fixed_base: [ 0, 0 ]
+  total_bits: *state_bits_pre
+  sparsity: .02
+  seed: *seed
+  default_format: full
+
+.state_spatial_pooler: &state_spatial_pooler !SpatialPooler
+  input_size: *state_bits_pre
+  output_size: *state_bits_post
+  permanence_threshold: .8
+  sparsity: .02
+  synapse_permanence_deltas: [.1, .02]
+  connected_permanence_threshold: .5
+  boost_strength: 3
+  boost_sliding_window: 400
+  expected_normal_overlap_frequency: .005
+  seed: *seed
+  min_activation_threshold: 1
 
 sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
-  state_encoder: !RandomSdrEncoder
+  state_encoder: !RandomSdrEncoderSp
     name: state
-    n_states: *n_states
-    fixed_base: [0, 0]
-    total_bits: *state_bits
-    sparsity: .02
-    seed: *seed
-    default_format: full
+    random_encoder: *state_rnd_encoder
+    spatial_pooler: *state_spatial_pooler
   action_encoder: !IntSdrEncoder
     name: action
     n_values: *n_actions
@@ -99,9 +118,10 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   n_actions: *n_actions
 
 .base_mcts_actor_critic: &base_mcts_actor_critic
-  cells_sdr_size: *state_bits
+  cells_sdr_size: *state_bits_post
   update_cell_ratio: 1.
   discount_factor: .985
+  learning_rate: .9999
   seed: *seed
   online: True
 
