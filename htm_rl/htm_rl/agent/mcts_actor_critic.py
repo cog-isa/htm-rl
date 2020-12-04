@@ -77,7 +77,7 @@ class MctsActorCritic:
         ])
 
     def value(self, cells_sdr: SparseSdr, options_total_steps):
-        if not cells_sdr:
+        if len(cells_sdr) == 0:
             return np.infty
 
         T = options_total_steps
@@ -95,7 +95,7 @@ class MctsActorCritic:
         n_times_each_option_visited = np.array([
             np.mean(self._cell_visited_count[state])
             for state in options
-            if state
+            if len(state) > 0
         ])
 
         # total visited counter - sum of option counters
