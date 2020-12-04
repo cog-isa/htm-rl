@@ -17,7 +17,7 @@ gridworld_map_generator: !GridworldMapGenerator &gridworld_generator
 
 transfer_learning_experiment_runner: !TransferLearningExperimentRunner2
   env_generator: *gridworld_generator
-  n_episodes_all_fixed: 30
+  n_episodes_all_fixed: 50
   n_initial_states: 1
   n_terminal_states: 1
   n_environments: 1

@@ -7,17 +7,17 @@ random_seed_setter: !RandomSeedSetter
 # =========== environment =============
 gridworld_map_generator: !GridworldMapGenerator &gridworld_generator
   seed: *seed
-  size: 5
+  size: 20
   density: .7
   verbosity: *verbosity
 
 .env_dimensions:
-  n_states: &n_states 25
+  n_states: &n_states 400
   n_actions: &n_actions 4
 
 transfer_learning_experiment_runner: !TransferLearningExperimentRunner2
   env_generator: *gridworld_generator
-  n_episodes_all_fixed: 30
+  n_episodes_all_fixed: 140
   n_initial_states: 1
   n_terminal_states: 1
   n_environments: 1
@@ -27,19 +27,19 @@ transfer_learning_experiment_runner: !TransferLearningExperimentRunner2
 .base_agent_runner: &base_runner
   env:
   n_episodes:
-  max_steps: 30
+  max_steps: 400
   agent:
   verbosity: *verbosity
 
 # test run results processing
 run_results_processor: !RunResultsProcessor
-  env_name: gridworld_5x5
+  env_name: gridworld_20x20
   moving_average: 4
   verbosity: *verbosity
   test_dir:                   # leave empty for default behavior - output to the config's dir
 
 # =========== encoder =================
-.state_bits: &state_bits 100
+.state_bits: &state_bits 500
 
 sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   state_encoder: !RandomSdrEncoder
@@ -47,7 +47,7 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
     n_states: *n_states
     fixed_base: [0, 0]
     total_bits: *state_bits
-    sparsity: .15
+    sparsity: .02
     seed: *seed
     default_format: full
   action_encoder: !IntSdrEncoder
@@ -100,8 +100,8 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
 
 .base_mcts_actor_critic: &base_mcts_actor_critic
   cells_sdr_size: *state_bits
-  update_cell_ratio: .8
-  discount_factor: .94
+  update_cell_ratio: 1.
+  discount_factor: .985
   seed: *seed
   online: True
 
