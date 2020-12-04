@@ -22,6 +22,7 @@ from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.random_sdr_encoder import RandomSdrEncoder
+from htm_rl.common.random_sdr_encoder_sp import RandomSdrEncoderSp
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
@@ -30,6 +31,7 @@ from htm_rl.envs.mdp import (
     GridworldMdpGenerator,
 )
 from htm_rl.envs.preset_mdp_cell_transitions import PresetMdpCellTransitions
+from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
@@ -170,8 +172,10 @@ def register_classes(yaml: YAML):
     classes = [
         RandomSeedSetter,
         DqnAgent, DqnAgentRunner,
-        IntSdrEncoder, SarSdrEncoder, SaSdrEncoder, RandomSdrEncoder,
-        TemporalMemory, LegacyMemory, Memory,
+        IntSdrEncoder, SarSdrEncoder, SaSdrEncoder,
+        RandomSdrEncoder, RandomSdrEncoderSp,
+        TemporalMemory, SpatialPooler,
+        LegacyMemory, Memory,
         LegacyPlanner, Planner,
         LegacyAgent, Agent, AgentRunner,
         TransferLearningExperimentRunner,
