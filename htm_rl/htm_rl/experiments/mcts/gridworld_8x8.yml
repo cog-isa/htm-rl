@@ -47,7 +47,7 @@ run_results_processor: !RunResultsProcessor
   n_states: *n_states
   fixed_base: [ 0, 0 ]
   total_bits: *state_bits_pre
-  sparsity: .1
+  sparsity: .15
   seed: *seed
   default_format: full
 
@@ -58,9 +58,9 @@ run_results_processor: !RunResultsProcessor
   sparsity: .1
   synapse_permanence_deltas: [.1, .02]
   connected_permanence_threshold: .5
-  boost_strength: 3
-  boost_sliding_window: 200
-  expected_normal_overlap_frequency: .01
+  boost_strength: 4
+  boost_sliding_window: 300
+  expected_normal_overlap_frequency: .005
   seed: *seed
   min_activation_threshold: 1
 
@@ -121,6 +121,7 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   cells_sdr_size: *state_bits_post
   update_cell_ratio: 1.
   discount_factor: .95
+  learning_rate: .998
   seed: *seed
   online: True
 

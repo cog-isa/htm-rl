@@ -121,6 +121,7 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   cells_sdr_size: *state_bits_post
   update_cell_ratio: 1.
   discount_factor: .975
+  learning_rate: .9995
   seed: *seed
   online: True
 
