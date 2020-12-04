@@ -10,7 +10,7 @@ class SpatialPooler:
     _cached_output_sdr: SDR
 
     def __init__(
-            self, input_size: int, output_size: int, permanence_threshold: float,
+            self, input_size: int, output_size: int, potential_synapses_ratio: float,
             sparsity: float, synapse_permanence_deltas: Tuple[float, float],
             connected_permanence_threshold: float, boost_strength: float,
             boost_sliding_window: int, expected_normal_overlap_frequency: float,
@@ -21,7 +21,7 @@ class SpatialPooler:
             inputDimensions=[input_size],
             columnDimensions=[output_size],
             potentialRadius=input_size,
-            potentialPct=permanence_threshold,
+            potentialPct=potential_synapses_ratio,
             globalInhibition=True,
             localAreaDensity=sparsity,
             # min overlapping required to activate output col
@@ -46,4 +46,4 @@ class SpatialPooler:
         self.spatial_pooler.compute(
             self._cached_input_sdr, learn=learn, output=self._cached_output_sdr
         )
-        return self._cached_output_sdr.sparse
+        return list(self._cached_output_sdr.sparse)
