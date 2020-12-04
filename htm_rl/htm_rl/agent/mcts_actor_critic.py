@@ -9,6 +9,7 @@ from htm_rl.common.utils import trace
 
 class MctsActorCritic:
     discount_factor: float
+    learning_rate: float
     update_cell_ratio: float
     online_learning: bool
     cell_visited_count: np.array
@@ -19,12 +20,13 @@ class MctsActorCritic:
 
     def __init__(
             self, cells_sdr_size: int, update_cell_ratio: float,
-            discount_factor: float, seed: int, online: bool, learning_rate: float = 1e-2
+            discount_factor: float, seed: int, online: bool, learning_rate: float = .99
     ):
         self.discount_factor = discount_factor
         self.update_cell_ratio = update_cell_ratio
         self.online_learning = online
         self._rng = np.random.default_rng(seed)
+        self.learning_rate = learning_rate
 
         self._cell_visited_count = np.full(cells_sdr_size, 1e-5, dtype=np.float)
         self._cell_value = np.zeros(cells_sdr_size, dtype=np.float)
@@ -50,10 +52,12 @@ class MctsActorCritic:
         active_cells_update_indices = np.nonzero(active_cells_update_voting)[0]
         updated_cells = active_cells_sdr[active_cells_update_indices]
 
+        self._cell_visited_count *= self.learning_rate
         self._cell_visited_count[updated_cells] += 1
 
         self._cell_eligibility_trace *= self.discount_factor
         self._cell_eligibility_trace[updated_cells] += 1.
+        self._cell_value *= self.learning_rate
         self._cell_value += self._cell_eligibility_trace * reward
 
     def choose(self, options: List[SparseSdr]) -> int:
