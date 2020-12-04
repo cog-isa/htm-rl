@@ -39,7 +39,7 @@ class MctsAgentQ:
         # learn
         sa = Sa(state, action)
         sa_sdr = self.planner.encode_sa(sa, learn=True)
-        self._mcts_actor_critic.add_step(sa_sdr, max(reward, 0))
+        self._mcts_actor_critic.add_step(sa_sdr, reward)
         return action
 
     def _make_action(self, state, verbosity: int):
@@ -49,7 +49,6 @@ class MctsAgentQ:
             action = self._mcts_actor_critic.choose(options)
         else:
             action = np.random.choice(self._n_actions)
-            trace(3, 1, 'RANDOM')
 
         return action
 

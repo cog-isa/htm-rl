@@ -103,4 +103,4 @@ class GridworldMdp:
 
     def _reward(self, state):
         """ return the reward you get for taking action in state and landing on next_state"""
-        return 1.0 if self.is_terminal(state) else -1e-2
+        return 1.0 if self.is_terminal(state) else -1e-3

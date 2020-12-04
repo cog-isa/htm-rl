@@ -29,7 +29,7 @@ class MctsActorCritic:
         self.learning_rate = learning_rate
 
         self._cell_visited_count = np.full(cells_sdr_size, 1e-5, dtype=np.float)
-        self._cell_value = np.zeros(cells_sdr_size, dtype=np.float)
+        self._cell_value = np.full(cells_sdr_size, -1e-3, dtype=np.float)
         self._cell_eligibility_trace = np.zeros(cells_sdr_size, dtype=np.float)
         self._total_steps = 0
 
