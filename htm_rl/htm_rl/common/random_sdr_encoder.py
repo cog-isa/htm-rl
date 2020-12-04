@@ -25,7 +25,7 @@ class BitArr:
 
     def unfold(self) -> Iterable[int]:
         """Materialize range into actual indices."""
-        return dense_to_sparse(self.arr)
+        yield from dense_to_sparse(self.arr)
 
 
 class RandomSdrEncoder:
@@ -96,11 +96,8 @@ class RandomSdrEncoder:
         # DEBUG part
 
     def encode(self, x: int) -> BitArr:
-        """
-        Encodes a single value to sparse SDR in intermediate BitRange [l, r) short format.
-        """
-        sparse_sdr = self.encoding_map[x]
-        return BitArr(sparse_sdr)
+        dense_sdr = self.encoding_map[x]
+        return BitArr(dense_sdr)
 
     def decode(self, sparse_sdr: SparseSdr) -> Superposition:
         """
