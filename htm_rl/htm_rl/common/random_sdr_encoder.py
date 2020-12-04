@@ -78,16 +78,12 @@ class RandomSdrEncoder:
         encoding_map[:, 0:fixed_base_ones] = 1
 
         n_states, total_bits = encoding_map.shape
-        # choose_k = int(total_bits * sparsity)
-        # for bit_i in range(fixed_base_total, total_bits):
-        #     # choose_k = rng_generator.binomial(n_states, sparsity)
-        #     idx = rng_generator.choice(n_states, choose_k, replace=False)
-        #     encoding_map[idx, bit_i] = 1
         choose_k_bits = int((total_bits - fixed_base_total) * sparsity)
         for state in range(n_states):
             bits = rng_generator.choice(total_bits-fixed_base_total, choose_k_bits, replace=False)
             encoding_map[state, bits] = 1
 
+        # DEBUG part: calculate intersection stats
         shared_cells = np.array([
             np.count_nonzero(encoding_map[s1] * encoding_map[s2])
             for s1 in range(n_states)
@@ -97,7 +93,7 @@ class RandomSdrEncoder:
 
         print((shared_cells.mean(axis=1)).astype(np.int))
         print((shared_cells.max(axis=1)).astype(np.int))
-
+        # DEBUG part
 
     def encode(self, x: int) -> BitArr:
         """
@@ -146,13 +142,9 @@ class RandomSdrEncoder:
         }
         return supported_formats[format_].format(sparse_sdr, self)
 
-    def _assert_acceptable_values(self, x: int):
-        assert x is None or x == self.ALL or 0 <= x < self.n_values, \
-            f'Value must be in [0, {self.n_values}] or {self.ALL} or None; got {x}'
-
     def __str__(self):
-        name, n_values, value_bits = self.name, self.n_values, self.value_bits
-        return f'({name}: v{n_values} x b{value_bits})'
+        name, value_bits = self.name, self.value_bits
+        return f'({name}: b{value_bits})'
 
 
 class RandomSdrFormatter:
