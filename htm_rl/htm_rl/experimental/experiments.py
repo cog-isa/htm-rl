@@ -146,7 +146,7 @@ class TestRunner:
             self.test_number += 1
 
         self.results_processor.store_result(self.train_stats,
-                                            self.agent_name)
+                                            self.agent_name+f'_{self.env.window_size}w')
         self.results_processor.store_environment_maps(self.maps)
 
     def _init_dqn_agent(self):
