@@ -3,6 +3,7 @@
 - [Research and development log](#research-and-development-log)
   - [TODO](#todo)
   - [Thoughts and ideas](#thoughts-and-ideas)
+  - [2020.12.04 Fri](#20201204-fri)
   - [2020.11.27 Fri](#20201127-fri)
   - [2020.11.20 Fri](#20201120-fri)
   - [2020.11.06 Fri](#20201106-fri)
@@ -52,6 +53,8 @@ Research + functional tasks
 - [ ] Deal with high variance of results and the need to use large moving average windows
 - [ ] MCTS
   - [ ] Make sure update cell ratio is used properly
+  - [ ] check TD-learning, counting
+  - [ ] check bottlenecks
 - Not acknowledged and questionable:
   - [ ] Split SAR TM into 2 TMs
     - State TM: (s, a) $\rightarrow$ s'
@@ -113,6 +116,13 @@ Auxialiary tasks, usability improvements and so on
 - SP hierarchies for large input images
   - with every SP working similar to convolution filter
 - consider doing live-logging experiments in markdown there
+
+## 2020.12.04 Fri
+
+Artem
+
+- сигнал на базальные ганглии без htm, второй этап - прикрутить htm
+  - посмотреть еще раз Шумского. Смотреть на микс Шумского и 12-14 работ у Артема
 
 ## 2020.11.27 Fri
 
