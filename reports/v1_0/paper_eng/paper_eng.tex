@@ -2,6 +2,7 @@
 
 \usepackage{epsfig}
 \usepackage{subcaption}
+\captionsetup[sub]{skip=1pt}
 \usepackage{calc}
 \usepackage{amssymb}
 \usepackage{amstext}
@@ -26,20 +27,19 @@
 
 \author{
   \authorname{
-    Petr Kuderov\sup{1}\orcidAuthor{0000-0001-7055-3426}, Aleksandr I. Panov\sup{1}\orcidAuthor{0000-0002-9747-3837}
+    Petr Kuderov\sup{1}\orcidAuthor{0000-0001-7055-3426}, Aleksandr I. Panov\sup{1,2}\orcidAuthor{0000-0002-9747-3837}
   }
   \affiliation{
-    \sup{1}Moscow Institute of Physics and Technology, Russia
+    \sup{1}Moscow Institute of Physics and Technology, Moscow, Russia\\
+    \sup{2}Artificial Intelligence Research Institute, Federal Research Center ``Computer Science and Control'' of the Russian Academy of Sciences, Moscow, Russia
   }
-  \email{
-    kuderov.pv@phystech.edu, panov.ai@mipt.ru
-  }
+  \email{kuderov.pv@phystech.edu}
 }
 
 \keywords{Model-based reinforcement learning, Markov Decision Process, planning, Hierarchical Temporal Memory, Sparse Distributed Representation.}
 
 \abstract{
-Sequential decision making is among the key problems in Artificial Intelligence. It can be formalized as Markov Decision Process (MDP). One approach to solve it, called model-based Reinforcement Learning (RL), combines learning the model of the environment and the global policy. Having a good model of the environment opens up such properties as data efficiency and targeted exploration. While most of the memory-based approaches are based on using Artificial Neural Networks (ANNs), in our work we instead draw the ideas from Hierarchical Temporary Memory (HTM) framework, which is based on human-like memory model. We utilize it to build an agent's memory that learns the environment dynamics. We also accompany it with an example of planning algorithm, that enables the agent to solve RL tasks.}
+Sequential decision making is among the key problems in Artificial Intelligence. It can be formalized as Markov Decision Process (MDP). One approach to solve it, called model-based Reinforcement Learning (RL), combines learning the model of the environment and the global policy. Having a good model of the environment opens up such properties as data efficiency and targeted exploration. While most of the memory-based approaches are based on using Artificial Neural Networks (ANNs), in our work we instead draw the ideas from Hierarchical Temporal Memory (HTM) framework, which is based on human-like memory model. We utilize it to build an agent's memory that learns the environment dynamics. We also accompany it with an example of planning algorithm, that enables the agent to solve RL tasks.}
 
 
 \onecolumn \maketitle \normalsize \setcounter{footnote}{0}
@@ -47,15 +47,15 @@ Sequential decision making is among the key problems in Artificial Intelligence.
 
 \section{\uppercase{Introduction}}
 
-Reinforcement Learning (RL) seek to find methods that enable robots or virtual agents to act autonomously in order to solve human-defined tasks. It requires from such methods to learn a policy for sequential decision-making problems, which are commonly formalized as MDP optimization \cite{Puterman_1994}. Recently RL has achieved notable landmarks in various task domains such as classical board games chess \cite{Campbell_Hoane_Hsu_2002_DeepBlue}, Go \cite{Silver_Go}, poker \cite{Brown_Sandholm_2017_Poker} and visually rich computer games like Atari \cite{Mnih_2015_Atari} and Dota 2 \cite{openai_2019_dota}. At the core of some of the methods used, especially for board games, were planning algorithms, which rely on the knowledge of the environment dynamics.
+Reinforcement Learning (RL) seeks to find methods that enable robots or virtual agents to act autonomously in order to solve human-defined tasks. It requires from such methods to learn a policy for sequential decision-making problems, which are commonly formalized as MDP optimization \cite{Puterman_1994}. Recently, RL has achieved notable landmarks in various task domains such as classical board games chess \cite{Campbell_Hoane_Hsu_2002_DeepBlue}, Go \cite{Silver_Go}, poker \cite{Brown_Sandholm_2017_Poker} and visually rich computer games like Atari \cite{Mnih_2015_Atari} and Dota 2 \cite{openai_2019_dota}. At the core of some of the methods used, especially for board games, were planning algorithms, which rely on the knowledge of the environment dynamics. However, the model of the environment is unknown in general case, and there are two common opposite approaches in RL to deal with it: a model-free and a model-based.
 
-In general case, though, the model of the environment is unknown, and there are two common opposite approaches in RL to deal with it: a model-free and a model-based. The former approach doesn't explicitly learn and make use of the knowledge of the environment. Instead, it directly learns the global policy from interactions with the environment. While model-free approach has many successful examples \cite{Mnih_2015_Atari,haarnoja_2018_sac,schulman_2017_ppo}, among its disadvantages are data inefficiency, as it requires high amount of interactions with the environment, and struggle for precise lookahead.
+Model-free approach doesn't explicitly learn and make use of the knowledge of the environment. Instead, it directly learns the global policy from interactions with the environment. While model-free approach has many successful examples among its disadvantages are data inefficiency as it requires high amount of interactions with the environment and struggles for precise lookahead \cite{Mnih_2015_Atari,haarnoja_2018_sac,schulman_2017_ppo}.
 
-Model-based RL can address issues of both planning and model-free RL by first learning the environment dynamics, and then to exploit it for more efficient learning of the agent's policy \cite{moerland_2020_modelbased}. Typically, the model is represented by MDP and consists of two components: a state transition model and a reward model. After the model has been learned, MDP planning method such as MCTS \cite{Coulom_2007_mcts} can be applied to infer the optimal policy. Many model-based RL approaches build a model that operates at the pixel-level \cite{kaiser_2020_modelbased}, which is hungry for computational resources and attentive to unimportant details. Another approach is to try building a latent-space model. For example, a latent-space model can represent an abstract MDP that's equivalent to the real one in terms of state values, i.e. the cumulative reward of the planned trajectory \cite{silver_2020_muzero}.
+Model-based RL can address the issues of both planning and model-free RL by first learning the environment dynamics and then to exploit it for more efficient learning of the agent's policy \cite{moerland_2020_modelbased}. Typically, the model is represented by MDP and consists of two components: a state transition model and a reward model. After the model has been learned, MDP planning method, such as MCTS \cite{Coulom_2007_mcts}, can be applied to infer the optimal policy. One model-based RL approach is to build a model that operates on the raw input data level \cite{Gorodetskiy2020,kaiser_2020_modelbased}. For visually rich environments this may be expensive in terms of computations and also may lead to a model attentive to unimportant details. Another approach is to build a more compact latent-space model instead, for example, to represent an abstract MDP equivalent to the real one in terms of state values \cite{silver_2020_muzero}.
 
-To model the environment it's common to use ANNs \cite{silver_2020_muzero,Ha_Schmidhuber_2018_worldmodels}. It's also very tempting to take more inspiration from human brains, especially for how our memory functions \cite{Hassabis_2017_neuro}. One example of such human-like memory model is Hierarchical Temporal Memory (HTM) framework \cite{George_Hawkins_2009}. This framework utilizes discrete binary sparse distributed representations (SDR) \cite{Cui_Ahmad_Hawkins_2017_sdr}, which enables more efficient data processing, high noise tolerance and a natural way to set similarity metric between data embeddings. It also provides a model of the sequential temporal memory (TM) \cite{hawkins_TM}. Learning in TM isn't based on the gradient descend, and typically it learns with a faster rate compared to common ANNs.
+To model the environment it's common to use Artificial Neural Networks (ANNs) \cite{silver_2020_muzero,Ha_Schmidhuber_2018_worldmodels}. But it's also very tempting to take more inspiration from human brains, especially for how our memory functions \cite{Hassabis_2017_neuro}. Hierarchical Temporal Memory (HTM) framework \cite{George_Hawkins_2009} is an example of such human-like memory model. This framework utilizes discrete binary sparse distributed representations (SDR) \cite{Cui_Ahmad_Hawkins_2017_sdr} that enables more efficient data processing, high noise tolerance and a natural way to set similarity metric between data embeddings. HTM also provides a model of the sequential temporal memory (TM) \cite{hawkins_TM}. Learning in TM isn't based on the gradient descend, and typically it learns with a faster rate compared to common ANNs.
 
-In our work we present a simplified memory-based framework based on the ideas of HTM that can be used to model the environment dynamics, supplied with the planning algorithm to infer the optimal global policy. We study applicability of the presented memory model and viability of the planning method in different maze environments.
+In our work we present a simplified memory-based framework based on the ideas of HTM that can be used to model the environment dynamics, supplied with the planning algorithm to infer the optimal global policy. Some attempts to extend the HTM model have been made before \cite{Skrynnik2016,Daylidyonok2018,Nugamanov2020}, but the full implementation of the planning subsystem with consideration for reinforcement signal was not implemented in other works. We study applicability of the presented memory model and viability of the planning method in different maze environments.
 
 \begin{figure}
   \centering
@@ -72,15 +72,15 @@ In our work we present a simplified memory-based framework based on the ideas of
 
 \subsection{Reinforcement Learning}
 
-In this paper we consider the classic decision-making problem with an agent operating in an environment, which is formalized as Markov Decision Process (MDP). As a starting point in the research we simplify the problem assuming that the environment is fully observable and deterministic. We also consider only environments with the distinctive goal-oriented tasks, where an agent is expected to reach desirable goal states in a limited time.
+In this paper we consider the classic decision-making problem with an agent operating in an environment that is formalized as Markov Decision Process (MDP). As a starting point in our research we simplify the problem assuming that the environment is fully observable and deterministic. We also consider only environments with the distinctive goal-oriented tasks, where an agent is expected to reach desirable goal state in a limited time.
 
 Therefore, MDP is defined as a tuple $M = (\St, \A, R, P, s_0, s_g)$, where $\St = \{1, \dots, s_n\}$ is the state space of the environment, $\A = \{1, \dots, a_m\}$ is the action space available to an agent, and $s_0$ and $s_g$ are the initial and the goal state distributions respectively. At each time step $t$, an agent observes a state $s_t \in \St$ and selects an action $a_t \in \A$. As a result, it receives the reward $r_t \in R(s_t, a_t)$ and transitions to the new state $s_{t+1} = P(s_t, a_t)$. An agent's policy $\pi: \St \rightarrow \A$ is a mapping from a state to an action. The agent's goal is to maximize the expected return $\E \left[ \sum_{t=0}^{\infty} r_t \right]$. 
 
-We don't use discount factor $\gamma$ in the return calculation. Instead, we assume that the reward function is designed the way that it highly rewards reaching the goal states and slightly punishes in any other states, which should reflect the goal-oriented nature of the environments that were taken into consideration.
+We don't use discount factor $\gamma$ in the return calculation. Instead, we assume that the reward function is designed the way that it highly rewards reaching the goal states and slightly punishes reaching any other states - it should reflect the goal-oriented nature of the environments that were taken into consideration.
 
 \subsection{Temporal Memory} \label{sec_TM}
 
-Temporal Memory (TM) from Hierarchical Temporal Memory (HTM) framework is a model of the sequential memory. It works with sparse distributed representations (SDR), which are sparse binary vectors, typically high-dimensional. Therefore, the data encoding scheme should be chosen too.
+Temporal Memory (TM) from Hierarchical Temporal Memory (HTM) framework is a model of the sequential memory. It works with sparse distributed representations (SDR), i.e. sparse binary vectors, which are typically high-dimensional. Therefore, the data encoding scheme should be chosen too. In \ref{sec_MemoryModule} we describe how agent's memory is organized on top of TM, so this section mostly covers the TM's input.
 
 In our work both actions and states are represented as integer numbers from a fixed range (although, different for states and actions). Thus, we use a simple encoding scheme, where numbers from some range $[0, N)$ are mapped to non-overlapping equally-sized sets of active bits of the output SDR vector. For example for $N = 3$ numbers 0, 1 and 2 are encoded correspondingly as following:
 
@@ -96,11 +96,11 @@ As you see, resulting vector is split into buckets of bits, and the size of buck
 
 For SDR vectors a union operation is defined as a bitwise OR applied to the corresponding vectors. Also we define a similarity metric, which is the number of the same one-bits of the vectors in consideration, which is, again, the same as the dot product of such vectors.
 
-Temporal Memory model not only provides an algorithm to learn sequences of SDR vectors $[v_0, v_1, v_2, \dots ]$ but also to make predictions about what SDR vector $v'$ comes next based on the past experience. The prediction is represented also as an SDR vector, which is a union of SDR vectors $v' = \cup v_{o_i}$, where each vector $v_{o_i}$ represents a single separate expected outcome. Notice that as the union of SDR vectors is also an SDR vector, TM model allows you to work simultaneously with the unions of sequences as well.
+Temporal Memory model provides algorithms not only to learn sequences of SDR vectors $[v_0, v_1, v_2, \dots ]$ but also to make predictions about what SDR vector $v'$ comes next based on the past experience. The prediction is represented as an SDR vector too - it's a union of SDR vectors $v' = \cup v_{o_i}$, where each vector $v_{o_i}$ represents a single separate expected outcome. Notice that as the union of SDR vectors is also an SDR vector, TM model allows working simultaneously with the unions of sequences as well.
 
 \section{\uppercase{Planning with Temporal Memory}}
 
-In our method we train an agent to reach rewarding goal states $s_g$. An agent is supplied with the memory module to learn the environment's dynamics and a planning algorithm which heavily relies on the learned model. The planning algorithm constructs a plan of actions $p = [a_t, a_{t+1}, \dots, a_{t+h-1}]$ that leads to the desired state $s_g = s_{t+h}$ from the current state $s_t$. In the case when the planning algorithm fails to provide a plan we switch the agent to the exploration strategy $\pi_r$ in order to improve the learned model. As the result, at each timestep an agent operates either according to a constructed plan $p$ or according to the random uniformly-distributed exploration policy $\pi_r$.
+In our method we train an agent to reach a rewarding goal state $s_g$. Agent isn't explicitly provided with the goal it should reach, but it's allowed to remember epxerienced rewarding states. An agent is supplied with the memory module to learn the environment's dynamics and a planning algorithm which heavily relies on the learned model (see Fig. \ref{fig_agent_scheme}). The planning algorithm constructs a plan of actions $p = [a_t, a_{t+1}, \dots, a_{t+h-1}]$ that leads to the desired state $s_g = s_{t+h}$ from the current state $s_t$. In case if the planning algorithm fails to provide a plan the agent is switched to the exploration strategy $\pi_r$ in order to improve the learned model. As the result at each timestep an agent operates either according to a constructed plan $p$ or according to the random uniformly-distributed exploration policy $\pi_r$.
 
 \begin{figure}
   \centering
@@ -110,34 +110,31 @@ In our method we train an agent to reach rewarding goal states $s_g$. An agent i
 
 \subsection{Memory module} \label{sec_MemoryModule}
 
-The agent's memory module consists of two submodules. One submodule, called \textit{transition memory}, learns the transition model $f: \St \times \A \rightarrow \St$ of the environment, while the other, called \textit{goal states memory}, keeps track of the rewarding goal states $s_g$.
+The agent's memory module consists of two submodules. One submodule, called \textit{transition memory}, learns the transition model $f: \St \times \A \rightarrow \St$ of the environment, while the other, called \textit{goal states memory}, keeps track of the past rewarding goal states $s_g$.
 
 Consider a trajectory of an agent $\tau = [s_0, a_0, r_0, s_1, a_1, r_1, \dots, r_{T-1}, s_T]$. Each pair $(s_t, a_t)$ at the moment $t$ defines the precondition to the transition in the environment $(s_t, a_t) \rightarrow s_{t+1}$. Therefore, we made transition memory to learn the sequences of such transitions $Tr = [(s_0, a_0), (s_1, a_1), \dots]$ from the trajectories that the agent produces. The learning is performed in an online fashion, i.e. at each timestep.
 
-The transition memory submodule is based on a Temporal Memory. Recall that TM works with sparse distributed representations (SDRs). To encode each state-action pair $(s, a)$ we use two separate integer encoders for states and actions respectively to obtain binary sparse vectors. The states encoder maps integer numbers from $[0, |\St|)$ range, and the actions encoder maps integer numbers from $[0, |\A|)$ range. As most of the time our method works with SDR, for simplicity further on we use the same notation $s$ and $a$ for state's and action's corresponding SDR too. To work with pairs $(s, a)$ we just concatenate their respective SDR vectors together into one.
-
-For any given state-action pair $(s, a)$ the transition memory submodule can give a prediction on what state $s'$ is coming next.
-Precisely, it allows prediction queries of the form:
+The transition memory submodule is based on a Temporal Memory. To encode each state-action pair $(s, a)$ we use two separate integer encoders for states and actions respectively to obtain binary sparse vectors. The states encoder maps integer numbers from $[0, |\St|)$ range, and the actions encoder maps integer numbers from $[0, |\A|)$ range. As most of the time our method works with SDR, for simplicity further on we use the same notation $s$ and $a$ for state's and action's corresponding SDR too. To work with pairs $(s, a)$ we just concatenate their respective SDR vectors together into one. For any given state-action pair $(s, a)$ the transition memory submodule can give a prediction on what state $s'$ is coming next. Precisely, it allows prediction queries of the form:
 
 \begin{quote}
-  \textit{given a superposition \footnotemark of states $S = \cup s_i$ and a superposition of actions $A = \cup a_j$, what superposition of next states $S'= \cup s'_m$ all possible state-action pairs $(s_i, a_j)$ lead to?}
+  \textit{given a superposition of states $S = \cup s_i$ and a superposition of actions $A = \cup a_j$, what superposition of next states $S'= \cup s'_m$ all possible state-action pairs $(s_i, a_j)$ lead to?}
 \end{quote}
 
-  \footnotetext{In the Sec.~\ref{sec_TM} we explained that TM can work with unions of SDR vectors. When SDR vectors in a union aren't just random vectors, when they represent states or actions, we call such unions \textit{superpositions} of states or actions respectively. Note that once a superposition vector is made you cannot simply split it back into the origin SDR vectors of the union. \footnotemark}
+Here by \textit{superpositions} of states (or actions) we mean a union of their respective SDR vectors. By calling it not just a union we emphasize that the SDR vectors defining a union are meaningful. Note also that once a superposition SDR vector is obtained you cannot simply split it back into the origins formed it\footnotemark.
 
-\footnotetext{However, our current encoding scheme maps the different states or actions with non-overlapping bits, which keeps them easily distinguishable from each other even in a superposition. Whilst it's true, the current planning algorithm only requires a separation of the state bits from the action bits in a state-action pair SDR. This is done intentionally. Non-overlapping scheme makes things simpler to read and debug. The downside is it cannot keep the similarity between states (or observations). That's why for the future work, when we plan to experiment with more complex environments, transition to overlapping mapping seems inevitable.}
+\footnotetext{However, encoding scheme used maps different states or actions to non-overlapping sets of bits. That keeps them easily distinguishable from each other even in a superposition. Non-overlapping scheme makes things simpler to read and debug, but it has a crucial downside too - it cannot preserve possible similarity between states (or observations). So we made the planning algorithm only to require a separation of the state bits from the action bits in a state-action pair SDR $(s, a)$, which means it respects that origin SDRs cannot be induced from a superposition. In future works we plan experimenting with more complex environments and visually rich observations, therefore the transition to overlapping encoding scheme seems inevitable, hence it has already been reflected in the planning algorithm.}
 
-Under certain conditions the transition memory submodule can be used backward - as an inverse of an environment transition function $f$. This feature becomes available after getting the result to a prediction query and only for the states $s'_m$ that match the result $S' = \cup s'_m$. For each such state $s'$ it can provide which state-action pairs from the original query lead to $s'$: $\{(s, a)\} = f^{-1}(s')$. Notice that in general case it's possible that \textit{a multiple} state-action pairs lead to $s'$.
+Under certain conditions the transition memory submodule can also be used backward - as an inverse of an environment transition function $f$. This feature becomes available after getting the result to a prediction query and only for the states $s'_m$ that match the result $S' = \cup s'_m$. For each such state $s'$ it can provide which state-action pairs from the original query lead to $s'$: $\{(s, a)\} = f^{-1}(s')$. Notice that in general case it's possible that \textit{a multiple} state-action pairs lead to $s'$.
 
 \subsection{Planning algorithm}
 
-The goal of planning is to find a plan of actions $p = [a_t, a_{t+1}, \dots, a_{t+h-1}]$ that leads to the desired state $s_g = s_{t+h}$ from the current state $s_t$. We restrict resulting plan to have no more than $H$ actions. Therefore, $H$ defines planning horizon of an agent.
+The goal of planning is to find a plan of actions $p = [a_t, a_{t+1}, \dots, a_{t+h-1}]$ that leads to the desired state $s_g = s_{t+h}$ from the current state $s_t$. We restrict resulting plan to have no more than $H$ actions. Therefore, $H$ defines a planning horizon of an agent.
 
-Planning process is split into two stages. It starts with forward planning from the current state $s_t$ until a rewarding goal state $s_g$ is reached. At this stage the planning algorithm operates with superpositions and cannot track the exact path to the goal state. Because of that we switch it to backtracking stage, during which the exact path from the reached goal state back to the starting state $s_t$ is deduced.
+Planning process is split into two stages. It starts with the forward planning from the current state $s_t$ until a rewarding goal state $s_g$ is reached. At this stage the planning algorithm operates with superpositions and cannot track the exact path to the goal state. Because of that it proceeds then to the backtracking stage, during which the exact path from the reached goal state back to the starting state $s_t$ is deduced.
 
 \subsubsection{Forward planning}
 
-In our method an agent uses its experience and expects the reward to be in one of the rewarding goals states from previous episodes. But even if that's not true, we still expect that the direct goal-based exploration could be more optimal than pure random walking. Hence we set the agent to keep track of previous rewarding states using its goal tracking memory submodule. We give such goal states a priority.
+In our method an agent uses its experience and expects the reward to be in one of the rewarding goals states from the previous episodes. But even if that's not true, we still expect that the direct goal-based exploration could be more optimal for an agent than pure random walking. Hence we set the agent to keep track of previous rewarding states using its goal tracking memory submodule. We give such goal states a priority.
 
 Consider that at some timestep $t_0$ an agent is in state $s_0$. To find out if there is a reachable goal state in a radius of $H$ actions, we start planning from the state-action superposition $(S_0 = s_0, A = \cup a^i)$ \footnotemark, where $A$ is a superposition of all available actions (see Alg.~\ref{alg_ForwardPlanning}). One step of the planning is just the transition memory submodule making a prediction. This gives us a superposition of the state-action pairs expected to go next. Predicting for a superposition $(S_0 = s_0, A = \cup a^i)$ is similar to making all possible actions from the state $s_0$ simultaneously in parallel and getting the result of all possible outcomes entangled together into a single superposition SDR vector. However, we still can split the resulting superposition into the pair of states superposition and actions superpositions, because it is just a concatenation of independent parts.
 
@@ -234,30 +231,46 @@ After successful backtracking the planning algorithm returns a policy for the ne
 
 \section{\uppercase{Experiments}}
 
-In our experiments we decided to use classic GridWorld environments, which are represented as mazes on a square grid (see Figure ~\ref{fig_maze_examples}). Each state can be defined with the position of an agent, i.e. in which cell it stands. Thus, state space $\St$ consists of all possible agent's positions. We enumerate all positions (and therefore states) with integer numbers. An agent starts from the fixed state $s_0$, and its goal is to find a single reward placed at some fixed position $s_g$. Each environments has deterministic transition function $P: \St \times \A \rightarrow \St$. The action space consists of 4 actions $\A = \{ 0, 1, 2, 3 \}$ defining agent's move directions: 0 - east, 1 - north, 2 - west, 3 - south. Each action moves an agent to the adjacent grid cell in the corresponding direction, except when the agent tries to move into the maze wall - in this case it stays in the current cell.
+In our experiments we decided to use classic GridWorld environments that are represented as mazes on a square grid (see Figure ~\ref{fig_maze_examples}). Each state can be defined with the position of an agent, i.e. in which cell it stands. Thus, state space $\St$ consists of all possible agent's positions. We enumerate all positions (and therefore states) with integer numbers. An agent starts from the fixed state $s_0$, and its goal is to find a single reward placed at some fixed position $s_g$. Each environments has deterministic transition function $P: \St \times \A \rightarrow \St$. The action space consists of 4 actions $\A = \{ 0, 1, 2, 3 \}$ defining agent's move directions: 0 - east, 1 - north, 2 - west, 3 - south. Each action moves an agent to the adjacent grid cell in the corresponding direction, except when the agent tries to move into the maze wall - in this case it stays in the current cell.
 
 When an agent reaches the goal state $s_g$ it is rewarded with high positive value. Any other steps it is slightly punished. In our experiments we used $+1.0$ for the goal reward and $-0.01$ for the punishment. In each testing environment the optimal path from the starting point to the goal was less than 20 steps. Such reward function makes possible easy episode outcomes differentiation, depending on whether or not the goal state has been reached during it, and if the goal has been reached then how fast.
 
-All experiments were divided into two groups. Each experiment from the first group was held in a fixed environment, while each experiment from the second group had an environment being changed every $N_{ep}$ episodes.
-
-In our experiments we tested ability to model the environment and utilize learned model to plan actions that lead to the goal states. We compared our method's performance with the baselines: random strategy and DQN (\cite{Mnih_2015_Atari}). We also compared performance for the different planning horizons and the number of simultaneously tracked goals in the goal tracking memory.
+In our experiments we tested ability to model the environment and utilize learned model to plan actions that lead to the goal states. All experiments were divided into two groups. Each experiment from the first group was held in a fixed environment, while each experiment from the second group had an environment being changed every $N_{ep}$ episodes. We compared our method's performance with the baselines: random strategy and DQN (\cite{Mnih_2015_Atari}). We also compared performance for different planning horizons and the number of simultaneously tracked goals in the goal tracking memory.
 
 \subsection{Experiments in fixed environments}
 
-For this experiment setup we used a number of handcrafted mazes. Each experiment had a fixed maze and the starting point $s_0$, but the place of the reward was being changed every $N$ episodes. We tested an agent's ability to find the goal state and how it adapts to the new goal position.
+This experiment setup was based on a number of handcrafted mazes. Each experiment had a fixed maze and the starting point $s_0$, but the place of the reward was being changed every $N$ episodes. We tested an agent's ability to find the goal state and how it adapts to the new goal position.
+
+\begin{figure}
+  \centering
+  \begin{minipage}{\linewidth}
+    \includesvg[width=\linewidth]{multi_way_v0__steps}
+    \subcaption{}
+    \vspace*{12pt}
+
+    \includesvg[width=\linewidth]{multi_way_v2__steps}
+    \subcaption{}
+    \vspace*{6pt}
+  \end{minipage}
+
+  \caption{Episode durations (in steps) for handcrafted mazes \texttt{multi\_way\_v0} (a) and \texttt{multi\_way\_v2} (b). Our agent performed consistently better than random policy, and with enough planning horizon it performed better than DQN agent. Notice, how fast the agent with planning horizon $8$ learns the optimal path compared to the DQN agent.} \label{fig_comparison_mw}
+\end{figure}
 
 We present results for two mazes: \texttt{multi\_way\_v0} and \texttt{multi\_way\_v2} (see Fig.~\ref{fig_comparison_mw} and Fig.~\ref{fig_detailed_mw0}). Each experiment in \texttt{multi\_way\_v0} had 4 different rewarding goal positions being sequentially changed every 100 episodes. Each experiment in \texttt{multi\_way\_v2} had 6 rewarding goal positions being changed every 200 episodes. Schematic view of these mazes is provided in Appendix ~\ref{apx_handcrafted_mazes}.
 
 \begin{figure}
   \centering
-  \begin{minipage}{.95\linewidth}
-    \includesvg[width=\linewidth]{multi_way_v0__steps}
-    \subcaption{\texttt{multi\_way\_v0}}
-    \includesvg[width=\linewidth]{multi_way_v2__steps}
-    \subcaption{\texttt{multi\_way\_v2}}
+  \begin{minipage}{\linewidth}
+    \includesvg[width=\linewidth]{multi_way_v0__1__steps}
+    \subcaption{Planning horizon H = 1}
+    \vspace*{10pt}
+
+    \includesvg[width=\linewidth]{multi_way_v0__2__steps}
+    \subcaption{Planning horizon H = 2}
+    \vspace*{6pt}
   \end{minipage}
 
-  \caption{Episode durations (timesteps) for the handcrafted mazes. Our agent performed consistently better than random policy, and with enough planning horizon it performed better than DQN agent. Notice, how fast the agent with planning horizon $8$ learns the optimal path compared to the DQN agent.} \label{fig_comparison_mw}
+  \caption{Episode durations (in steps) for the agent on \texttt{multi\_way\_v0} depending on how many rewarding goal states it can track - last 16 or just the last one - grouped by the planning horizon length.} \label{fig_detailed_mw0}
 \end{figure}
 
 In the tested environments our method performed better than random policy. But the more complicated an environment is the less distinctive is the difference between the $H = 0$ and $H = 1$. Our method performs better with the increase of the planning horizon $H$. Each increment of the planning horizon is cumulative, i.e. each next increment is more advantageous.
@@ -266,39 +279,32 @@ Regarding the goal tracking memory size, we found that increase of the size lead
   
 We also found that an agent learns and adapts faster than DQN agent (in terms of the number of episodes required to steadily reach the goal during the episode). And longer planning horizon leads to a better adaptation to the changed rewarding position.
 
-\begin{figure}
-  \centering
-  \begin{minipage}{.95\linewidth}
-    \includesvg[width=\linewidth]{multi_way_v0__1__steps}
-    \subcaption{Planning horizon H = 1}
-    \includesvg[width=\linewidth]{multi_way_v0__2__steps}
-    \subcaption{Planning horizon H = 2}
-    \includesvg[width=\linewidth]{multi_way_v0__4__steps}
-    \subcaption{Planning horizon H = 4}
-  \end{minipage}
-
-  \caption{Detailed results for \texttt{multi\_way\_v0}. We compared two cases for the different planning horizons: tracking 16 rewarding goal states and only the last goal.} \label{fig_detailed_mw0}
-\end{figure}
-
-When the planning horizon is big enough to reach the goal state from the starting position, then the agent learns the optimal policy very fast. According to our experiments, in this case it learns approximately 1.5-2.5 times faster than DQN. But for any fixed planning horizon if we start rising an environment complexity, then at some point DQN starts to perform better than our method. That's because DQN always finds an optimal path, and our agent finds it only when it has enough planning horizon.
+When the planning horizon is large enough to reach the goal state from the starting position, then the agent learns the optimal policy very fast. According to our experiments, in this case it learns approximately 1.5-2.5 times faster than DQN. But for any fixed planning horizon if we start rising an environment complexity, then at some point DQN starts to perform better than our method. That's because DQN always finds an optimal path, and our agent finds it only when it has enough planning horizon.
 
 \subsection{Experiments in changing environments}
 
-In this experiment setup we used a number of randomly generated GridWorld mazes of fixed size (see Fig.~\ref{fig_maze_examples}). Each experiment has the following scheme. It has been made sequentially in $N_{env}$ randomly generated mazes. For a fixed maze the rewarding goal position was changed sequentially $N_{rew}$ times. For a fixed rewarding goal position the initial position was changed sequentially $N_{s_0}$ times. And for a whole configuration being fixed agent played $N$ episodes. So, each experiment had $N_{env} \cdot N_{rew} \cdot N_{s_0} \cdot N$ total episodes. We tested an agent's ability not only to find the rewarding goal and adapt to its new position, but also how the agent adapts to the whole new maze.
+In this experiment setup we used a number of randomly generated GridWorld mazes of fixed size (see Fig.~\ref{fig_maze_examples}). Each experiment has the following scheme. Agent faces sequentially $N_{env}$ randomly generated mazes. For a fixed maze the rewarding goal position being changes sequentially $N_{rew}$ times. For a fixed rewarding goal position the initial position changes sequentially $N_{s_0}$ times. And for a whole configuration being fixed agent plays $N$ episodes. Thus each experiment has $N_{env} \cdot N_{rew} \cdot N_{s_0} \cdot N$ episodes in total. We have tested an agent's ability not only to find the rewarding goal and adapt to its new position, but also how the agent adapts to the whole new maze.
 
 \begin{figure}
   \centering
-  \begin{minipage}{.9\linewidth}
+  \begin{minipage}{\linewidth}
     \includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__steps}
-    \subcaption{Comparison with baselines}
-    \includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__dqn__steps}
-    \subcaption{Greedy and $\epsilon$-greedy DQN agent}
+    \subcaption{}
+    \vspace*{10pt}
+
+    % \includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__dqn__steps}
+    % \subcaption{Greedy and $\epsilon$-greedy DQN agent}
+    % \vspace*{10pt}
+
     \includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__2__steps}
-    \subcaption{Planning horizon: 2}
-    \includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__4-8__steps}
-    \subcaption{Planning horizon: 4-8}
+    \subcaption{}
+    % \vspace*{10pt}
+
+    % \includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__4-8__steps}
+    % \subcaption{}
+    \vspace*{4pt}
   \end{minipage}
-  \caption{Episode durations for the experiment with rarely changed environments. a) Our agent with the planning horizon 8 performed the best. Each change of the environment configuration there's a spiked degradation of performance for DQN agent, while our agents quickly relearn new position. b) According to our results in this task $\epsilon$-greedy DQN agent adapts much faster. c-d) Comparison for the different planning horizon values and the number of simultaneously tracked goals. } \label{fig_rare_changes}
+  \caption{Episode durations for the experiment with rarely changed environments. a) Comparison with the baselines. Our agent with the planning horizon 8 performed the best. Each change of the environment configuration there's a spiked degradation of the performance for DQN agent, while our agents quickly relearn new position. b) Performance comparison for the different number of simultaneously tracked goals; planning horizon lengths are 4 and 8.} \label{fig_rare_changes}
 \end{figure}
 
 We tested agent in mazes generated on $5 \times 5$, $6 \times 6$ and $8 \times 8$ square grids. In this section we present only the results for the $5 \times 5$ mazes, but for the other tested sizes the results are similar. The key difference in complexity of each experimental setup is the total number of the episodes with fixed reward and maze. The less episodes has agent to adapt, the more agile it's required to be.
@@ -313,18 +319,25 @@ We present results for the following experimental setups:
 
 \begin{figure}
   \centering
-  \begin{minipage}{.9\linewidth}
+  \begin{minipage}{.95\linewidth}
     \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__steps}
-    \subcaption{Comparison with baselines}
-    \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__dqn__steps}
-    \subcaption{Greedy and $\epsilon$-greedy DQN agent}
+    \subcaption{}
+    \vspace*{10pt}
+
+    % \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__dqn__steps}
+    % \subcaption{Greedy and $\epsilon$-greedy DQN agent}
+    % \vspace*{10pt}
+
     \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__2__steps}
-    \subcaption{Planning horizon: 2}
-    \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__4-8__steps}
-    \subcaption{Planning horizon: 4-8}
+    \subcaption{}
+    % \vspace*{10pt}
+    
+    % \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__4-8__steps}
+    % \subcaption{}
+    \vspace*{4pt}
   \end{minipage}
 
-  \caption{Episode durations for the experiment with frequently changed environments. a) Our method performed more stable with small planning horizons (1-4), while with planning horizon 8 it performed either very good or very bad. DQN agent results were worse than of random policy - the frequency of changes was too high for it to adapt in time. b) Unlike greedy DQN agent $\epsilon$-greedy agent performed at least comparable to our method. c-d) Comparison for the different planning horizon values and the number of simultaneously tracked goals. Larger goal tracking memory size degraded agent's performance. } \label{fig_frequent_changes}
+  \caption{Episode durations for the experiment with frequently changed environments. a) Comparison with the baselines. Our method performed more stable with small planning horizons (1-4), while with planning horizon 8 it performed either very good or very bad. DQN agent results were worse than of random policy - the frequency of changes was too high for it to adapt before the next change. b) Comparison for the different number of simultaneously tracked goals; planning horizon lengths are 4 and 8.} \label{fig_frequent_changes}
 \end{figure}
 
 From this set of experiments we conclude that in average our agent adapts to changes faster than DQN. Which also makes it perform more stable.
@@ -333,9 +346,14 @@ In contradiction to our results for the experiments in the fixed handcrafted env
 
 \section{\uppercase{Conclusions}}
 
-We introduced a novel memory-based method that combines learning the model of the environment with the planning algorithm to infer a local policy. We showed that under certain conditions (enough planning horizon) the resulting global policy is optimal or at least very close to it. We also showed that in such cases, compared to DQN, our method learns with the comparable speed or slightly faster. The planning algorithm with any non-zero planning horizon performs better than random strategy. However, for small planning horizons and hard tasks results are sufficiently degraded and not that far from the pure random strategy.
+We introduced a novel memory-based method that combines learning the model of the environment with the planning algorithm to infer a local policy. We showed that under certain conditions (enough planning horizon) the resulting global policy is optimal or at least very close to it. We also found that in such cases, compared to DQN, our method learns with the comparable speed or slightly faster in terms of the number of episodes required. The planning algorithm with any non-zero planning horizon performs better than random strategy. However, for the small planning horizons and hard tasks results are sufficiently degraded and close to a pure random strategy.
 
-To model the environment dynamics we used human-like model of the memory called HTM. We showed that it's capable to quickly and reliably learn the transition model of the visited states in just a few episodes. As far as we know it is the first time HTM model was used for the model-based RL method. So, even though we applied it to model very simple deterministic environments with perfectly distinguishable states the results are promising, and we look forward to adapt our method to more complex environments.
+To model the environment dynamics we used human-like model of the memory called HTM. We found that it's capable to quickly and reliably learn the transition model of the visited states in just a few episodes. As far as we know it is the first time HTM model was used for the model-based RL method. So, even though we applied it to model very simple deterministic environments with perfectly distinguishable states the results are promising, and we look forward to adapt our method to more complex environments.
+
+Our experiments showed us that the naive scaling of our method to environments with the larger state space is limited due to limitations for planning horizon increase. As for now we see two potential paths to remedy this problem. The first is to learn the model in a compact latent-space. The second is to make use of hierarchical approach by building a hierarchy of models and planners that operate in a different scales of time and space. Also the fact that the backing up strategy for a planner is purely random and not based on the agent's experience makes it a good target for further improvements too.
+
+\section*{\uppercase{Acknowledgements}}
+The reported study was supported by RFBR, research Projects No. 17-29-07051 and No. 18-29-22047.
 
 {\small\bibliography{citations}}
 
