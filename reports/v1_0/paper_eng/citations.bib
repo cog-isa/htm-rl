@@ -1,3 +1,18 @@
+@article{Ahmad_Lavin_2017_data_streams,
+  title    = {Unsupervised real-time anomaly detection for streaming data},
+  journal  = {Neurocomputing},
+  volume   = {262},
+  pages    = {134 - 147},
+  year     = {2017},
+  note     = {Online Real-Time Learning Strategies for Data Streams},
+  issn     = {0925-2312},
+  doi      = {https://doi.org/10.1016/j.neucom.2017.04.070},
+  url      = {http://www.sciencedirect.com/science/article/pii/S0925231217309864},
+  author   = {Subutai Ahmad and Alexander Lavin and Scott Purdy and Zuha Agha},
+  keywords = {Anomaly detection, Hierarchical Temporal Memory, Streaming data, Unsupervised learning, Concept drift, Benchmark dataset},
+  abstract = {We are seeing an enormous increase in the availability of streaming, time-series data. Largely driven by the rise of connected real-time data sources, this data presents technical challenges and opportunities. One fundamental capability for streaming analytics is to model each stream in an unsupervised fashion and detect unusual, anomalous behaviors in real-time. Early anomaly detection is valuable, yet it can be difficult to execute reliably in practice. Application constraints require systems to process data in real-time, not batches. Streaming data inherently exhibits concept drift, favoring algorithms that learn continuously. Furthermore, the massive number of independent streams in practice requires that anomaly detectors be fully automated. In this paper we propose a novel anomaly detection algorithm that meets these constraints. The technique is based on an online sequence memory algorithm called Hierarchical Temporal Memory (HTM). We also present results using the Numenta Anomaly Benchmark (NAB), a benchmark containing real-world data streams with labeled anomalies. The benchmark, the first of its kind, provides a controlled open-source environment for testing anomaly detection algorithms on streaming data. We present results and analysis for a wide range of algorithms on this benchmark, and discuss future challenges for the emerging field of streaming analytics.}
+}
+
 @article{Brown_Sandholm_2017_Poker,
   title     = {Superhuman AI for heads-up no-limit poker: Libratus beats top professionals},
   volume    = {359},
@@ -37,6 +52,27 @@
   pages     = {72–83}
 }
 
+@article{Cui_Ahmad_Hawkins_2016_seq_learn,
+  author   = {Cui, Yuwei and Ahmad, Subutai and Hawkins, Jeff},
+  title    = {Continuous Online Sequence Learning with an Unsupervised Neural Network Model},
+  journal  = {Neural Computation},
+  volume   = {28},
+  number   = {11},
+  pages    = {2474-2504},
+  year     = {2016},
+  doi      = {10.1162/NECO\_a\_00893},
+  note     = {PMID: 27626963},
+  url      = { 
+        https://doi.org/10.1162/NECO_a_00893
+    
+},
+  eprint   = { 
+        https://doi.org/10.1162/NECO_a_00893
+    
+},
+  abstract = { The ability to recognize and predict temporal sequences of sensory inputs is vital for survival in natural environments. Based on many known properties of cortical neurons, hierarchical temporal memory (HTM) sequence memory recently has been proposed as a theoretical framework for sequence learning in the cortex. In this letter, we analyze properties of HTM sequence memory and apply it to sequence learning and prediction problems with streaming data. We show the model is able to continuously learn a large number of variable order temporal sequences using an unsupervised Hebbian-like learning rule. The sparse temporal codes formed by the model can robustly handle branching temporal sequences by maintaining multiple predictions until there is sufficient disambiguating evidence. We compare the HTM sequence memory with other sequence learning algorithms, including statistical methods—autoregressive integrated moving average; feedforward neural networks—time delay neural network and online sequential extreme learning machine; and recurrent neural networks—long short-term memory and echo-state networks on sequence prediction problems with both artificial and real-world data. The HTM model achieves comparable accuracy to other state-of-the-art algorithms. The model also exhibits properties that are critical for sequence learning, including continuous online learning, the ability to handle multiple predictions and branching sequences with high-order statistics, robustness to sensor noise and fault tolerance, and good performance without task-specific hyperparameter tuning. Therefore, the HTM sequence memory not only advances our understanding of how the brain may solve the sequence learning problem but is also applicable to real-world sequence learning problems from continuous data streams. }
+}
+
 @article{Cui_Ahmad_Hawkins_2017_sdr,
   title     = {The HTM Spatial Pooler—A Neocortical Algorithm for Online Sparse Distributed Coding},
   volume    = {11},
@@ -47,6 +83,25 @@
   author    = {Cui, Yuwei and Ahmad, Subutai and Hawkins, Jeff},
   year      = {2017},
   month     = {Nov}
+}
+
+@inproceedings{Daylidyonok2018,
+  abstract        = {This paper describes the application of hierarchical tempo- ral memory (HTM) to the task of anomaly detection in human motions. A number of model experiments with well-known motion dataset of Carnegie Mellon University have been carried out. An extended version of HTM is proposed, in which feedback on the movement of the sensor's focus on the video frame is added, as well as intermediate processing of the signal transmitted from the lower layers of the hierarchy to the upper ones. By using elements of reinforcement learning and feedback on focus movement, the HTM's temporal pooler includes information about the next position of focus, simulating the human saccadic movements. Processing the output of the temporal memory stabilizes the recognition process in large hierarchies.},
+  author          = {Daylidyonok, Ilya and Frolenkova, Anastasiya and Panov, Aleksandr I.},
+  booktitle       = {Biologically Inspired Cognitive Architectures 2018. BICA 2018. Advances in Intelligent Systems and Computing},
+  doi             = {10.1007/978-3-319-99316-4_10},
+  editor          = {Samsonovich, Alexei V.},
+  file            = {:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2019/Daylidyonok, Frolenkova, Panov/2019 - Daylidyonok, Frolenkova, Panov.pdf:pdf},
+  isbn            = {978-3-319-99316-4},
+  keywords        = {16-37-60055,17-29-07051,anomaly detection,elibrary,frccsc,hierarchical learning,hierarchical temporal memory,hse,htm feedback,myconf,processing,q3{\_}scopus,scopus,video},
+  mendeley-groups = {my{\_}publications},
+  mendeley-tags   = {16-37-60055,17-29-07051,elibrary,frccsc,hse,myconf,q3{\_}scopus,scopus},
+  pages           = {69--81},
+  publisher       = {Springer},
+  title           = {{Extended Hierarchical Temporal Memory for Motion Anomaly Detection}},
+  url             = {https://link.springer.com/chapter/10.1007/978-3-319-99316-4{\_}10 https://www.scopus.com/record/display.uri?origin=recordpage{\&}eid=2-s2.0-85053179132{\&}citeCnt=0{\&}noHighlight=false{\&}sort=plf-f{\&}src=s{\&}sid=ad6a3bc81b605cd06b67867e7622bb15{\&}sot=autdocs{\&}sdt=autdocs{\&}sl=},
+  volume          = {848},
+  year            = {2019}
 }
 
 @article{George_Hawkins_2009,
@@ -62,6 +117,24 @@
   year      = {2009},
   month     = {Oct},
   pages     = {e1000532}
+}
+@inproceedings{Gorodetskiy2020,
+  abstract        = {This work is devoted to unresolved problems of Artificial General Intelligence is the inefficiency of transfer learning. One of the mechanisms that are used to solve this problem in the area of reinforce- ment learning is a model-based approach. In the paper we are expanding the schema networks method which allows to extract the logical rela- tionships between objects and actions from the environment data. We present algorithms for training a Delta Schema Network (DSN), predict- ing future states of the environment and planning actions that will lead to positive reward. DSN shows strong performance of transfer learning on the classic Atari game environment.},
+  author          = {Gorodetskiy, Andrey and Shlychkova, Alexandra and Panov, Aleksandr I},
+  booktitle       = {Artificial General Intelligence. AGI 2020. Lecture Notes in Computer Science},
+  doi             = {10.1007/978-3-030-52152-3_18},
+  editor          = {Goertzel, B. and Panov, A. and Potapov, A. and Yampolskiy, R.},
+  file            = {:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2020/Gorodetskiy, Shlychkova, Panov/2020 - Gorodetskiy, Shlychkova, Panov(2).pdf:pdf},
+  isbn            = {978-3-030-52152-3},
+  keywords        = {17-29-07079,18-29-22027,delta schema network,frccsc,mipt,model-based,myconf,q2{\_}scopus{\_}prelim,reinforcement learning,schema network,scopus,transfer learning},
+  mendeley-groups = {my{\_}publications},
+  mendeley-tags   = {17-29-07079,18-29-22027,frccsc,mipt,myconf,q2{\_}scopus{\_}prelim,scopus},
+  pages           = {172--182},
+  publisher       = {Springer},
+  title           = {{Delta Schema Network in Model-based Reinforcement Learning}},
+  url             = {https://link.springer.com/chapter/10.1007/978-3-030-52152-3{\_}18 https://www.scopus.com/record/display.uri?eid=2-s2.0-85088532072{\&}origin=resultslist{\&}sort=plf-f{\&}src=s{\&}sid=b407ed849d0c75e7a90799c322d3e284{\&}sot=autdocs{\&}sdt=autdocs{\&}sl=18{\&}s=AU-ID{\%}2856504794900{\%}29},
+  volume          = {12177},
+  year            = {2020}
 }
 
 @article{Ha_Schmidhuber_2018_worldmodels,
@@ -98,6 +171,7 @@
   month     = {Jul},
   pages     = {245–258}
 }
+
 @article{hawkins_TM,
   author   = {Hawkins, Jeff and Ahmad, Subutai},
   title    = {Why Neurons Have Thousands of Synapses, a Theory of Sequence Memory in Neocortex},
@@ -134,6 +208,7 @@
   pages     = {529–533}
 }
 
+
 @misc{moerland_2020_modelbased,
   title         = {Model-based Reinforcement Learning: A Survey},
   author        = {Thomas M. Moerland and Joost Broekens and Catholijn M. Jonker},
@@ -141,6 +216,22 @@
   eprint        = {2006.16712},
   archiveprefix = {arXiv},
   primaryclass  = {cs.LG}
+}
+
+@article{Nugamanov2020,
+  abstract        = {Nowadays our knowledge of the brain is actively getting wider. Hierarchical Temporal Memory is the technology that arose due to new discoveries in neurobiology, such as research on the structure of the neocortex. One of the most popular applications of this technology is image recognition and anomaly detection. Nevertheless, both in the neocortex and in hierarchical temporal memory technology is image recognition and anomaly detection. Nevertheless, both in the neocortex and in hierarchical temporal memory an image is recognized by its parts. Therefore, there is a problem of choosing the most meaningful parts of an image in order to perform fast and effective recognition. In this work we propose the architecture that unites Hierarchical Temporal Memory an image is recognized by its parts. Therefore, there is a problem of choosing the most meaningful parts of an image in order and Reinforcement Learning in order to find the optimal way of image exploration. Besides, we prove by experiments that this to perform fast and effective recognition. In this work we propose the architecture that unites Hierarchical Temporal Memory and Reinforcement Learning in order to find the optimal way of image exploration. Besides, we prove by experiments that this architecture is effective, and the quality of the resulting movement pattern is high. architecture is effective, and the quality of the resulting movement pattern is high.},
+  author          = {Nugamanov, Eduard and Panov, Aleksandr I},
+  doi             = {10.1016/j.procs.2020.02.123},
+  file            = {:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2020/Nugamanov, Panov/2020 - Nugamanov, Panov.pdf:pdf},
+  journal         = {Procedia Computer Science},
+  keywords        = {18-29-22047,frccsc,hierarchical temporal memory,image recognition,mipt,monte carlo control,reinforcement learning,scopus},
+  mendeley-groups = {my{\_}publications},
+  mendeley-tags   = {18-29-22047,frccsc,mipt,scopus},
+  pages           = {123--131},
+  title           = {{Hierarchical Temporal Memory with Reinforcement Learning}},
+  url             = {https://www.sciencedirect.com/science/article/pii/S1877050920302465 https://www.scopus.com/record/display.uri?eid=2-s2.0-85084420528{\&}origin=resultslist{\&}sort=plf-f{\&}src=s{\&}sid=a28715a63d62b405efbba5b4a9835ff2{\&}sot=autdocs{\&}sdt=autdocs{\&}sl=18{\&}s=AU-ID{\%}28565047949},
+  volume          = {169},
+  year            = {2020}
 }
 
 @misc{openai_2019_dota,
@@ -172,7 +263,6 @@
   primaryclass  = {cs.LG}
 }
 
-
 @misc{silver_2020_muzero,
   title         = {Mastering Atari, Go, Chess and Shogi by Planning with a Learned Model},
   author        = {Julian Schrittwieser and Ioannis Antonoglou and Thomas Hubert and Karen Simonyan and Laurent Sifre and Simon Schmitt and Arthur Guez and Edward Lockhart and Demis Hassabis and Thore Graepel and Timothy Lillicrap and David Silver},
@@ -192,74 +282,20 @@
   volume  = {529}
 }
 
-@article{Nugamanov2020,
-abstract = {Nowadays our knowledge of the brain is actively getting wider. Hierarchical Temporal Memory is the technology that arose due to new discoveries in neurobiology, such as research on the structure of the neocortex. One of the most popular applications of this technology is image recognition and anomaly detection. Nevertheless, both in the neocortex and in hierarchical temporal memory technology is image recognition and anomaly detection. Nevertheless, both in the neocortex and in hierarchical temporal memory an image is recognized by its parts. Therefore, there is a problem of choosing the most meaningful parts of an image in order to perform fast and effective recognition. In this work we propose the architecture that unites Hierarchical Temporal Memory an image is recognized by its parts. Therefore, there is a problem of choosing the most meaningful parts of an image in order and Reinforcement Learning in order to find the optimal way of image exploration. Besides, we prove by experiments that this to perform fast and effective recognition. In this work we propose the architecture that unites Hierarchical Temporal Memory and Reinforcement Learning in order to find the optimal way of image exploration. Besides, we prove by experiments that this architecture is effective, and the quality of the resulting movement pattern is high. architecture is effective, and the quality of the resulting movement pattern is high.},
-author = {Nugamanov, Eduard and Panov, Aleksandr I},
-doi = {10.1016/j.procs.2020.02.123},
-file = {:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2020/Nugamanov, Panov/2020 - Nugamanov, Panov.pdf:pdf},
-journal = {Procedia Computer Science},
-keywords = {18-29-22047,frccsc,hierarchical temporal memory,image recognition,mipt,monte carlo control,reinforcement learning,scopus},
-mendeley-groups = {my{\_}publications},
-mendeley-tags = {18-29-22047,frccsc,mipt,scopus},
-pages = {123--131},
-title = {{Hierarchical Temporal Memory with Reinforcement Learning}},
-url = {https://www.sciencedirect.com/science/article/pii/S1877050920302465 https://www.scopus.com/record/display.uri?eid=2-s2.0-85084420528{\&}origin=resultslist{\&}sort=plf-f{\&}src=s{\&}sid=a28715a63d62b405efbba5b4a9835ff2{\&}sot=autdocs{\&}sdt=autdocs{\&}sl=18{\&}s=AU-ID{\%}28565047949},
-volume = {169},
-year = {2020}
-}
-
-@inproceedings{Daylidyonok2018,
-abstract = {This paper describes the application of hierarchical tempo- ral memory (HTM) to the task of anomaly detection in human motions. A number of model experiments with well-known motion dataset of Carnegie Mellon University have been carried out. An extended version of HTM is proposed, in which feedback on the movement of the sensor's focus on the video frame is added, as well as intermediate processing of the signal transmitted from the lower layers of the hierarchy to the upper ones. By using elements of reinforcement learning and feedback on focus movement, the HTM's temporal pooler includes information about the next position of focus, simulating the human saccadic movements. Processing the output of the temporal memory stabilizes the recognition process in large hierarchies.},
-author = {Daylidyonok, Ilya and Frolenkova, Anastasiya and Panov, Aleksandr I.},
-booktitle = {Biologically Inspired Cognitive Architectures 2018. BICA 2018. Advances in Intelligent Systems and Computing},
-doi = {10.1007/978-3-319-99316-4_10},
-editor = {Samsonovich, Alexei V.},
-file = {:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2019/Daylidyonok, Frolenkova, Panov/2019 - Daylidyonok, Frolenkova, Panov.pdf:pdf},
-isbn = {978-3-319-99316-4},
-keywords = {16-37-60055,17-29-07051,anomaly detection,elibrary,frccsc,hierarchical learning,hierarchical temporal memory,hse,htm feedback,myconf,processing,q3{\_}scopus,scopus,video},
-mendeley-groups = {my{\_}publications},
-mendeley-tags = {16-37-60055,17-29-07051,elibrary,frccsc,hse,myconf,q3{\_}scopus,scopus},
-pages = {69--81},
-publisher = {Springer},
-title = {{Extended Hierarchical Temporal Memory for Motion Anomaly Detection}},
-url = {https://link.springer.com/chapter/10.1007/978-3-319-99316-4{\_}10 https://www.scopus.com/record/display.uri?origin=recordpage{\&}eid=2-s2.0-85053179132{\&}citeCnt=0{\&}noHighlight=false{\&}sort=plf-f{\&}src=s{\&}sid=ad6a3bc81b605cd06b67867e7622bb15{\&}sot=autdocs{\&}sdt=autdocs{\&}sl=},
-volume = {848},
-year = {2019}
-}
-
 @inproceedings{Skrynnik2016,
-abstract = {Hierarchical temporal memory is an online machine learning model that simulates some of the structural and algorithmic properties of neocortex. The new implementation of hierarchical temporal memory is proposed in the paper. The main distinction of the implementation is chain extraction module that complements the spatial and temporal polling modules of HTM. The new module simplifies cross-level regions connection implementation (e.g. feedback). An experiment is also described to illus- trate how hierarchical temporal memory with explicit states extraction works.},
-author = {Skrynnik, Aleksey and Petrov, Alexander and Panov, Aleksandr I.},
-booktitle = {Biologically Inspired Cognitive Architectures (BICA) for Young Scientists. Advances in Intelligent Systems and Computing},
-doi = {10.1007/978-3-319-32554-5_28},
-editor = {Samsonovich, Alexei V. and Klimov, Valentin V. and Rybina, Galina V.},
-file = {:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2016/Skrynnik, Petrov, Panov/2016 - Skrynnik, Petrov, Panov.pdf:pdf;:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2016/Skrynnik, Petrov, Panov/2016 - Skrynnik, Petrov, Panov.doc:doc},
-keywords = {16-37-60055,elibrary,hse,myconf,scopus,wos,wos{\_}cpci},
-mendeley-groups = {my{\_}publications},
-mendeley-tags = {16-37-60055,elibrary,hse,myconf,scopus,wos,wos{\_}cpci},
-pages = {219--225},
-publisher = {Springer},
-title = {{Hierarchical Temporal Memory Implementation with Explicit States Extraction}},
-url = {http://link.springer.com/10.1007/978-3-319-32554-5{\_}28 https://www.scopus.com/record/display.uri?eid=2-s2.0-84964038709{\&}origin=resultslist},
-volume = {449},
-year = {2016}
-}
-
-@inproceedings{Gorodetskiy2020,
-abstract = {This work is devoted to unresolved problems of Artificial General Intelligence is the inefficiency of transfer learning. One of the mechanisms that are used to solve this problem in the area of reinforce- ment learning is a model-based approach. In the paper we are expanding the schema networks method which allows to extract the logical rela- tionships between objects and actions from the environment data. We present algorithms for training a Delta Schema Network (DSN), predict- ing future states of the environment and planning actions that will lead to positive reward. DSN shows strong performance of transfer learning on the classic Atari game environment.},
-author = {Gorodetskiy, Andrey and Shlychkova, Alexandra and Panov, Aleksandr I},
-booktitle = {Artificial General Intelligence. AGI 2020. Lecture Notes in Computer Science},
-doi = {10.1007/978-3-030-52152-3_18},
-editor = {Goertzel, B. and Panov, A. and Potapov, A. and Yampolskiy, R.},
-file = {:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2020/Gorodetskiy, Shlychkova, Panov/2020 - Gorodetskiy, Shlychkova, Panov(2).pdf:pdf},
-isbn = {978-3-030-52152-3},
-keywords = {17-29-07079,18-29-22027,delta schema network,frccsc,mipt,model-based,myconf,q2{\_}scopus{\_}prelim,reinforcement learning,schema network,scopus,transfer learning},
-mendeley-groups = {my{\_}publications},
-mendeley-tags = {17-29-07079,18-29-22027,frccsc,mipt,myconf,q2{\_}scopus{\_}prelim,scopus},
-pages = {172--182},
-publisher = {Springer},
-title = {{Delta Schema Network in Model-based Reinforcement Learning}},
-url = {https://link.springer.com/chapter/10.1007/978-3-030-52152-3{\_}18 https://www.scopus.com/record/display.uri?eid=2-s2.0-85088532072{\&}origin=resultslist{\&}sort=plf-f{\&}src=s{\&}sid=b407ed849d0c75e7a90799c322d3e284{\&}sot=autdocs{\&}sdt=autdocs{\&}sl=18{\&}s=AU-ID{\%}2856504794900{\%}29},
-volume = {12177},
-year = {2020}
+  abstract        = {Hierarchical temporal memory is an online machine learning model that simulates some of the structural and algorithmic properties of neocortex. The new implementation of hierarchical temporal memory is proposed in the paper. The main distinction of the implementation is chain extraction module that complements the spatial and temporal polling modules of HTM. The new module simplifies cross-level regions connection implementation (e.g. feedback). An experiment is also described to illus- trate how hierarchical temporal memory with explicit states extraction works.},
+  author          = {Skrynnik, Aleksey and Petrov, Alexander and Panov, Aleksandr I.},
+  booktitle       = {Biologically Inspired Cognitive Architectures (BICA) for Young Scientists. Advances in Intelligent Systems and Computing},
+  doi             = {10.1007/978-3-319-32554-5_28},
+  editor          = {Samsonovich, Alexei V. and Klimov, Valentin V. and Rybina, Galina V.},
+  file            = {:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2016/Skrynnik, Petrov, Panov/2016 - Skrynnik, Petrov, Panov.pdf:pdf;:C$\backslash$:/Users/panov/OneDrive/Documents/Mendeley Desktop/2016/Skrynnik, Petrov, Panov/2016 - Skrynnik, Petrov, Panov.doc:doc},
+  keywords        = {16-37-60055,elibrary,hse,myconf,scopus,wos,wos{\_}cpci},
+  mendeley-groups = {my{\_}publications},
+  mendeley-tags   = {16-37-60055,elibrary,hse,myconf,scopus,wos,wos{\_}cpci},
+  pages           = {219--225},
+  publisher       = {Springer},
+  title           = {{Hierarchical Temporal Memory Implementation with Explicit States Extraction}},
+  url             = {http://link.springer.com/10.1007/978-3-319-32554-5{\_}28 https://www.scopus.com/record/display.uri?eid=2-s2.0-84964038709{\&}origin=resultslist},
+  volume          = {449},
+  year            = {2016}
 }
