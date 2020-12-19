@@ -1,0 +1,42 @@
+%\usecolortheme{beaver}
+%\usetheme{default}
+%\useoutertheme{infolines}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}					% Выбор языка и кодировки
+\usepackage[english]{babel}	% Языки: русский, английский
+\usepackage{csquotes}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows,shapes,calc}
+\everymath{\displaystyle}
+\tikzstyle{every picture}+=[remember picture]
+
+\usepackage{extarrows}
+\usepackage{graphicx}      % Required for including pictures
+\usepackage{tikz}          % Required for including pictures
+
+\usepackage{animate}
+\usepackage{fp}
+\usepackage{textpos}
+\usepackage{media9}
+\usepackage{blkarray}
+\usepackage{tabularx}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+\usepackage[ruled]{algorithm}
+\usepackage[noend]{algpseudocode}
+
+\graphicspath{{assets/}{anims/}}
+\addmediapath{{videos/}}
+
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\makeatletter
+
+\addtobeamertemplate{frametitle}{}{
+	\begin{textblock*}{100mm}(\textwidth-25pt,-15pt)
+		\includegraphics[height=5mm]{cdsl_logo}
+	\end{textblock*}
+}
