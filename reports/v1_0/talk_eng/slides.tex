@@ -24,10 +24,12 @@
 	\includegraphics[height=20pt]{cdsl_logo} \hspace{10pt}
 \end{frame}
 
-\begin{frame}{Introduction and motivation}
+\begin{frame}{Model-based RL}
 	\begin{itemize}
-		\item why we need a model
-		\item why we draw inspirations from human memory models
+		\item learning the environment allows using planning methods
+		\item can remedy sample inefficiency of model-free RL
+		\item popular choice - Artificial Neural Networks
+		\item we used more human-like memory model - Hierarchical Temporal Memory (HTM)
 	\end{itemize}
 \end{frame}
 
@@ -41,7 +43,7 @@
 \end{frame}
 
 \begin{frame}{Agent's architecture}
-	- figure
+    \includegraphics[width=.65\linewidth]{agent_scheme}
 	- explain how it works on a high level	
 \end{frame}
 
@@ -60,16 +62,64 @@
 	explain recursive algo
 \end{frame}
 
-\begin{frame}{Results. Experimental setup 1}
-	- explain setup
-	- figures
-	- results	
+\begin{frame}{Experiments in fixed environments}
+\begin{columns}
+	\begin{column}{.55\textwidth}
+	Setup:
+	\begin{itemize}
+		\item fixed handcrafted mazes
+		\item reward position changes every 100 episodes
+	\end{itemize}
+
+	\vspace*{12pt}
+	Conclusions:
+	\begin{itemize}
+		\item better than random policy in any situations
+		\item learns and adapt faster than DQN
+		\item optimal solution requires planning horizon to be large enough to reach the reward from the initial state
+	\end{itemize}
+
+	\end{column}
+
+	\begin{column}{.45\textwidth}
+	\begin{center}
+		\includesvg[width=\linewidth]{multi_way_v0__steps}
+		\includesvg[width=\linewidth]{multi_way_v2__steps}
+	\end{center}
+	\end{column}
+\end{columns}	
 \end{frame}
 
-\begin{frame}{Results. Experimental setup 2}
-	- explain setup
-	- figures
-	- results	
+\begin{frame}{Experiments in changing environments}
+\begin{columns}
+	\begin{column}{.55\textwidth}
+	Setup:
+	\begin{itemize}
+		\item randomly generated mazes
+		\item maze periodically changes too
+		\begin{itemize}
+			\item up: every 200 episodes
+			\item bottom: every 20 episodes
+		\end{itemize}
+	\end{itemize}
+
+	\vspace*{12pt}
+	Conclusions:
+	\begin{itemize}
+		\item learns and adapt faster than DQN
+		\item more stable performance - less degradation spikes
+		\item suboptimal solutions with faster adaptation win over potentially optimal solutions unable to adapt in time
+	\end{itemize}
+
+	\end{column}
+
+	\begin{column}{.45\textwidth}
+	\begin{center}
+		\includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__steps}
+		\includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__steps}
+	\end{center}
+	\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}{Conclusions}
