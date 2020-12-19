@@ -65,7 +65,7 @@ In our work we present a simplified memory-based framework based on the ideas of
   \begin{minipage}{.49\linewidth}
     \includesvg[width=\linewidth]{gridworld_5x5_1_1_200_1337_map_2_1561234712}
   \end{minipage}
-  \caption{Example of generated maze environments of 5x5 and 8x8 sizes. Walls - dark purple, starting agent's position - yellow, rewarding goal state - salad.} \label{fig_maze_examples}
+  \caption{Two examples of generated 5x5 maze environments. Walls - dark purple, starting agent's position - yellow, rewarding goal state - salad.} \label{fig_maze_examples}
 \end{figure}
 
 \section{\uppercase{Background}}
@@ -253,7 +253,7 @@ This experiment setup was based on a number of handcrafted mazes. Each experimen
     \vspace*{6pt}
   \end{minipage}
 
-  \caption{Episode durations (in steps) for handcrafted mazes \texttt{multi\_way\_v0} (a) and \texttt{multi\_way\_v2} (b). Our agent performed consistently better than random policy, and with enough planning horizon it performed better than DQN agent. Notice, how fast the agent with planning horizon $8$ learns the optimal path compared to the DQN agent.} \label{fig_comparison_mw}
+  \caption{Episode durations (in steps) for handcrafted mazes \texttt{multi\_way\_v0} (a) and \texttt{multi\_way\_v2} (b). Results are shown with the moving average 20. Our agent performed consistently better than pure random policy, and with enough planning horizon it performed better than DQN agent. Notice, how fast the agent with the planning horizon $8$ learns an optimal path compared to the DQN agent.} \label{fig_comparison_mw}
 \end{figure}
 
 We present results for two mazes: \texttt{multi\_way\_v0} and \texttt{multi\_way\_v2} (see Fig.~\ref{fig_comparison_mw} and Fig.~\ref{fig_detailed_mw0}). Each experiment in \texttt{multi\_way\_v0} had 4 different rewarding goal positions being sequentially changed every 100 episodes. Each experiment in \texttt{multi\_way\_v2} had 6 rewarding goal positions being changed every 200 episodes. Schematic view of these mazes is provided in Appendix ~\ref{apx_handcrafted_mazes}.
@@ -270,7 +270,7 @@ We present results for two mazes: \texttt{multi\_way\_v0} and \texttt{multi\_way
     \vspace*{6pt}
   \end{minipage}
 
-  \caption{Episode durations (in steps) for the agent on \texttt{multi\_way\_v0} depending on how many rewarding goal states it can track - last 16 or just the last one - grouped by the planning horizon length.} \label{fig_detailed_mw0}
+  \caption{Episode durations (in steps) for the agent on \texttt{multi\_way\_v0} depending on how many rewarding goal states it can track - last 16 or just the last one - grouped by the planning horizon length. Results are shown with the moving average 20.} \label{fig_detailed_mw0}
 \end{figure}
 
 In the tested environments our method performed better than random policy. But the more complicated an environment is the less distinctive is the difference between the $H = 0$ and $H = 1$. Our method performs better with the increase of the planning horizon $H$. Each increment of the planning horizon is cumulative, i.e. each next increment is more advantageous.
@@ -292,22 +292,29 @@ In this experiment setup we used a number of randomly generated GridWorld mazes 
     \subcaption{}
     \vspace*{10pt}
 
-    % \includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__dqn__steps}
-    % \subcaption{Greedy and $\epsilon$-greedy DQN agent}
-    % \vspace*{10pt}
-
     \includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__2__steps}
     \subcaption{}
-    % \vspace*{10pt}
-
-    % \includesvg[width=\linewidth]{gridworld_5x5_100_2_8_1337__4-8__steps}
-    % \subcaption{}
     \vspace*{4pt}
   \end{minipage}
-  \caption{Episode durations for the experiment with rarely changed environments. a) Comparison with the baselines. Our agent with the planning horizon 8 performed the best. Each change of the environment configuration there's a spiked degradation of the performance for DQN agent, while our agents quickly relearn new position. b) Performance comparison for the different number of simultaneously tracked goals; planning horizon lengths are 4 and 8.} \label{fig_rare_changes}
+  \caption{Episode durations for the experiment with rarely changed environments. Results are shown with the moving average 40. a) Comparison with the baselines. Our agent with the planning horizon 8 performed the best. Notice, how an each change of the environment configuration results in a spiked degradation of the performance for DQN agent, while our agent quickly relearns new position. b) Performance comparison for the different number of simultaneously tracked goals - the last goal or last 4; planning horizon length = 2. } \label{fig_rare_changes}
 \end{figure}
 
 We tested agent in mazes generated on $5 \times 5$, $6 \times 6$ and $8 \times 8$ square grids. In this section we present only the results for the $5 \times 5$ mazes, but for the other tested sizes the results are similar. The key difference in complexity of each experimental setup is the total number of the episodes with fixed reward and maze. The less episodes has agent to adapt, the more agile it's required to be.
+
+\begin{figure}
+  \centering
+  \begin{minipage}{\linewidth}
+    \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__steps}
+    \subcaption{}
+    \vspace*{10pt}
+
+    \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__2__steps}
+    \subcaption{}
+    \vspace*{4pt}
+  \end{minipage}
+
+  \caption{Episode durations for the experiment with frequently changed environments. Results are shown with the moving average 40. a) Comparison with the baselines. Our method performed more stable with small planning horizons (1-4), while with planning horizon 8 it performed either very good or very bad. DQN agent results were worse than of random policy - the frequency of changes was too high for it to adapt before the next change. b) Comparison for the different number of simultaneously tracked goals; planning horizon length = 2.} \label{fig_frequent_changes}
+\end{figure}
 
 We present results for the following experimental setups:
 
@@ -316,29 +323,6 @@ We present results for the following experimental setups:
 
   \item Experimental setup with the \textbf{frequent} change of reward and maze: $N_{s_0} = 20$, $N_{rew} = 1$, $N_{env} = 20$ (see Fig.~\ref{fig_frequent_changes}).
 \end{enumerate}
-
-\begin{figure}
-  \centering
-  \begin{minipage}{.95\linewidth}
-    \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__steps}
-    \subcaption{}
-    \vspace*{10pt}
-
-    % \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__dqn__steps}
-    % \subcaption{Greedy and $\epsilon$-greedy DQN agent}
-    % \vspace*{10pt}
-
-    \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__2__steps}
-    \subcaption{}
-    % \vspace*{10pt}
-    
-    % \includesvg[width=\linewidth]{gridworld_5x5_20_1_20_1337__4-8__steps}
-    % \subcaption{}
-    \vspace*{4pt}
-  \end{minipage}
-
-  \caption{Episode durations for the experiment with frequently changed environments. a) Comparison with the baselines. Our method performed more stable with small planning horizons (1-4), while with planning horizon 8 it performed either very good or very bad. DQN agent results were worse than of random policy - the frequency of changes was too high for it to adapt before the next change. b) Comparison for the different number of simultaneously tracked goals; planning horizon lengths are 4 and 8.} \label{fig_frequent_changes}
-\end{figure}
 
 From this set of experiments we conclude that in average our agent adapts to changes faster than DQN. Which also makes it perform more stable.
 
