@@ -8,10 +8,9 @@ class GridworldPomdp(GridworldMdp):
     view_radius: int
 
     def __init__(self, view_radius, gridworld_map: np.ndarray, seed: int):
-        super(GridworldPomdp, self).__init__(gridworld_map, seed)
-
         assert view_radius >= 1
         self.view_radius = view_radius
+        super(GridworldPomdp, self).__init__(gridworld_map, seed)
 
     def reset(self):
         """ reset the game, return the initial state"""
@@ -32,17 +31,26 @@ class GridworldPomdp(GridworldMdp):
         obs_repr = self._to_observation(cell, state_repr)
         return obs_repr, seed
 
+    def state_to_obs(self, state):
+        return self._to_observation(self._to_cell(state))
+
     def _to_observation(self, cell=None, repr=None):
         x, y = isnone(cell, self._current_cell)
         d = self.view_radius
         xhigh, yhigh = self.shape
+        # print(x, y, d, self.shape)
 
-        lx, rx = self._clip(x - d, xhigh), self._clip(x + d, xhigh)
-        by, uy = self._clip(y - d, yhigh), self._clip(y + d, yhigh)
+        lx, rx = self._clip(x - d, xhigh), self._clip(x + d, xhigh) + 1
+        by, uy = self._clip(y - d, yhigh), self._clip(y + d, yhigh) + 1
+
+        _lx, _rx = d + (lx - x), d + (rx - x)
+        _by, _uy = d + (by - y), d + (uy - y)
+        # print(lx, rx, by, uy)
+        # print(_lx, _rx, _by, _uy)
 
         size = 2 * d + 1
         obs = np.zeros((size, size), dtype=np.int8)
 
         repr = isnone(repr, self.gridworld_map)
-        obs[lx:rx, by:uy] = repr[lx:rx, by:uy]
+        obs[_lx:_rx, _by:_uy] = repr[lx:rx, by:uy]
         return obs

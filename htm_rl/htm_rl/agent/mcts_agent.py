@@ -9,6 +9,7 @@ from htm_rl.agent.memory import Memory
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.common.base_sa import Sa
 from htm_rl.common.utils import timed, trace
+from htm_rl.envs.gridworld_pomdp import GridworldPomdp
 
 
 class MctsAgent:
@@ -126,8 +127,11 @@ class MctsAgentRunner:
         trace(self.verbosity, 1, '<============')
         encoder = self.agent.planner.encoder
         n_states = self.env.n_states
+        states = range(n_states)
+        if isinstance(self.env, GridworldPomdp):
+            states = [self.env.state_to_obs(state) for state in states]
 
-        states = [encoder.encode(Sa(state, None)) for state in range(n_states)]
+        states = [encoder.encode(Sa(state, None)) for state in states]
         V_s = np.array([
             self.agent._mcts_actor_critic.value(state, 0)
             for state in states

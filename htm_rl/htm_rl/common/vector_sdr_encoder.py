@@ -33,7 +33,7 @@ class VectorSdrEncoder:
 
     def encode(self, x: np.array) -> BitArr:
         self._cache_vector.fill(0)
-        self._cache_vector[np.arange(self.n_elements), x] = 1
+        self._cache_vector[np.arange(self.n_elements), x.ravel()] = 1
         dense_sdr = self._cache_vector.ravel()
         return BitArr(dense_sdr)
 

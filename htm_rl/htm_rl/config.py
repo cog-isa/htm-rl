@@ -27,6 +27,7 @@ from htm_rl.common.random_sdr_encoder import RandomSdrEncoder
 from htm_rl.common.random_sdr_encoder_sp import RandomSdrEncoderSp
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
+from htm_rl.common.vector_sdr_encoder import VectorSdrEncoder
 from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
 from htm_rl.envs.mdp import (
     SarSuperpositionFormatter, PovBasedGridworldMdpGenerator, Mdp, SaSuperpositionFormatter,
@@ -176,6 +177,7 @@ def register_classes(yaml: YAML):
         DqnAgent, DqnAgentRunner,
         IntSdrEncoder, SarSdrEncoder, SaSdrEncoder,
         RandomSdrEncoder, RandomSdrEncoderSp,
+        VectorSdrEncoder,
         TemporalMemory, SpatialPooler,
         LegacyMemory, Memory,
         LegacyPlanner, Planner,
