@@ -70,17 +70,19 @@ class GridworldMdp:
         is_done = self.is_terminal(self._current_state)
         return self._current_state, reward, is_done, {}
 
-    def get_representation(self, mode: str = None):
+    def get_representation(self, state = None, mode: str = None):
+        state = isnone(state, self._current_state)
+
         if mode == 'img':
             a = np.zeros_like(self.gridworld_map, dtype=np.float)
             a[self.gridworld_map] = .5  # sea blue
-            agent_i, agent_j = self._current_cell
+            agent_i, agent_j = self._to_cell(state)
             a[agent_i, agent_j] = 1.0   # yellow
             goal_i, goal_j = self._to_cell(self.terminal_state)
             a[goal_i, goal_j] = .85     # light green
             return a, self.seed
         else:
-            return f'State: {self._current_state}'
+            return f'State: {state}'
 
     def _to_state(self, i, j):
         return i * self.shape[0] + j
