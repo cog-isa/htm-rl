@@ -34,5 +34,5 @@ Key results:
   - with fixed planning horizon N advantage diminishes as environment complexity grows
 - if planning horizon N is enough to plan to the reward from the initial state, it works perfect after very small number of training episodes (~ equal to the distance to the goal state)
 
-[unreleased]: https://github.com/cog-isa/htm_rl/compare/v0.1...HEAD
-[0.1]: https://github.com/cog-isa/htm_rl/releases/tag/v0.1
+[unreleased]: https://github.com/cog-isa/htm-rl/compare/v0.1...HEAD
+[0.1]: https://github.com/cog-isa/htm-rl/releases/v0.1
