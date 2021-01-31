@@ -25,6 +25,14 @@ def trace(verbosity: int, req_level: int, str_to_print: str = ''):
         print(str_to_print)
 
 
+def clip(x, high):
+    if x >= high:
+        return high - 1
+    if x < 0:
+        return 0
+    return x
+
+
 def timed(f):
     @wraps(f)
     def wrap(*args, **kw):
