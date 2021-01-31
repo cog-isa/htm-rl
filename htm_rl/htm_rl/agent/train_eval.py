@@ -54,20 +54,32 @@ class RunResultsProcessor:
 
         self.print_results(run_stats)
 
-    def aggregate_results(self, file_masks, report_suffix, silent: bool):
-        if not file_masks:
-            file_masks = ['*']
+    def aggregate_results(self, file_masks, report_suffix, silent: bool, for_paper: bool):
+        if not for_paper:
+            self._aggregate_results(file_masks, report_suffix, silent)
+        else:
+            self._aggregate_results_for_paper(file_masks, report_suffix, silent)
 
-        csv_files_masks = [
-            os.path.join(self.test_dir, f'{self.env_name}_{file_mask}{self.data_ext}')
-            for file_mask in file_masks
-        ]
-        trace(self.verbosity, 2, '\n'.join(csv_files_masks))
-        dfs = [
-            (file_path, pd.read_csv(file_path))
-            for csv_file_mask in csv_files_masks
-            for file_path in sorted(glob(csv_file_mask))
-        ]
+    def _aggregate_results_for_paper(self, file_masks, report_suffix, silent: bool):
+        plt.rc('font', size=14)  # legend fontsize
+
+        dfs = self._read_data_files(file_masks)
+        col_names = self._get_names(dfs)
+        df_steps: pd.DataFrame = pd.concat(self._get_columns(dfs, 'steps'), axis=1, keys=col_names)
+        report_name = f'{self.env_name}'
+        if report_suffix:
+            report_name += f'__{report_suffix}'
+
+        ma = self.moving_average
+        self._plot_figure(
+            df_steps, f'episode duration (steps), moving average: {ma}', report_name, 'steps',
+            transparent=True
+        )
+        if not silent:
+            plt.show()
+
+    def _aggregate_results(self, file_masks, report_suffix, silent: bool):
+        dfs = self._read_data_files(file_masks)
         col_names = self._get_names(dfs)
         df_steps: pd.DataFrame = pd.concat(self._get_columns(dfs, 'steps'), axis=1, keys=col_names)
         df_times: pd.DataFrame = pd.concat(self._get_columns(dfs, 'times'), axis=1, keys=col_names)
@@ -95,19 +107,37 @@ class RunResultsProcessor:
         if not silent:
             plt.show()
 
-    def _plot_figure(self, df: pd.DataFrame, title: str, report_name, fname):
-        fig: plt.Figure
-        ax: plt.Axes
-        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-        df_ma = df.rolling(window=self.moving_average).mean()
-        df_ma.plot(use_index=True, ax=ax)
+    def _plot_figure(self, df: pd.DataFrame, title: str, report_name, ylabel, transparent=False):
+            fig: plt.Figure
+            ax: plt.Axes
+            fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+            df_ma = df.rolling(window=self.moving_average).mean()
+            df_ma.plot(use_index=True, ax=ax)
 
-        ax.legend(loc='right', bbox_to_anchor=(1.2, .5))
-        ax.set_title(f'{report_name}: {title}')
-        fig.tight_layout(h_pad=4.)
+            ax.legend(loc='right', bbox_to_anchor=(1.38, .8))
+            ax.set_title(f'{report_name}: {title}')
+            ax.set_xlabel('episode')
+            ax.set_ylabel(ylabel)
+            fig.tight_layout(h_pad=4.)
 
-        save_path = os.path.join(self.test_dir, f'{report_name}__{fname}.svg')
-        fig.savefig(save_path, dpi=120)
+            ylabel = ylabel.replace(' ', '_')
+            save_path = os.path.join(self.test_dir, f'{report_name}__{ylabel}.svg')
+            fig.savefig(save_path, dpi=120, transparent=transparent)
+
+    def _read_data_files(self, file_masks):
+        if not file_masks:
+            file_masks = ['*']
+
+        csv_files_masks = [
+            os.path.join(self.test_dir, f'{self.env_name}_{file_mask}{self.data_ext}')
+            for file_mask in file_masks
+        ]
+        trace(self.verbosity, 2, '\n'.join(csv_files_masks))
+        return [
+            (file_path, pd.read_csv(file_path))
+            for csv_file_mask in csv_files_masks
+            for file_path in sorted(glob(csv_file_mask))
+        ]
 
     def _get_names(self, dfs):
         env_name_len = len(self.env_name) + 1
@@ -115,7 +145,22 @@ class RunResultsProcessor:
 
         def path_to_short_name(file_path):
             p = Path(file_path)
-            return p.name[env_name_len:-ext_len]
+            name = p.name[env_name_len:-ext_len]
+            if name == 'htm_0':
+                name = 'random'
+            elif 'htm' in name:
+                parts = name.split('_')
+                if len(parts) == 2:
+                    parts.append('16g')
+                name, pl_hor, goals = parts
+                goals = goals[:-1]
+                name = f'horizon={pl_hor}, goals={goals}'
+            elif 'dqn' in name:
+                name, greedy = name.split('_')
+                if greedy == 'eps':
+                    greedy = f'$\epsilon$-greedy'
+                name = f'dqn: {greedy}'
+            return name
 
         return [path_to_short_name(file_path) for file_path, _ in dfs]
 
