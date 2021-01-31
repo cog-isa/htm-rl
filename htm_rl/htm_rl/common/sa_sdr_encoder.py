@@ -78,9 +78,9 @@ class SaSdrEncoder:
         action_only_sa = Sa(state=None, action=action)
         action_only_sdr = self.encode(action_only_sa)
 
-        left, right = self.actions_indices_range()
+        cell_range = self.actions_indices_range()
         no_action_sdr = [
-            index for index in sparse_sdr if not (left <= index < right)
+            index for index in sparse_sdr if index not in cell_range
         ]
 
         replaced_action_sdr = no_action_sdr

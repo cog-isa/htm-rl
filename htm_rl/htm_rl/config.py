@@ -13,19 +13,28 @@ from htm_rl.agent.agent import Agent, AgentRunner, TransferLearningExperimentRun
 from htm_rl.agent.legacy_agent import LegacyAgent
 from htm_rl.agent.legacy_memory import LegacyMemory
 from htm_rl.agent.legacy_planner import LegacyPlanner
+from htm_rl.agent.mcts_actor_critic import MctsActorCritic
+from htm_rl.agent.mcts_agent import MctsAgent, MctsAgentRunner
+from htm_rl.agent.mcts_agent_q import MctsAgentQ
+from htm_rl.agent.mcts_planner import MctsPlanner
+from htm_rl.agent.mcts_planner_q import MctsPlannerQ
 from htm_rl.agent.memory import Memory
 from htm_rl.agent.planner import Planner
 from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
+from htm_rl.common.random_sdr_encoder import RandomSdrEncoder
+from htm_rl.common.random_sdr_encoder_sp import RandomSdrEncoderSp
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
+from htm_rl.common.vector_sdr_encoder import VectorSdrEncoder
 from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
 from htm_rl.envs.mdp import (
     SarSuperpositionFormatter, PovBasedGridworldMdpGenerator, Mdp, SaSuperpositionFormatter,
     GridworldMdpGenerator,
 )
 from htm_rl.envs.preset_mdp_cell_transitions import PresetMdpCellTransitions
+from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
@@ -170,13 +179,19 @@ def register_classes(yaml: YAML):
         RandomSeedSetter,
         DqnAgent, DqnAgentRunner,
         IntSdrEncoder, SarSdrEncoder, SaSdrEncoder,
-        TemporalMemory, LegacyMemory, Memory,
+        RandomSdrEncoder, RandomSdrEncoderSp,
+        VectorSdrEncoder,
+        TemporalMemory, SpatialPooler,
+        LegacyMemory, Memory,
         LegacyPlanner, Planner,
         LegacyAgent, Agent, AgentRunner,
         TransferLearningExperimentRunner,
         GridworldMapGenerator,
         TransferLearningExperimentRunner2,
         RunResultsProcessor,
+        MctsAgent, MctsAgentRunner, MctsPlanner,
+        MctsAgentQ, MctsPlannerQ,
+        MctsActorCritic,
     ]
 
     constructor: SafeConstructor = yaml.constructor

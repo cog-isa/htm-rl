@@ -20,6 +20,9 @@ class BitRange:
     def __iter__(self):
         yield from astuple(self)
 
+    def __contains__(self, idx):
+        return self.l <= idx < self.r
+
     def shift(self, shift: int) -> 'BitRange':
         return BitRange(self.l + shift, self.r + shift)
 

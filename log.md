@@ -3,6 +3,10 @@
 - [Research and development log](#research-and-development-log)
   - [TODO](#todo)
   - [Thoughts and ideas](#thoughts-and-ideas)
+  - [2020.12.04 Fri](#20201204-fri)
+  - [2020.11.27 Fri](#20201127-fri)
+  - [2020.11.20 Fri](#20201120-fri)
+  - [2020.11.06 Fri](#20201106-fri)
   - [2020.10.23 Fri](#20201023-fri)
   - [2020.10.19 Mon](#20201019-mon)
   - [2020.10.09 Fri](#20201009-fri)
@@ -46,6 +50,11 @@ Research + functional tasks
     - [x] Update method description
     - [x] Add experiment results
     - [ ] TBD
+- [ ] Deal with high variance of results and the need to use large moving average windows
+- [ ] MCTS
+  - [ ] Make sure update cell ratio is used properly
+  - [ ] check TD-learning, counting
+  - [ ] check bottlenecks
 - Not acknowledged and questionable:
   - [ ] Split SAR TM into 2 TMs
     - State TM: (s, a) $\rightarrow$ s'
@@ -107,6 +116,77 @@ Auxialiary tasks, usability improvements and so on
 - SP hierarchies for large input images
   - with every SP working similar to convolution filter
 - consider doing live-logging experiments in markdown there
+
+## 2020.12.04 Fri
+
+Artem
+
+- сигнал на базальные ганглии без htm, второй этап - прикрутить htm
+  - посмотреть еще раз Шумского. Смотреть на микс Шумского и 12-14 работ у Артема
+
+## 2020.11.27 Fri
+
+- Petr
+  - MCTS experiments: custom coloring, then random coloring
+    - it works, while not without problems and not that easily sometimes
+    - but the main result is __this idea in general works well__
+    - TM hyperparameters finetuning is needed each time
+    - thought about using SP to lessen the input and make it more distinguishable while keeping semantics
+  - played with algo upgrades
+    - windowed stats
+    - state predictions without actual using of TM
+  - long before, I thought of using action bits to estimate advantage
+    - but problem was that action bits are context independent (in 1st order TM)
+    - we can try to tackle this problem with high order TM
+    - still, I don't like this idea that much
+    - but then another idea came to my mind - to use SP making action bits context dependant
+  - now I'm trying to set up experiment with learning Q-function
+    - (s, a) pairs are encoded through SP
+    - learn stats over encoded SDR vectors
+    - choose actions by taking argmax Q(s, a)
+    - interesting consequence - no need for using TM and predictions
+
+Dopamine. Бустить активации. Сможем ли мы проталкивать сигнал о полезности действия таким же образом.
+Внутренняя и внешняя мотивация.
+
+Голод, уменьшается в том числе от действий. Увидел что-то новое - облегчение, стало чуть лучше. Информация об успешности действия, гридцеллз как внутренняя метрика того, что мы двигаемся, движение в пространстве положительно подкрепляет. Страх смерти - врожден или приобретен, как понять что смерть это плохо. Идея - уровень стресса, как отражение внутреннего состояния.
+
+Отчет.
+
+**Евгений** продолжает эксперимент с POMDP, где наблюдения - фиксированная прямоугольная область клеток перед агентом. На небольших случайных лабиринтах планирование работает хорошо. Тем не менее, в некоторых средах планирование не работает - Евгений разбирается, почему так. Так же он сейчас проводит эксперименты на средах размера больше чем 5x5. На них, по предварительным оценкам, планирование уже почти не справляется.
+
+**Петр** проводил эксперименты в средах с перекрывающимся кодированием. Сначала кодировал вручную (красил клетки в несколько разных цветов), потом - случайно. В итоге кодировка следующая - каждому состоянию ставится в соответствие некоторый вектор размерности N, каждая координата вектора задает наличие некоторого цвета. Разные ячейки могут иметь общие цвета. С очень большой вероятностью не существует ячеек с одинаковым представлением. Для каждой координаты (=ячейки, бита) статистика по полезности собирается независимо. Следовательно и UCB1 значения тоже вычисляются независимо (там есть некоторый набор хаков, как считать общее число сэмплов, но кажется, что пока использованные решения не супер принципиальны и ничего не ломают). Для каждого состояния полезность вычисляется как среднее (можно другие способы агрегации, например, какие-то квантили). В такой конфигурации агент способен учиться - я тестировал на случайных средах вплоть до размера 20x20.
+
+Столкнулся с проблемами подбора гиперпараметров для ТМки, чтобы она нормально училась в случае, когда состояния кодируются большими векторами (200-400 бит) - там приходится подбирать размеры кодирования действий и всякие пороги обучения, размеры сегментов и их разрешенное количество на одну ячейку. Других проблем не было. Учится заметно медленнее, чем при отсутствии пересечения - в смысле, что результат обучения становится заметен позже, агенту уже чаще требовалось 50+ эпизодов, чтобы начать стабильно достигать награду.
+
+Дальше я сначала пытался немного улучшить алгоритм обучения. 1) сделать обучение оконным, т.е. статистика обновлялась с фиксированным весом, а не с затухающим, зависящим от количества посещений. Не доделал, но почитал статьи, как это можно сделать. 2) делать шаг предсказания, в какое состояние приведет агента действие, не с помощью ТМки, а вручную (это должно быть быстрее, т.к. иначе после этого приходится перезагружать ТМку из сохраненного состояния - это накладно). Пока делал это, пришла в голову еще одна идея, над которой я в итоге и занимаюсь до сих пор.
+
+Давно сидела идея, что мы не используем ячейки действий, только состояний. Т.е. по сути я вычисляю функцию полезности состояний V(s). Для выбора действия я делаю argmax V(s') по предсказанным будущим состояниям. Ячейки действий могли бы содержать инфу по смыслу аналогичную advantage, а кумулятивная инфа из ячеек состояния и действия содержала бы полезность действий Q(s,a). Но проблема была в следующем - ячейки действий шарятся между всеми состояниями, поэтому статистика в них будет бессодержательной - любой бит действия активируется вместе с любыми состояниями, т.е. агрегирует в себе глобальную полезность действия V(a), и это бесполезно. Тут мне пришла идея, что если кодировать спатиал пулером пары (s,a), то эту проблему с ячейками действий можно решить - в выходном векторе ячейки зависят и от состояния, и от действия в равной степени. Тогда в каком-то смысле пересечение образов пар (s, A=a1 OR a2 OR ... OR aN) будет содержать статистику, общую для состояния, т.е. V(s), а отличные части векторов будут содержать advantage. Суммарно каждый образ пары (s,a) будет содержать полезность действия Q(s,a). В итоге для выбора действия будет требоваться просто отобразить для текущего состояния s векторы для всех действий и взять argmax от агрегированных статистик. Сейчас я занимаюсь реализацией для проверки именно этой гипотезы. По идее сегодня-завтра завершу этот эксперимент.
+
+**Артем** продолжает читать и агрегировать статьи. Как я понял, он добавил еще 3 статьи. На этой неделе продолжает читать новые. Но так же мы договорились, что он уже начнет смотреть на новые и на просмотренные модели с точки зрения того, какие механизмы внутренней мотивации и в каком виде можно перенести в нашу работу. Мы побрейнштормили на эту тему вместе, но в итоге начали с совсем базовых вещей, немного закопались в деталях и не пришли к чему-то внятному. Решили подумать дальше еще по отдельности.
+
+## 2020.11.20 Fri
+
+Current todo:
+
+- DQN agent => to state encoding
+- mcts choose the same action
+  - I think it's ok
+- adapt mcts to non-stationary
+
+## 2020.11.06 Fri
+
+- Artem
+  - motivations
+    - new events (novelty based)
+    - prediction error based (how it differs from novelty based)
+    - competence based
+  - read more, find models
+    - still reading, basics, intrinsic motivations, baldassarre et al
+- Eugene
+  - what's
+  - history: pomdp on non-overlapping encoding
+- git
 
 ## 2020.10.23 Fri
 
@@ -227,9 +307,10 @@ Shared cells
 
 - action cells are treated as one, i.e. their stats are accumulated with avg before UCB1 calculations
 - i.e. it's still single cell UCB1, but stats are spread into n cells, and each time only k cells are updated.
-  - rescale avg N with $\frac{n}{k}$ as only that fraction of action cells is updated each activation step
+  - let's define $\beta = \frac{k}{t}$, which is a fraction of action cells that are updated each activation step
+  - then we need rescale avg N with $\beta$
   - $Q = \frac{\sum R_i}{\sum N_i}$
-  - $U = \sqrt{\frac{2 \log (N)}{\sum N_i \cdot \frac{n}{k}}}$
+  - $U = \sqrt{\frac{2 \log {T}}{\beta^{-1} \cdot \sum N_i}}$
 - in this method each action has n stats approximators, but one UCB1 approximator
 - **results**: for orthogonal actions encoding results are the same as for single cell UCB1
   - they're exactly the same if you rescale avg N
