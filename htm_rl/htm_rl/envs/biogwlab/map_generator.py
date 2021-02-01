@@ -64,12 +64,12 @@ class BioGwLabEnvGenerator:
         food_scent = food_scents.sum(axis=-1)
         food_scent /= (
             food_scent
-                .reshape((food_scent.shape[0], -1))
-                .sum(axis=-1)
-                .reshape((-1, 1, 1))
+                .reshape((-1, food_scent.shape[-1]))
+                .sum(axis=0)
+                .reshape((1, 1, -1))
         )
 
-        trace_image(self.verbosity, 3, food_scent[channel, :, :])
+        trace_image(self.verbosity, 3, food_scent[:, :, channel])
 
     def _plot_food_map(self, food_map, obstacle_mask):
         food_map = food_map.copy()
@@ -100,15 +100,15 @@ class ScentGenerator:
 
     def generate(self, food_items, obstacle_mask):
         size = obstacle_mask.shape[0]
-        food_scents = np.zeros((self.n_scent_channels, size, size, len(food_items)), dtype=np.float)
+        food_scents = np.zeros((size, size, self.n_scent_channels, len(food_items)), dtype=np.float)
         for k, (i, j, food_item) in enumerate(food_items):
             for _i, _j in product(range(size), range(size)):
                 d = np.sqrt(self._dist(i, j, _i, _j))
                 d = max(1., d)
-                food_scents[:, _i, _j, k] = self.scent_weights[food_item] / d**1.5
+                food_scents[_i, _j, :, k] = self.scent_weights[food_item] / d**1.5
 
         # zeroes scent for obstacle cells
-        food_scents *= ~obstacle_mask.reshape((1,)+obstacle_mask.shape + (1,))
+        food_scents *= ~obstacle_mask.reshape(obstacle_mask.shape + (1, 1,))
 
         return food_scents, self.n_scent_channels
 

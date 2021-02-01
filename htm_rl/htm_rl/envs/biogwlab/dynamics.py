@@ -204,13 +204,13 @@ class BioGwLabStateScentRepresenter:
     def generate_scent_map(self, state: BioGwLabEnvState):
         channels = state.n_scent_channels
         size = state.size
-        scent_map = np.zeros((channels, size, size), dtype=np.int8)
+        scent_map = np.zeros((size, size, channels), dtype=np.int8)
         for channel in range(channels):
-            scent = state.food_scent[channel].ravel()
+            scent = state.food_scent[:, :, channel].ravel()
             n_cells = scent.size
             n_active = int(.2 * n_cells)
             activations = self.rnd.choice(n_cells, p=scent, size=n_active)
-            scent_map[channel, np.divmod(activations, size)] = 1
+            scent_map[np.divmod(activations, size), channel] = 1
         return scent_map
 
     def init_outer_cells(self, repr):
@@ -276,13 +276,12 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         vis_observation = self._clip_observation(
             vis_repr, self.view_rect, self.visual_representer.init_outer_cells
         )
-        # scent_observation = self._clip_observation(
-        #     scent_repr, self.scent_rect, self.scent_representer.init_outer_cells
-        # )
-        #
-        # observation = np.concatenate(vis_observation, scent_observation, axis=None)
-        # return observation
-        return vis_observation
+        scent_observation = self._clip_observation(
+            scent_repr, self.scent_rect, self.scent_representer.init_outer_cells
+        )
+
+        observation = np.concatenate((vis_observation, scent_observation), axis=None)
+        return observation
 
     def _clip_observation(self, full_repr, obs_rect, init_obs):
         state = self.state

@@ -59,9 +59,9 @@ class BioGwLabEnvState:
         food_scent = food_scents.sum(axis=-1)
         normalize_factors = (
             food_scent
-                .reshape((food_scent.shape[0], -1))
-                .sum(axis=-1)
-                .reshape((-1, 1, 1))
+                .reshape((-1, food_scent.shape[-1]))
+                .sum(axis=0)
+                .reshape((1, 1, -1))
         )
         food_scent /= normalize_factors
         return food_scent
