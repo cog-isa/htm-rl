@@ -8,7 +8,7 @@ from htm_rl.common.utils import isnone, clip
 from htm_rl.envs.biogwlab.env_state import BioGwLabEnvState
 
 
-class BioGwLabDynamics:
+class BioGwLabEnvDynamics:
     actions = {
         'stay': {
             'cost': .3
@@ -96,12 +96,14 @@ class BioGwLabEnv:
     actions = ['stay', 'move', 'turn left', 'turn right']
 
     state: BioGwLabEnvState
-    dynamics: BioGwLabDynamics
+    dynamics: BioGwLabEnvDynamics
 
-    def __init__(self, state: BioGwLabEnvState, dynamics: BioGwLabDynamics):
+    def __init__(self, state: BioGwLabEnvState, dynamics: BioGwLabEnvDynamics):
         self.state = state
         self.dynamics = dynamics
         self.rnd = np.random.default_rng(seed=state.seed)
+
+        self.generate_initial_position()
 
     def generate_initial_position(self):
         position = self._get_random_empty_position()
@@ -205,7 +207,7 @@ class BioGwLabStateScentRepresenter:
         scent_map = np.zeros((channels, size, size), dtype=np.int8)
         for channel in range(channels):
             scent = state.food_scent[channel].ravel()
-            n_cells = scent.size()
+            n_cells = scent.size
             n_active = int(.2 * n_cells)
             activations = self.rnd.choice(n_cells, p=scent, size=n_active)
             scent_map[channel, np.divmod(activations, size)] = 1
@@ -221,7 +223,7 @@ class BioGwLabEnvRepresentationWrapper(BioGwLabEnv):
 
     visual_representation: np.ndarray
 
-    def __init__(self, state: BioGwLabEnvState, dynamics: BioGwLabDynamics):
+    def __init__(self, state: BioGwLabEnvState, dynamics: BioGwLabEnvDynamics):
         super().__init__(state, dynamics)
 
         self.visual_representer = BioGwLabStateVisualRepresenter(self.state)
@@ -252,21 +254,21 @@ class BioGwLabEnvRepresentationWrapper(BioGwLabEnv):
 
 
 class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
-    i_transformation = [1, -1, -1, 1]
-    j_transformation = [-1, -1, 1, 1]
+    i_transformation = [1, -1, -1, 1, ]
+    j_transformation = [1, 1, -1, -1, ]
 
     view_rect: Tuple[Tuple[int, int], Tuple[int, int]]
     scent_rect: Tuple[Tuple[int, int], Tuple[int, int]]
 
     def __init__(
-            self, state: BioGwLabEnvState, dynamics: BioGwLabDynamics,
+            self, state: BioGwLabEnvState, dynamics: BioGwLabEnvDynamics,
             view_rect: Tuple[Tuple[int, int], Tuple[int, int]],
             scent_rect: Tuple[Tuple[int, int], Tuple[int, int]]
     ):
         super().__init__(state, dynamics)
 
-        self.view_rect = view_rect
-        self.scent_rect = scent_rect
+        self.view_rect = self._view_to_machine(view_rect)
+        self.scent_rect = self._view_to_machine(scent_rect)
 
     def reset(self):
         vis_repr, scent_repr = super().reset()
@@ -274,12 +276,13 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         vis_observation = self._clip_observation(
             vis_repr, self.view_rect, self.visual_representer.init_outer_cells
         )
-        scent_observation = self._clip_observation(
-            scent_repr, self.scent_rect, self.scent_representer.init_outer_cells
-        )
-
-        observation = np.concatenate(vis_observation, scent_observation, axis=None)
-        return observation
+        # scent_observation = self._clip_observation(
+        #     scent_repr, self.scent_rect, self.scent_representer.init_outer_cells
+        # )
+        #
+        # observation = np.concatenate(vis_observation, scent_observation, axis=None)
+        # return observation
+        return vis_observation
 
     def _clip_observation(self, full_repr, obs_rect, init_obs):
         state = self.state
@@ -288,39 +291,74 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         repr_len = full_repr.shape[-1]
 
         i_high, j_high = self.state.size, self.state.size
-        print(i, j, i_high, j_high)
+        # print(i, j, forward_dir, i_high, j_high)
+        # print(obs_rect)
 
         (bi, lj), (ui, rj) = obs_rect
-        obs = np.empty((ui-bi, rj-lj, repr_len), dtype=np.int8)
+        obs = np.empty((ui-bi+1, rj-lj+1, repr_len), dtype=np.int8)
         init_obs(obs)
 
-        bi *= self.i_transformation[forward_dir]
-        ui *= self.i_transformation[forward_dir]
-        lj *= self.j_transformation[forward_dir]
-        rj *= self.j_transformation[forward_dir]
-        if forward_dir % 2 == 0:
+        # print('orig', bi, ui, lj, rj)
+        # print('====')
+        # for i in range(5):
+        #     _bi, _ui, _lj, _rj = self._rotate(bi, ui, lj, rj, i)
+        #     print('rot', _bi, _ui, _lj, _rj)
+        # print('====')
+
+        _bi, _ui, _lj, _rj = self._rotate(bi, ui, lj, rj, forward_dir)
+        # print('rot', _bi, _ui, _lj, _rj)
+
+        _bi = clip(i + _bi, i_high)
+        _ui = clip(_ui + i, i_high) + 1
+        _lj = clip(j + _lj, j_high)
+        _rj = clip(_rj + j, j_high) + 1
+        # print('repr', _bi, _ui, _lj, _rj)
+        repr = full_repr[_bi:_ui, _lj:_rj].copy()
+        # print(repr.shape)
+
+        _bi, _ui = _bi - i, _ui - i - 1
+        _lj, _rj = _lj - j, _rj - j - 1
+
+        # print('cli', _bi, _ui, _lj, _rj)
+        _bi, _ui, _lj, _rj = self._rotate(_bi, _ui, _lj, _rj, 2 - forward_dir)
+        # print('clip', _bi, _ui, _lj, _rj)
+
+        bi -= _bi
+        ui = bi - _bi + _ui + 1
+        lj -= _lj
+        rj = lj - _lj + _rj + 1
+        # print('res', bi, ui, lj, rj)
+
+        if forward_dir == 0:
+            repr = np.swapaxes(repr, 0, 1)
+            repr = np.flip(repr, 0)
+        elif forward_dir == 1:
+            repr = repr
+        elif forward_dir == 2:
+            repr = np.swapaxes(repr, 0, 1)
+            repr = np.flip(repr, 1)
+        else:
+            repr = np.flip(repr, (0, 1))
+
+        # print('obs shape', obs.shape)
+        # print(obs[__bi:__ui, __lj:__rj].shape)
+        obs[bi:ui, lj:rj] = repr
+        return obs
+
+    def _rotate(self, bi, ui, lj, rj, direction):
+        bi *= self.i_transformation[direction - 1]
+        ui *= self.i_transformation[direction - 1]
+        lj *= self.j_transformation[direction - 1]
+        rj *= self.j_transformation[direction - 1]
+        if direction % 2 == 0:
             bi, lj = lj, bi
             ui, rj = rj, ui
         if bi > ui:
             bi, ui = ui, bi
         if lj > rj:
             lj, rj = rj, lj
+        return bi, ui, lj, rj
 
-        _bi = clip(i + bi, i_high)
-        _ui = clip(ui + i, i_high) + 1
-        _lj = clip(j + lj, j_high)
-        _rj = clip(rj + j, j_high) + 1
-
-        __bi = _bi - bi
-        __ui = _ui - bi
-        __lj = _lj - lj
-        __rj = _rj - lj
-        print(_bi, _ui, _lj, _rj)
-        print(__bi, __ui, __lj, __rj)
-
-        repr = full_repr[_bi:_ui, _lj:_rj]
-        if forward_dir % 2 == 0:
-            repr = repr.T
-
-        obs[__bi:__ui, __lj:__rj] = repr.copy()
-        return obs
+    def _view_to_machine(self, rect):
+        (lj, bi), (rj, ui) = rect
+        return (bi, -rj), (ui, -lj)

@@ -58,7 +58,7 @@ class BioGwLabEnvGenerator:
         final_map[food_map == 1] = -5
         final_map[food_map == 3] = -10
         final_map[obstacle_mask] = wall_colors[obstacle_mask]
-        trace_image(self.verbosity, 2, final_map)
+        trace_image(self.verbosity, 3, final_map)
 
     def _plot_food_scent_map(self, food_scents, channel):
         food_scent = food_scents.sum(axis=-1)
@@ -69,7 +69,7 @@ class BioGwLabEnvGenerator:
                 .reshape((-1, 1, 1))
         )
 
-        trace_image(self.verbosity, 2, food_scent[channel, :, :])
+        trace_image(self.verbosity, 3, food_scent[channel, :, :])
 
     def _plot_food_map(self, food_map, obstacle_mask):
         food_map = food_map.copy()
