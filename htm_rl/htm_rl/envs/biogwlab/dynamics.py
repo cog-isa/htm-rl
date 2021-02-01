@@ -27,7 +27,7 @@ class BioGwLabEnvDynamics:
         pass
 
     def is_terminal(self, state):
-        return False
+        return state.n_foods <= 0
 
     def stay(self, state):
         i, j = state.agent_position
@@ -74,9 +74,10 @@ class BioGwLabEnvDynamics:
                 continue
 
             state.food_scents[:, :, :, k] = 0
-            state.food_scent = state.get_food_scent(state.food_scents)
+            state.n_foods -= 1
             state.food_mask[i, j] = False
             state.food_map[i, j] = -1
+            state.food_scent = state.get_food_scent(state.food_scents)
             return self.food_rewards[food_type]
 
     def generate_scent_map(self, state: BioGwLabEnvState, rnd: Generator):
@@ -205,12 +206,12 @@ class BioGwLabStateScentRepresenter:
         channels = state.n_scent_channels
         size = state.size
         scent_map = np.zeros((size, size, channels), dtype=np.int8)
-        for channel in range(channels):
-            scent = state.food_scent[:, :, channel].ravel()
-            n_cells = scent.size
-            n_active = int(.2 * n_cells)
-            activations = self.rnd.choice(n_cells, p=scent, size=n_active)
-            scent_map[np.divmod(activations, size), channel] = 1
+        # for channel in range(channels):
+        #     scent = state.food_scent[:, :, channel].ravel()
+        #     n_cells = scent.size
+        #     n_active = int(.2 * n_cells)
+        #     activations = self.rnd.choice(n_cells, p=scent, size=n_active)
+        #     scent_map[np.divmod(activations, size), channel] = 1
         return scent_map
 
     def init_outer_cells(self, repr):
@@ -250,7 +251,7 @@ class BioGwLabEnvRepresentationWrapper(BioGwLabEnv):
 
         visual_representation = self.visual_representation
         scent_representation = self.scent_representer.generate_scent_map(self.state)
-        return visual_representation, scent_representation
+        return (visual_representation, scent_representation), reward, is_done, {}
 
 
 class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
@@ -272,16 +273,27 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
 
     def reset(self):
         vis_repr, scent_repr = super().reset()
+        observation = self._to_observation(vis_repr, scent_repr)
+        # print(observation.shape)
+        return observation
 
+    def step(self, action):
+        (vis_repr, scent_repr), reward, is_done, _ = super().step(action)
+        observation = self._to_observation(vis_repr, scent_repr)
+        return observation, reward, is_done, {}
+
+
+    def _to_observation(self, vis_repr, scent_repr):
         vis_observation = self._clip_observation(
             vis_repr, self.view_rect, self.visual_representer.init_outer_cells
         )
-        scent_observation = self._clip_observation(
-            scent_repr, self.scent_rect, self.scent_representer.init_outer_cells
-        )
-
-        observation = np.concatenate((vis_observation, scent_observation), axis=None)
-        return observation
+        # scent_observation = self._clip_observation(
+        #     scent_repr, self.scent_rect, self.scent_representer.init_outer_cells
+        # )
+        #
+        # observation = np.concatenate((vis_observation, scent_observation), axis=None)
+        # return observation
+        return vis_observation.ravel()
 
     def _clip_observation(self, full_repr, obs_rect, init_obs):
         state = self.state
@@ -294,7 +306,7 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         # print(obs_rect)
 
         (bi, lj), (ui, rj) = obs_rect
-        obs = np.empty((ui-bi+1, rj-lj+1, repr_len), dtype=np.int8)
+        obs = np.zeros((ui-bi+1, rj-lj+1, repr_len), dtype=np.int8)
         init_obs(obs)
 
         # print('orig', bi, ui, lj, rj)
@@ -322,9 +334,9 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         _bi, _ui, _lj, _rj = self._rotate(_bi, _ui, _lj, _rj, 2 - forward_dir)
         # print('clip', _bi, _ui, _lj, _rj)
 
-        bi -= _bi
+        bi = _bi - bi
         ui = bi - _bi + _ui + 1
-        lj -= _lj
+        lj = _lj - lj
         rj = lj - _lj + _rj + 1
         # print('res', bi, ui, lj, rj)
 

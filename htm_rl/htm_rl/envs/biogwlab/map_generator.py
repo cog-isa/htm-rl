@@ -14,12 +14,12 @@ class BioGwLabEnvGenerator:
     seed: int
     verbosity: int
 
-    def __init__(self, size, density, n_areas, seed):
+    def __init__(self, size, density, n_areas, seed, verbosity):
         self.size = size
         self.density = density
         self.n_areas = n_areas
         self.seed = seed
-        self.verbosity = 2
+        self.verbosity = verbosity
 
     def generate(self):
         size = self.size
@@ -58,7 +58,7 @@ class BioGwLabEnvGenerator:
         final_map[food_map == 1] = -5
         final_map[food_map == 3] = -10
         final_map[obstacle_mask] = wall_colors[obstacle_mask]
-        trace_image(self.verbosity, 3, final_map)
+        trace_image(self.verbosity, 1, final_map)
 
     def _plot_food_scent_map(self, food_scents, channel):
         food_scent = food_scents.sum(axis=-1)

@@ -14,7 +14,7 @@ from htm_rl.agent.legacy_agent import LegacyAgent
 from htm_rl.agent.legacy_memory import LegacyMemory
 from htm_rl.agent.legacy_planner import LegacyPlanner
 from htm_rl.agent.mcts_actor_critic import MctsActorCritic
-from htm_rl.agent.mcts_agent import MctsAgent, MctsAgentRunner
+from htm_rl.agent.mcts_agent import MctsAgent, MctsAgentRunner, TransferLearningExperimentRunner3, MctsAgentRunner2
 from htm_rl.agent.mcts_agent_q import MctsAgentQ
 from htm_rl.agent.mcts_planner import MctsPlanner
 from htm_rl.agent.mcts_planner_q import MctsPlannerQ
@@ -28,6 +28,7 @@ from htm_rl.common.random_sdr_encoder_sp import RandomSdrEncoderSp
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.vector_sdr_encoder import VectorSdrEncoder
+from htm_rl.envs.biogwlab.map_generator import BioGwLabEnvGenerator
 from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
 from htm_rl.envs.mdp import (
     SarSuperpositionFormatter, PovBasedGridworldMdpGenerator, Mdp, SaSuperpositionFormatter,
@@ -188,10 +189,13 @@ def register_classes(yaml: YAML):
         TransferLearningExperimentRunner,
         GridworldMapGenerator,
         TransferLearningExperimentRunner2,
+        TransferLearningExperimentRunner3,
         RunResultsProcessor,
         MctsAgent, MctsAgentRunner, MctsPlanner,
         MctsAgentQ, MctsPlannerQ,
         MctsActorCritic,
+        MctsAgentRunner2,
+        BioGwLabEnvGenerator,
     ]
 
     constructor: SafeConstructor = yaml.constructor
