@@ -1,60 +1,11 @@
-from typing import Tuple, List, Optional
+from itertools import product
+from typing import Tuple
 
 import numpy as np
+from numpy.random._generator import Generator
 
 from htm_rl.common.utils import isnone, clip
-
-
-class BioGwLabEnvState:
-    directions = [(1, 0, 'right'), (0, -1, 'down'), (-1, 0, 'left'), (0, 1, 'up')]
-
-    size: int
-    seed: int
-    n_area_types: int
-    n_wall_colors: int
-    n_food_types: int
-    n_scent_channels: int
-    obstacle_mask: np.ndarray
-    areas_map: np.ndarray
-    wall_colors: np.ndarray
-    food_items: List[Tuple[int, int, int]]
-    food_map: np.ndarray
-    food_mask: np.ndarray
-    food_scents: np.ndarray
-    food_scent: np.ndarray
-
-    agent_initial_position: Optional[Tuple[int, int]]
-    agent_initial_direction: Optional[int]
-    agent_position: Optional[Tuple[int, int]]
-    agent_direction: Optional[int]
-
-    def __init__(
-            self, size: int, seed: int, n_area_types: int,
-            n_wall_colors: int, n_food_types: int,
-            n_scent_channels: int, obstacle_mask: np.ndarray,
-            areas_map: np.ndarray, wall_colors: np.ndarray,
-            food_items: List[Tuple[int, int, int]], food_mask: np.ndarray,
-            food_map: np.ndarray, food_scents: np.ndarray
-    ):
-        self.size = size
-        self.seed = seed
-        self.n_area_types = n_area_types
-        self.n_wall_colors = n_wall_colors
-        self.n_food_types = n_food_types
-        self.n_scent_channels = n_scent_channels
-        self.obstacle_mask = obstacle_mask
-        self.areas_map = areas_map
-        self.wall_colors = wall_colors
-        self.food_items = food_items
-        self.food_map = food_map
-        self.food_mask = food_mask
-        self.food_scents = food_scents
-        self.food_scent = food_scents.sum(axis=-1)
-
-        self.agent_initial_position = None
-        self.agent_initial_direction = None
-        self.agent_position = None
-        self.agent_direction = None
+from htm_rl.envs.biogwlab.env_state import BioGwLabEnvState
 
 
 class BioGwLabDynamics:
@@ -93,12 +44,12 @@ class BioGwLabDynamics:
         return reward
 
     def turn(self, turn_direction, state):
-        state.agent_direction = self._turn(state.agent_direction, turn_direction)
+        state.agent_direction = self.rotate_direction(state.agent_direction, turn_direction)
         reward = self.actions['turn']['cost'] * self.time_cost
         return reward
 
     @staticmethod
-    def _turn(view_direction, turn_direction):
+    def rotate_direction(view_direction, turn_direction):
         return (view_direction + turn_direction + 4) % 4
 
     @staticmethod
@@ -123,12 +74,25 @@ class BioGwLabDynamics:
                 continue
 
             state.food_scents[:, :, :, k] = 0
+            state.food_scent = state.get_food_scent(state.food_scents)
             state.food_mask[i, j] = False
             state.food_map[i, j] = -1
             return self.food_rewards[food_type]
 
+    def generate_scent_map(self, state: BioGwLabEnvState, rnd: Generator):
+        channels = state.n_scent_channels
+        size = state.size
+        scent_map = np.zeros((channels, size, size), dtype=np.int8)
+        for channel in range(channels):
+            scent = state.food_scent[channel].ravel()
+            n_cells = scent.size()
+            n_active = int(.2 * n_cells)
+            activations = rnd.choice(n_cells, p=scent, size=n_active)
+            scent_map[channel, np.divmod(activations, size)] = 1
+        return scent_map
 
 class BioGwLabEnv:
+    rnd: Generator
     actions = ['stay', 'move', 'turn left', 'turn right']
 
     state: BioGwLabEnvState
@@ -195,3 +159,168 @@ class BioGwLabEnv:
         available_states = np.flatnonzero(non_empty_mask)
         position = self.rnd.choice(available_states)
         return self._unflatten(position)
+
+
+class BioGwLabStateVisualRepresenter:
+    repr_len: int
+
+    def __init__(self, state: BioGwLabEnvState):
+        self.repr_len = (
+                1 + state.n_wall_colors + state.n_area_types + state.n_food_types
+        )
+
+    def get_representation(self, state: BioGwLabEnvState):
+        size = state.size
+        vis_repr = np.zeros((size, size, self.repr_len), dtype=np.int8)
+        for i, j in product(range(size), range(size)):
+            vis_repr[i, j] = self.get_cell_representation(i, j, state)
+        return vis_repr
+
+    def get_cell_representation(self, i, j, state: BioGwLabEnvState):
+        result = np.zeros(self.repr_len, dtype=np.int8)
+        shift = 1
+        if state.obstacle_mask[i, j]:
+            result[shift + state.wall_colors[i, j]] = 1
+        else:
+            shift += state.n_wall_colors
+            result[shift + state.areas_map[i, j]] = 1
+            if state.food_mask[i, j]:
+                shift += state.n_area_types
+                result[shift + state.food_map[i, j]] = 1
+        return result
+
+    def init_outer_cells(self, repr):
+        repr[:, :, 0] = 1
+
+
+class BioGwLabStateScentRepresenter:
+    rnd: Generator
+
+    def __init__(self, seed: int):
+        self.rnd = np.random.default_rng(seed=seed)
+
+    def generate_scent_map(self, state: BioGwLabEnvState):
+        channels = state.n_scent_channels
+        size = state.size
+        scent_map = np.zeros((channels, size, size), dtype=np.int8)
+        for channel in range(channels):
+            scent = state.food_scent[channel].ravel()
+            n_cells = scent.size()
+            n_active = int(.2 * n_cells)
+            activations = self.rnd.choice(n_cells, p=scent, size=n_active)
+            scent_map[channel, np.divmod(activations, size)] = 1
+        return scent_map
+
+    def init_outer_cells(self, repr):
+        pass
+
+
+class BioGwLabEnvRepresentationWrapper(BioGwLabEnv):
+    visual_representer: BioGwLabStateVisualRepresenter
+    scent_representer: BioGwLabStateScentRepresenter
+
+    visual_representation: np.ndarray
+
+    def __init__(self, state: BioGwLabEnvState, dynamics: BioGwLabDynamics):
+        super().__init__(state, dynamics)
+
+        self.visual_representer = BioGwLabStateVisualRepresenter(self.state)
+        self.scent_representer = BioGwLabStateScentRepresenter(self.state.seed)
+
+    def reset(self):
+        _ = super().reset()
+
+        self.visual_representation = self.visual_representer.get_representation(
+            self.state
+        )
+        visual_representation = self.visual_representation
+        scent_representation = self.scent_representer.generate_scent_map(self.state)
+        return visual_representation, scent_representation
+
+    def step(self, action):
+        _, reward, is_done, _ = super().step(action)
+
+        # update current cell representation, because only this one could be changed
+        i, j = self.state.agent_position
+        self.visual_representation[i, j] = self.visual_representer.get_cell_representation(
+            i, j, self.state
+        )
+
+        visual_representation = self.visual_representation
+        scent_representation = self.scent_representer.generate_scent_map(self.state)
+        return visual_representation, scent_representation
+
+
+class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
+    i_transformation = [1, -1, -1, 1]
+    j_transformation = [-1, -1, 1, 1]
+
+    view_rect: Tuple[Tuple[int, int], Tuple[int, int]]
+    scent_rect: Tuple[Tuple[int, int], Tuple[int, int]]
+
+    def __init__(
+            self, state: BioGwLabEnvState, dynamics: BioGwLabDynamics,
+            view_rect: Tuple[Tuple[int, int], Tuple[int, int]],
+            scent_rect: Tuple[Tuple[int, int], Tuple[int, int]]
+    ):
+        super().__init__(state, dynamics)
+
+        self.view_rect = view_rect
+        self.scent_rect = scent_rect
+
+    def reset(self):
+        vis_repr, scent_repr = super().reset()
+
+        vis_observation = self._clip_observation(
+            vis_repr, self.view_rect, self.visual_representer.init_outer_cells
+        )
+        scent_observation = self._clip_observation(
+            scent_repr, self.scent_rect, self.scent_representer.init_outer_cells
+        )
+
+        observation = np.concatenate(vis_observation, scent_observation, axis=None)
+        return observation
+
+    def _clip_observation(self, full_repr, obs_rect, init_obs):
+        state = self.state
+        i, j = state.agent_position
+        forward_dir = state.agent_direction
+        repr_len = full_repr.shape[-1]
+
+        i_high, j_high = self.state.size, self.state.size
+        print(i, j, i_high, j_high)
+
+        (bi, lj), (ui, rj) = obs_rect
+        obs = np.empty((ui-bi, rj-lj, repr_len), dtype=np.int8)
+        init_obs(obs)
+
+        bi *= self.i_transformation[forward_dir]
+        ui *= self.i_transformation[forward_dir]
+        lj *= self.j_transformation[forward_dir]
+        rj *= self.j_transformation[forward_dir]
+        if forward_dir % 2 == 0:
+            bi, lj = lj, bi
+            ui, rj = rj, ui
+        if bi > ui:
+            bi, ui = ui, bi
+        if lj > rj:
+            lj, rj = rj, lj
+
+        _bi = clip(i + bi, i_high)
+        _ui = clip(ui + i, i_high) + 1
+        _lj = clip(j + lj, j_high)
+        _rj = clip(rj + j, j_high) + 1
+
+        __bi = _bi - bi
+        __ui = _ui - bi
+        __lj = _lj - lj
+        __rj = _rj - lj
+        print(_bi, _ui, _lj, _rj)
+        print(__bi, __ui, __lj, __rj)
+
+        repr = full_repr[_bi:_ui, _lj:_rj]
+        if forward_dir % 2 == 0:
+            repr = repr.T
+
+        obs[__bi:__ui, __lj:__rj] = repr.copy()
+        return obs
