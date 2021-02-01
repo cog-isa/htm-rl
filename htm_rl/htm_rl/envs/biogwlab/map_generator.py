@@ -1,39 +1,54 @@
 from itertools import product
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
 from htm_rl.common.utils import timed, trace, clip
+from htm_rl.envs.biogwlab.dynamics import BioGwLabEnvState
 
 
-class BioGWLabEnvGenerator:
+class BioGwLabEnvGenerator:
+    size: int
+    density: float
+    n_areas: int
+    seed: int
     verbosity: int
 
-    def __init__(self):
+    def __init__(self, size, density, n_areas, seed):
+        self.size = size
+        self.density = density
+        self.n_areas = n_areas
+        self.seed = seed
         self.verbosity = 2
 
     def generate(self):
-        size = 10
-        seed = 11
-        density = .25
-        n_areas = 5
+        size = self.size
+        seed = self.seed
+        density = self.density
+        n_areas = self.n_areas
         obstacle_generator = ObstacleGenerator(size, density, self.verbosity)
         obstacle_mask, _ = obstacle_generator.generate(seed)
 
         areas_generator = AreasGenerator(size, n_areas, self.verbosity)
-        areas_map = areas_generator.generate(seed)
+        areas_map, n_area_types = areas_generator.generate(seed)
 
         wall_colorer = WallColorGenerator()
-        wall_colors = wall_colorer.color_walls(obstacle_mask, areas_map, seed)
+        wall_colors, n_wall_colors = wall_colorer.color_walls(obstacle_mask, areas_map, seed)
 
         food_generator = FoodGenerator(self.verbosity)
-        food_items, food_map, food_mask = food_generator.generate(areas_map, obstacle_mask, seed)
-        # self._plot_food_map(food_map, obstacle_mask)
+        food_items, food_map, food_mask, n_food_types = food_generator.generate(areas_map, obstacle_mask, seed)
+        self._plot_food_map(food_map, obstacle_mask)
 
         scent_generator = ScentGenerator(self.verbosity)
-        food_scents = scent_generator.generate(food_items, obstacle_mask)
-        # self._plot_food_scent_map(food_scents, 0)
+        food_scents, n_scent_channels = scent_generator.generate(food_items, obstacle_mask)
+        self._plot_food_scent_map(food_scents, 0)
 
         self._plot_final_map(areas_map, obstacle_mask, wall_colors, food_map)
+        return BioGwLabEnvState(
+            size, seed, n_area_types, n_wall_colors, n_food_types,
+            n_scent_channels, obstacle_mask, areas_map, wall_colors,
+            food_items, food_map, food_mask, food_scents
+        )
 
     def _plot_final_map(self, areas_map, obstacle_mask, wall_colors, food_map):
         final_map = areas_map + wall_colors.max(initial=0)*2 + 4
@@ -43,16 +58,17 @@ class BioGWLabEnvGenerator:
         final_map[food_map == 1] = -5
         final_map[food_map == 3] = -10
         final_map[obstacle_mask] = wall_colors[obstacle_mask]
-        trace_image(self.verbosity, 1, final_map)
+        trace_image(self.verbosity, 2, final_map)
 
     def _plot_food_scent_map(self, food_scents, channel):
         food_scent = food_scents.sum(axis=-1)
-        trace_image(3, 1, food_scent[:, :, channel])
+        trace_image(self.verbosity, 3, food_scent[:, :, channel])
 
-    def _plot_food_map(self, food_items, obstacle_mask):
-        food_items += 2
-        food_items[obstacle_mask] = 0
-        trace_image(3, 1, food_items)
+    def _plot_food_map(self, food_map, obstacle_mask):
+        food_map = food_map.copy()
+        food_map += 2
+        food_map[obstacle_mask] = 0
+        trace_image(self.verbosity, 3, food_map)
 
 
 class ScentGenerator:
@@ -84,7 +100,7 @@ class ScentGenerator:
                 d = max(1., d)
                 food_scents[_i, _j, :, k] = self.scent_weights[food_item] / d**1.5
 
-        return food_scents
+        return food_scents, self.n_scent_channels
 
     @staticmethod
     def _dist(i, j, _i, _j):
@@ -140,7 +156,7 @@ class FoodGenerator:
             food_items.append((i, j, food_item))
             food_mask[i, j] = True
             food_map[i, j] = food_item
-        return food_items, food_map, food_mask
+        return food_items, food_map, food_mask, self.n_food_types
 
 
 class WallColorGenerator:
@@ -170,7 +186,7 @@ class WallColorGenerator:
                 size=mask.sum()
             )
         # trace_image(self.verbosity, 2, wall_colors + 1)
-        return wall_colors
+        return wall_colors, self.n_colors
 
 class AreasGenerator:
     size: int
@@ -190,7 +206,7 @@ class AreasGenerator:
         areas_map = self._spawn_areas(area_centers, area_types)
 
         trace_image(self.verbosity, 3, areas_map)
-        return areas_map
+        return areas_map, self.n_area_types
 
     def _spawn_areas(self, area_centers, area_types):
         size = self.size
