@@ -52,6 +52,9 @@ class BioGwLabEnvGenerator:
         )
 
     def _plot_final_map(self, areas_map, obstacle_mask, wall_colors, food_map):
+        req_verbosity = 3
+        if self.verbosity < req_verbosity:
+            return
         final_map = areas_map + wall_colors.max(initial=0)*2 + 4
         m = final_map.max()
         final_map[food_map == 0] = m + 5
@@ -59,9 +62,12 @@ class BioGwLabEnvGenerator:
         final_map[food_map == 1] = -5
         final_map[food_map == 3] = -10
         final_map[obstacle_mask] = wall_colors[obstacle_mask]
-        trace_image(self.verbosity, 1, final_map)
+        trace_image(self.verbosity, req_verbosity, final_map)
 
     def _plot_food_scent_map(self, food_scents, channel):
+        req_verbosity = 3
+        if self.verbosity < req_verbosity:
+            return
         food_scent = food_scents.sum(axis=-1)
         food_scent /= (
             food_scent
@@ -70,13 +76,16 @@ class BioGwLabEnvGenerator:
                 .reshape((1, 1, -1))
         )
 
-        trace_image(self.verbosity, 3, food_scent[:, :, channel])
+        trace_image(self.verbosity, req_verbosity, food_scent[:, :, channel])
 
     def _plot_food_map(self, food_map, obstacle_mask):
+        req_verbosity = 3
+        if self.verbosity < req_verbosity:
+            return
         food_map = food_map.copy()
         food_map += 2
         food_map[obstacle_mask] = 0
-        trace_image(self.verbosity, 3, food_map)
+        trace_image(self.verbosity, req_verbosity, food_map)
 
 
 class ScentGenerator:
@@ -102,14 +111,14 @@ class ScentGenerator:
     def generate(self, food_items, obstacle_mask):
         size = obstacle_mask.shape[0]
         food_scents = np.zeros((size, size, self.n_scent_channels, len(food_items)), dtype=np.float)
-        for k, (i, j, food_item) in enumerate(food_items):
-            for _i, _j in product(range(size), range(size)):
-                d = np.sqrt(self._dist(i, j, _i, _j))
-                d = max(1., d)
-                food_scents[_i, _j, :, k] = self.scent_weights[food_item] / d**1.5
-
-        # zeroes scent for obstacle cells
-        food_scents *= ~obstacle_mask.reshape(obstacle_mask.shape + (1, 1,))
+        # for k, (i, j, food_item) in enumerate(food_items):
+        #     for _i, _j in product(range(size), range(size)):
+        #         d = np.sqrt(self._dist(i, j, _i, _j))
+        #         d = max(1., d)
+        #         food_scents[_i, _j, :, k] = self.scent_weights[food_item] / d**1.5
+        #
+        # # zeroes scent for obstacle cells
+        # food_scents *= ~obstacle_mask.reshape(obstacle_mask.shape + (1, 1,))
 
         return food_scents, self.n_scent_channels
 

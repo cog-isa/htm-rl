@@ -73,11 +73,11 @@ class BioGwLabEnvDynamics:
             if i != _i or j != _j:
                 continue
 
-            state.food_scents[:, :, :, k] = 0
+            # state.food_scents[:, :, :, k] = 0
             state.n_foods -= 1
             state.food_mask[i, j] = False
             state.food_map[i, j] = -1
-            state.food_scent = state.get_food_scent(state.food_scents)
+            # state.food_scent = state.get_food_scent(state.food_scents)
             return self.food_rewards[food_type]
 
     def generate_scent_map(self, state: BioGwLabEnvState, rnd: Generator):
@@ -115,6 +115,8 @@ class BioGwLabEnv:
 
     def reset(self):
         """ reset the game, return the initial state"""
+        self._reset_food()
+
         self.state.agent_position = self.state.agent_initial_position
         self.state.agent_direction = self.state.agent_initial_direction
         return self._get_agent_state()
@@ -148,6 +150,12 @@ class BioGwLabEnv:
         agent_state = self._get_agent_state()
         is_done = self.is_terminal()
         return agent_state, reward, is_done, {}
+
+    def _reset_food(self):
+        self.state.n_foods = len(self.state.food_items)
+        for i, j, food_type in self.state.food_items:
+            self.state.food_mask[i, j] = True
+            self.state.food_map[i, j] = food_type
 
     def _get_agent_state(self):
         position = self.state.agent_position

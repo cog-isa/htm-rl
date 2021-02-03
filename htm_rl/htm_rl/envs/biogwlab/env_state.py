@@ -53,7 +53,7 @@ class BioGwLabEnvState:
         self.food_mask = food_mask
         self.n_foods = food_mask.sum()
         self.food_scents = food_scents
-        self.food_scent = self.get_food_scent(food_scents)
+        # self.food_scent = self.get_food_scent(food_scents)
 
         self.agent_initial_position = None
         self.agent_initial_direction = None
