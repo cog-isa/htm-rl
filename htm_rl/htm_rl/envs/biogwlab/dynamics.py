@@ -169,7 +169,7 @@ class BioGwLabStateVisualRepresenter:
 
     def __init__(self, state: BioGwLabEnvState):
         self.repr_len = (
-                1 + state.n_wall_colors + state.n_area_types + state.n_food_types
+                1 + state.n_types_obstacle + state.n_types_area + state.n_types_food
         )
 
     def get_representation(self, state: BioGwLabEnvState):
@@ -183,12 +183,12 @@ class BioGwLabStateVisualRepresenter:
         result = np.zeros(self.repr_len, dtype=np.int8)
         shift = 1
         if state.obstacle_mask[i, j]:
-            result[shift + state.wall_colors[i, j]] = 1
+            result[shift + state.obstacle_map[i, j]] = 1
         else:
-            shift += state.n_wall_colors
+            shift += state.n_types_obstacle
             result[shift + state.areas_map[i, j]] = 1
             if state.food_mask[i, j]:
-                shift += state.n_area_types
+                shift += state.n_types_area
                 result[shift + state.food_map[i, j]] = 1
         return result
 
