@@ -12,7 +12,7 @@ from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.common.base_sa import Sa
 from htm_rl.common.utils import timed, trace
 from htm_rl.envs.biogwlab.dynamics import BioGwLabEnv, BioGwLabEnvDynamics, BioGwLabEnvObservationWrapper
-from htm_rl.envs.biogwlab.map_generator import BioGwLabEnvGenerator
+from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
 from htm_rl.envs.gridworld_pomdp import GridworldPomdp
 
 
