@@ -3,42 +3,6 @@ from typing import Tuple, List, Optional
 import numpy as np
 
 
-class EnvironmentState:
-    directions = [
-        # (i, j) ~ (y, x); real - counter-clockwise, (i,j)-based - clockwise
-        (0, 1, 'right'), (1, 0, 'down'), (0, -1, 'left'), (-1, 0, 'up')
-    ]
-
-    seed: int
-    size: Tuple[int, int]
-    n_types_area: int
-    n_types_obstacle: int
-    n_types_food: int
-    areas_map: np.ndarray
-    obstacle_mask: np.ndarray
-    food_mask: np.ndarray
-
-    obstacle_map: np.ndarray
-    food_items: List[Tuple[int, int, int]]
-    food_map: np.ndarray
-    n_foods: int
-
-    agent_position: Tuple[int, int]
-    agent_direction: int
-
-    def __init__(self, size: Tuple[int, int], seed: int):
-        self.size = size
-        self.seed = seed
-        self.n_types_area = 1
-        self.n_types_obstacle = 0
-        self.n_types_food = 0
-
-        size = (size, size)
-        self.areas_map = np.zeros(size, dtype=np.int8)
-        self.obstacle_mask = np.zeros(size, dtype=np.bool)
-        self.food_mask = np.zeros(size, dtype=np.bool)
-
-
 class BioGwLabEnvState:
     directions = [
         # (i, j) ~ (y, x); real - counter-clockwise, (i,j)-based - clockwise
@@ -108,6 +72,41 @@ class BioGwLabEnvState:
             food_scent /= normalize_factors + 1e-5
         return food_scent
 
+
+class EnvironmentState:
+    directions = [
+        # (i, j) ~ (y, x); real - counter-clockwise, (i,j)-based - clockwise
+        (0, 1, 'right'), (1, 0, 'down'), (0, -1, 'left'), (-1, 0, 'up')
+    ]
+
+    seed: int
+    size: Tuple[int, int]
+    n_types_area: int
+    n_types_obstacle: int
+    n_types_food: int
+    areas_map: np.ndarray
+    obstacle_mask: np.ndarray
+    food_mask: np.ndarray
+
+    obstacle_map: np.ndarray
+    food_items: List[Tuple[int, int, int]]
+    food_map: np.ndarray
+    n_foods: int
+
+    agent_position: Tuple[int, int]
+    agent_direction: int
+
+    def __init__(self, size: Tuple[int, int], seed: int):
+        self.size = size
+        self.seed = seed
+        self.n_types_area = 1
+        self.n_types_obstacle = 0
+        self.n_types_food = 0
+
+        size = (size, size)
+        self.areas_map = np.zeros(size, dtype=np.int8)
+        self.obstacle_mask = np.zeros(size, dtype=np.bool)
+        self.food_mask = np.zeros(size, dtype=np.bool)
 
 
 class BioGwLabEnvState2:
