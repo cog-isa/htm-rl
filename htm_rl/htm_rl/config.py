@@ -28,7 +28,7 @@ from htm_rl.common.random_sdr_encoder_sp import RandomSdrEncoderSp
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
 from htm_rl.common.vector_sdr_encoder import VectorSdrEncoder
-from htm_rl.envs.biogwlab.map_generator import BioGwLabEnvGenerator
+from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
 from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
 from htm_rl.envs.mdp import (
     SarSuperpositionFormatter, PovBasedGridworldMdpGenerator, Mdp, SaSuperpositionFormatter,
