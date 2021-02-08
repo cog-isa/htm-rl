@@ -16,7 +16,7 @@ env_generator: !BioGwLabEnvGenerator &env_generator
   n_states: &n_states 64
   n_actions: &n_actions 4
 
-transfer_learning_experiment_runner: !TransferLearningExperimentRunner3
+transfer_learning_experiment_runner: !UcbExperimentRunner
   env_generator: *env_generator
   n_episodes_all_fixed: 20
   n_initial_states: 1
@@ -148,16 +148,16 @@ agent_runners:
 #      learning_rate: .3e-3
 #      seed: *seed
 
-  mcts_q_pomdp: !MctsAgentRunner2
+  mcts_q_pomdp: !UcbAgentRunner
     <<: *base_htm_runner
-    agent: !MctsAgentQ
+    agent: !UcbAgent
       n_actions: *n_actions
-      planner: !MctsPlannerQ
+      planner: !UcbPlanner
         n_actions: *n_actions
         planning_horizon: 1
         encoder: *sa_sdr_encoder
         spatial_pooler: *q_sa_spatial_pooler
 
-      mcts_actor_critic: !MctsActorCritic
+      mcts_actor_critic: !UcbActorCritic
         <<: *base_mcts_actor_critic
         cells_sdr_size: *q_sa_total_bits
