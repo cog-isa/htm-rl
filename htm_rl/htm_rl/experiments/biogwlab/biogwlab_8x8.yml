@@ -7,8 +7,8 @@ random_seed_setter: !RandomSeedSetter
 # =========== environment =============
 env_generator: !BioGwLabEnvGenerator &env_generator
   seed: *seed
-  size: 20
-  n_areas: 5
+  size: 5
+  n_areas: 3
   density: .25
   verbosity: *verbosity
 
@@ -18,7 +18,7 @@ env_generator: !BioGwLabEnvGenerator &env_generator
 
 transfer_learning_experiment_runner: !TransferLearningExperimentRunner3
   env_generator: *env_generator
-  n_episodes_all_fixed: 1
+  n_episodes_all_fixed: 20
   n_initial_states: 1
   n_terminal_states: 1
   n_environments: 1
@@ -28,14 +28,14 @@ transfer_learning_experiment_runner: !TransferLearningExperimentRunner3
 .base_agent_runner: &base_runner
   env:
   n_episodes:
-  max_steps: 0
+  max_steps: 40
   agent:
   verbosity: *verbosity
 
 # test run results processing
 run_results_processor: !RunResultsProcessor
   env_name: gridworld_8x8_pomdp
-  moving_average: 4
+  moving_average: 1
   verbosity: *verbosity
   test_dir:                   # leave empty for default behavior - output to the config's dir
 
