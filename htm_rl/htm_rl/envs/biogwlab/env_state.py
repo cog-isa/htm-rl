@@ -29,7 +29,7 @@ class BioGwLabEnvState:
     agent_initial_direction: Optional[int]
     agent_position: Optional[Tuple[int, int]]
     agent_direction: Optional[int]
-    n_foods: int
+    n_rewarding_foods: int
 
     def __init__(
             self, size: int, seed: int, n_area_types: int,
@@ -51,7 +51,7 @@ class BioGwLabEnvState:
         self.food_items = food_items
         self.food_map = food_map
         self.food_mask = food_mask
-        self.n_foods = food_mask.sum()
+        self.n_rewarding_foods = 0
         self.food_scents = food_scents
         # self.food_scent = self.get_food_scent(food_scents)
 
@@ -62,7 +62,7 @@ class BioGwLabEnvState:
 
     def get_food_scent(self, food_scents):
         food_scent = food_scents.sum(axis=-1)
-        if self.n_foods > 0:
+        if self.n_rewarding_foods > 0:
             normalize_factors = (
                 food_scent
                     .reshape((-1, food_scent.shape[-1]))

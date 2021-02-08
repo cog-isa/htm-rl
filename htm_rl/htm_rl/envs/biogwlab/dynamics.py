@@ -21,13 +21,13 @@ class BioGwLabEnvDynamics:
         }
     }
     food_rewards = [1., -1., 5., -5.]
-    time_cost = -.01
+    time_cost = -.05
 
     def __init__(self):
         pass
 
     def is_terminal(self, state):
-        return state.n_foods <= 0
+        return state.n_rewarding_foods <= 0
 
     def stay(self, state):
         i, j = state.agent_position
@@ -47,6 +47,13 @@ class BioGwLabEnvDynamics:
         state.agent_direction = self.rotate_direction(state.agent_direction, turn_direction)
         reward = self.actions['turn']['cost'] * self.time_cost
         return reward
+
+    def count_rewarding_food_items(self, state):
+        return sum(
+            1
+            for _, _, food_type in state.food_items
+            if self.food_rewards[food_type] >= 0
+        )
 
     @staticmethod
     def rotate_direction(view_direction, turn_direction):
@@ -73,12 +80,15 @@ class BioGwLabEnvDynamics:
             if i != _i or j != _j:
                 continue
 
-            # state.food_scents[:, :, :, k] = 0
-            state.n_foods -= 1
             state.food_mask[i, j] = False
             state.food_map[i, j] = -1
+            reward = self.food_rewards[food_type]
+            if reward >= 0:
+                state.n_rewarding_foods = 0
+
+            # state.food_scents[:, :, :, k] = 0
             # state.food_scent = state.get_food_scent(state.food_scents)
-            return self.food_rewards[food_type]
+            return reward
 
     def generate_scent_map(self, state: BioGwLabEnvState, rnd: Generator):
         channels = state.n_scent_channels
@@ -152,7 +162,9 @@ class BioGwLabEnv:
         return agent_state, reward, is_done, {}
 
     def _reset_food(self):
-        self.state.n_foods = len(self.state.food_items)
+        # print('<=', self.state.n_rewarding_foods)
+        self.state.n_rewarding_foods = self.dynamics.count_rewarding_food_items(self.state)
+        # print('=>', self.state.n_rewarding_foods)
         for i, j, food_type in self.state.food_items:
             self.state.food_mask[i, j] = True
             self.state.food_map[i, j] = food_type
@@ -192,12 +204,13 @@ class BioGwLabStateVisualRepresenter:
         shift = 1
         if state.obstacle_mask[i, j]:
             result[shift + state.obstacle_map[i, j]] = 1
-        else:
-            shift += state.n_types_obstacle
-            result[shift + state.areas_map[i, j]] = 1
-            if state.food_mask[i, j]:
-                shift += state.n_types_area
-                result[shift + state.food_map[i, j]] = 1
+            return result
+
+        shift += state.n_types_obstacle
+        result[shift + state.areas_map[i, j]] = 1
+        if state.food_mask[i, j]:
+            shift += state.n_types_area
+            result[shift + state.food_map[i, j]] = 1
         return result
 
     def init_outer_cells(self, repr):
