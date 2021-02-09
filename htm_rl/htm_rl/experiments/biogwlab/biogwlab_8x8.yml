@@ -18,7 +18,7 @@ env_generator: !BioGwLabEnvGenerator &env_generator
 
 transfer_learning_experiment_runner: !UcbExperimentRunner
   env_generator: *env_generator
-  n_episodes_all_fixed: 20
+  n_episodes_all_fixed: 10
   n_initial_states: 1
   n_terminal_states: 1
   n_environments: 1
@@ -158,6 +158,6 @@ agent_runners:
         encoder: *sa_sdr_encoder
         spatial_pooler: *q_sa_spatial_pooler
 
-      mcts_actor_critic: !UcbActorCritic
+      ucb_actor_critic: !UcbActorCritic
         <<: *base_mcts_actor_critic
         cells_sdr_size: *q_sa_total_bits
