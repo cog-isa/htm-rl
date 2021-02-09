@@ -12,7 +12,6 @@ class UcbAgent:
 
     encoder: SaSdrEncoder
     spatial_pooler: SpatialPooler
-    encoder: SaSdrEncoder
 
     def __init__(
             self, ucb_actor_critic: UcbActorCritic,

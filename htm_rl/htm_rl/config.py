@@ -25,7 +25,6 @@ from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
 from htm_rl.agents.ucb.ucb_agent import UcbAgent
 from htm_rl.agents.ucb.ucb_agent_runner import UcbAgentRunner
 from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
-from htm_rl.agents.ucb.ucb_planner import UcbPlanner
 from htm_rl.baselines.dqn_agent import DqnAgent, DqnAgentRunner
 from htm_rl.common.int_sdr_encoder import IntSdrEncoder
 from htm_rl.common.random_sdr_encoder import RandomSdrEncoder
@@ -202,7 +201,7 @@ def register_classes(yaml: YAML):
         MctsAgentRunner2,
         BioGwLabEnvGenerator,
         UcbExperimentRunner, UcbAgentRunner,
-        UcbAgent, UcbPlanner, UcbActorCritic,
+        UcbAgent, UcbActorCritic,
     ]
 
     constructor: SafeConstructor = yaml.constructor
