@@ -5,7 +5,7 @@ from htm_rl.agent.mcts_planner import MctsPlanner
 from htm_rl.agent.mcts_planner_q import MctsPlannerQ
 from htm_rl.agents.ucb.ucb_planner import UcbPlanner
 from htm_rl.common.base_sa import Sa
-from htm_rl.common.utils import trace
+from htm_rl.common.utils import trace, timed
 
 
 class UcbAgent:
@@ -20,6 +20,22 @@ class UcbAgent:
         self.planner = planner
         self._mcts_actor_critic = mcts_actor_critic
         self._n_actions = n_actions
+
+    @timed
+    def run_episode(self, env, max_steps, verbosity):
+        self.reset()
+        state, reward, done = env.reset(), 0, env.is_terminal()
+        action = self.make_step(state, reward, done, verbosity)
+
+        step = 0
+        total_reward = 0.
+        while step < max_steps and not done:
+            state, reward, done, info = env.step(action)
+            action = self.make_step(state, reward, done, verbosity)
+            step += 1
+            total_reward += reward
+
+        return step, total_reward
 
     @property
     def _planning_enabled(self):

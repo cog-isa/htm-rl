@@ -37,53 +37,18 @@ class UcbAgentRunner:
         self.train_stats = RunStats()
         self.name = '???'
 
-    def run(self):
-        trace(self.verbosity, 1, '============> RUN MCTS AGENT')
-        planning_horizon = self.agent.planner.planning_horizon
-        if self.pretrain > 0:
-            self.agent.set_planning_horizon(0)
-
-        for ep in trange(self.n_episodes):
-            if 0 < self.pretrain == ep:
-                self.agent.set_planning_horizon(planning_horizon)
-
-            (steps, reward), elapsed_time = self.run_episode()
-            self.train_stats.append_stats(steps, reward, elapsed_time)
-            trace(self.verbosity, 2, '')
-        trace(self.verbosity, 1, '<============')
-
     def run_iterable(self, iterable):
-        trace(self.verbosity, 1, '============> RUN MCTS AGENT')
-        planning_horizon = self.agent.planner.planning_horizon
+        trace(self.verbosity, 1, '============> RUN UCB AGENT')
 
-        for global_ep, local_ep in iterable():
-            if self.pretrain > 0 == local_ep:
-                self.agent.set_planning_horizon(0)
-            if 0 < self.pretrain == local_ep:
-                self.agent.set_planning_horizon(planning_horizon)
-
-            (steps, reward), elapsed_time = self.run_episode()
+        for _ in iterable():
+            (steps, reward), elapsed_time = self.agent.run_episode(
+                self.env, self.max_steps, self.verbosity
+            )
             self.train_stats.append_stats(steps, reward, elapsed_time)
             trace(self.verbosity, 2, '')
             yield
 
         trace(self.verbosity, 1, '<============')
-
-    @timed
-    def run_episode(self):
-        self.agent.reset()
-        state, reward, done = self.env.reset(), 0, self.env.is_terminal()
-        action = self.agent.make_step(state, reward, done, self.verbosity)
-
-        step = 0
-        total_reward = 0.
-        while step < self.max_steps and not done:
-            state, reward, done, info = self.env.step(action)
-            action = self.agent.make_step(state, reward, done, self.verbosity)
-            step += 1
-            total_reward += reward
-
-        return step, total_reward
 
     def store_results(self, run_results_processor: RunResultsProcessor):
         run_results_processor.store_result(self.train_stats, f'{self.name}')
