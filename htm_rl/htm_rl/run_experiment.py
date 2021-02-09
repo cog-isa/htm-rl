@@ -1,14 +1,13 @@
 import argparse
 import os
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser
 from pathlib import Path
 from typing import Dict
 
-from htm_rl.agent.agent import TransferLearningExperimentRunner, TransferLearningExperimentRunner2
 from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
 from htm_rl.config import (
-    TestRunner, read_config, RandomSeedSetter,
+    read_config, RandomSeedSetter,
 )
 
 
