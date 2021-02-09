@@ -152,11 +152,8 @@ agent_runners:
     <<: *base_htm_runner
     agent: !UcbAgent
       n_actions: *n_actions
-      planner: !UcbPlanner
-        n_actions: *n_actions
-        planning_horizon: 1
-        encoder: *sa_sdr_encoder
-        spatial_pooler: *q_sa_spatial_pooler
+      encoder: *sa_sdr_encoder
+      spatial_pooler: *q_sa_spatial_pooler
 
       ucb_actor_critic: !UcbActorCritic
         <<: *base_mcts_actor_critic

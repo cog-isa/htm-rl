@@ -1,20 +1,27 @@
 from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
-from htm_rl.agents.ucb.ucb_planner import UcbPlanner
 from htm_rl.common.base_sa import Sa
+from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
+from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import trace, timed
+from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
 class UcbAgent:
-    planner: UcbPlanner
     _ucb_actor_critic: UcbActorCritic
     _n_actions: int
 
+    encoder: SaSdrEncoder
+    spatial_pooler: SpatialPooler
+    encoder: SaSdrEncoder
+
     def __init__(
-            self, planner: UcbPlanner,
-            ucb_actor_critic: UcbActorCritic, n_actions
+            self, ucb_actor_critic: UcbActorCritic,
+            encoder: SaSdrEncoder, spatial_pooler: SpatialPooler,
+            n_actions: int
     ):
-        self.planner = planner
         self._ucb_actor_critic = ucb_actor_critic
+        self.encoder = encoder
+        self.spatial_pooler = spatial_pooler
         self._n_actions = n_actions
 
     @timed
@@ -44,13 +51,31 @@ class UcbAgent:
 
         # learn
         sa = Sa(state, action)
-        sa_sdr = self.planner.encode_sa(sa, learn=True)
+        sa_sdr = self.encode_sa(sa, learn=True)
         self._ucb_actor_critic.add_step(sa_sdr, reward)
         return action
 
     def _make_action(self, state, verbosity: int):
         current_sa = Sa(state, None)
-        options = self.planner.predict_states(current_sa, verbosity)
+        options = self.predict_states(current_sa, verbosity)
         action = self._ucb_actor_critic.choose(options)
 
         return action
+
+    def encode_sa(self, sa: Sa, learn: bool) -> SparseSdr:
+        sa_sdr = self.encoder.encode(sa)
+        sa_sdr = self.spatial_pooler.encode(sa_sdr, learn=learn)
+        return sa_sdr
+
+    def predict_states(self, initial_sa: Sa, verbosity: int):
+        action_outcomes = []
+        trace(verbosity, 2, '\n======> Planning')
+
+        state = initial_sa.state
+        for action in range(self._n_actions):
+            sa = Sa(state, action)
+            sa_sdr = self.encode_sa(sa, learn=False)
+            action_outcomes.append(sa_sdr)
+
+        trace(verbosity, 2, '<====== Planning complete')
+        return action_outcomes
