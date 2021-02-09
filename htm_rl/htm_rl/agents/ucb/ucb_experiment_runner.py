@@ -6,7 +6,6 @@ from tqdm import trange
 
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.agents.ucb.ucb_agent import UcbAgent
-from htm_rl.agents.ucb.ucb_agent_runner import UcbAgentRunner
 from htm_rl.common.utils import trace
 from htm_rl.envs.biogwlab.dynamics import BioGwLabEnv, BioGwLabEnvDynamics, BioGwLabEnvObservationWrapper
 from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
