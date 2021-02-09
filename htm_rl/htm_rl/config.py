@@ -200,8 +200,7 @@ def register_classes(yaml: YAML):
         MctsActorCritic,
         MctsAgentRunner2,
         BioGwLabEnvGenerator,
-        UcbExperimentRunner, UcbAgentRunner,
-        UcbAgent, UcbActorCritic,
+        UcbExperimentRunner, UcbAgent, UcbActorCritic,
     ]
 
     constructor: SafeConstructor = yaml.constructor

@@ -16,25 +16,16 @@ env_generator: !BioGwLabEnvGenerator &env_generator
   n_states: &n_states 64
   n_actions: &n_actions 4
 
-transfer_learning_experiment_runner: !UcbExperimentRunner
-  env_generator: *env_generator
-  n_episodes_all_fixed: 10
-  n_initial_states: 1
-  n_terminal_states: 1
-  n_environments: 1
-  verbosity: *verbosity
-
-# agent runners
-.base_agent_runner: &base_runner
-  env:
-  n_episodes:
-  max_steps: 40
-  agent:
-  verbosity: *verbosity
+.experiment_config:
+  n_episodes_all_fixed: &n_episodes_all_fixed 10
+  n_initial_states: &n_initial_states 1
+  n_terminal_states: &n_terminal_states 1
+  n_environments: &n_environments 1
+  max_steps: &max_steps 40
 
 # test run results processing
 run_results_processor: !RunResultsProcessor
-  env_name: gridworld_8x8_pomdp
+  env_name: biogwlab_8x8
   moving_average: 1
   verbosity: *verbosity
   test_dir:                   # leave empty for default behavior - output to the config's dir
@@ -120,10 +111,6 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   planner:
   n_actions: *n_actions
 
-.base_htm_agent_runner: &base_htm_runner
-  <<: *base_runner
-  pretrain: 0
-
 .base_mcts_planner: &base_mcts_planner
   memory:
   planning_horizon: 1
@@ -148,13 +135,20 @@ agent_runners:
 #      learning_rate: .3e-3
 #      seed: *seed
 
-  mcts_q_pomdp: !UcbAgentRunner
-    <<: *base_htm_runner
-    agent: !UcbAgent
-      n_actions: *n_actions
-      encoder: *sa_sdr_encoder
-      spatial_pooler: *q_sa_spatial_pooler
+ucb_experiment_runner: !UcbExperimentRunner
+  env_generator: *env_generator
+  n_episodes_all_fixed: *n_episodes_all_fixed
+  n_initial_states: *n_initial_states
+  n_terminal_states: *n_terminal_states
+  n_environments: *n_environments
+  max_steps: *max_steps
+  verbosity: *verbosity
 
-      ucb_actor_critic: !UcbActorCritic
-        <<: *base_mcts_actor_critic
-        cells_sdr_size: *q_sa_total_bits
+  agent: !UcbAgent
+    n_actions: *n_actions
+    encoder: *sa_sdr_encoder
+    spatial_pooler: *q_sa_spatial_pooler
+
+    ucb_actor_critic: !UcbActorCritic
+      <<: *base_mcts_actor_critic
+      cells_sdr_size: *q_sa_total_bits

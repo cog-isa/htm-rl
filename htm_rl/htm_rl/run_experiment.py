@@ -6,6 +6,7 @@ from typing import Dict
 
 from htm_rl.agent.agent import TransferLearningExperimentRunner, TransferLearningExperimentRunner2
 from htm_rl.agent.train_eval import RunResultsProcessor
+from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
 from htm_rl.config import (
     TestRunner, read_config, RandomSeedSetter,
 )
@@ -26,35 +27,22 @@ class ExperimentRunner:
         if run_results_processor.test_dir is None:
             run_results_processor.test_dir = self.config['test_dir']
 
-        transfer_learning_experiment_runner: TransferLearningExperimentRunner
-        transfer_learning_experiment_runner = self.config.get('transfer_learning_experiment_runner', None)
+        experiment_runner: UcbExperimentRunner
+        experiment_runner = self.config.get('ucb_experiment_runner', None)
 
         dry_run = self.config['dry_run']
-        if transfer_learning_experiment_runner is not None and dry_run:
-            transfer_learning_experiment_runner: TransferLearningExperimentRunner2
+        if experiment_runner is not None and dry_run:
             n_envs_to_render = self.config['n_environments_to_render']
-            maps = transfer_learning_experiment_runner.get_environment_maps(n_envs_to_render)
+            maps = experiment_runner.get_environment_maps(n_envs_to_render)
             run_results_processor.store_environment_maps(maps)
             return
 
         # by default, if nothing specified then at least `run`
         if not dry_run and (run or not aggregate):
-            if agent_key is not None:
-                agents = [agent_key] if not isinstance(agent_key, list) else agent_key
-            else:
-                agents = self.config['agent_runners'].keys()
-
-            for agent in agents:
-                random_seeder.reset()
-                # TODO: make IAgentRunner
-                runner = self.config['agent_runners'][agent]
-                runner.name = agent
-                print(f'AGENT: {agent}')
-                if transfer_learning_experiment_runner is not None:
-                    transfer_learning_experiment_runner.run_experiment(runner)
-                else:
-                    runner.run()
-                runner.store_results(run_results_processor)
+            random_seeder.reset()
+            print(f'AGENT: {experiment_runner.name}')
+            experiment_runner.run_experiment()
+            experiment_runner.store_results(run_results_processor)
 
         if aggregate:
             aggregate_file_masks = self.config['aggregate_masks']
