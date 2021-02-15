@@ -65,10 +65,10 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
     activation_threshold: 4
     default_format: full
 
-.sa_total_bits: &q_sa_total_bits 300
-.q_sa_spatial_pooler: &q_sa_spatial_pooler !SpatialPooler
-  input_size: 240
-  output_size: *q_sa_total_bits
+.q_sa_spatial_pooler: &q_sa_spatial_pooler !UcbSpatialPooler
+#  input_size: 240
+  input_source: *sa_sdr_encoder
+  output_size: 300
   potential_synapses_ratio: .8
   sparsity: .1
   synapse_permanence_deltas: [ .1, .02 ]
@@ -80,15 +80,19 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
   min_activation_threshold: 1
 
 # =========== Agents and Runners ==============
-.base_mcts_actor_critic: &base_mcts_actor_critic
-  cells_sdr_size: *state_bits_post
-  update_cell_ratio: 1.
-  discount_factor: .95
-  learning_rate: .998
-  seed: *seed
-  online: True
+agent:
+  n_actions: *n_actions
+  encoder: *sa_sdr_encoder
+  spatial_pooler: *q_sa_spatial_pooler
 
-ucb_experiment_runner: !UcbExperimentRunner
+  ucb_actor_critic:
+    update_cell_ratio: 1.
+    discount_factor: .95
+    learning_rate: .998
+    seed: *seed
+    online: True
+
+experiment: !UcbExperimentRunner
   env_generator: *env_generator
   n_episodes_all_fixed: *n_episodes_all_fixed
   n_initial_states: *n_initial_states
@@ -96,12 +100,3 @@ ucb_experiment_runner: !UcbExperimentRunner
   n_environments: *n_environments
   max_steps: *max_steps
   verbosity: *verbosity
-
-  agent: !UcbAgent
-    n_actions: *n_actions
-    encoder: *sa_sdr_encoder
-    spatial_pooler: *q_sa_spatial_pooler
-
-    ucb_actor_critic: !UcbActorCritic
-      <<: *base_mcts_actor_critic
-      cells_sdr_size: *q_sa_total_bits

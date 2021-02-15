@@ -19,7 +19,6 @@ class UcbExperimentRunner:
     n_environments: int
     verbosity: int
 
-    agent: UcbAgent
     env: Any
     n_episodes: int
     max_steps: int
@@ -31,8 +30,7 @@ class UcbExperimentRunner:
     def __init__(
             self, env_generator: BioGwLabEnvGenerator, n_episodes_all_fixed: int,
             n_initial_states: int, n_terminal_states: int,
-            n_environments: int, verbosity: int,
-            agent, max_steps
+            n_environments: int, verbosity: int, max_steps
     ):
         self.env_generator = env_generator
         self.n_episodes_all_fixed = n_episodes_all_fixed
@@ -42,25 +40,26 @@ class UcbExperimentRunner:
         self.rnd = np.random.default_rng(seed=env_generator.seed)
         self.verbosity = verbosity
 
-        self.agent = agent
         self.max_steps = max_steps
         self.verbosity = verbosity
         self.train_stats = RunStats()
         self.name = 'ucb'
 
-    def run_experiment(self):
+    def run_experiment(self, agent_config):
+        agent = UcbAgent(**agent_config)
+
         n_episodes = self.n_environments * self.n_terminal_states * self.n_initial_states
         n_episodes *= self.n_episodes_all_fixed
 
         zipped_iterator = lambda: zip(trange(n_episodes), self._traverse_episodes())
-        for _ in self.run_iterable(zipped_iterator):
+        for _ in self.run_iterable(zipped_iterator, agent):
             ...
 
-    def run_iterable(self, iterable):
+    def run_iterable(self, iterable, agent):
         trace(self.verbosity, 1, '============> RUN UCB AGENT')
 
         for _, (env, _) in iterable():
-            (steps, reward), elapsed_time = self.agent.run_episode(
+            (steps, reward), elapsed_time = agent.run_episode(
                 env, self.max_steps, self.verbosity
             )
             self.train_stats.append_stats(steps, reward, elapsed_time)

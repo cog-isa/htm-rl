@@ -4,6 +4,7 @@ from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import trace, timed
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
+from htm_rl.htm_plugins.ucb_spatial_pooler import UcbSpatialPooler
 
 
 class UcbAgent:
@@ -11,29 +12,32 @@ class UcbAgent:
     _n_actions: int
 
     encoder: SaSdrEncoder
-    spatial_pooler: SpatialPooler
+    spatial_pooler: UcbSpatialPooler
 
     def __init__(
-            self, ucb_actor_critic: UcbActorCritic,
-            encoder: SaSdrEncoder, spatial_pooler: SpatialPooler,
+            self, ucb_actor_critic,
+            encoder: SaSdrEncoder, spatial_pooler: UcbSpatialPooler,
             n_actions: int
     ):
-        self._ucb_actor_critic = ucb_actor_critic
         self.encoder = encoder
         self.spatial_pooler = spatial_pooler
+        self._ucb_actor_critic = UcbActorCritic(
+            cells_sdr_size=spatial_pooler.output_shape[0],
+            **ucb_actor_critic
+        )
         self._n_actions = n_actions
 
     @timed
     def run_episode(self, env, max_steps, verbosity):
         self.reset()
         state, reward, done = env.reset(), 0, env.is_terminal()
-        action = self.make_step(state, reward, done, verbosity)
+        action = self.choose_action(state, reward, done, verbosity)
 
         step = 0
         total_reward = 0.
         while step < max_steps and not done:
             state, reward, done, info = env.step(action)
-            action = self.make_step(state, reward, done, verbosity)
+            action = self.choose_action(state, reward, done, verbosity)
             step += 1
             total_reward += reward
 
@@ -42,7 +46,7 @@ class UcbAgent:
     def reset(self):
         self._ucb_actor_critic.reset()
 
-    def make_step(self, state, reward, is_done, verbosity: int):
+    def choose_action(self, state, reward, is_done, verbosity: int):
         trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
 
         action = self._make_action(state, verbosity)

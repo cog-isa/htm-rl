@@ -40,6 +40,7 @@ from htm_rl.envs.mdp import (
 from htm_rl.envs.preset_mdp_cell_transitions import PresetMdpCellTransitions
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
+from htm_rl.htm_plugins.ucb_spatial_pooler import UcbSpatialPooler
 
 
 @dataclass
@@ -200,6 +201,7 @@ def register_classes(yaml: YAML):
         MctsAgentRunner2,
         BioGwLabEnvGenerator,
         UcbExperimentRunner, UcbAgent, UcbActorCritic,
+        UcbSpatialPooler
     ]
 
     constructor: SafeConstructor = yaml.constructor

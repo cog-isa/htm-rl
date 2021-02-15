@@ -7,7 +7,7 @@ from typing import Dict
 from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
 from htm_rl.config import (
-    read_config, RandomSeedSetter,
+    read_config,
 )
 
 
@@ -19,15 +19,13 @@ class ExperimentRunner:
 
     def run(self, agent_key: str, run: bool, aggregate: bool):
         silent_run = self.config['silent']
-        random_seeder: RandomSeedSetter = self.config['random_seed_setter']
         report_name_suffix = self.config['report_name']
 
         run_results_processor: RunResultsProcessor = self.config['run_results_processor']
         if run_results_processor.test_dir is None:
             run_results_processor.test_dir = self.config['test_dir']
 
-        experiment_runner: UcbExperimentRunner
-        experiment_runner = self.config.get('ucb_experiment_runner', None)
+        experiment_runner = self.config.get('experiment')
 
         dry_run = self.config['dry_run']
         if experiment_runner is not None and dry_run:
@@ -38,9 +36,11 @@ class ExperimentRunner:
 
         # by default, if nothing specified then at least `run`
         if not dry_run and (run or not aggregate):
-            random_seeder.reset()
+            experiment_runner: UcbExperimentRunner
+
             print(f'AGENT: {experiment_runner.name}')
-            experiment_runner.run_experiment()
+            agent_config = self.config['agent']
+            experiment_runner.run_experiment(agent_config)
             experiment_runner.store_results(run_results_processor)
 
         if aggregate:

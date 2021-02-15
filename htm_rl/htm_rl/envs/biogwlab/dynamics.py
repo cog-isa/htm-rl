@@ -102,6 +102,7 @@ class BioGwLabEnvDynamics:
             scent_map[channel, np.divmod(activations, size)] = 1
         return scent_map
 
+
 class BioGwLabEnv:
     rnd: Generator
     actions = ['stay', 'move', 'turn left', 'turn right']
@@ -251,6 +252,13 @@ class BioGwLabEnvRepresentationWrapper(BioGwLabEnv):
         self.visual_representer = BioGwLabStateVisualRepresenter(self.state)
         self.scent_representer = BioGwLabStateScentRepresenter(self.state.seed)
 
+    # noinspection PyRedundantParentheses
+    @property
+    def shape(self):
+        size = self.state.size
+        repr_len = self.visual_representer.repr_len
+        return (size, size, repr_len)
+
     def reset(self):
         _ = super().reset()
 
@@ -292,6 +300,17 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         self.view_rect = self._view_to_machine(view_rect)
         self.scent_rect = self._view_to_machine(scent_rect)
 
+    # noinspection PyRedundantParentheses
+    @property
+    def shape(self):
+        (bi, lj), (ui, rj) = self.view_rect
+        repr_len = super().shape[-1]
+        return (ui-bi+1, rj-lj+1, repr_len)
+
+    @property
+    def size(self):
+        return self.shape[0] * self.shape[1] * self.shape[2]
+
     def reset(self):
         vis_repr, scent_repr = super().reset()
         observation = self._to_observation(vis_repr, scent_repr)
@@ -302,7 +321,6 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         (vis_repr, scent_repr), reward, is_done, _ = super().step(action)
         observation = self._to_observation(vis_repr, scent_repr)
         return observation, reward, is_done, {}
-
 
     def _to_observation(self, vis_repr, scent_repr):
         vis_observation = self._clip_observation(
@@ -320,14 +338,13 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         state = self.state
         i, j = state.agent_position
         forward_dir = state.agent_direction
-        repr_len = full_repr.shape[-1]
 
         i_high, j_high = self.state.size, self.state.size
         # print(i, j, forward_dir, i_high, j_high)
         # print(obs_rect)
 
         (bi, lj), (ui, rj) = obs_rect
-        obs = np.zeros((ui-bi+1, rj-lj+1, repr_len), dtype=np.int8)
+        obs = np.zeros(self.shape, dtype=np.int8)
         init_obs(obs)
 
         # print('orig', bi, ui, lj, rj)
