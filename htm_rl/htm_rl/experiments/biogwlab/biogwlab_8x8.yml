@@ -16,12 +16,15 @@ env_generator: !BioGwLabEnvGenerator &env_generator
   n_states: &n_states 64
   n_actions: &n_actions 4
 
-.experiment_config:
-  n_episodes_all_fixed: &n_episodes_all_fixed 10
-  n_initial_states: &n_initial_states 1
-  n_terminal_states: &n_terminal_states 1
-  n_environments: &n_environments 1
-  max_steps: &max_steps 40
+
+experiment: !UcbExperimentRunner
+  env_generator: *env_generator
+  n_episodes_all_fixed: 10
+  n_initial_states: 1
+  n_terminal_states: 1
+  n_environments: 1
+  max_steps: 40
+  verbosity: *verbosity
 
 # test run results processing
 run_results_processor: !RunResultsProcessor
@@ -91,12 +94,3 @@ agent:
     learning_rate: .998
     seed: *seed
     online: True
-
-experiment: !UcbExperimentRunner
-  env_generator: *env_generator
-  n_episodes_all_fixed: *n_episodes_all_fixed
-  n_initial_states: *n_initial_states
-  n_terminal_states: *n_terminal_states
-  n_environments: *n_environments
-  max_steps: *max_steps
-  verbosity: *verbosity
