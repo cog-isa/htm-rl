@@ -18,7 +18,7 @@ env_generator: !BioGwLabEnvGenerator &env_generator
 
 experiment: !UcbExperimentRunner
   env_generator: *env_generator
-  n_episodes_all_fixed: 10
+  n_episodes_all_fixed: 40
   n_initial_states: 1
   n_terminal_states: 1
   n_environments: 1
@@ -39,7 +39,7 @@ run_results_processor: !RunResultsProcessor
   connected_permanence_threshold: .5
   min_activation_threshold: 1
 
-.state_spatial_pooler: &state_spatial_pooler !UcbSpatialPooler
+state_spatial_pooler: &state_spatial_pooler !UcbSpatialPooler
   <<: *default_spatial_pooler_params
   input_size: *state_bits_pre
   output_size: 220
@@ -50,23 +50,16 @@ run_results_processor: !RunResultsProcessor
   expected_normal_overlap_frequency: .005
   seed: *seed
 
+action_encoder: &action_encoder !UcbIntBucketEncoder
+  n_values: *n_actions
+  bucket_size: 5
 
-
-sa_sdr_encoder: &sa_sdr_encoder !UcbSaSdrEncoder
-  state_encoder: !RandomSdrEncoderSp
-    name: state
-    random_encoder:
-    spatial_pooler: *state_spatial_pooler
-  action_encoder: !IntSdrEncoder
-    name: action
-    n_values: *n_actions
-    value_bits: 5
-    activation_threshold: 4
-    default_format: full
+sa_sdr_concatenator: &sa_sdr_concatenator !UcbSdrConcatenator
+  input_sources: [*state_spatial_pooler, *action_encoder]
 
 .q_sa_spatial_pooler: &q_sa_spatial_pooler !UcbSpatialPooler
   <<: *default_spatial_pooler_params
-  input_source: *sa_sdr_encoder
+  input_source: *sa_sdr_concatenator
   output_size: 300
   potential_synapses_ratio: .8
   sparsity: .1
@@ -78,8 +71,10 @@ sa_sdr_encoder: &sa_sdr_encoder !UcbSaSdrEncoder
 # =========== Agents and Runners ==============
 agent:
   n_actions: *n_actions
-  encoder: *sa_sdr_encoder
-  spatial_pooler: *q_sa_spatial_pooler
+  state_sp: *state_spatial_pooler
+  action_encoder: *action_encoder
+  sa_concat: *sa_sdr_concatenator
+  sa_sp: *q_sa_spatial_pooler
 
   ucb_actor_critic:
     update_cell_ratio: 1.

@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from typing import Sequence, Any
 
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
@@ -17,6 +18,29 @@ class ProcessingUnit(ABC):
     @abstractmethod
     def process(self, x):
         ...
+
+
+class ConcatenateUnit(ProcessingUnit):
+    _input_shape: Sequence[Any]
+    _output_shape: Any
+
+    def __init__(self, input_sources: Sequence[ProcessingUnit]):
+        self._input_shape = [
+            input_source.input_shape
+            for input_source in input_sources
+        ]
+        self._output_shape = sum(self._input_shape)
+
+    @property
+    def input_shape(self):
+        return self._input_shape
+
+    @property
+    def output_shape(self):
+        return self._output_shape
+
+    def process(self, xs):
+        return sum(xs)
 
 
 class SpatialPoolerUnitTemp(ProcessingUnit):

@@ -30,6 +30,7 @@ from htm_rl.common.random_sdr_encoder import RandomSdrEncoder
 from htm_rl.common.random_sdr_encoder_sp import RandomSdrEncoderSp
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sar_sdr_encoder import SarSdrEncoder
+from htm_rl.common.ucb_encoders import UcbIntBucketEncoder, UcbSdrConcatenator
 from htm_rl.common.ucb_sa_sdr_encoder import UcbSaSdrEncoder
 from htm_rl.common.vector_sdr_encoder import VectorSdrEncoder
 from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
@@ -202,7 +203,8 @@ def register_classes(yaml: YAML):
         MctsAgentRunner2,
         BioGwLabEnvGenerator,
         UcbExperimentRunner, UcbAgent, UcbActorCritic,
-        UcbSpatialPooler, UcbSaSdrEncoder
+        UcbSpatialPooler, UcbSaSdrEncoder,
+        UcbIntBucketEncoder, UcbSdrConcatenator,
     ]
 
     constructor: SafeConstructor = yaml.constructor

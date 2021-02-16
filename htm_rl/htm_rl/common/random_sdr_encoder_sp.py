@@ -57,7 +57,8 @@ class RandomSdrEncoderSp:
         if self.random_encoder is not None:
             sparse_sdr = list(self.random_encoder.encode(x).unfold())
         else:
-            sparse_sdr = list(np.nonzero(x)[0])
+            # sparse_sdr = list(np.nonzero(x)[0])
+            sparse_sdr = np.nonzero(x)[0]
         sparse_sdr = self.spatial_pooler.encode(sparse_sdr)
         return BitSparseArr(sparse_sdr)
 

@@ -1,15 +1,14 @@
-from typing import Tuple, List
+from typing import Tuple
 
-from htm.bindings.algorithms import SpatialPooler as SP
+import numpy as np
+from htm.bindings.algorithms import SpatialPooler as HtmSpatialPooler
 from htm.bindings.sdr import SDR
 
-from htm_rl.agents.ucb.processing_unit import ProcessingUnit
 
+class UcbSpatialPooler:
+    spatial_pooler: HtmSpatialPooler
+    output_sdr_size: int
 
-class UcbSpatialPooler(ProcessingUnit):
-    spatial_pooler: SP
-    _input_shape: List[int]
-    _output_shape: List[int]
     _cached_input_sdr: SDR
     _cached_output_sdr: SDR
 
@@ -19,19 +18,20 @@ class UcbSpatialPooler(ProcessingUnit):
             connected_permanence_threshold: float, boost_strength: float,
             boost_sliding_window: int, expected_normal_overlap_frequency: float,
             seed: int, min_activation_threshold: int = 1,
-            input_size: int = None, input_source: ProcessingUnit = None
+            input_size: int = None, input_source=None
     ):
+        self.output_sdr_size = output_size
+
         permanence_increase, permanence_decrease = synapse_permanence_deltas
         if input_size is None:
-            input_shape = list(input_source.output_shape)
-        else:
-            input_shape = [input_size]
-        output_shape = [output_size]
+            input_size = input_source.output_sdr_size
 
-        self.spatial_pooler = SP(
+        input_shape = [input_size]
+        output_shape = [output_size]
+        self.spatial_pooler = HtmSpatialPooler(
             inputDimensions=input_shape,
             columnDimensions=output_shape,
-            potentialRadius=input_shape[0],
+            potentialRadius=input_size,
             potentialPct=potential_synapses_ratio,
             globalInhibition=True,
             localAreaDensity=sparsity,
@@ -46,29 +46,14 @@ class UcbSpatialPooler(ProcessingUnit):
             seed=seed,
         )
 
-        self._input_shape = input_shape
-        self._output_shape = output_shape
         self._cached_input_sdr = SDR(input_shape)
         self._cached_output_sdr = SDR(output_shape)
 
-    def encode(self, sdr, learn: bool = True):
-        if isinstance(sdr, list):
-            self._cached_input_sdr.sparse = sdr
-        else:
-            self._cached_input_sdr.dense = sdr
-
+    def compute(self, sparse_sdr, learn: bool = True):
+        self._cached_input_sdr.sparse = sparse_sdr
         self.spatial_pooler.compute(
-            self._cached_input_sdr, learn=learn, output=self._cached_output_sdr
+            self._cached_input_sdr,
+            learn=learn,
+            output=self._cached_output_sdr
         )
-        return list(self._cached_output_sdr.sparse)
-
-    @property
-    def input_shape(self):
-        return self._input_shape
-
-    @property
-    def output_shape(self):
-        return self._output_shape
-
-    def process(self, x, learn=True):
-        return self.encode(x, learn=learn)
+        return np.array(self._cached_output_sdr.sparse, copy=True)

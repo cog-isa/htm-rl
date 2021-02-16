@@ -308,6 +308,10 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         return (ui-bi+1, rj-lj+1, repr_len)
 
     @property
+    def output_shape(self):
+        return self.shape
+
+    @property
     def size(self):
         return self.shape[0] * self.shape[1] * self.shape[2]
 
@@ -332,7 +336,9 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         #
         # observation = np.concatenate((vis_observation, scent_observation), axis=None)
         # return observation
-        return vis_observation.ravel()
+        obs = vis_observation.ravel()
+        obs = np.nonzero(obs)[0]
+        return obs
 
     def _clip_observation(self, full_repr, obs_rect, init_obs):
         state = self.state

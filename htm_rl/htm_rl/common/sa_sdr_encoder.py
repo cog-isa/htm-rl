@@ -1,4 +1,3 @@
-from htm_rl.agents.ucb.processing_unit import ProcessingUnit
 from htm_rl.common.base_sa import SaRelatedComposition, Sa, SaSuperposition
 from htm_rl.common.int_sdr_encoder import BitRange
 from htm_rl.common.sdr import SparseSdr

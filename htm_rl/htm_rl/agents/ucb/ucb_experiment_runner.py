@@ -51,31 +51,24 @@ class UcbExperimentRunner:
         n_episodes = self.n_environments * self.n_terminal_states * self.n_initial_states
         n_episodes *= self.n_episodes_all_fixed
 
-        zipped_iterator = lambda: zip(trange(n_episodes), self._traverse_episodes())
-        for _ in self.run_iterable(zipped_iterator, agent):
-            ...
-
-    def create_ucb_agent(self, agent_config):
-        agent = UcbAgent(**agent_config)
-        return agent
-
-    def run_iterable(self, iterable, agent):
         trace(self.verbosity, 1, '============> RUN UCB AGENT')
-
-        for _, (env, _) in iterable():
+        for _, (env, _) in zip(trange(n_episodes), self._spawn_episodes()):
             (steps, reward), elapsed_time = agent.run_episode(
                 env, self.max_steps, self.verbosity
             )
             self.train_stats.append_stats(steps, reward, elapsed_time)
             trace(self.verbosity, 2, '')
-            yield
 
         trace(self.verbosity, 1, '<============')
+
+    def create_ucb_agent(self, agent_config):
+        agent = UcbAgent(**agent_config)
+        return agent
 
     def store_results(self, run_results_processor: RunResultsProcessor):
         run_results_processor.store_result(self.train_stats, f'{self.name}')
 
-    def _traverse_episodes(self):
+    def _spawn_episodes(self):
         env: BioGwLabEnv
         dynamics = BioGwLabEnvDynamics()
         view_rect = (-2, 0), (2, 2)

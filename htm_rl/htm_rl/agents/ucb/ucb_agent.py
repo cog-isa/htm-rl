@@ -1,30 +1,34 @@
-from htm_rl.agents.ucb.processing_unit import ConcatenateUnit
 from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
-from htm_rl.common.base_sa import Sa
-from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.ucb_sa_sdr_encoder import UcbSaSdrEncoder
+from htm_rl.common.ucb_encoders import UcbIntBucketEncoder, UcbSdrConcatenator
 from htm_rl.common.utils import trace, timed
-from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 from htm_rl.htm_plugins.ucb_spatial_pooler import UcbSpatialPooler
 
 
 class UcbAgent:
+    state_sp: UcbSpatialPooler
+    action_encoder: UcbIntBucketEncoder
+    sa_concat: UcbSdrConcatenator
+    sa_sp: UcbSpatialPooler
+
     _ucb_actor_critic: UcbActorCritic
     _n_actions: int
 
-    encoder: UcbSaSdrEncoder
-    spatial_pooler: UcbSpatialPooler
-
     def __init__(
             self, ucb_actor_critic,
-            encoder: UcbSaSdrEncoder, spatial_pooler: UcbSpatialPooler,
+            state_sp: UcbSpatialPooler,
+            action_encoder: UcbIntBucketEncoder,
+            sa_concat: UcbSdrConcatenator,
+            sa_sp: UcbSpatialPooler,
             n_actions: int
     ):
-        self.encoder = encoder
-        self.spatial_pooler = spatial_pooler
+        self.state_sp = state_sp
+        self.action_encoder = action_encoder
+        self.sa_concat = sa_concat
+        self.sa_sp = sa_sp
+
         self._ucb_actor_critic = UcbActorCritic(
-            cells_sdr_size=spatial_pooler.output_shape[0],
+            cells_sdr_size=sa_sp.output_sdr_size,
             **ucb_actor_critic
         )
         self._n_actions = n_actions
@@ -55,31 +59,30 @@ class UcbAgent:
         trace(verbosity, 2, f'\nMake action: {action}')
 
         # learn
-        sa = Sa(state, action)
-        sa_sdr = self.encode_sa(sa, learn=True)
+        sa_sdr = self.encode_sa(state, action, learn=True)
         self._ucb_actor_critic.add_step(sa_sdr, reward)
         return action
 
     def _make_action(self, state, verbosity: int):
-        current_sa = Sa(state, None)
-        options = self.predict_states(current_sa, verbosity)
+        options = self.predict_states(state, verbosity)
         action = self._ucb_actor_critic.choose(options)
 
         return action
 
-    def encode_sa(self, sa: Sa, learn: bool) -> SparseSdr:
-        sa_sdr = self.encoder.process(sa)
-        sa_sdr = self.spatial_pooler.encode(sa_sdr, learn=learn)
+    def encode_sa(self, state: SparseSdr, action: int, learn: bool) -> SparseSdr:
+        s = self.state_sp.compute(state, learn=learn)
+        a = self.action_encoder.encode(action)
+
+        sa_concat_sdr = self.sa_concat.concatenate(s, a)
+        sa_sdr = self.sa_sp.compute(sa_concat_sdr, learn=learn)
         return sa_sdr
 
-    def predict_states(self, initial_sa: Sa, verbosity: int):
+    def predict_states(self, state, verbosity: int):
         action_outcomes = []
         trace(verbosity, 2, '\n======> Planning')
 
-        state = initial_sa.state
         for action in range(self._n_actions):
-            sa = Sa(state, action)
-            sa_sdr = self.encode_sa(sa, learn=False)
+            sa_sdr = self.encode_sa(state, action, learn=False)
             action_outcomes.append(sa_sdr)
 
         trace(verbosity, 2, '<====== Planning complete')
