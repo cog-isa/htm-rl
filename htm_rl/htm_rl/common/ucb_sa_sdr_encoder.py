@@ -7,7 +7,7 @@ SaShifts = SaRelatedComposition[int, int]
 SaSplitSdr = SaRelatedComposition[SparseSdr, SparseSdr]
 
 
-class SaSdrEncoder:
+class UcbSaSdrEncoder(ProcessingUnit):
     """
     Composes 2 encoders for states and actions respectively.
     As a whole encodes/decodes sa values + adds some sa-related logic like:
@@ -126,3 +126,14 @@ class SaSdrEncoder:
     def _get_shifts(encoders) -> SaRelatedComposition:
         actions_shift = encoders.state.total_bits
         return SaRelatedComposition(0, actions_shift)
+
+    @property
+    def input_shape(self):
+        return (2, )
+
+    @property
+    def output_shape(self):
+        return (self.total_bits, )
+
+    def process(self, x):
+        return self.encode(x)

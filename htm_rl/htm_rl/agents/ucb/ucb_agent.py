@@ -1,7 +1,9 @@
+from htm_rl.agents.ucb.processing_unit import ConcatenateUnit
 from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
 from htm_rl.common.base_sa import Sa
 from htm_rl.common.sa_sdr_encoder import SaSdrEncoder
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.common.ucb_sa_sdr_encoder import UcbSaSdrEncoder
 from htm_rl.common.utils import trace, timed
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 from htm_rl.htm_plugins.ucb_spatial_pooler import UcbSpatialPooler
@@ -11,12 +13,12 @@ class UcbAgent:
     _ucb_actor_critic: UcbActorCritic
     _n_actions: int
 
-    encoder: SaSdrEncoder
+    encoder: UcbSaSdrEncoder
     spatial_pooler: UcbSpatialPooler
 
     def __init__(
             self, ucb_actor_critic,
-            encoder: SaSdrEncoder, spatial_pooler: UcbSpatialPooler,
+            encoder: UcbSaSdrEncoder, spatial_pooler: UcbSpatialPooler,
             n_actions: int
     ):
         self.encoder = encoder
@@ -66,7 +68,7 @@ class UcbAgent:
         return action
 
     def encode_sa(self, sa: Sa, learn: bool) -> SparseSdr:
-        sa_sdr = self.encoder.encode(sa)
+        sa_sdr = self.encoder.process(sa)
         sa_sdr = self.spatial_pooler.encode(sa_sdr, learn=learn)
         return sa_sdr
 

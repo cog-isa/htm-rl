@@ -16,7 +16,6 @@ env_generator: !BioGwLabEnvGenerator &env_generator
   n_states: &n_states 64
   n_actions: &n_actions 4
 
-
 experiment: !UcbExperimentRunner
   env_generator: *env_generator
   n_episodes_all_fixed: 10
@@ -26,7 +25,6 @@ experiment: !UcbExperimentRunner
   max_steps: 40
   verbosity: *verbosity
 
-# test run results processing
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab_8x8
   moving_average: 1
@@ -35,28 +33,26 @@ run_results_processor: !RunResultsProcessor
 
 # =========== encoder =================
 .state_bits_pre: &state_bits_pre 200
-.state_bits_post: &state_bits_post 220
 
-#.observation_encoder: &observation_encoder !VectorSdrEncoder
-#  name: state
-#  n_elements: *state_bits_pre
-#  n_categories: 2
-#  default_format: full
+.default_spatial_pooler_params: &default_spatial_pooler_params
+  synapse_permanence_deltas: [ .1, .02 ]
+  connected_permanence_threshold: .5
+  min_activation_threshold: 1
 
-.state_spatial_pooler: &state_spatial_pooler !SpatialPooler
+.state_spatial_pooler: &state_spatial_pooler !UcbSpatialPooler
+  <<: *default_spatial_pooler_params
   input_size: *state_bits_pre
-  output_size: *state_bits_post
+  output_size: 220
   potential_synapses_ratio: .8
   sparsity: .1
-  synapse_permanence_deltas: [.1, .02]
-  connected_permanence_threshold: .5
   boost_strength: 4
   boost_sliding_window: 300
   expected_normal_overlap_frequency: .005
   seed: *seed
-  min_activation_threshold: 1
 
-sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
+
+
+sa_sdr_encoder: &sa_sdr_encoder !UcbSaSdrEncoder
   state_encoder: !RandomSdrEncoderSp
     name: state
     random_encoder:
@@ -69,18 +65,15 @@ sa_sdr_encoder: &sa_sdr_encoder !SaSdrEncoder
     default_format: full
 
 .q_sa_spatial_pooler: &q_sa_spatial_pooler !UcbSpatialPooler
-#  input_size: 240
+  <<: *default_spatial_pooler_params
   input_source: *sa_sdr_encoder
   output_size: 300
   potential_synapses_ratio: .8
   sparsity: .1
-  synapse_permanence_deltas: [ .1, .02 ]
-  connected_permanence_threshold: .5
   boost_strength: 4
   boost_sliding_window: 300
   expected_normal_overlap_frequency: .005
   seed: *seed
-  min_activation_threshold: 1
 
 # =========== Agents and Runners ==============
 agent:

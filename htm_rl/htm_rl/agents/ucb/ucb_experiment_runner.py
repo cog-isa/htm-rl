@@ -46,7 +46,7 @@ class UcbExperimentRunner:
         self.name = 'ucb'
 
     def run_experiment(self, agent_config):
-        agent = UcbAgent(**agent_config)
+        agent = self.create_ucb_agent(agent_config)
 
         n_episodes = self.n_environments * self.n_terminal_states * self.n_initial_states
         n_episodes *= self.n_episodes_all_fixed
@@ -54,6 +54,10 @@ class UcbExperimentRunner:
         zipped_iterator = lambda: zip(trange(n_episodes), self._traverse_episodes())
         for _ in self.run_iterable(zipped_iterator, agent):
             ...
+
+    def create_ucb_agent(self, agent_config):
+        agent = UcbAgent(**agent_config)
+        return agent
 
     def run_iterable(self, iterable, agent):
         trace(self.verbosity, 1, '============> RUN UCB AGENT')
