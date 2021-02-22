@@ -2,7 +2,7 @@ from typing import Iterable, Union, Sequence
 
 import numpy as np
 
-SparseSdr = Union[Iterable[int], Sequence[int]]
+SparseSdr = Union[Iterable[int], Sequence[int], np.ndarray]
 DenseSdr = np.ndarray
 
 
@@ -14,4 +14,4 @@ def sparse_to_dense(indices: SparseSdr, total_size: int) -> DenseSdr:
 
 
 def dense_to_sparse(dense_vector: DenseSdr) -> SparseSdr:
-    return np.nonzero(dense_vector)[0].tolist()
+    return np.nonzero(dense_vector)[0]
