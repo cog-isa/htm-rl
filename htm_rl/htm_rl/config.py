@@ -10,11 +10,11 @@ from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
 from htm_rl.agents.ucb.ucb_agent import UcbAgent
 from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
-from htm_rl.common.ucb_encoders import UcbIntBucketEncoder, UcbSdrConcatenator
+from htm_rl.common.sdr_encoders import UcbIntBucketEncoder, UcbSdrConcatenator
 from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
 from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
-from htm_rl.htm_plugins.ucb_spatial_pooler import UcbSpatialPooler
+from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
 class RandomSeedSetter:
@@ -46,7 +46,7 @@ def register_classes(yaml: YAML):
         RunResultsProcessor,
         BioGwLabEnvGenerator,
         UcbExperimentRunner, UcbAgent, UcbActorCritic,
-        UcbSpatialPooler,
+        SpatialPooler,
         UcbIntBucketEncoder, UcbSdrConcatenator,
     ]
 

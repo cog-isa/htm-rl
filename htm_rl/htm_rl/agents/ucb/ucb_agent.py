@@ -1,25 +1,25 @@
 from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.ucb_encoders import UcbIntBucketEncoder, UcbSdrConcatenator
+from htm_rl.common.sdr_encoders import UcbIntBucketEncoder, UcbSdrConcatenator
 from htm_rl.common.utils import trace, timed
-from htm_rl.htm_plugins.ucb_spatial_pooler import UcbSpatialPooler
+from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
 class UcbAgent:
-    state_sp: UcbSpatialPooler
+    state_sp: SpatialPooler
     action_encoder: UcbIntBucketEncoder
     sa_concat: UcbSdrConcatenator
-    sa_sp: UcbSpatialPooler
+    sa_sp: SpatialPooler
 
     _ucb_actor_critic: UcbActorCritic
     _n_actions: int
 
     def __init__(
             self, ucb_actor_critic,
-            state_sp: UcbSpatialPooler,
+            state_sp: SpatialPooler,
             action_encoder: UcbIntBucketEncoder,
             sa_concat: UcbSdrConcatenator,
-            sa_sp: UcbSpatialPooler,
+            sa_sp: SpatialPooler,
             n_actions: int
     ):
         self.state_sp = state_sp

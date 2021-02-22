@@ -5,7 +5,7 @@ from htm.bindings.algorithms import SpatialPooler as HtmSpatialPooler
 from htm.bindings.sdr import SDR
 
 
-class UcbSpatialPooler:
+class SpatialPooler:
     spatial_pooler: HtmSpatialPooler
     output_sdr_size: int
 

@@ -46,7 +46,7 @@ class UcbExperimentRunner:
         self.name = 'ucb'
 
     def run_experiment(self, agent_config):
-        agent = self.create_ucb_agent(agent_config)
+        agent = UcbAgent(**agent_config)
 
         n_episodes = self.n_environments * self.n_terminal_states * self.n_initial_states
         n_episodes *= self.n_episodes_all_fixed
@@ -60,10 +60,6 @@ class UcbExperimentRunner:
             trace(self.verbosity, 2, '')
 
         trace(self.verbosity, 1, '<============')
-
-    def create_ucb_agent(self, agent_config):
-        agent = UcbAgent(**agent_config)
-        return agent
 
     def store_results(self, run_results_processor: RunResultsProcessor):
         run_results_processor.store_result(self.train_stats, f'{self.name}')

@@ -4,6 +4,7 @@ from typing import Tuple
 import numpy as np
 from numpy.random._generator import Generator
 
+from htm_rl.common.sdr import dense_to_sparse
 from htm_rl.common.utils import isnone, clip
 from htm_rl.envs.biogwlab.env_state import BioGwLabEnvState
 
@@ -337,7 +338,7 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
         # observation = np.concatenate((vis_observation, scent_observation), axis=None)
         # return observation
         obs = vis_observation.ravel()
-        obs = np.nonzero(obs)[0]
+        obs = dense_to_sparse(obs)
         return obs
 
     def _clip_observation(self, full_repr, obs_rect, init_obs):
