@@ -29,9 +29,9 @@ run_results_processor: !RunResultsProcessor
   env_name: biogwlab_8x8
   moving_average: 1
   verbosity: *verbosity
-  test_dir:                   # leave empty for default behavior - output to the config's dir
+  test_dir: # leave empty for default behavior - output to the config's dir
 
-# =========== encoder =================
+# =========== ucb agent =================
 .state_bits_pre: &state_bits_pre 200
 
 .default_spatial_pooler_params: &default_spatial_pooler_params
@@ -39,42 +39,35 @@ run_results_processor: !RunResultsProcessor
   connected_permanence_threshold: .5
   min_activation_threshold: 1
 
-state_spatial_pooler: &state_spatial_pooler !UcbSpatialPooler
-  <<: *default_spatial_pooler_params
-  input_size: *state_bits_pre
-  output_size: 220
-  potential_synapses_ratio: .8
-  sparsity: .1
-  boost_strength: 4
-  boost_sliding_window: 300
-  expected_normal_overlap_frequency: .005
-  seed: *seed
-
-action_encoder: &action_encoder !UcbIntBucketEncoder
-  n_values: *n_actions
-  bucket_size: 5
-
-sa_sdr_concatenator: &sa_sdr_concatenator !UcbSdrConcatenator
-  input_sources: [*state_spatial_pooler, *action_encoder]
-
-.q_sa_spatial_pooler: &q_sa_spatial_pooler !UcbSpatialPooler
-  <<: *default_spatial_pooler_params
-  input_source: *sa_sdr_concatenator
-  output_size: 300
-  potential_synapses_ratio: .8
-  sparsity: .1
-  boost_strength: 4
-  boost_sliding_window: 300
-  expected_normal_overlap_frequency: .005
-  seed: *seed
-
-# =========== Agents and Runners ==============
 agent:
   n_actions: *n_actions
-  state_sp: *state_spatial_pooler
-  action_encoder: *action_encoder
-  sa_concat: *sa_sdr_concatenator
-  sa_sp: *q_sa_spatial_pooler
+
+  state_sp:
+    <<: *default_spatial_pooler_params
+    input_size: *state_bits_pre
+    output_size:
+    output_dilation_ratio: 1.
+    potential_synapses_ratio: .8
+    sparsity: .1
+    boost_strength: 4
+    boost_sliding_window: 300
+    expected_normal_overlap_frequency: .005
+    seed: *seed
+
+  action_encoder:
+    n_values: *n_actions
+    bucket_size: 5
+
+  sa_sp:
+    <<: *default_spatial_pooler_params
+    output_size:
+    output_dilation_ratio: 1.4
+    potential_synapses_ratio: .8
+    sparsity: .08
+    boost_strength: 4
+    boost_sliding_window: 300
+    expected_normal_overlap_frequency: .005
+    seed: *seed
 
   ucb_actor_critic:
     update_cell_ratio: 1.

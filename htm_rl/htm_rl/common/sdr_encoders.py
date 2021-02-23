@@ -5,7 +5,7 @@ import numpy as np
 from htm_rl.common.utils import isnone
 
 
-class UcbIntBucketEncoder:
+class IntBucketEncoder:
     """
     Encodes integer values from the range [0, `n_values`) as SDR with `output_sdr_size` total bits.
     SDR bit space is divided into `n_values` possibly overlapping buckets of `bucket_size` bits
@@ -58,7 +58,7 @@ class UcbIntBucketEncoder:
         return i * self._buckets_step
 
 
-class UcbIntRandomEncoder:
+class IntRandomEncoder:
     """
     Encodes integer values from range [0, `n_values`) as SDR with `total_bits` bits.
     Each value x is encoded with `total_bits` * `sparsity` random bits.
@@ -96,7 +96,7 @@ class UcbIntRandomEncoder:
         return self._encoding_map[x]
 
 
-class UcbSdrConcatenator:
+class SdrConcatenator:
     """Concatenates sparse SDRs."""
     output_sdr_size: int
 

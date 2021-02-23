@@ -1,34 +1,39 @@
+from typing import Dict
+
 from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.sdr_encoders import UcbIntBucketEncoder, UcbSdrConcatenator
+from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.common.utils import trace, timed
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
 class UcbAgent:
-    state_sp: SpatialPooler
-    action_encoder: UcbIntBucketEncoder
-    sa_concat: UcbSdrConcatenator
-    sa_sp: SpatialPooler
-
-    _ucb_actor_critic: UcbActorCritic
     _n_actions: int
 
+    _state_sp: SpatialPooler
+    _action_encoder: IntBucketEncoder
+    _sa_concatenator: SdrConcatenator
+    _sa_sp: SpatialPooler
+
+    _ucb_actor_critic: UcbActorCritic
+
     def __init__(
-            self, ucb_actor_critic,
-            state_sp: SpatialPooler,
-            action_encoder: UcbIntBucketEncoder,
-            sa_concat: UcbSdrConcatenator,
-            sa_sp: SpatialPooler,
+            self,
+            ucb_actor_critic: Dict,
+            state_sp: Dict,
+            action_encoder: Dict,
+            sa_sp: Dict,
             n_actions: int
     ):
-        self.state_sp = state_sp
-        self.action_encoder = action_encoder
-        self.sa_concat = sa_concat
-        self.sa_sp = sa_sp
+        self._state_sp = SpatialPooler(**state_sp)
+        self._action_encoder = IntBucketEncoder(**action_encoder)
+        self._sa_concatenator = SdrConcatenator(input_sources=[
+            self._state_sp, self._action_encoder
+        ])
+        self._sa_sp = SpatialPooler(input_source=self._sa_concatenator, **sa_sp)
 
         self._ucb_actor_critic = UcbActorCritic(
-            cells_sdr_size=sa_sp.output_sdr_size,
+            cells_sdr_size=self._sa_sp.output_sdr_size,
             **ucb_actor_critic
         )
         self._n_actions = n_actions
@@ -70,11 +75,11 @@ class UcbAgent:
         return action
 
     def encode_sa(self, state: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        s = self.state_sp.compute(state, learn=learn)
-        a = self.action_encoder.encode(action)
+        s = self._state_sp.compute(state, learn=learn)
+        a = self._action_encoder.encode(action)
 
-        sa_concat_sdr = self.sa_concat.concatenate(s, a)
-        sa_sdr = self.sa_sp.compute(sa_concat_sdr, learn=learn)
+        sa_concat_sdr = self._sa_concatenator.concatenate(s, a)
+        sa_sdr = self._sa_sp.compute(sa_concat_sdr, learn=learn)
         return sa_sdr
 
     def predict_states(self, state, verbosity: int):

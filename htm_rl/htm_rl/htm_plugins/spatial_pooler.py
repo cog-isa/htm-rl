@@ -13,21 +13,24 @@ class SpatialPooler:
     _cached_output_sdr: SDR
 
     def __init__(
-            self, output_size: int, potential_synapses_ratio: float,
+            self, potential_synapses_ratio: float,
             sparsity: float, synapse_permanence_deltas: Tuple[float, float],
             connected_permanence_threshold: float, boost_strength: float,
             boost_sliding_window: int, expected_normal_overlap_frequency: float,
             seed: int, min_activation_threshold: int = 1,
-            input_size: int = None, input_source=None
+            input_size: int = None, input_source=None,
+            output_size: int = None, output_dilation_ratio: float = None,
     ):
+        if input_size is None:
+            input_size = input_source.output_sdr_size
+        input_shape = [input_size]
+
+        if output_size is None:
+            output_size = int(output_dilation_ratio * input_size)
+        output_shape = [output_size]
         self.output_sdr_size = output_size
 
         permanence_increase, permanence_decrease = synapse_permanence_deltas
-        if input_size is None:
-            input_size = input_source.output_sdr_size
-
-        input_shape = [input_size]
-        output_shape = [output_size]
         self.spatial_pooler = HtmSpatialPooler(
             inputDimensions=input_shape,
             columnDimensions=output_shape,
