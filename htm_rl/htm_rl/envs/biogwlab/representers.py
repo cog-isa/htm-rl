@@ -4,7 +4,7 @@ import numpy as np
 from numpy.random._generator import Generator
 
 from htm_rl.envs.biogwlab.dynamics import BioGwLabEnvDynamics
-from htm_rl.envs.biogwlab.environment2 import BioGwLabEnvironment
+from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
 from htm_rl.envs.biogwlab.environment_state import BioGwLabEnvState
 
 
