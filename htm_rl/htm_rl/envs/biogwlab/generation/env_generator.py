@@ -16,30 +16,14 @@ class BaseIncrementalGenerator(ABC):
 
 
 class EnvironmentGenerator:
-    size: Tuple[int, int]
+    shape: Tuple[int, int]
     seed: int
-    generation_pipeline: List[BaseIncrementalGenerator]
-    verbosity: int
 
-    def __init__(
-            self, size: Tuple[int, int], verbosity: int,
-            seed: int, generation_pipeline: List[BaseIncrementalGenerator]
-    ):
-        self.size = size
-        self.verbosity = verbosity
-
+    def __init__(self, shape: Tuple[int, int], seed: int):
+        self.shape = shape
         self.seed = seed
-        self.generation_pipeline = generation_pipeline
 
-    def generate(
-            self, seed=None,
-            generation_pipeline: List[BaseIncrementalGenerator] = None
-    ):
-        seed = self.seed
-        generation_pipeline = self.generation_pipeline
-
-        environment_state = EnvironmentState(self.size, seed)
-        for incremental_generator in generation_pipeline:
-            incremental_generator.generate(seed, environment_state)
+    def generate(self):
+        environment_state = EnvironmentState(self.shape, self.seed)
         return environment_state
 

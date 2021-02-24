@@ -80,30 +80,26 @@ class EnvironmentState:
     ]
 
     seed: int
-    size: Tuple[int, int]
+    shape: Tuple[int, int]
     n_types_area: int
     n_types_obstacle: int
     n_types_food: int
     areas_map: np.ndarray
     obstacle_mask: np.ndarray
     food_mask: np.ndarray
-
-    obstacle_map: np.ndarray
     food_items: List[Tuple[int, int, int]]
-    food_map: np.ndarray
     n_foods: int
 
     agent_position: Tuple[int, int]
     agent_direction: int
 
-    def __init__(self, size: Tuple[int, int], seed: int):
-        self.size = size
+    def __init__(self, shape: Tuple[int, int], seed: int):
+        self.shape = shape
         self.seed = seed
         self.n_types_area = 1
         self.n_types_obstacle = 0
         self.n_types_food = 0
 
-        size = (size, size)
-        self.areas_map = np.zeros(size, dtype=np.int8)
-        self.obstacle_mask = np.zeros(size, dtype=np.bool)
-        self.food_mask = np.zeros(size, dtype=np.bool)
+        self.areas_map = np.zeros(shape, dtype=np.int8)
+        self.obstacle_mask = np.zeros(shape, dtype=np.bool)
+        self.food_mask = np.zeros(shape, dtype=np.bool)
