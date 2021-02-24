@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from htm_rl.common.utils import timed, trace, clip
-from htm_rl.envs.biogwlab.env_state import BioGwLabEnvState, EnvironmentState
+from htm_rl.envs.biogwlab.environment_state import BioGwLabEnvState, EnvironmentState
 
 
 class AreasGenerator:
