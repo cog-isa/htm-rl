@@ -1,20 +1,19 @@
 verbosity: &verbosity 1
 
-# ============== seed =================
 random_seed_setter: !RandomSeedSetter
   seed: &seed 8713
 
 # =========== environment =============
+.env_dimensions:
+  n_states: &n_states 64
+  n_actions: &n_actions 4
+
 env_generator: !BioGwLabEnvGenerator &env_generator
   seed: *seed
   size: 5
   n_areas: 3
   density: .25
   verbosity: *verbosity
-
-.env_dimensions:
-  n_states: &n_states 64
-  n_actions: &n_actions 4
 
 experiment: !UcbExperimentRunner
   env_generator: *env_generator

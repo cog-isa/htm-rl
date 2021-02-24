@@ -23,7 +23,7 @@ class UcbExperimentRunner:
 
     env: Any
     n_episodes: int
-    max_steps: int
+    episode_max_steps: int
     pretrain: int
     verbosity: int
     train_stats: RunStats
@@ -42,7 +42,7 @@ class UcbExperimentRunner:
         self.rnd = np.random.default_rng(seed=env_generator.seed)
         self.verbosity = verbosity
 
-        self.max_steps = max_steps
+        self.episode_max_steps = max_steps
         self.verbosity = verbosity
         self.train_stats = RunStats()
         self.name = 'ucb'
@@ -56,7 +56,7 @@ class UcbExperimentRunner:
         trace(self.verbosity, 1, '============> RUN UCB AGENT')
         for _, (env, _) in zip(trange(n_episodes), self._spawn_episodes()):
             (steps, reward), elapsed_time = agent.run_episode(
-                env, self.max_steps, self.verbosity
+                env, self.episode_max_steps, self.verbosity
             )
             self.train_stats.append_stats(steps, reward, elapsed_time)
             trace(self.verbosity, 2, '')
