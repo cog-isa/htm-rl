@@ -4,8 +4,6 @@ import numpy as np
 
 from htm_rl.common.sdr import dense_to_sparse
 from htm_rl.common.utils import clip
-from htm_rl.envs.biogwlab.dynamics import BioGwLabEnvDynamics
-from htm_rl.envs.biogwlab.environment_state import BioGwLabEnvState
 from htm_rl.envs.biogwlab.representers import BioGwLabEnvRepresentationWrapper
 
 
@@ -17,11 +15,13 @@ class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):
     scent_rect: Tuple[Tuple[int, int], Tuple[int, int]]
 
     def __init__(
-            self, state: BioGwLabEnvState, dynamics: BioGwLabEnvDynamics,
-            view_rect: Tuple[Tuple[int, int], Tuple[int, int]],
-            scent_rect: Tuple[Tuple[int, int], Tuple[int, int]]
+            self,
+            *args,
+            view_rect: Tuple[Tuple[int, int], Tuple[int, int]] = None,
+            scent_rect: Tuple[Tuple[int, int], Tuple[int, int]] = None,
+            **kwargs
     ):
-        super().__init__(state, dynamics)
+        super().__init__(*args, **kwargs)
 
         self.view_rect = self._view_to_machine(view_rect)
         self.scent_rect = self._view_to_machine(scent_rect)

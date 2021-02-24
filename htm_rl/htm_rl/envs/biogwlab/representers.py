@@ -69,8 +69,8 @@ class BioGwLabEnvRepresentationWrapper(BioGwLabEnvironment):
 
     visual_representation: np.ndarray
 
-    def __init__(self, state: BioGwLabEnvState, dynamics: BioGwLabEnvDynamics):
-        super().__init__(state, dynamics)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.visual_representer = BioGwLabStateVisualRepresenter(self.state)
         self.scent_representer = BioGwLabStateScentRepresenter(self.state.seed)

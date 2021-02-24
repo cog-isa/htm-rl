@@ -19,6 +19,7 @@ class UcbAgent:
 
     def __init__(
             self,
+            env,
             ucb_actor_critic: Dict,
             state_sp: Dict,
             action_encoder: Dict,
@@ -39,14 +40,14 @@ class UcbAgent:
         self._n_actions = n_actions
 
     @timed
-    def run_episode(self, env, max_steps, verbosity):
+    def run_episode(self, env, verbosity):
         self.reset()
         state, reward, done = env.reset(), 0, env.is_terminal()
         action = self.choose_action(state, reward, done, verbosity)
 
         step = 0
         total_reward = 0.
-        while step < max_steps and not done:
+        while not done:
             state, reward, done, info = env.step(action)
             action = self.choose_action(state, reward, done, verbosity)
             step += 1

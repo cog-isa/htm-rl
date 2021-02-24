@@ -3,25 +3,8 @@ verbosity: &verbosity 1
 random_seed_setter: !RandomSeedSetter
   seed: &seed 8713
 
-# =========== environment =============
-.env_dimensions:
-  n_states: &n_states 64
-  n_actions: &n_actions 4
-
-env_generator: !BioGwLabEnvGenerator &env_generator
-  seed: *seed
-  size: 5
-  n_areas: 3
-  density: .25
-  verbosity: *verbosity
-
 experiment: !UcbExperimentRunner
-  env_generator: *env_generator
-  n_episodes_all_fixed: 20
-  n_initial_states: 1
-  n_terminal_states: 1
-  n_environments: 1
-  max_steps: 40
+  n_episodes: 40
   verbosity: *verbosity
 
 run_results_processor: !RunResultsProcessor
@@ -29,6 +12,21 @@ run_results_processor: !RunResultsProcessor
   moving_average: 1
   verbosity: *verbosity
   test_dir: # leave empty for default behavior - output to the config's dir
+
+# =========== environment =============
+.env_dimensions:
+  n_states: &n_states 64
+  n_actions: &n_actions 4
+
+environment:
+  episode_max_steps: 40
+  seed: *seed
+
+  generator:
+    size: 5
+    n_areas: 3
+    density: .25
+    verbosity: *verbosity
 
 # =========== ucb agent =================
 .state_bits_pre: &state_bits_pre 200

@@ -1,63 +1,35 @@
-from typing import Any
-
-import numpy as np
-from numpy.random._generator import Generator
 from tqdm import trange
 
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.agents.ucb.ucb_agent import UcbAgent
 from htm_rl.common.utils import trace
-from htm_rl.envs.biogwlab.dynamics import BioGwLabEnvDynamics
-from htm_rl.envs.biogwlab.environment import BioGwLabEnv
 from htm_rl.envs.biogwlab.observation_wrapper import BioGwLabEnvObservationWrapper
-from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
 
 
 class UcbExperimentRunner:
-    rnd: Generator
-    env_generator: BioGwLabEnvGenerator
-    n_episodes_all_fixed: int
-    n_initial_states: int
-    n_environments: int
-    verbosity: int
-
-    env: Any
     n_episodes: int
-    episode_max_steps: int
-    pretrain: int
     verbosity: int
     train_stats: RunStats
     name: str
 
-    def __init__(
-            self, env_generator: BioGwLabEnvGenerator, n_episodes_all_fixed: int,
-            n_initial_states: int, n_terminal_states: int,
-            n_environments: int, verbosity: int, max_steps
-    ):
-        self.env_generator = env_generator
-        self.n_episodes_all_fixed = n_episodes_all_fixed
-        self.n_initial_states = n_initial_states
-        self.n_terminal_states = n_terminal_states
-        self.n_environments = n_environments
-        self.rnd = np.random.default_rng(seed=env_generator.seed)
-        self.verbosity = verbosity
-
-        self.episode_max_steps = max_steps
+    def __init__(self, n_episodes: int, verbosity: int):
+        self.n_episodes = n_episodes
         self.verbosity = verbosity
         self.train_stats = RunStats()
         self.name = 'ucb'
 
-    def run_experiment(self, agent_config):
-        agent = UcbAgent(**agent_config)
-
-        n_episodes = self.n_environments * self.n_terminal_states * self.n_initial_states
-        n_episodes *= self.n_episodes_all_fixed
+    def run_experiment(self, env_config, agent_config):
+        view_rect = (-2, 0), (2, 2)
+        scent_rect = (-3, -2), (3, 4)
+        env = BioGwLabEnvObservationWrapper(
+            view_rect=view_rect, scent_rect=scent_rect,
+            **env_config
+        )
+        agent = UcbAgent(env, **agent_config)
 
         trace(self.verbosity, 1, '============> RUN UCB AGENT')
-        for _, (env, _) in zip(trange(n_episodes), self._spawn_episodes()):
-            (steps, reward), elapsed_time = agent.run_episode(
-                env, self.episode_max_steps, self.verbosity
-            )
+        for _ in trange(self.n_episodes):
+            (steps, reward), elapsed_time = agent.run_episode(env, self.verbosity)
             self.train_stats.append_stats(steps, reward, elapsed_time)
             trace(self.verbosity, 2, '')
 
@@ -65,22 +37,6 @@ class UcbExperimentRunner:
 
     def store_results(self, run_results_processor: RunResultsProcessor):
         run_results_processor.store_result(self.train_stats, f'{self.name}')
-
-    def _spawn_episodes(self):
-        env: BioGwLabEnv
-        dynamics = BioGwLabEnvDynamics()
-        view_rect = (-2, 0), (2, 2)
-        scent_rect = (-3, -2), (3, 4)
-
-        for i in range(self.n_environments):
-            seed = self.rnd.integers(100000)
-            self.env_generator.seed = seed
-            state = self.env_generator.generate()
-            env = BioGwLabEnvObservationWrapper(state, dynamics, view_rect, scent_rect)
-            for _ in range(self.n_initial_states):
-                env.generate_initial_position()
-                for local_episode in range(self.n_episodes_all_fixed):
-                    yield env, local_episode
 
     def show_environments(self, n):
         # for env_map, _ in self.get_environment_maps(n):

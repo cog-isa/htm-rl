@@ -39,8 +39,9 @@ class ExperimentRunner:
             experiment_runner: UcbExperimentRunner
 
             print(f'AGENT: {experiment_runner.name}')
+            env_config = self.config['environment']
             agent_config = self.config['agent']
-            experiment_runner.run_experiment(agent_config)
+            experiment_runner.run_experiment(env_config, agent_config)
             experiment_runner.store_results(run_results_processor)
 
         if aggregate:

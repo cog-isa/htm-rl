@@ -1,9 +1,12 @@
+from typing import Tuple, Dict
+
 import numpy as np
 from numpy.random._generator import Generator
 
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.dynamics import BioGwLabEnvDynamics
 from htm_rl.envs.biogwlab.environment_state import BioGwLabEnvState
+from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
 
 
 class BioGwLabEnvironment:
@@ -11,15 +14,25 @@ class BioGwLabEnvironment:
 
     state: BioGwLabEnvState
 
-    _dynamics: BioGwLabEnvDynamics
+    _episode_max_steps: int
     _rnd: Generator
+    _generator: BioGwLabEnvGenerator
+    _dynamics: BioGwLabEnvDynamics
 
-    def __init__(self, state: BioGwLabEnvState, dynamics: BioGwLabEnvDynamics):
-        self.state = state
-        self._dynamics = dynamics
-        self._rnd = np.random.default_rng(seed=state.seed)
+    _episode_step: int
 
+    def __init__(self, episode_max_steps: int, seed: int, generator: Dict):
+        self._episode_max_steps = episode_max_steps
+        self._rnd = np.random.default_rng(seed=seed)
+        self._generator = BioGwLabEnvGenerator(seed=seed, **generator)
+        self._dynamics = BioGwLabEnvDynamics()
+        self._episode_step = 0
+
+        self.state = self._generator.generate()
         self.generate_initial_position()
+
+    def generate_new_environment(self):
+        self.state = self._generator.generate()
 
     def generate_initial_position(self):
         position = self._get_random_empty_position()
@@ -30,6 +43,7 @@ class BioGwLabEnvironment:
 
     def reset(self):
         """ reset the game, return the initial state"""
+        self._episode_step = 0
         self._reset_food()
 
         self.state.agent_position = self.state.agent_initial_position
@@ -39,7 +53,7 @@ class BioGwLabEnvironment:
     def is_terminal(self, state=None):
         """ return True if position is terminal or False if it isn't """
         state = isnone(state, self.state)
-        return self._dynamics.is_terminal(state)
+        return self._episode_step >= self._episode_max_steps or self._dynamics.is_terminal(state)
 
     def step(self, action):
         """ take action, return next_state, reward, is_done, empty_info """
@@ -63,6 +77,7 @@ class BioGwLabEnvironment:
             raise NotImplementedError(f'Action {action} is not implemented')
 
         agent_state = self._get_agent_state()
+        self._episode_step += 1
         is_done = self.is_terminal()
         return agent_state, reward, is_done, {}
 

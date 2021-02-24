@@ -1,8 +1,8 @@
 from itertools import product
-from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.random._generator import Generator
 
 from htm_rl.common.utils import timed, trace, clip
 from htm_rl.envs.biogwlab.environment_state import BioGwLabEnvState
@@ -15,6 +15,8 @@ class BioGwLabEnvGenerator:
     seed: int
     verbosity: int
 
+    _rng_seed_generator: Generator
+
     def __init__(self, size, density, n_areas, seed, verbosity):
         self.size = size
         self.density = density
@@ -22,9 +24,11 @@ class BioGwLabEnvGenerator:
         self.seed = seed
         self.verbosity = verbosity
 
+        self._rng_seed_generator = np.random.default_rng(seed)
+
     def generate(self):
         size = self.size
-        seed = self.seed
+        seed = self._rng_seed_generator.integers(1_000_000)
         density = self.density
         n_areas = self.n_areas
         obstacle_generator = ObstacleGenerator(size, density, self.verbosity)
