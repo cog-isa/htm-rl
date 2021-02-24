@@ -1,7 +1,106 @@
+from typing import Tuple
+
 import numpy as np
 
-from htm_rl.common.utils import timed, trace, clip
+from htm_rl.common.utils import clip
 
+
+class ObstacleGenerator:
+    # in x, y coords
+    directions = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+
+    # in i, j coords
+    shape: Tuple[int, int]
+    density: float
+
+    def __init__(self, shape: Tuple[int, int], density: float):
+        # convert from x,y to i,j
+        self.shape = shape[0], shape[1]
+        self.density = density
+
+    def generate(self, seed: int):
+        height, width = self.shape
+        n_cells = width * height
+
+        n_required_obstacles = int((1. - self.density) * n_cells)
+        rnd = np.random.default_rng(seed=seed)
+
+        clear_path_mask = np.zeros(self.shape, dtype=np.bool)
+        non_visited_neighbors = np.empty_like(clear_path_mask, dtype=np.float)
+
+        p_change_cell = n_cells ** -.25
+        p_move_forward = 1. - n_cells ** -.375
+
+        i, j = self._centered_rand2d(height, width, rnd)
+        view_direction = rnd.integers(4)
+        clear_path_mask[i][j] = True
+        n_obstacles = 0
+
+        while n_obstacles < n_required_obstacles:
+            moved_forward = False
+            if rnd.random() < p_move_forward:
+                _i, _j = self._try_move_forward(i, j, view_direction)
+                if not clear_path_mask[_i][_j]:
+                    i, j = _i, _j
+                    clear_path_mask[i, j] = True
+                    n_obstacles += 1
+                    moved_forward = True
+
+            if not moved_forward:
+                view_direction = self._turn(view_direction, rnd)
+
+            if rnd.random() < p_change_cell:
+                i, j, cell_flatten_index = self._choose_rnd_cell(
+                    clear_path_mask, non_visited_neighbors, rnd
+                )
+
+        obstacle_mask = ~clear_path_mask
+        return obstacle_mask
+
+    def _try_move_forward(self, i, j, view_direction):
+        j += self.directions[view_direction][0]     # X axis
+        i += self.directions[view_direction][1]     # Y axis
+
+        i = clip(i, self.shape[0])
+        j = clip(j, self.shape[1])
+        return i, j
+
+    @staticmethod
+    def _turn(view_direction, rnd):
+        turn_direction = int(np.sign(.5 - rnd.random()))
+        return (view_direction + turn_direction + 4) % 4
+
+    def _choose_rnd_cell(
+            self, gridworld: np.ndarray, non_visited_neighbors: np.ndarray,
+            rnd: np.random.Generator
+    ):
+        # count non-visited neighbors
+        non_visited_neighbors.fill(0)
+        non_visited_neighbors[1:] += gridworld[1:] * (~gridworld[:-1])
+        non_visited_neighbors[:-1] += gridworld[:-1] * (~gridworld[1:])
+        non_visited_neighbors[:, 1:] += gridworld[:, 1:] * (~gridworld[:, :-1])
+        non_visited_neighbors[:, :-1] += gridworld[:, :-1] * (~gridworld[:, 1:])
+        # normalize to become probabilities
+        non_visited_neighbors /= non_visited_neighbors.sum()
+
+        # choose cell
+        flatten_visited_indices = np.flatnonzero(non_visited_neighbors)
+        probabilities = non_visited_neighbors.ravel()[flatten_visited_indices]
+        cell_flatten_index = rnd.choice(flatten_visited_indices, p=probabilities)
+        i, j = divmod(cell_flatten_index, self.shape[1])
+
+        # choose direction
+        view_direction = rnd.integers(4)
+        return i, j, view_direction
+
+    @staticmethod
+    def _centered_rand2d(max_i, max_j, rnd):
+        mid_i = (max_i + 1)//2
+        mid_j = (max_j + 1)//2
+
+        i = mid_i + rnd.integers(-max_i//4, max_i//4 + 1)
+        j = mid_j + rnd.integers(-max_j//4, max_j//4 + 1)
+        return i, j
 
 
 class WallColorGenerator:
@@ -32,98 +131,3 @@ class WallColorGenerator:
             )
         # trace_image(self.verbosity, 2, wall_colors + 1)
         return wall_colors, self.n_colors
-
-
-
-class ObstacleGenerator:
-    directions = [(1, 0), (0, -1), (-1, 0), (0, 1)]
-
-    size: int
-    density: float
-    verbosity: int
-
-    def __init__(self, size: int, density: float, verbosity: int):
-        self.size = size
-        self.density = density
-        self.verbosity = verbosity
-
-    @timed
-    def generate(self, seed):
-        n = self.size
-        required_cells = int((1. - self.density) * n**2)
-        rnd = np.random.default_rng(seed=seed)
-
-        clear_path_mask = np.zeros((n, n), dtype=np.bool)
-        non_visited_neighbors = np.empty_like(clear_path_mask, dtype=np.float)
-
-        p_change_cell = .1/np.sqrt(n)
-        p_move_forward = 1. - 1./(n ** 0.75)
-
-        i, j = self._rand2d(n//2, (n+1)//2, rnd)
-        view_direction = rnd.integers(4)
-        clear_path_mask[i][j] = True
-        n_cells, n_iterations = 0, 0
-
-        while n_cells < required_cells:
-            n_iterations += 1
-            moved_forward = False
-            if rnd.random() < p_move_forward:
-                _i, _j = self._try_move_forward(i, j, view_direction)
-                if not clear_path_mask[_i][_j]:
-                    i, j = _i, _j
-                    clear_path_mask[i, j] = True
-                    n_cells += 1
-                    moved_forward = True
-
-            if not moved_forward:
-                view_direction = self._turn(view_direction, rnd)
-
-            if rnd.random() < p_change_cell:
-                i, j, cell_flatten_index = self._choose_rnd_cell(clear_path_mask, non_visited_neighbors, rnd)
-
-        obstacle_mask = ~clear_path_mask
-        trace(self.verbosity, 3, f'Gridworld map generation efficiency: {n_iterations / (n**2)}')
-        trace_image(self.verbosity, 3, obstacle_mask)
-
-        return obstacle_mask
-
-    def _try_move_forward(self, i, j, view_direction):
-        j += self.directions[view_direction][0]     # X axis
-        i += self.directions[view_direction][1]     # Y axis
-
-        i = clip(i, self.size)
-        j = clip(j, self.size)
-        return i, j
-
-    @staticmethod
-    def _turn(view_direction, rnd):
-        turn_direction = int(np.sign(.5 - rnd.random()))
-        return (view_direction + turn_direction + 4) % 4
-
-    def _choose_rnd_cell(
-            self, gridworld: np.ndarray, non_visited_neighbors: np.ndarray,
-            rnd: np.random.Generator
-    ):
-        # count non-visited neighbors
-        non_visited_neighbors.fill(0)
-        non_visited_neighbors[1:] += gridworld[1:] * (~gridworld[:-1])
-        non_visited_neighbors[:-1] += gridworld[:-1] * (~gridworld[1:])
-        non_visited_neighbors[:, 1:] += gridworld[:, 1:] * (~gridworld[:, :-1])
-        non_visited_neighbors[:, :-1] += gridworld[:, :-1] * (~gridworld[:, 1:])
-        # normalize to become probabilities
-        non_visited_neighbors /= non_visited_neighbors.sum()
-
-        # choose cell
-        flatten_visited_indices = np.flatnonzero(non_visited_neighbors)
-        probabilities = non_visited_neighbors.ravel()[flatten_visited_indices]
-        cell_flatten_index = rnd.choice(flatten_visited_indices, p=probabilities)
-        i, j = divmod(cell_flatten_index, self.size)
-
-        # choose direction
-        view_direction = rnd.integers(4)
-        return i, j, view_direction
-
-    def _rand2d(self, size, shift, rnd):
-        i, j = divmod(rnd.integers(size**2), size)
-        i, j = i + shift, j + shift
-        return i, j
