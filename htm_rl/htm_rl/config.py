@@ -7,14 +7,8 @@ import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
 from htm_rl.agent.train_eval import RunResultsProcessor
-from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
-from htm_rl.agents.ucb.ucb_agent import UcbAgent
 from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
-from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
-from htm_rl.envs.gridworld_map_generator import GridworldMapGenerator
-from htm_rl.htm_plugins.temporal_memory import TemporalMemory
-from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
 class RandomSeedSetter:
@@ -41,13 +35,9 @@ def read_config(file_path: Path, verbose=False):
 def register_classes(yaml: YAML):
     classes = [
         RandomSeedSetter,
-        TemporalMemory,
-        GridworldMapGenerator,
         RunResultsProcessor,
         BioGwLabEnvGenerator,
-        UcbExperimentRunner, UcbAgent, UcbActorCritic,
-        SpatialPooler,
-        IntBucketEncoder, SdrConcatenator,
+        UcbExperimentRunner,
     ]
 
     constructor: SafeConstructor = yaml.constructor
