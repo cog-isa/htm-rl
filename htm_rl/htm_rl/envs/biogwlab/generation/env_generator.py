@@ -17,9 +17,9 @@ class BaseIncrementalGenerator(ABC):
 
 class EnvironmentGenerator:
     size: Tuple[int, int]
-    verbosity: int
     seed: int
     generation_pipeline: List[BaseIncrementalGenerator]
+    verbosity: int
 
     def __init__(
             self, size: Tuple[int, int], verbosity: int,
