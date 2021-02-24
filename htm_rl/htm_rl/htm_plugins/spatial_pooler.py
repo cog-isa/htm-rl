@@ -6,9 +6,9 @@ from htm.bindings.sdr import SDR
 
 
 class SpatialPooler:
-    spatial_pooler: HtmSpatialPooler
     output_sdr_size: int
 
+    _spatial_pooler: HtmSpatialPooler
     _cached_input_sdr: SDR
     _cached_output_sdr: SDR
 
@@ -31,7 +31,7 @@ class SpatialPooler:
         self.output_sdr_size = output_size
 
         permanence_increase, permanence_decrease = synapse_permanence_deltas
-        self.spatial_pooler = HtmSpatialPooler(
+        self._spatial_pooler = HtmSpatialPooler(
             inputDimensions=input_shape,
             columnDimensions=output_shape,
             potentialRadius=input_size,
@@ -54,7 +54,7 @@ class SpatialPooler:
 
     def compute(self, sparse_sdr, learn: bool = True):
         self._cached_input_sdr.sparse = sparse_sdr
-        self.spatial_pooler.compute(
+        self._spatial_pooler.compute(
             self._cached_input_sdr,
             learn=learn,
             output=self._cached_output_sdr
