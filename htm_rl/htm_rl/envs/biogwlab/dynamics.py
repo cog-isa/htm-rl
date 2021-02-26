@@ -93,7 +93,7 @@ class BioGwLabEnvDynamics:
         scent_map = np.zeros((channels, size, size), dtype=np.int8)
         for channel in range(channels):
             scent = state.food_scent[channel].ravel()
-            n_cells = scent.shape()
+            n_cells = scent._shape_xy()
             n_active = int(.2 * n_cells)
             activations = rnd.choice(n_cells, p=scent, size=n_active)
             scent_map[channel, np.divmod(activations, size)] = 1

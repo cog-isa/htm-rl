@@ -75,7 +75,7 @@ class BioGwLabEnvGenerator:
         food_scent = food_scents.sum(axis=-1)
         food_scent /= (
             food_scent
-                .reshape((-1, food_scent.shape[-1]))
+                .reshape((-1, food_scent._shape_xy[-1]))
                 .sum(axis=0)
                 .reshape((1, 1, -1))
         )
@@ -113,7 +113,7 @@ class ScentGenerator:
         self.verbosity = verbosity
 
     def generate(self, food_items, obstacle_mask):
-        size = obstacle_mask.shape[0]
+        size = obstacle_mask._shape_xy[0]
         food_scents = np.zeros((size, size, self.n_scent_channels, len(food_items)), dtype=np.float)
         # for k, (i, j, food_item) in enumerate(food_items):
         #     for _i, _j in product(range(size), range(size)):
@@ -152,7 +152,7 @@ class FoodGenerator:
 
     def generate(self, areas_map, obstacle_mask, seed):
         rnd = np.random.default_rng(seed=seed)
-        size = areas_map.shape[0]
+        size = areas_map._shape_xy[0]
         n_foods = max(int((size - 2) ** 1.), self.n_food_types)
 
         foods = rnd.choice(

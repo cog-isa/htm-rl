@@ -4,6 +4,7 @@ from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.common.utils import trace, timed
+from htm_rl.envs.biogwlab.environment2 import BioGwLabEnvironment
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
@@ -19,15 +20,14 @@ class UcbAgent:
 
     def __init__(
             self,
-            env,
+            env: BioGwLabEnvironment,
             ucb_actor_critic: Dict,
             state_sp: Dict,
             action_encoder: Dict,
-            sa_sp: Dict,
-            n_actions: int
+            sa_sp: Dict
     ):
-        self._state_sp = SpatialPooler(**state_sp)
-        self._action_encoder = IntBucketEncoder(**action_encoder)
+        self._state_sp = SpatialPooler(input_source=env, **state_sp)
+        self._action_encoder = IntBucketEncoder(n_values=env.n_actions, **action_encoder)
         self._sa_concatenator = SdrConcatenator(input_sources=[
             self._state_sp, self._action_encoder
         ])
@@ -37,7 +37,7 @@ class UcbAgent:
             cells_sdr_size=self._sa_sp.output_sdr_size,
             **ucb_actor_critic
         )
-        self._n_actions = n_actions
+        self._n_actions = env.n_actions
 
     @timed
     def run_episode(self, env, verbosity):
@@ -77,6 +77,7 @@ class UcbAgent:
 
     def encode_sa(self, state: SparseSdr, action: int, learn: bool) -> SparseSdr:
         s = self._state_sp.compute(state, learn=learn)
+        # s = state
         a = self._action_encoder.encode(action)
 
         sa_concat_sdr = self._sa_concatenator.concatenate(s, a)

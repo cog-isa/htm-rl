@@ -180,7 +180,7 @@ class RunResultsProcessor:
 
     def store_environment_maps(self, maps):
         for i, (env_map, seed) in enumerate(maps):
-            n = env_map.shape[0]
+            n = env_map._shape_xy[0]
 
             fig: plt.Figure
             ax: plt.Axes

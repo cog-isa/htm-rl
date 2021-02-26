@@ -22,7 +22,7 @@ class MiniGridNonSquareObservationWrapper(gym.core.ObservationWrapper):
         self.view_width, self.view_height = view_size
 
     def observation(self, observation):
-        new_width, orig_width = self.view_size, observation.shape[0]
+        new_width, orig_width = self.view_size, observation._shape_xy[0]
         left = (orig_width - new_width) // 2
         right = left + new_width
         return observation[left:right, -self.view_height:]

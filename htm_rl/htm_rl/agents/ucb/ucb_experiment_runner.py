@@ -3,6 +3,7 @@ from tqdm import trange
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.agents.ucb.ucb_agent import UcbAgent
 from htm_rl.common.utils import trace
+from htm_rl.envs.biogwlab.environment2 import BioGwLabEnvironment
 from htm_rl.envs.biogwlab.observation_wrapper import BioGwLabEnvObservationWrapper
 
 
@@ -19,12 +20,9 @@ class UcbExperimentRunner:
         self.name = 'ucb'
 
     def run_experiment(self, env_config, agent_config):
-        view_rect = (-2, 0), (2, 2)
-        scent_rect = (-3, -2), (3, 4)
-        env = BioGwLabEnvObservationWrapper(
-            view_rect=view_rect, scent_rect=scent_rect,
-            **env_config
-        )
+        # view_rect = (-2, 0), (2, 2)
+        # scent_rect = (-3, -2), (3, 4)
+        env = BioGwLabEnvironment(**env_config)
         agent = UcbAgent(env, **agent_config)
 
         trace(self.verbosity, 1, '============> RUN UCB AGENT')

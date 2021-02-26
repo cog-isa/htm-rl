@@ -4,66 +4,57 @@ random_seed_setter: !RandomSeedSetter
   seed: &seed 8713
 
 experiment: !UcbExperimentRunner
-  n_episodes: 40
+  n_episodes: 100
   verbosity: *verbosity
 
 run_results_processor: !RunResultsProcessor
-  env_name: biogwlab_8x8
-  moving_average: 1
+  env_name: biogwlab
+  moving_average: 5
   verbosity: *verbosity
   test_dir: # leave empty for default behavior - output to the config's dir
 
 # =========== environment =============
-.env_dimensions:
-  n_states: &n_states 64
-  n_actions: &n_actions 4
-
 environment:
-  episode_max_steps: 40
+  episode_max_steps: 100
   seed: *seed
 
   generator:
-    size: 5
-    n_areas: 3
-    density: .25
-    verbosity: *verbosity
+    shape_xy: [8, 8]
+    obstacle_density: .25
+
+  state_encoder:
+    bucket_size: 4
 
 # =========== ucb agent =================
-.state_bits_pre: &state_bits_pre 200
-
 .default_spatial_pooler_params: &default_spatial_pooler_params
   synapse_permanence_deltas: [ .1, .02 ]
   connected_permanence_threshold: .5
   min_activation_threshold: 1
 
 agent:
-  n_actions: *n_actions
-
   state_sp:
     <<: *default_spatial_pooler_params
-    input_size: *state_bits_pre
-    output_size:
-    output_dilation_ratio: 1.
+    output_size: 400
+    output_dilation_ratio:
     potential_synapses_ratio: .8
-    sparsity: .1
+    sparsity: .02
     boost_strength: 4
-    boost_sliding_window: 300
-    expected_normal_overlap_frequency: .005
+    boost_sliding_window: 1000
+    expected_normal_overlap_frequency: .001
     seed: *seed
 
   action_encoder:
-    n_values: *n_actions
-    bucket_size: 5
+    bucket_size: 4
 
   sa_sp:
     <<: *default_spatial_pooler_params
-    output_size:
-    output_dilation_ratio: 1.4
+    output_size: 600
+    output_dilation_ratio:
     potential_synapses_ratio: .8
-    sparsity: .08
+    sparsity: .02
     boost_strength: 4
-    boost_sliding_window: 300
-    expected_normal_overlap_frequency: .005
+    boost_sliding_window: 1000
+    expected_normal_overlap_frequency: .001
     seed: *seed
 
   ucb_actor_critic:

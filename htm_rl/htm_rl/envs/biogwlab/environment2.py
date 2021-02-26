@@ -1,60 +1,63 @@
-from typing import Tuple, Dict, List
+from typing import Dict, List
 
 import numpy as np
 from numpy.random._generator import Generator
 
+from htm_rl.common.sdr_encoders import IntBucketEncoder
 from htm_rl.common.utils import isnone
-from htm_rl.envs.biogwlab.dynamics import BioGwLabEnvDynamics
-from htm_rl.envs.biogwlab.environment_state import BioGwLabEnvState
-from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
+from htm_rl.envs.biogwlab.dynamics2 import BioGwLabEnvDynamics
+from htm_rl.envs.biogwlab.environment_state import EnvironmentState
+from htm_rl.envs.biogwlab.generation.env_generator import EnvironmentGenerator
 
 
 class BioGwLabEnvironment:
     supported_actions = {'stay', 'move left', 'move up', 'move right', 'move down'}
 
-    state: BioGwLabEnvState
+    state: EnvironmentState
 
+    _init_state: EnvironmentState
     _actions: List[str]
     _episode_max_steps: int
     _rnd: Generator
-    _generator: BioGwLabEnvGenerator
+    _generator: EnvironmentGenerator
     _dynamics: BioGwLabEnvDynamics
 
     _episode_step: int
 
     def __init__(
-            self, generator: Dict, actions: List[str],
-            episode_max_steps: int, seed: int
+            self, generator: Dict,
+            episode_max_steps: int, seed: int,
+            state_encoder: Dict,
+            actions: List[str] = None
     ):
-        self.ensure_all_actions_supported(actions)
+        if actions is not None:
+            self.ensure_all_actions_supported(actions)
+        else:
+            actions = list(self.supported_actions)
 
         self._actions = actions
         self._episode_max_steps = episode_max_steps
         self._rnd = np.random.default_rng(seed=seed)
-        self._generator = BioGwLabEnvGenerator(seed=seed, **generator)
+        self._generator = EnvironmentGenerator(seed=seed, **generator)
         self._dynamics = BioGwLabEnvDynamics()
         self._episode_step = 0
 
-        self.state = self._generator.generate()
-        self.generate_initial_position()
+        self._init_state = self._generator.generate()
+        self.state = self._init_state.make_copy()
+        self._state_encoder = IntBucketEncoder(n_values=self.state.n_cells, **state_encoder)
 
-    def generate_new_environment(self):
-        self.state = self._generator.generate()
+    @property
+    def n_actions(self):
+        return len(self._actions)
 
-    def generate_initial_position(self):
-        position = self._get_random_empty_position()
-        direction = self._rnd.integers(len(self.state.directions))
-
-        self.state.agent_initial_position = position
-        self.state.agent_initial_direction = direction
+    @property
+    def output_sdr_size(self):
+        return self._state_encoder.output_sdr_size
 
     def reset(self):
         """ reset the game, return the initial state"""
         self._episode_step = 0
-        self._reset_food()
-
-        self.state.agent_position = self.state.agent_initial_position
-        self.state.agent_direction = self.state.agent_initial_direction
+        self.state = self._init_state.make_copy()
         return self._get_agent_state()
 
     def is_terminal(self, state=None):
@@ -67,48 +70,26 @@ class BioGwLabEnvironment:
         assert not self.is_terminal(), 'Episode is finished!'
 
         state = self.state
-        action = self.actions[action]
+        action = self._actions[action]
         reward = 0
         if action == 'stay':
             reward += self._dynamics.stay(state)
-        elif action == 'move':
-            reward += self._dynamics.move_forward(state)
-            reward += self._dynamics.stay(state)
-        elif action == 'turn left':
-            reward += self._dynamics.turn(-1, state)
-            reward += self._dynamics.stay(state)
-        elif action == 'turn right':
-            reward += self._dynamics.turn(1, state)
-            reward += self._dynamics.stay(state)
         else:
-            raise NotImplementedError(f'Action {action} is not implemented')
+            direction = action[5:]  # cut "move "
+
+            reward += self._dynamics.move(state, direction)
+            reward += self._dynamics.stay(state)
 
         agent_state = self._get_agent_state()
         self._episode_step += 1
         is_done = self.is_terminal()
         return agent_state, reward, is_done, {}
 
-    def _reset_food(self):
-        # print('<=', self.state.n_rewarding_foods)
-        self.state.n_rewarding_foods = self._dynamics.count_rewarding_food_items(self.state)
-        # print('=>', self.state.n_rewarding_foods)
-        for i, j, food_type in self.state.food_items:
-            self.state.food_mask[i, j] = True
-            self.state.food_map[i, j] = food_type
-
     def _get_agent_state(self):
         position = self.state.agent_position
-        direction = self.state.directions[self.state.agent_direction]
-        return position, direction
-
-    def _unflatten(self, flatten_position):
-        return divmod(flatten_position, self.state.size)
-
-    def _get_random_empty_position(self):
-        non_empty_mask = self.state.obstacle_mask | self.state.food_mask
-        available_states = np.flatnonzero(non_empty_mask)
-        position = self._rnd.choice(available_states)
-        return self._unflatten(position)
+        position_fl = position[0] * self.state.shape[1] + position[1]
+        encoded_position = self._state_encoder.encode(position_fl)
+        return encoded_position
 
     @classmethod
     def ensure_all_actions_supported(cls, actions):

@@ -3,6 +3,7 @@ from typing import Tuple
 import numpy as np
 
 from htm_rl.common.utils import clip
+from htm_rl.envs.biogwlab.environment_state import EnvironmentState
 
 
 class ObstacleGenerator:
@@ -14,16 +15,15 @@ class ObstacleGenerator:
     density: float
 
     def __init__(self, shape: Tuple[int, int], density: float):
-        # convert from x,y to i,j
-        self.shape = shape[0], shape[1]
+        self.shape = shape
         self.density = density
 
-    def generate(self, seed: int):
-        height, width = self.shape
-        n_cells = width * height
+    def add(self, state: EnvironmentState):
+        height, width = state.shape
+        rnd = np.random.default_rng(seed=state.seed)
 
+        n_cells = state.n_cells
         n_required_obstacles = int((1. - self.density) * n_cells)
-        rnd = np.random.default_rng(seed=seed)
 
         clear_path_mask = np.zeros(self.shape, dtype=np.bool)
         non_visited_neighbors = np.empty_like(clear_path_mask, dtype=np.float)
@@ -55,7 +55,7 @@ class ObstacleGenerator:
                 )
 
         obstacle_mask = ~clear_path_mask
-        return obstacle_mask
+        state.obstacle_mask = obstacle_mask
 
     def _try_move_forward(self, i, j, view_direction):
         j += self.directions[view_direction][0]     # X axis

@@ -186,7 +186,7 @@ class DqnAgentNetwork(nn.Module):
         if self.training:
             assert qvalues.requires_grad, "qvalues must be a torch tensor with grad"
         assert len(qvalues.shape) == 2 \
-            and qvalues.shape[0] == state.shape[0] \
+            and qvalues.shape[0] == state._shape_xy[0] \
             and qvalues.shape[1] == self.n_actions
 
         return qvalues
