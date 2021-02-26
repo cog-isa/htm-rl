@@ -4,7 +4,7 @@ import numpy as np
 
 from htm_rl.common.sdr import dense_to_sparse
 from htm_rl.common.utils import clip
-from htm_rl.envs.biogwlab.representers import BioGwLabEnvRepresentationWrapper
+from htm_rl.envs.biogwlab0.representers import BioGwLabEnvRepresentationWrapper
 
 
 class BioGwLabEnvObservationWrapper(BioGwLabEnvRepresentationWrapper):

@@ -3,8 +3,7 @@ from tqdm import trange
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.agents.ucb.ucb_agent import UcbAgent
 from htm_rl.common.utils import trace
-from htm_rl.envs.biogwlab.environment2 import BioGwLabEnvironment
-from htm_rl.envs.biogwlab.observation_wrapper import BioGwLabEnvObservationWrapper
+from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
 
 
 class UcbExperimentRunner:

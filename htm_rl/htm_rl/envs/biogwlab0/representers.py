@@ -3,9 +3,9 @@ from itertools import product
 import numpy as np
 from numpy.random._generator import Generator
 
-from htm_rl.envs.biogwlab.dynamics import BioGwLabEnvDynamics
-from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
-from htm_rl.envs.biogwlab.environment_state import BioGwLabEnvState
+from htm_rl.envs.biogwlab0.dynamics import BioGwLabEnvDynamics
+from htm_rl.envs.biogwlab0.environment import BioGwLabEnvironment
+from htm_rl.envs.biogwlab0.environment_state import BioGwLabEnvState
 
 
 class BioGwLabStateVisualRepresenter:

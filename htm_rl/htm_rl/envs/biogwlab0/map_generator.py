@@ -5,7 +5,7 @@ import numpy as np
 from numpy.random._generator import Generator
 
 from htm_rl.common.utils import timed, trace, clip
-from htm_rl.envs.biogwlab.environment_state import BioGwLabEnvState
+from htm_rl.envs.biogwlab0.environment_state import BioGwLabEnvState
 
 
 class BioGwLabEnvGenerator:

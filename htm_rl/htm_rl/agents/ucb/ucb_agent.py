@@ -4,7 +4,7 @@ from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.common.utils import trace, timed
-from htm_rl.envs.biogwlab.environment2 import BioGwLabEnvironment
+from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 

@@ -8,7 +8,7 @@ from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
 from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
-from htm_rl.envs.biogwlab.generation.map_generator import BioGwLabEnvGenerator
+from htm_rl.envs.biogwlab0.map_generator import BioGwLabEnvGenerator
 
 
 class RandomSeedSetter:
