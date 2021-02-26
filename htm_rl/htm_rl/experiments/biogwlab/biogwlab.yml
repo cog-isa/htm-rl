@@ -1,7 +1,5 @@
 verbosity: &verbosity 1
-
-random_seed_setter: !RandomSeedSetter
-  seed: &seed 8713
+seed: &seed 8713
 
 experiment: !UcbExperimentRunner
   n_episodes: 40

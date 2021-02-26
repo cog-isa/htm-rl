@@ -11,18 +11,6 @@ from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
 from htm_rl.envs.biogwlab0.map_generator import BioGwLabEnvGenerator
 
 
-class RandomSeedSetter:
-    seed: int
-
-    def __init__(self, seed):
-        self.seed = seed
-        self.reset()
-
-    def reset(self):
-        random.seed(self.seed)
-        np.random.seed(self.seed)
-
-
 def read_config(file_path: Path, verbose=False):
     yaml: YAML = YAML(typ='safe')
     register_classes(yaml)
