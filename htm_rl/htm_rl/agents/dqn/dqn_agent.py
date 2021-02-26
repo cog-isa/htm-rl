@@ -142,7 +142,7 @@ class DqnAgentRunner:
                 action = self.agent.make_action(state)
                 trace(verbosity, 2, f'\nMake action: {action}')
 
-                next_state, reward, done, info = self.env.step(action)
+                next_state, reward, done, info = self.env.act(action)
                 self.agent.train(state, action, reward, next_state, done)
 
                 state = next_state

@@ -48,7 +48,7 @@ class UcbAgent:
         step = 0
         total_reward = 0.
         while not done:
-            state, reward, done, info = env.step(action)
+            state, reward, done, info = env.act(action)
             action = self.choose_action(state, reward, done, verbosity)
             step += 1
             total_reward += reward

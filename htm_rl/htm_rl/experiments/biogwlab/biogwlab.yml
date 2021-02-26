@@ -22,6 +22,13 @@ environment:
     shape_xy: [8, 8]
     obstacle_density: .25
 
+  food_reward: 4.
+  move_dynamics:
+    action_cost: -.05
+    action_weight:
+      stay: .3
+      move: 1.
+
   state_encoder:
     bucket_size: 4
 
