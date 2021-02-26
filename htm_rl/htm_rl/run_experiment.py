@@ -6,9 +6,7 @@ from typing import Dict
 
 from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
-from htm_rl.config import (
-    read_config,
-)
+from htm_rl.config import read_config
 
 
 class ExperimentRunner:

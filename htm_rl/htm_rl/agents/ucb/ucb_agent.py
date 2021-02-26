@@ -29,9 +29,12 @@ class UcbAgent:
         self._state_sp = SpatialPooler(input_source=env, **state_sp)
         self._action_encoder = IntBucketEncoder(n_values=env.n_actions, **action_encoder)
         self._sa_concatenator = SdrConcatenator(input_sources=[
-            self._state_sp, self._action_encoder
+            self._state_sp,
+            # env,
+            self._action_encoder
         ])
         self._sa_sp = SpatialPooler(input_source=self._sa_concatenator, **sa_sp)
+        # self._sa_sp = SpatialPooler(input_source=self._sa_concatenator, **sa_sp)
 
         self._ucb_actor_critic = UcbActorCritic(
             cells_sdr_size=self._sa_sp.output_sdr_size,
@@ -40,57 +43,47 @@ class UcbAgent:
         self._n_actions = env.n_actions
 
     @timed
-    def run_episode(self, env, verbosity):
-        self.reset()
-        state, reward, done = env.reset(), 0, env.is_terminal()
-        action = self.choose_action(state, reward, done, verbosity)
-
+    def run_episode(self, env):
+        self._ucb_actor_critic.reset()
         step = 0
         total_reward = 0.
-        while not done:
-            state, reward, done, info = env.act(action)
-            action = self.choose_action(state, reward, done, verbosity)
+
+        reward, state, first = env.observe()
+        while not (first and step > 0):
+            action = self.choose_action(state)
+            env.act(action)
+
+            reward, new_state, first = env.observe()
+            self.get_feedback(state, action, reward, new_state)
+
+            state = new_state
             step += 1
             total_reward += reward
 
         return step, total_reward
 
-    def reset(self):
-        self._ucb_actor_critic.reset()
+    def choose_action(self, state):
+        actions = self.encode_actions(state)
+        action = self._ucb_actor_critic.choose(actions)
+        return action
 
-    def choose_action(self, state, reward, is_done, verbosity: int):
-        trace(verbosity, 2, f'\nState: {state}; reward: {reward}')
-
-        action = self._make_action(state, verbosity)
-        trace(verbosity, 2, f'\nMake action: {action}')
-
-        # learn
+    def get_feedback(self, state, action, reward, new_state):
         sa_sdr = self.encode_sa(state, action, learn=True)
         self._ucb_actor_critic.add_step(sa_sdr, reward)
-        return action
 
-    def _make_action(self, state, verbosity: int):
-        options = self.predict_states(state, verbosity)
-        action = self._ucb_actor_critic.choose(options)
+    def encode_actions(self, state: SparseSdr):
+        actions = []
 
-        return action
+        for action in range(self._n_actions):
+            sa_sdr = self.encode_sa(state, action, learn=False)
+            actions.append(sa_sdr)
+
+        return actions
 
     def encode_sa(self, state: SparseSdr, action: int, learn: bool) -> SparseSdr:
         s = self._state_sp.compute(state, learn=learn)
-        # s = state
         a = self._action_encoder.encode(action)
 
         sa_concat_sdr = self._sa_concatenator.concatenate(s, a)
         sa_sdr = self._sa_sp.compute(sa_concat_sdr, learn=learn)
         return sa_sdr
-
-    def predict_states(self, state, verbosity: int):
-        action_outcomes = []
-        trace(verbosity, 2, '\n======> Planning')
-
-        for action in range(self._n_actions):
-            sa_sdr = self.encode_sa(state, action, learn=False)
-            action_outcomes.append(sa_sdr)
-
-        trace(verbosity, 2, '<====== Planning complete')
-        return action_outcomes

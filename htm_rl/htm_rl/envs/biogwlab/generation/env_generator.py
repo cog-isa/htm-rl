@@ -25,12 +25,10 @@ class EnvironmentGenerator:
 
     def generate(self):
         seed = self.seed_generator.integers(100000)
-
         state = EnvironmentState(self._shape_xy, seed)
         ObstacleGenerator(state.shape, self._obstacle_density).add(state)
         FoodGenerator().add(state)
         AgentPositionGenerator().add(state)
-
         return state
 
 

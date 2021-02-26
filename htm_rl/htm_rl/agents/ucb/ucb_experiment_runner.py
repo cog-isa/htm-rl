@@ -8,13 +8,11 @@ from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
 
 class UcbExperimentRunner:
     n_episodes: int
-    verbosity: int
     train_stats: RunStats
     name: str
 
-    def __init__(self, n_episodes: int, verbosity: int):
+    def __init__(self, n_episodes: int):
         self.n_episodes = n_episodes
-        self.verbosity = verbosity
         self.train_stats = RunStats()
         self.name = 'ucb'
 
@@ -24,13 +22,9 @@ class UcbExperimentRunner:
         env = BioGwLabEnvironment(**env_config)
         agent = UcbAgent(env, **agent_config)
 
-        trace(self.verbosity, 1, '============> RUN UCB AGENT')
         for _ in trange(self.n_episodes):
-            (steps, reward), elapsed_time = agent.run_episode(env, self.verbosity)
+            (steps, reward), elapsed_time = agent.run_episode(env)
             self.train_stats.append_stats(steps, reward, elapsed_time)
-            trace(self.verbosity, 2, '')
-
-        trace(self.verbosity, 1, '<============')
 
     def store_results(self, run_results_processor: RunResultsProcessor):
         run_results_processor.store_result(self.train_stats, f'{self.name}')

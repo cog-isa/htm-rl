@@ -1,3 +1,4 @@
+from copy import copy
 from typing import Tuple, List, Optional
 
 import numpy as np
@@ -16,6 +17,8 @@ class EnvironmentState:
     food_mask: np.ndarray
     n_foods: int
     agent_position: Tuple[int, int]
+    episode_step: int
+    reward: float
 
     def __init__(self, shape_xy: Tuple[int, int], seed: int, init=True):
         # convert from x,y to i,j
@@ -24,6 +27,8 @@ class EnvironmentState:
 
         self.n_cells = height * width
         self.seed = seed
+        self.episode_step = 0
+        self.reward = 0
 
         if init:
             self.obstacle_mask = np.zeros(shape_xy, dtype=np.bool)
@@ -31,9 +36,6 @@ class EnvironmentState:
             self.agent_position = (0, 0)
 
     def make_copy(self):
-        env = EnvironmentState(shape_xy=self.shape, seed=self.seed, init=False)
-        env.obstacle_mask = self.obstacle_mask
+        env = copy(self)
         env.food_mask = self.food_mask.copy()
-        env.n_foods = self.n_foods
-        env.agent_position = self.agent_position
         return env

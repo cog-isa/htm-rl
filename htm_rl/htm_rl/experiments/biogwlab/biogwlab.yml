@@ -4,31 +4,27 @@ random_seed_setter: !RandomSeedSetter
   seed: &seed 8713
 
 experiment: !UcbExperimentRunner
-  n_episodes: 100
-  verbosity: *verbosity
+  n_episodes: 40
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab
-  moving_average: 5
+  moving_average: 1
   verbosity: *verbosity
   test_dir: # leave empty for default behavior - output to the config's dir
 
 # =========== environment =============
 environment:
   episode_max_steps: 100
+  food_reward: 10.
   seed: *seed
-
   generator:
-    shape_xy: [8, 8]
+    shape_xy: [10, 10]
     obstacle_density: .25
-
-  food_reward: 4.
   move_dynamics:
-    action_cost: -.05
+    action_cost: -.1
     action_weight:
       stay: .3
       move: 1.
-
   state_encoder:
     bucket_size: 4
 
@@ -41,7 +37,7 @@ environment:
 agent:
   state_sp:
     <<: *default_spatial_pooler_params
-    output_size: 400
+    output_size: 200
     output_dilation_ratio:
     potential_synapses_ratio: .8
     sparsity: .02
@@ -55,7 +51,7 @@ agent:
 
   sa_sp:
     <<: *default_spatial_pooler_params
-    output_size: 600
+    output_size: 300
     output_dilation_ratio:
     potential_synapses_ratio: .8
     sparsity: .02

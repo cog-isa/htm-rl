@@ -20,7 +20,7 @@ class ObstacleGenerator:
 
     def add(self, state: EnvironmentState):
         height, width = state.shape
-        rnd = np.random.default_rng(seed=state.seed)
+        rng = np.random.default_rng(seed=state.seed)
 
         n_cells = state.n_cells
         n_required_obstacles = int((1. - self.density) * n_cells)
@@ -31,14 +31,14 @@ class ObstacleGenerator:
         p_change_cell = n_cells ** -.25
         p_move_forward = 1. - n_cells ** -.375
 
-        i, j = self._centered_rand2d(height, width, rnd)
-        view_direction = rnd.integers(4)
+        i, j = self._centered_rand2d(height, width, rng)
+        view_direction = rng.integers(4)
         clear_path_mask[i][j] = True
         n_obstacles = 0
 
         while n_obstacles < n_required_obstacles:
             moved_forward = False
-            if rnd.random() < p_move_forward:
+            if rng.random() < p_move_forward:
                 _i, _j = self._try_move_forward(i, j, view_direction)
                 if not clear_path_mask[_i][_j]:
                     i, j = _i, _j
@@ -47,11 +47,11 @@ class ObstacleGenerator:
                     moved_forward = True
 
             if not moved_forward:
-                view_direction = self._turn(view_direction, rnd)
+                view_direction = self._turn(view_direction, rng)
 
-            if rnd.random() < p_change_cell:
+            if rng.random() < p_change_cell:
                 i, j, cell_flatten_index = self._choose_rnd_cell(
-                    clear_path_mask, non_visited_neighbors, rnd
+                    clear_path_mask, non_visited_neighbors, rng
                 )
 
         obstacle_mask = ~clear_path_mask
