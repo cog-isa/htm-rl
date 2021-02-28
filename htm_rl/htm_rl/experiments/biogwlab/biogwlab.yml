@@ -18,6 +18,7 @@ environment:
     shape_xy: [7, 7]
     seed: *seed
     obstacle_density: .25
+    view_direction_enabled: False
 
     food:
       reward: 20.
@@ -29,6 +30,10 @@ environment:
         turn: .5
         move: 1.
 
+    rendering:
+      render_mode: agent
+      bucket_size: 3
+
   actions:
     - stay
     - move forward
@@ -38,8 +43,6 @@ environment:
     - move down
     - move left
     - move up
-  state_encoder:
-    bucket_size: 3
 
 # =========== ucb agent =================
 .default_spatial_pooler_params: &default_spatial_pooler_params
