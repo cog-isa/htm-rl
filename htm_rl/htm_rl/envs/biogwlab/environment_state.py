@@ -21,7 +21,7 @@ class EnvironmentState:
     food_mask: np.ndarray
     n_foods: int
     agent_position: Tuple[int, int]
-    agent_view_direction: int
+    agent_view_direction: Optional[int]
     episode_step: int
     step_reward: float
 
@@ -49,6 +49,8 @@ class EnvironmentState:
     def observe(self):
         reward = self.step_reward
         obs = self._flatten_position(self.agent_position)
+        if self.agent_view_direction is not None:
+            obs = obs, self.agent_view_direction
         is_first = self.episode_step == 0
         return reward, obs, is_first
 
@@ -198,8 +200,9 @@ class EnvironmentState:
         self.n_foods = n_foods
         self.food_reward = reward
 
-    def spawn_agent(self):
+    def spawn_agent(self, agent_view_enabled: bool):
         rnd = np.random.default_rng(self.seed)
+        rnd.integers(1000, size=5)
 
         available_positions_mask = ~self.obstacle_mask
         available_positions_fl = np.flatnonzero(available_positions_mask)
@@ -207,7 +210,9 @@ class EnvironmentState:
         position = self._unflatten_position(position_fl)
         self.agent_position = position
 
-        self.agent_view_direction = rnd.choice(4)
+        self.agent_view_direction = None
+        if agent_view_enabled:
+            self.agent_view_direction = rnd.choice(4)
 
     def add_action_costs(self, action_cost: float, action_weight: Dict[str, float]):
         self.action_cost = action_cost
@@ -249,12 +254,13 @@ class EnvironmentState:
             shape_xy: Tuple[int, int], seed: int,
             obstacle_density: float,
             move_dynamics: Dict,
+            agent_view_enabled: bool,
             **environment
     ):
         state = EnvironmentState(shape_xy=shape_xy, seed=seed)
         state.generate_obstacles(obstacle_density)
         state.generate_food(**environment['food'])
-        state.spawn_agent()
+        state.spawn_agent(agent_view_enabled)
         state.add_action_costs(**move_dynamics)
         return state
 

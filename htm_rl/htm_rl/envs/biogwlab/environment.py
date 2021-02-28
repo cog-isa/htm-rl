@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from htm_rl.common.sdr_encoders import IntBucketEncoder
+from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.environment_state import EnvironmentState
 
@@ -12,6 +12,7 @@ class BioGwLabEnvironment:
         'move forward', 'turn left', 'turn right'
     ]
 
+    output_sdr_size: int
     state: EnvironmentState
 
     _initial_state: EnvironmentState
@@ -31,16 +32,37 @@ class BioGwLabEnvironment:
             actions = self.supported_actions
 
         self._actions = actions
+        agent_view_enabled = self.is_agent_view_enabled(self._actions)
 
-        self._initial_state = EnvironmentState.make(**environment)
+        self._initial_state = EnvironmentState.make(
+            agent_view_enabled=agent_view_enabled,
+            **environment
+        )
         self.state = self._initial_state.make_copy()
-        self._state_encoder = IntBucketEncoder(n_values=self.state.n_cells, **state_encoder)
+        self._position_encoder = IntBucketEncoder(n_values=self.state.n_cells, **state_encoder)
+        if agent_view_enabled:
+            self._view_direction_encoder = IntBucketEncoder(n_values=4, **state_encoder)
+            self._sdr_concatenator = SdrConcatenator([
+                self._position_encoder, self._view_direction_encoder
+            ])
+            self.output_sdr_size = self._sdr_concatenator.output_sdr_size
+        else:
+            self.output_sdr_size = self._position_encoder.output_sdr_size
 
         self._episode_max_steps = isnone(episode_max_steps, 2 * self.state.n_cells)
 
     def observe(self):
-        reward, position_fl, is_first = self.state.observe()
-        obs = self._state_encoder.encode(position_fl)
+        reward, obs, is_first = self.state.observe()
+        if isinstance(obs, tuple):
+            position_fl, view_direction = obs
+            position = self._position_encoder.encode(position_fl)
+            view_direction = self._view_direction_encoder.encode(view_direction)
+            obs = self._sdr_concatenator.concatenate(position, view_direction)
+        else:
+            position_fl = obs
+            position = self._position_encoder.encode(position_fl)
+            obs = position
+
         return reward, obs, is_first
 
     def act(self, action):
@@ -61,13 +83,14 @@ class BioGwLabEnvironment:
     def n_actions(self):
         return len(self._actions)
 
-    @property
-    def output_sdr_size(self):
-        return self._state_encoder.output_sdr_size
-
     def _reset(self):
         """ Resets environment."""
         self.state = self._initial_state.make_copy()
+
+    @classmethod
+    def is_agent_view_enabled(cls, actions):
+        agent_view_dependent_actions = {'move forward', 'turn left', 'turn right'}
+        return agent_view_dependent_actions & set(actions)
 
     @classmethod
     def ensure_all_actions_supported(cls, actions):
