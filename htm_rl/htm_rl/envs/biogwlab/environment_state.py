@@ -36,12 +36,11 @@ class EnvironmentState:
     output_sdr_size: int
 
     _obstacle_generator: ObstacleGenerator
-    view_direction_enabled: bool
     _render_mode: str
     _renderer: Union['AgentPositionEncoder']
 
     def __init__(
-            self, shape_xy: Tuple[int, int], seed: int, view_direction_enabled: bool,
+            self, shape_xy: Tuple[int, int], seed: int,
     ):
         # convert from x,y to i,j
         width, height = shape_xy
@@ -51,8 +50,6 @@ class EnvironmentState:
         self.seed = seed
         self.episode_step = 0
         self.step_reward = 0
-
-        self.view_direction_enabled = view_direction_enabled
 
     def make_copy(self):
         env = copy(self)
@@ -160,13 +157,13 @@ class EnvironmentState:
         self.action_cost = action_cost
         self.action_weight = action_weight
 
-    def set_rendering(self, view_direction_enabled, render_mode: str = None, **renderer):
+    def set_rendering(self, render_mode=None, include_view_direction=False, **renderer):
         self._render_mode = isnone(render_mode, "agent")
 
         if render_mode == "agent":
             self._renderer = AgentPositionEncoder(
                 n_positions=self.n_cells, n_directions=len(MOVE_DIRECTIONS),
-                view_direction_enabled=view_direction_enabled,
+                include_view_direction=include_view_direction,
                 **renderer
             )
             self.output_sdr_size = self._renderer.output_sdr_size
@@ -189,11 +186,10 @@ class EnvironmentState:
             shape_xy: Tuple[int, int], seed: int,
             obstacle_density: float,
             action_costs: Dict,
-            view_direction_enabled: bool = True,
             **environment
     ):
         state = EnvironmentState(
-            shape_xy=shape_xy, seed=seed, view_direction_enabled=view_direction_enabled
+            shape_xy=shape_xy, seed=seed
         )
         state.add_action_costs(**action_costs)
         state.set_obstacle_generator(obstacle_density=obstacle_density)
@@ -201,6 +197,6 @@ class EnvironmentState:
         state.generate_obstacles()
         state.generate_food(**environment['food'])
 
-        state.set_rendering(view_direction_enabled, **environment['rendering'])
+        state.set_rendering(**environment['rendering'])
         state.spawn_agent()
         return state

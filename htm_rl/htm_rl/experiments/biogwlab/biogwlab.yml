@@ -18,7 +18,6 @@ environment:
     shape_xy: [7, 7]
     seed: *seed
     obstacle_density: .25
-    view_direction_enabled: False
 
     food:
       reward: 20.
@@ -32,13 +31,18 @@ environment:
 
     rendering:
       render_mode: agent
+      include_view_direction: False
       bucket_size: 3
+
+#    rendering:
+#      render_mode:
+#      bucket_size: 3
 
   actions:
     - stay
-    - move forward
-    - turn right
-    - turn left
+#    - move forward
+#    - turn right
+#    - turn left
     - move right
     - move down
     - move left
