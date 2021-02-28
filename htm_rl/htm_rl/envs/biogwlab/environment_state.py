@@ -3,6 +3,7 @@ from typing import Tuple, Optional, Dict, Union
 
 import numpy as np
 
+from htm_rl.common.plot_utils import plot_grid_image
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.agent_position_encoder import AgentPositionEncoder
 from htm_rl.envs.biogwlab.generation.obstacles import ObstacleGenerator
@@ -60,7 +61,7 @@ class EnvironmentState:
 
     def observe(self):
         reward = self.step_reward
-        obs = self._get_observation()
+        obs = self.render()
         is_first = self.episode_step == 0
         return reward, obs, is_first
 
@@ -170,11 +171,18 @@ class EnvironmentState:
             )
             self.output_sdr_size = self._renderer.output_sdr_size
 
-    def _get_observation(self):
+    def render(self):
         if self._render_mode == "agent":
             position_fl = self._flatten_position(self.agent_position)
             state = (position_fl, self.agent_view_direction)
             return self._renderer.encode(state)
+
+    def render_rgb(self):
+        img = np.zeros(self.shape, dtype=np.int8)
+        img[self.obstacle_mask] = -2
+        img[self.food_mask] = 2
+        img[self.agent_position] = 4
+        plot_grid_image(img)
 
     @staticmethod
     def make(
