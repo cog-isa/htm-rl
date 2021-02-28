@@ -12,7 +12,7 @@ run_results_processor: !RunResultsProcessor
 
 # =========== environment =============
 environment:
-  episode_max_steps: 200
+  episode_max_steps: 40
 
   environment:
     shape_xy: [7, 7]
@@ -22,12 +22,13 @@ environment:
     food:
       reward: 20.
 
-    move_dynamics:
+    action_costs:
       action_cost: -.1
       action_weight:
         stay: .3
         turn: .5
         move: 1.
+
   actions:
     - stay
     - move forward
