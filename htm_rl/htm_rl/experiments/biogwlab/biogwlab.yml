@@ -13,16 +13,21 @@ run_results_processor: !RunResultsProcessor
 # =========== environment =============
 environment:
   episode_max_steps: 100
-  food_reward: 10.
-  seed: *seed
-  generator:
+
+  environment:
     shape_xy: [10, 10]
+    seed: *seed
     obstacle_density: .25
-  move_dynamics:
-    action_cost: -.1
-    action_weight:
-      stay: .3
-      move: 1.
+
+    food:
+      reward: 10.
+
+    move_dynamics:
+      action_cost: -.1
+      action_weight:
+        stay: .3
+        move: 1.
+
   state_encoder:
     bucket_size: 4
 

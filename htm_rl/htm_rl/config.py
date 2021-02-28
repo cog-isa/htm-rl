@@ -1,9 +1,7 @@
-import random
 from inspect import getattr_static
 from pathlib import Path
 from pprint import pprint
 
-import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
 from htm_rl.agent.train_eval import RunResultsProcessor
@@ -22,7 +20,6 @@ def read_config(file_path: Path, verbose=False):
 
 def register_classes(yaml: YAML):
     classes = [
-        RandomSeedSetter,
         RunResultsProcessor,
         BioGwLabEnvGenerator,
         UcbExperimentRunner,
