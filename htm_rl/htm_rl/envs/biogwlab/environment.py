@@ -6,7 +6,11 @@ from htm_rl.envs.biogwlab.environment_state import EnvironmentState
 
 
 class BioGwLabEnvironment:
-    supported_actions = ['stay', 'move left', 'move up', 'move right', 'move down']
+    supported_actions = [
+        'stay',
+        'move left', 'move up', 'move right', 'move down',
+        'move forward', 'turn left', 'turn right'
+    ]
 
     state: EnvironmentState
 

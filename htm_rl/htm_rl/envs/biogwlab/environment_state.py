@@ -12,6 +12,7 @@ class EnvironmentState:
         'right': (0, 1), 'down': (1, 0), 'left': (0, -1), 'up': (-1, 0)
     }
     directions_order = ['right', 'down', 'left', 'up']
+    turn_directions = {'right': 1, 'left': -1}
 
     seed: int
     shape: Tuple[int, int]
@@ -20,8 +21,9 @@ class EnvironmentState:
     food_mask: np.ndarray
     n_foods: int
     agent_position: Tuple[int, int]
+    agent_view_direction: int
     episode_step: int
-    reward: float
+    step_reward: float
 
     food_reward: float
     action_cost: float
@@ -37,7 +39,7 @@ class EnvironmentState:
 
         self.seed = seed
         self.episode_step = 0
-        self.reward = 0
+        self.step_reward = 0
 
     def make_copy(self):
         env = copy(self)
@@ -45,21 +47,31 @@ class EnvironmentState:
         return env
 
     def observe(self):
-        reward = self.reward
+        reward = self.step_reward
         obs = self._flatten_position(self.agent_position)
         is_first = self.episode_step == 0
         return reward, obs, is_first
 
-    def act(self, action):
+    def act(self, action: str):
+        reward = 0
         if action == 'stay':
-            self.agent_position, success, reward = self.stay()
+            success, reward = self.stay()
+        elif action.startswith('turn '):
+            turn_direction = action[5:]  # cut "turn "
+            turn_direction = self.turn_directions[turn_direction]
+
+            self.agent_view_direction, reward = self.turn(turn_direction)
         else:
             direction = action[5:]  # cut "move "
+            if direction == 'forward':
+                # move direction is view direction
+                direction = self.directions_order[self.agent_view_direction]
+
             direction = self.directions[direction]
             self.agent_position, success, reward = self.move(direction)
 
         reward += self._collect()
-        self.reward = reward
+        self.step_reward = reward
         self.episode_step += 1
 
     def _collect(self):
@@ -133,11 +145,6 @@ class EnvironmentState:
         j = clip(j, self.shape[1])
         return i, j
 
-    @staticmethod
-    def _turn(view_direction, rnd):
-        turn_direction = int(np.sign(.5 - rnd.random()))
-        return (view_direction + turn_direction + 4) % 4
-
     def _choose_rnd_cell(
             self, gridworld: np.ndarray, non_visited_neighbors: np.ndarray,
             rnd: np.random.Generator
@@ -198,8 +205,9 @@ class EnvironmentState:
         available_positions_fl = np.flatnonzero(available_positions_mask)
         position_fl = rnd.choice(available_positions_fl)
         position = self._unflatten_position(position_fl)
-
         self.agent_position = position
+
+        self.agent_view_direction = rnd.choice(4)
 
     def add_action_costs(self, action_cost: float, action_weight: Dict[str, float]):
         self.action_cost = action_cost
@@ -215,7 +223,7 @@ class EnvironmentState:
     def stay(self):
         success = True
         reward = self.action_weight['stay'] * self.action_cost
-        return self.agent_position, success, reward
+        return success, reward
 
     def move(self, direction):
         new_position, success = self._try_move(direction)
@@ -249,6 +257,16 @@ class EnvironmentState:
         state.spawn_agent()
         state.add_action_costs(**move_dynamics)
         return state
+
+    @staticmethod
+    def _turn(view_direction, rnd):
+        turn_direction = int(np.sign(.5 - rnd.random()))
+        return (view_direction + turn_direction + 4) % 4
+
+    def turn(self, turn_direction):
+        new_direction = (self.agent_view_direction + turn_direction + 4) % 4
+        reward = self.action_weight['turn'] * self.action_cost
+        return new_direction, reward
 
 
 class MoveDynamics:
