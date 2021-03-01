@@ -3,12 +3,13 @@ from typing import Tuple, Optional, Dict, Union, List
 
 import numpy as np
 
-from htm_rl.common.plot_utils import plot_grid_image
+from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator, IntArrayEncoder
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.agent_position_encoder import AgentPositionEncoder
 from htm_rl.envs.biogwlab.generation.obstacles import ObstacleGenerator
 from htm_rl.envs.biogwlab.move_dynamics import MOVE_DIRECTIONS, DIRECTIONS_ORDER, TURN_DIRECTIONS, MoveDynamics
+from htm_rl.envs.biogwlab.view_clipper import ViewClipper
 
 
 class EnvironmentState:
@@ -37,10 +38,12 @@ class EnvironmentState:
     output_sdr_size: int
 
     _obstacle_generator: ObstacleGenerator
+
     _render: List[str]
     _encoders: Dict
     _cached_renderings: Dict
     _encoding_sdr_concatenator: SdrConcatenator
+    _view_clipper: ViewClipper
 
     def __init__(
             self, shape_xy: Tuple[int, int], seed: int,
@@ -160,10 +163,19 @@ class EnvironmentState:
         self.action_cost = action_cost
         self.action_weight = action_weight
 
-    def set_rendering(self, render: List[str], **renderer):
+    def set_rendering(
+            self, render: List[str],
+            view_rectangle: Tuple = None,
+            **renderer
+    ):
         self._render = render
         self._encoders = dict()
         self._cached_renderings = dict()
+
+        view_shape = self.shape
+        if view_rectangle is not None:
+            self._view_clipper = ViewClipper(self.shape, view_rectangle)
+            view_shape = self._view_clipper.view_shape
 
         for data_name in render:
             if data_name == 'position':
@@ -171,9 +183,9 @@ class EnvironmentState:
             elif data_name == 'direction':
                 self._encoders['direction'] = IntBucketEncoder(n_values=len(MOVE_DIRECTIONS), **renderer)
             elif data_name == 'obstacles':
-                self._encoders['obstacles'] = IntArrayEncoder(shape=self.shape, n_types=1)
+                self._encoders['obstacles'] = IntArrayEncoder(shape=view_shape, n_types=1)
             elif data_name == 'food':
-                self._encoders['food'] = IntArrayEncoder(shape=self.shape, n_types=1)
+                self._encoders['food'] = IntArrayEncoder(shape=view_shape, n_types=1)
 
         if len(self._render) == 1:
             encoder = self._encoders[self._render[0]]
@@ -185,6 +197,16 @@ class EnvironmentState:
 
     def render(self):
         observation = []
+
+        if self._view_clipper is not None:
+            abs_indices, view_indices = self._view_clipper.clip(
+                self.agent_position, self.agent_view_direction
+            )
+            # print(abs_indices)
+            # print(view_indices)
+            abs_indices = abs_indices.flatten()
+            view_indices = view_indices.flatten()
+
         for data_name in self._render:
             encoded_data = None
             if data_name in self._cached_renderings:
@@ -195,10 +217,32 @@ class EnvironmentState:
             elif data_name == 'direction':
                 encoded_data = self._encoders[data_name].encode(self.agent_view_direction)
             elif data_name == 'obstacles':
-                encoded_data = self._encoders[data_name].encode(self.obstacle_mask, self.obstacle_mask)
-                self._cached_renderings[data_name] = encoded_data
+                if self._view_clipper is not None:
+                    # print(self.agent_position, DIRECTIONS_ORDER[self.agent_view_direction])
+                    obstacle_mask = np.ones(self._view_clipper.view_shape, dtype=np.bool).flatten()
+                    obstacle_mask[view_indices] = self.obstacle_mask.flatten()[abs_indices]
+
+                    obstacle_map = np.zeros(self._view_clipper.view_shape, dtype=np.int).flatten()
+                    obstacle_map[view_indices] = ~self.obstacle_mask.flatten()[abs_indices]
+                    # img = obstacle_mask.reshape(self._view_clipper.view_shape)
+                    # img = np.flip(img, (0, 1))
+                    # plot_grid_images([self.render_rgb(), img])
+                    # print(obstacle_mask.reshape(self._view_clipper.view_shape))
+                    encoded_data = self._encoders[data_name].encode(obstacle_map, obstacle_mask)
+                    # print(encoded_data)
+                else:
+                    encoded_data = self._encoders[data_name].encode(self.obstacle_mask, self.obstacle_mask)
+                    self._cached_renderings[data_name] = encoded_data
             elif data_name == 'food':
-                encoded_data = self._encoders['food'].encode(self.food_mask, self.food_mask)
+                if self._view_clipper is not None:
+                    food_mask = np.ones(self._view_clipper.view_shape, dtype=np.bool).flatten()
+                    food_mask[view_indices] = self.food_mask.flatten()[abs_indices]
+
+                    food_map = np.zeros(self._view_clipper.view_shape, dtype=np.int).flatten()
+                    food_map[view_indices] = ~self.food_mask.flatten()[abs_indices]
+                    encoded_data = self._encoders[data_name].encode(food_map, food_mask)
+                else:
+                    encoded_data = self._encoders[data_name].encode(self.food_mask, self.food_mask)
 
             observation.append(encoded_data)
 
@@ -212,7 +256,7 @@ class EnvironmentState:
         img[self.obstacle_mask] = -2
         img[self.food_mask] = 2
         img[self.agent_position] = 4
-        plot_grid_image(img)
+        return img
 
     @staticmethod
     def make(

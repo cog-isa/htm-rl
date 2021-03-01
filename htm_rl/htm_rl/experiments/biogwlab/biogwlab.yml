@@ -2,7 +2,7 @@ verbosity: &verbosity 1
 seed: &seed 8713
 
 experiment: !UcbExperimentRunner
-  n_episodes: 100
+  n_episodes: 200
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab
@@ -12,7 +12,7 @@ run_results_processor: !RunResultsProcessor
 
 # =========== environment =============
 environment:
-  episode_max_steps: 40
+  episode_max_steps: 200
 
   environment:
     shape_xy: [7, 7]
@@ -30,11 +30,12 @@ environment:
         move: 1.
 
     rendering:
+      view_rectangle: [[-2, -2], [2, 2]]
       render:
         - obstacles
         - food
-        - position
-        - direction
+#        - position
+#        - direction
       bucket_size: 3
 
   actions:

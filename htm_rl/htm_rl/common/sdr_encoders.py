@@ -112,6 +112,8 @@ class IntArrayEncoder:
         if x is None:
             return np.array([], dtype=np.int)
 
+        # print('x', x)
+        # print('mask', mask)
         x = x.flatten()
         indices = np.flatnonzero(mask)
         return indices * self.n_types + x[indices]
@@ -146,5 +148,4 @@ class SdrConcatenator:
             r = r + len(sparse_sdrs[i])
             result[l:r] = sparse_sdrs[i]
             result[l:r] += self._shifts[i - 1]
-
         return result
