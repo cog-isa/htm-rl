@@ -2,7 +2,7 @@ verbosity: &verbosity 1
 seed: &seed 8713
 
 experiment: !UcbExperimentRunner
-  n_episodes: 200
+  n_episodes: 40
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab
@@ -15,24 +15,33 @@ environment:
   episode_max_steps: 200
 
   environment:
-    shape_xy: [7, 7]
+    shape_xy: [8, 8]
     seed: *seed
     obstacle_density: .25
 
+    areas:
+      n_types: 2
+
     food:
-      reward: 20.
+#      n_types: 1
+#      reward: 20.
+      food_types: [0, 1, 2, 3]
+      rewards: [20., -10., 100., -200.]
+      n_items: 6
+      n_foods_to_find: 2
 
     action_costs:
-      action_cost: -.1
+      action_cost: -.01
       action_weight:
         stay: .3
         turn: .5
         move: 1.
 
     rendering:
-      view_rectangle: [[-2, -2], [2, 2]]
+      view_rectangle: [[-3, -3], [3, 3]]
       render:
         - obstacles
+        - area
         - food
 #        - position
 #        - direction
@@ -58,7 +67,7 @@ agent:
   state_sp:
     <<: *default_spatial_pooler_params
     output_size: 200
-    output_dilation_ratio:
+#    output_dilation_ratio: 1.4
     potential_synapses_ratio: .8
     sparsity: .05
     boost_strength: 4
@@ -72,9 +81,9 @@ agent:
   sa_sp:
     <<: *default_spatial_pooler_params
     output_size: 300
-    output_dilation_ratio:
+#    output_dilation_ratio: 1.4
     potential_synapses_ratio: .8
-    sparsity: .03
+    sparsity: .04
     boost_strength: 4
     boost_sliding_window: 1000
     expected_normal_overlap_frequency: .001

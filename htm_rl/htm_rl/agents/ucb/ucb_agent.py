@@ -3,7 +3,7 @@ from typing import Dict
 from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
-from htm_rl.common.utils import trace, timed
+from htm_rl.common.utils import timed
 from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
@@ -30,11 +30,9 @@ class UcbAgent:
         self._action_encoder = IntBucketEncoder(n_values=env.n_actions, **action_encoder)
         self._sa_concatenator = SdrConcatenator(input_sources=[
             self._state_sp,
-            # env,
             self._action_encoder
         ])
         self._sa_sp = SpatialPooler(input_source=self._sa_concatenator, **sa_sp)
-        # self._sa_sp = SpatialPooler(input_source=self._sa_concatenator, **sa_sp)
 
         self._ucb_actor_critic = UcbActorCritic(
             cells_sdr_size=self._sa_sp.output_sdr_size,
