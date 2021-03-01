@@ -39,6 +39,7 @@ class EnvironmentState:
     _obstacle_generator: ObstacleGenerator
     _render: List[str]
     _encoders: Dict
+    _cached_renderings: Dict
     _encoding_sdr_concatenator: SdrConcatenator
 
     def __init__(
@@ -162,6 +163,7 @@ class EnvironmentState:
     def set_rendering(self, render: List[str], **renderer):
         self._render = render
         self._encoders = dict()
+        self._cached_renderings = dict()
 
         for data_name in render:
             if data_name == 'position':
@@ -185,13 +187,16 @@ class EnvironmentState:
         observation = []
         for data_name in self._render:
             encoded_data = None
-            if data_name == 'position':
+            if data_name in self._cached_renderings:
+                encoded_data = self._cached_renderings[data_name]
+            elif data_name == 'position':
                 position_fl = self._flatten_position(self.agent_position)
-                encoded_data = self._encoders['position'].encode(position_fl)
+                encoded_data = self._encoders[data_name].encode(position_fl)
             elif data_name == 'direction':
-                encoded_data = self._encoders['direction'].encode(self.agent_view_direction)
+                encoded_data = self._encoders[data_name].encode(self.agent_view_direction)
             elif data_name == 'obstacles':
-                encoded_data = self._encoders['obstacles'].encode(self.obstacle_mask, self.obstacle_mask)
+                encoded_data = self._encoders[data_name].encode(self.obstacle_mask, self.obstacle_mask)
+                self._cached_renderings[data_name] = encoded_data
             elif data_name == 'food':
                 encoded_data = self._encoders['food'].encode(self.food_mask, self.food_mask)
 
