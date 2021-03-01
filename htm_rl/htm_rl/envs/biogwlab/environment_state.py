@@ -1,9 +1,10 @@
 from copy import copy
-from typing import Tuple, Optional, Dict, Union
+from typing import Tuple, Optional, Dict, Union, List
 
 import numpy as np
 
 from htm_rl.common.plot_utils import plot_grid_image
+from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator, IntArrayEncoder
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.agent_position_encoder import AgentPositionEncoder
 from htm_rl.envs.biogwlab.generation.obstacles import ObstacleGenerator
@@ -36,8 +37,9 @@ class EnvironmentState:
     output_sdr_size: int
 
     _obstacle_generator: ObstacleGenerator
-    _render_mode: str
-    _renderer: Union['AgentPositionEncoder']
+    _render: List[str]
+    _encoders: Dict
+    _encoding_sdr_concatenator: SdrConcatenator
 
     def __init__(
             self, shape_xy: Tuple[int, int], seed: int,
@@ -157,22 +159,48 @@ class EnvironmentState:
         self.action_cost = action_cost
         self.action_weight = action_weight
 
-    def set_rendering(self, render_mode=None, include_view_direction=False, **renderer):
-        self._render_mode = isnone(render_mode, "agent")
+    def set_rendering(self, render: List[str], **renderer):
+        self._render = render
+        self._encoders = dict()
 
-        if render_mode == "agent":
-            self._renderer = AgentPositionEncoder(
-                n_positions=self.n_cells, n_directions=len(MOVE_DIRECTIONS),
-                include_view_direction=include_view_direction,
-                **renderer
-            )
-            self.output_sdr_size = self._renderer.output_sdr_size
+        for data_name in render:
+            if data_name == 'position':
+                self._encoders['position'] = IntBucketEncoder(n_values=self.n_cells, **renderer)
+            elif data_name == 'direction':
+                self._encoders['direction'] = IntBucketEncoder(n_values=len(MOVE_DIRECTIONS), **renderer)
+            elif data_name == 'obstacles':
+                self._encoders['obstacles'] = IntArrayEncoder(shape=self.shape, n_types=1)
+            elif data_name == 'food':
+                self._encoders['food'] = IntArrayEncoder(shape=self.shape, n_types=1)
+
+        if len(self._render) == 1:
+            encoder = self._encoders[self._render[0]]
+            self.output_sdr_size = encoder.output_sdr_size
+        else:
+            encoders = [self._encoders[data_name] for data_name in self._render]
+            self._encoding_sdr_concatenator = SdrConcatenator(encoders)
+            self.output_sdr_size = self._encoding_sdr_concatenator.output_sdr_size
 
     def render(self):
-        if self._render_mode == "agent":
-            position_fl = self._flatten_position(self.agent_position)
-            state = (position_fl, self.agent_view_direction)
-            return self._renderer.encode(state)
+        observation = []
+        for data_name in self._render:
+            encoded_data = None
+            if data_name == 'position':
+                position_fl = self._flatten_position(self.agent_position)
+                encoded_data = self._encoders['position'].encode(position_fl)
+            elif data_name == 'direction':
+                encoded_data = self._encoders['direction'].encode(self.agent_view_direction)
+            elif data_name == 'obstacles':
+                encoded_data = self._encoders['obstacles'].encode(self.obstacle_mask, self.obstacle_mask)
+            elif data_name == 'food':
+                encoded_data = self._encoders['food'].encode(self.food_mask, self.food_mask)
+
+            observation.append(encoded_data)
+
+        if len(observation) == 1:
+            return observation[0]
+        else:
+            return self._encoding_sdr_concatenator.concatenate(*observation)
 
     def render_rgb(self):
         img = np.zeros(self.shape, dtype=np.int8)

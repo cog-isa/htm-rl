@@ -1,4 +1,4 @@
-from typing import List, Any, Sequence
+from typing import List, Any, Sequence, Tuple
 
 import numpy as np
 
@@ -96,6 +96,27 @@ class IntRandomEncoder:
         return self._encoding_map[x]
 
 
+class IntArrayEncoder:
+    n_types: int
+    output_sdr_size: int
+
+    def __init__(
+            self, shape: Tuple[int,...], n_types: int,
+            bucket_size: int = None, buckets_step: int = None
+    ):
+        n_values = np.prod(shape)
+        self.n_types = n_types
+        self.output_sdr_size = self.n_types * n_values
+
+    def encode(self, x: np.ndarray, mask: np.ndarray):
+        if x is None:
+            return np.array([], dtype=np.int)
+
+        x = x.flatten()
+        indices = np.flatnonzero(mask)
+        return indices * self.n_types + x[indices]
+
+
 class SdrConcatenator:
     """Concatenates sparse SDRs."""
     output_sdr_size: int
@@ -122,7 +143,7 @@ class SdrConcatenator:
         # apply corresponding shifts to the rest inputs
         for i in range(1, len(sparse_sdrs)):
             l = r
-            r = r + len(sparse_sdrs[1])
+            r = r + len(sparse_sdrs[i])
             result[l:r] = sparse_sdrs[i]
             result[l:r] += self._shifts[i - 1]
 

@@ -30,19 +30,18 @@ environment:
         move: 1.
 
     rendering:
-      render_mode: agent
-      include_view_direction: False
+      render:
+        - obstacles
+        - food
+        - position
+        - direction
       bucket_size: 3
-
-#    rendering:
-#      render_mode:
-#      bucket_size: 3
 
   actions:
     - stay
-#    - move forward
-#    - turn right
-#    - turn left
+    - move forward
+    - turn right
+    - turn left
     - move right
     - move down
     - move left
