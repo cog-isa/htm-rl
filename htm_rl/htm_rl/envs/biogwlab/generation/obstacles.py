@@ -3,23 +3,24 @@ from typing import Tuple
 import numpy as np
 from numpy.random._generator import Generator
 
+from htm_rl.common.sdr_encoders import IntArrayEncoder
 from htm_rl.envs.biogwlab.move_dynamics import MOVE_DIRECTIONS, DIRECTIONS_ORDER, MoveDynamics
 
 
 class ObstacleGenerator:
-    obstacle_density: float
+    density: float
     shape: Tuple[int, int]
     rng: Generator
 
-    def __init__(self, obstacle_density: float, shape, seed):
-        self.obstacle_density = obstacle_density
+    def __init__(self, density: float, shape, seed):
+        self.density = density
         self.shape = shape
         self.rng = np.random.default_rng(seed=seed)
 
     def generate(self):
         height, width = self.shape
         n_cells = height * width
-        n_required_obstacles = int((1. - self.obstacle_density) * n_cells)
+        n_required_obstacles = int((1. - self.density) * n_cells)
 
         obstacle_mask = np.zeros(self.shape, dtype=np.bool)
         non_visited_neighbors = np.empty_like(obstacle_mask, dtype=np.float)
@@ -109,3 +110,40 @@ class WallColorGenerator:
             )
         # trace_image(self.verbosity, 2, wall_colors + 1)
         return wall_colors, self.n_colors
+
+
+class Obstacles:
+    shape: Tuple[int, int]
+    view_shape: Tuple[int, int]
+
+    mask: np.ndarray
+    map: np.ndarray
+
+    _generator: ObstacleGenerator
+    _encoder: IntArrayEncoder
+
+    def __init__(self, shape, seed, **generator):
+        self.shape = shape
+        self._generator = ObstacleGenerator(shape=self.shape, seed=seed, **generator)
+
+    def generate(self):
+        self.mask = self._generator.generate()
+        self.map = (~self.mask).astype(np.int)
+
+    def set_renderer(self, view_shape):
+        self.view_shape = view_shape
+        self._encoder = IntArrayEncoder(shape=view_shape, n_types=1)
+        return self._encoder
+
+    def render(self, view_clip=None):
+        if view_clip is not None:
+            view_indices, abs_indices = view_clip
+
+            view_mask = np.ones(self.view_shape, dtype=np.bool).flatten()
+            view_mask[view_indices] = self.mask.flatten()[abs_indices]
+
+            view_map = np.zeros(self.view_shape, dtype=np.int).flatten()
+            view_map[view_indices] = self.map.flatten()[abs_indices]
+            return self._encoder.encode(view_map, view_mask)
+        else:
+            return self._encoder.encode(self.map)

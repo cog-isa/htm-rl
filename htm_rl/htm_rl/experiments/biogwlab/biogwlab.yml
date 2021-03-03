@@ -17,10 +17,12 @@ environment:
   environment:
     shape_xy: [8, 8]
     seed: *seed
-    obstacle_density: .25
 
     areas:
       n_types: 2
+
+    obstacles:
+      density: .25
 
     food:
 #      n_types: 1
