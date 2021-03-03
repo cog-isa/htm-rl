@@ -1,5 +1,5 @@
 from copy import copy
-from typing import Tuple, Optional, Dict, Union, List
+from typing import Tuple, Optional, Dict, List
 
 import numpy as np
 
@@ -8,7 +8,7 @@ from htm_rl.envs.biogwlab.generation.areas import Areas
 from htm_rl.envs.biogwlab.generation.food import Food
 from htm_rl.envs.biogwlab.generation.obstacles import Obstacles
 from htm_rl.envs.biogwlab.move_dynamics import (
-    MOVE_DIRECTIONS, DIRECTIONS_ORDER, TURN_DIRECTIONS, MoveDynamics
+    MOVE_DIRECTIONS, DIRECTIONS_ORDER, TURN_DIRECTIONS, MoveDynamics,
 )
 from htm_rl.envs.biogwlab.view_clipper import ViewClipper
 
@@ -32,7 +32,6 @@ class EnvironmentState:
     episode_step: int
     step_reward: float
 
-    food_rewards: Union[float, List[float]]
     action_cost: float
     action_weight: Dict[str, float]
 
@@ -42,7 +41,7 @@ class EnvironmentState:
     _encoders: Dict
     _cached_renderings: Dict
     _encoding_sdr_concatenator: SdrConcatenator
-    _view_clipper: ViewClipper
+    _view_clipper: Optional[ViewClipper]
 
     def __init__(
             self, shape_xy: Tuple[int, int], seed: int,
@@ -201,8 +200,6 @@ class EnvironmentState:
             abs_indices, view_indices = self._view_clipper.clip(
                 self.agent_position, self.agent_view_direction
             )
-            # print(abs_indices)
-            # print(view_indices)
             abs_indices = abs_indices.flatten()
             view_indices = view_indices.flatten()
             view_clip = view_indices, abs_indices
