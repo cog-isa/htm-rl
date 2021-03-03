@@ -46,7 +46,7 @@ def _get_rendering_buffer(xpos, ypos, w, h, zfix=0.0):
     ], np.float32)
 
 def _create_text_texture(bitmapArray):
-    height, width = bitmapArray._shape_xy
+    height, width = bitmapArray.shape
 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
     texture = glGenTextures(1)
