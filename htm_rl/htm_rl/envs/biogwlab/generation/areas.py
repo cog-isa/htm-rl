@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from htm_rl.common.sdr_encoders import IntArrayEncoder
+from htm_rl.common.utils import isnone
 
 
 class AreasGenerator:
@@ -71,9 +72,9 @@ class Areas:
     _generator: AreasGenerator
     _encoder: IntArrayEncoder
 
-    def __init__(self, shape, n_types, **generator):
+    def __init__(self, shape, n_types=None, **generator):
         self.shape = shape
-        self.n_types = n_types
+        self.n_types = isnone(n_types, 1)
         self._generator = AreasGenerator(shape=shape, n_types=n_types, **generator)
 
     def generate(self, seed):
@@ -83,6 +84,9 @@ class Areas:
             self.map = np.zeros(self.shape, dtype=np.int)
 
     def set_renderer(self, view_shape):
+        if self.n_types == 1:
+            return None
+
         self.view_shape = view_shape
         self._encoder = IntArrayEncoder(shape=view_shape, n_types=self.n_types)
         return self._encoder
