@@ -102,20 +102,19 @@ class IntArrayEncoder:
 
     def __init__(
             self, shape: Tuple[int,...], n_types: int,
+            # Keep for init interface compatibility with IntBucketEncoder
             bucket_size: int = None, buckets_step: int = None
     ):
         n_values = np.prod(shape)
         self.n_types = n_types
         self.output_sdr_size = self.n_types * n_values
 
-    def encode(self, x: np.ndarray, mask: np.ndarray):
-        if x is None:
-            return np.array([], dtype=np.int)
-
-        # print('x', x)
-        # print('mask', mask)
+    def encode(self, x: np.ndarray, mask: np.ndarray = None):
         x = x.flatten()
-        indices = np.flatnonzero(mask)
+        if mask is not None:
+            indices = np.flatnonzero(mask)
+        else:
+            indices = np.arange(x.size)
         return indices * self.n_types + x[indices]
 
 

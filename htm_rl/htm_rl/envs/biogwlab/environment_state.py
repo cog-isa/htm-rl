@@ -6,8 +6,7 @@ import numpy as np
 from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator, IntArrayEncoder
 from htm_rl.common.utils import isnone
-from htm_rl.envs.biogwlab.agent_position_encoder import AgentPositionEncoder
-from htm_rl.envs.biogwlab.generation.areas import AreasGenerator
+from htm_rl.envs.biogwlab.generation.areas import AreasGenerator, Areas
 from htm_rl.envs.biogwlab.generation.food import FoodGenerator
 from htm_rl.envs.biogwlab.generation.obstacles import ObstacleGenerator
 from htm_rl.envs.biogwlab.move_dynamics import MOVE_DIRECTIONS, DIRECTIONS_ORDER, TURN_DIRECTIONS, MoveDynamics
@@ -24,6 +23,7 @@ class EnvironmentState:
     seed: int
     shape: Tuple[int, int]
     n_cells: int
+    areas: Areas
     obstacle_mask: np.ndarray
 
     food_mask: np.ndarray
@@ -164,13 +164,8 @@ class EnvironmentState:
             n_positive_foods = n_items
         else:
             food_generator = FoodGenerator(food_types=food_types)
-            if self.n_area_types > 1:
-                areas_map = self.areas_map
-            else:
-                areas_map = (~self.obstacle_mask).astype(np.int8)
-
             self.food_items, self.food_map, self.food_mask, self.n_food_types = food_generator.generate(
-                areas_map=areas_map,
+                areas_map=self.areas.map,
                 obstacle_mask=self.obstacle_mask,
                 seed=self.seed,
                 n_foods=n_items
@@ -186,6 +181,7 @@ class EnvironmentState:
 
     def spawn_agent(self):
         rnd = np.random.default_rng(self.seed)
+        # HACK: to prevent spawning in food pos if there's just 1 food item of 1 type
         rnd.integers(1000, size=5)
 
         available_positions_mask = ~self.obstacle_mask
@@ -224,7 +220,7 @@ class EnvironmentState:
             elif data_name == 'food':
                 encoder = IntArrayEncoder(shape=view_shape, n_types=self.n_food_types)
             elif data_name == 'area':
-                encoder = IntArrayEncoder(shape=view_shape, n_types=self.n_area_types)
+                encoder = self.areas.set_renderer(view_shape)
             self._encoders[data_name] = encoder
 
         if len(self._render) == 1:
@@ -238,6 +234,7 @@ class EnvironmentState:
     def render(self):
         observation = []
 
+        view_clip = None
         if self._view_clipper is not None:
             abs_indices, view_indices = self._view_clipper.clip(
                 self.agent_position, self.agent_view_direction
@@ -246,6 +243,7 @@ class EnvironmentState:
             # print(view_indices)
             abs_indices = abs_indices.flatten()
             view_indices = view_indices.flatten()
+            view_clip = view_indices, abs_indices
 
         for data_name in self._render:
             encoded_data = None
@@ -285,25 +283,15 @@ class EnvironmentState:
                 else:
                     encoded_data = self._encoders[data_name].encode(self.food_mask, self.food_mask)
             elif data_name == 'area':
-                if self.n_area_types > 1:
-                    area_mask = np.ones(self._view_clipper.view_shape, dtype=np.bool).flatten()
-                    area_mask[view_indices] = self.obstacle_mask.flatten()[abs_indices]
+                encoded_data = self.areas.render(view_clip)
 
-                    area_map = np.zeros(self._view_clipper.view_shape, dtype=np.int).flatten()
-                    area_map[view_indices] = self.areas_map.flatten()[abs_indices]
-                    encoded_data = self._encoders[data_name].encode(area_map, area_mask)
-                else:
-                    continue
-
-            observation.append(encoded_data)
+            if encoded_data is not None:
+                observation.append(encoded_data)
 
         if len(observation) == 1:
             return observation[0]
         else:
             return self._encoding_sdr_concatenator.concatenate(*observation)
-
-    def set_areas_generator(self, **areas_generator):
-        self._areas_generator = AreasGenerator(shape=self.shape, **areas_generator)
 
     def render_rgb(self):
         img = np.zeros(self.shape, dtype=np.int8)
@@ -311,6 +299,12 @@ class EnvironmentState:
         img[self.food_mask] = 2
         img[self.agent_position] = 4
         return img
+
+    def set_areas_generator(self, **areas_generator):
+        self.areas = Areas(shape=self.shape, **areas_generator)
+
+    def generate_areas(self):
+        self.areas.generate(self.seed)
 
     @staticmethod
     def make(
@@ -334,10 +328,4 @@ class EnvironmentState:
         state.set_rendering(**environment['rendering'])
         state.spawn_agent()
         return state
-
-    def generate_areas(self):
-        if self._areas_generator is not None:
-            self.areas_map, self.n_area_types = self._areas_generator.generate(self.seed)
-        else:
-            self.n_area_types = 1
 

@@ -4,6 +4,8 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 
+from htm_rl.common.sdr_encoders import IntArrayEncoder
+
 
 class AreasGenerator:
     shape: Tuple[int, int]
@@ -17,7 +19,7 @@ class AreasGenerator:
         rng = np.random.default_rng(seed=seed)
         area_centers, area_types = self._spawn_area_centers(rng)
         areas_map = self._spawn_areas(area_centers, area_types)
-        return areas_map, self.n_types
+        return areas_map
 
     def _spawn_areas(self, area_centers, area_types):
         height, width = self.shape
@@ -57,3 +59,44 @@ class AreasGenerator:
 
         plt.imshow(area)
         plt.show()
+
+
+class Areas:
+    shape: Tuple[int, int]
+    view_shape: Tuple[int, int]
+
+    map: np.ndarray
+    n_types: int
+
+    _generator: AreasGenerator
+    _encoder: IntArrayEncoder
+
+    def __init__(self, shape, n_types, **generator):
+        self.shape = shape
+        self.n_types = n_types
+        self._generator = AreasGenerator(shape=shape, n_types=n_types, **generator)
+
+    def generate(self, seed):
+        if self.n_types > 1:
+            self.map = self._generator.generate(seed)
+        else:
+            self.map = np.zeros(self.shape, dtype=np.int)
+
+    def set_renderer(self, view_shape):
+        self.view_shape = view_shape
+        self._encoder = IntArrayEncoder(shape=view_shape, n_types=self.n_types)
+        return self._encoder
+
+    def render(self, view_clip=None):
+        if self.n_types == 1:
+            return None
+
+        if view_clip is not None:
+            view_indices, abs_indices = view_clip
+
+            area_map = np.zeros(self.view_shape, dtype=np.int).flatten()
+            area_map[view_indices] = self.map.flatten()[abs_indices]
+        else:
+            area_map = self.map
+
+        return self._encoder.encode(area_map)
