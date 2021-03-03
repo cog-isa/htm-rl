@@ -4,9 +4,9 @@ from typing import Tuple, Optional, Dict, List
 import numpy as np
 
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
-from htm_rl.envs.biogwlab.generation.areas import Areas
-from htm_rl.envs.biogwlab.generation.food import Food
-from htm_rl.envs.biogwlab.generation.obstacles import Obstacles
+from htm_rl.envs.biogwlab.areas import Areas
+from htm_rl.envs.biogwlab.food import Food
+from htm_rl.envs.biogwlab.obstacles import Obstacles
 from htm_rl.envs.biogwlab.move_dynamics import (
     MOVE_DIRECTIONS, DIRECTIONS_ORDER, TURN_DIRECTIONS, MoveDynamics,
 )
