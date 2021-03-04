@@ -1,6 +1,5 @@
 from typing import Dict, List
 
-from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.environment_state import EnvironmentState
 
