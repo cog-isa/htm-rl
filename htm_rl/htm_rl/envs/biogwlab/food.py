@@ -18,7 +18,7 @@ class Food:
     n_items: int
     n_foods_to_find: int
 
-    rewards: List[int]
+    rewards: np.ndarray
 
     _generator: FoodGenerator
     _encoder: IntArrayEncoder
@@ -36,7 +36,7 @@ class Food:
 
         food_types = isnone(food_types, [0])
         self.n_types = isnone(n_types, len(food_types))
-        self.rewards = isnone(rewards, [reward])
+        self.rewards = np.array(isnone(rewards, [reward]))
         self.n_items = n_items
         self.n_foods_to_find = n_foods_to_find
 
@@ -93,6 +93,14 @@ class Food:
         food_map = np.zeros(self.view_shape, dtype=np.int).flatten()
         food_map[view_indices] = self.map.flatten()[abs_indices]
         return self._encoder.encode(food_map, food_mask)
+
+    def render_rgb(self, img: np.ndarray):
+        norm_rewards = 5 * self.rewards[self.map[self.mask]] / np.abs(self.rewards).max()
+        norm_rewards[norm_rewards > 0] = norm_rewards[norm_rewards > 0].astype(np.int8) + 12
+        norm_rewards[norm_rewards < 0] = norm_rewards[norm_rewards < 0].astype(np.int8) - 4
+        print(norm_rewards)
+        img[self.mask] = norm_rewards
+        print(self.items)
 
     def reset(self, ):
         self.mask = self._mask_copy.copy()

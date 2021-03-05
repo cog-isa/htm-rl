@@ -49,3 +49,6 @@ class Areas:
             area_map = self.map
 
         return self._encoder.encode(area_map)
+
+    def render_rgb(self, img: np.ndarray):
+        img[:] = self.map

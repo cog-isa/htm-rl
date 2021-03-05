@@ -41,3 +41,6 @@ class Obstacles:
             return self._encoder.encode(view_map, view_mask)
         else:
             return self._encoder.encode(self.map)
+
+    def render_rgb(self, img: np.ndarray):
+        img[self.mask] = 8

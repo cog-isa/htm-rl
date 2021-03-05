@@ -3,6 +3,7 @@ from typing import Tuple, Optional, Dict, List
 
 import numpy as np
 
+from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.areas import Areas
@@ -46,10 +47,7 @@ class EnvironmentState:
     _encoding_sdr_concatenator: SdrConcatenator
     _view_clipper: Optional[ViewClipper]
 
-    def __init__(
-            self, shape_xy: Tuple[int, int], seed: int,
-            **environment
-    ):
+    def __init__(self, shape_xy: Tuple[int, int], seed: int):
         # convert from x,y to i,j
         width, height = shape_xy
         self.shape = (height, width)
@@ -63,18 +61,14 @@ class EnvironmentState:
         self.step_reward = 0
 
         self.food.reset()
-        # self.spawn_agent()
-
-    def make_copy(self):
-        env = copy(self)
-        env.food = copy(env.food)
-        env.food.mask = self.food.mask.copy()
-        return env
+        self.spawn_agent()
 
     def observe(self):
         reward = self.step_reward
         obs = self.render()
         is_first = self.episode_step == 0
+
+        plot_grid_images([self.render_rgb()])
         return reward, obs, is_first
 
     def act(self, action: int):
@@ -111,7 +105,7 @@ class EnvironmentState:
 
     def turn(self, turn_direction):
         self.agent_view_direction = MoveDynamics.turn(self.agent_view_direction, turn_direction)
-        self.step_reward = self.action_weight['turn'] * self.action_cost
+        self.step_reward += self.action_weight['turn'] * self.action_cost
 
     def collect(self):
         if self.food.mask[self.agent_position]:
@@ -244,9 +238,11 @@ class EnvironmentState:
 
     def render_rgb(self):
         img = np.zeros(self.shape, dtype=np.int8)
-        img[self.obstacles.mask] = -2
-        img[self.food.mask] = 2
-        img[self.agent_position] = 4
+        self.areas.render_rgb(img)
+        self.obstacles.render_rgb(img)
+        self.food.render_rgb(img)
+
+        img[self.agent_position] = 24
         return img
 
     def set_areas(self, **areas_generator):
