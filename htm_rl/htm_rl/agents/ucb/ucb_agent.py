@@ -46,7 +46,7 @@ class UcbAgent:
         step = 0
         total_reward = 0.
 
-        reward, state, first = env.observe()
+        _, state, first = env.observe()
         while not (first and step > 0):
             action = self.choose_action(state)
             env.act(action)

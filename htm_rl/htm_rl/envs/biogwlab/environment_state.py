@@ -4,6 +4,7 @@ from typing import Tuple, Optional, Dict, List
 import numpy as np
 
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
+from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.areas import Areas
 from htm_rl.envs.biogwlab.food import Food
 from htm_rl.envs.biogwlab.obstacles import Obstacles
@@ -22,7 +23,6 @@ class EnvironmentState:
 
     seed: int
     shape: Tuple[int, int]
-    n_cells: int
     areas: Areas
     obstacles: Obstacles
     food: Food
@@ -37,6 +37,9 @@ class EnvironmentState:
 
     output_sdr_size: int
 
+    actions: List[str]
+    _episode_max_steps: int
+
     _render: List[str]
     _encoders: Dict
     _cached_renderings: Dict
@@ -45,15 +48,22 @@ class EnvironmentState:
 
     def __init__(
             self, shape_xy: Tuple[int, int], seed: int,
+            **environment
     ):
         # convert from x,y to i,j
         width, height = shape_xy
         self.shape = (height, width)
-        self.n_cells = height * width
 
         self.seed = seed
         self.episode_step = 0
         self.step_reward = 0
+
+    def reset(self):
+        self.episode_step = 0
+        self.step_reward = 0
+
+        self.food.reset()
+        # self.spawn_agent()
 
     def make_copy(self):
         env = copy(self)
@@ -67,7 +77,9 @@ class EnvironmentState:
         is_first = self.episode_step == 0
         return reward, obs, is_first
 
-    def act(self, action: str):
+    def act(self, action: int):
+        action = self.actions[action]
+
         self.step_reward = 0
         if action == 'stay':
             self.stay()
@@ -116,7 +128,8 @@ class EnvironmentState:
 
     def is_terminal(self):
         no_foods = self.food.n_foods_to_find <= 0
-        return no_foods
+        steps_exceed = self.episode_step >= self._episode_max_steps
+        return steps_exceed or no_foods
 
     def set_obstacles(self, **generator):
         self.obstacles = Obstacles(shape=self.shape, seed=self.seed, **generator)
@@ -149,7 +162,7 @@ class EnvironmentState:
         self.agent_position = position
         self.agent_view_direction = rnd.choice(4)
 
-    def add_action_costs(self, action_cost: float, action_weight: Dict[str, float]):
+    def set_action_costs(self, action_cost: float, action_weight: Dict[str, float]):
         self.action_cost = action_cost
         self.action_weight = action_weight
 
@@ -171,7 +184,8 @@ class EnvironmentState:
         for data_name in render:
             encoder = None
             if data_name == 'position':
-                encoder = IntBucketEncoder(n_values=self.n_cells, **renderer)
+                n_cells = self.shape[0] * self.shape[1]
+                encoder = IntBucketEncoder(n_values=n_cells, **renderer)
             elif data_name == 'direction':
                 encoder = IntBucketEncoder(n_values=len(MOVE_DIRECTIONS), **renderer)
             elif data_name == 'obstacles':
@@ -241,24 +255,19 @@ class EnvironmentState:
     def generate_areas(self):
         self.areas.generate(self.seed)
 
-    @staticmethod
-    def make(
-            shape_xy: Tuple[int, int], seed: int,
-            action_costs: Dict,
-            **environment
-    ):
-        state = EnvironmentState(
-            shape_xy=shape_xy, seed=seed
-        )
-        state.add_action_costs(**action_costs)
-        state.set_areas(**environment.get('areas', dict()))
-        state.set_obstacles(**environment['obstacles'])
-        state.set_food(**environment['food'])
+    @classmethod
+    def ensure_all_actions_supported(cls, actions):
+        non_supported_actions = [
+            action for action in actions
+            if action not in EnvironmentState.supported_actions
+        ]
+        assert not non_supported_actions, \
+            f'{non_supported_actions} actions are not supported'
 
-        state.generate_areas()
-        state.generate_obstacles()
-        state.generate_food()
+    def set_actions(self, actions):
+        self.actions = isnone(actions, self.supported_actions.copy())
+        self.ensure_all_actions_supported(self.actions)
 
-        state.set_rendering(**environment['rendering'])
-        state.spawn_agent()
-        return state
+    def set_regenerator(self, episode_max_steps: int = None):
+        h, w = self.shape
+        self._episode_max_steps = isnone(episode_max_steps, 2 * h * w)

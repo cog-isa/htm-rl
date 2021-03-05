@@ -23,6 +23,9 @@ class Food:
     _generator: FoodGenerator
     _encoder: IntArrayEncoder
 
+    _mask_copy: np.ndarray
+    _n_items_fo_find_copy: int
+
     def __init__(
             self, shape,
             n_types: int = None, food_types: List[int] = None,
@@ -70,6 +73,9 @@ class Food:
 
         self.n_foods_to_find = isnone(self.n_foods_to_find, (n_positive_foods - 1) // 3 + 1)
 
+        self._mask_copy = self.mask.copy()
+        self._n_items_fo_find_copy = self.n_foods_to_find
+
     def set_renderer(self, view_shape):
         self.view_shape = view_shape
         self._encoder = IntArrayEncoder(shape=view_shape, n_types=self.n_types)
@@ -87,3 +93,8 @@ class Food:
         food_map = np.zeros(self.view_shape, dtype=np.int).flatten()
         food_map[view_indices] = self.map.flatten()[abs_indices]
         return self._encoder.encode(food_map, food_mask)
+
+    def reset(self, ):
+        self.mask = self._mask_copy.copy()
+        self.n_foods_to_find = self._n_items_fo_find_copy
+
