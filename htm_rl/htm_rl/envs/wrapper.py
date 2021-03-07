@@ -16,8 +16,8 @@ class Wrapper(Env):
     def get_info(self) -> Dict:
         return self.env.get_info()
 
-    def act(self, ac: Any) -> None:
-        return self.env.act(ac)
+    def act(self, action: Any) -> None:
+        return self.env.act(action)
 
     @property
     def n_actions(self):
@@ -31,7 +31,7 @@ class Wrapper(Env):
         self, method: str, *args: Any, **kwargs: Any
     ) -> Any:
         return self.env.callmethod(method, *args, **kwargs)
-    
+
 
 def unwrap(env):
     while isinstance(env, Wrapper):
