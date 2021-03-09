@@ -111,8 +111,7 @@ class IntArrayEncoder:
 
     def encode(self, x: np.ndarray = None, mask: np.ndarray = None):
         if x is None:
-            x = mask
-            mask = None
+            x = ~mask
 
         x = x.flatten()
         if mask is not None:
