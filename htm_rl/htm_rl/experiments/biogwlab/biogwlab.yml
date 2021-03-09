@@ -35,8 +35,8 @@ biogwlab:
     density: .25
 
   food:
-#      n_types: 1
-#      reward: 20.
+#    n_types: 1
+#    reward: 20.
     food_types: [0, 1, 2, 3]
     rewards: [20., -10., 100., -200.]
     n_items: 6
@@ -55,8 +55,8 @@ biogwlab:
       - obstacles
       - area
       - food
-#        - position
-#        - direction
+      - position
+#      - direction
     bucket_size: 3
 
 # =========== ucb agent =================

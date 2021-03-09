@@ -1,0 +1,49 @@
+seed: &seed
+
+biogwlab:
+  shape_xy: [8, 8]
+  seed: *seed
+
+  actions:
+    - stay
+    - move forward
+    - turn right
+    - turn left
+    - move right
+    - move down
+    - move left
+    - move up
+
+  regenerator:
+    episode_max_steps: 200
+
+  areas:
+    n_types: 2
+
+  obstacles:
+    density: .25
+
+  food:
+#    n_types: 1
+#    reward: 20.
+    food_types: [0, 1, 2, 3]
+    rewards: [20., -10., 100., -200.]
+    n_items: 6
+    n_foods_to_find: 2
+
+  action_costs:
+    action_cost: -.01
+    action_weight:
+      stay: .3
+      turn: .5
+      move: 1.
+
+  rendering:
+    view_rectangle: [[-3, -3], [3, 3]]
+    render:
+      - obstacles
+      - area
+      - food
+      - position
+#      - direction
+    bucket_size: 3
