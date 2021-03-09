@@ -118,7 +118,7 @@ class EnvironmentState:
         self.step_reward += self.action_weight['move'] * self.action_cost
 
     def turn(self, turn_direction):
-        for handler in self.handlers['move']:
+        for handler in self.handlers['turn']:
             handler(turn_direction)
 
         self.step_reward += self.action_weight['turn'] * self.action_cost
