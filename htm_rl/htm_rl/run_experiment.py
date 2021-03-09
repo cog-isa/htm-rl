@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Dict
 
 from htm_rl.agent.train_eval import RunResultsProcessor
+from htm_rl.agents.ucb.ucb_agent import UcbAgent
 from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
 from htm_rl.config import read_config
+from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
 
 
 class ExperimentRunner:
@@ -36,10 +38,16 @@ class ExperimentRunner:
         if not dry_run and (run or not aggregate):
             experiment_runner: UcbExperimentRunner
 
-            print(f'AGENT: {experiment_runner.name}')
-            env_config = self.config['biogwlab']
-            agent_config = self.config['agent']
-            experiment_runner.run_experiment(env_config, agent_config)
+            env_config = self.get_config('env')
+            env_config['seed'] = self.config['seed']
+            env = BioGwLabEnvironment(seed=env_config['seed'], **env_config['env'])
+
+            agent_config = self.get_config('agent')
+            agent_config['seed'] = self.config['seed']
+            agent = UcbAgent(env=env, seed=agent_config['seed'], **agent_config['agent'])
+
+            print(f'AGENT: {self.config["agent"]}')
+            experiment_runner.run_experiment(env, agent)
             experiment_runner.store_results(run_results_processor)
 
         if aggregate:
@@ -48,6 +56,15 @@ class ExperimentRunner:
             run_results_processor.aggregate_results(
                 aggregate_file_masks, report_name_suffix, silent_run, for_paper
             )
+
+    def get_config(self, key):
+        path: Path = self.config['config_path']
+        config_name = self.config[key]
+
+        # path.
+        config_path = path.with_name(f'{key}_{config_name}.yml')
+        config = read_config(config_path, verbose=False)
+        return config
 
 
 def register_arguments(parser: ArgumentParser):
@@ -69,6 +86,7 @@ def main():
 
     config_path = Path(args.config)
     config = read_config(config_path, verbose=False)
+    config['config_path'] = config_path
 
     test_dir = os.path.dirname(config_path)
     config['test_dir'] = test_dir

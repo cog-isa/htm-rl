@@ -21,21 +21,23 @@ class UcbAgent:
     def __init__(
             self,
             env: BioGwLabEnvironment,
+            seed: int,
             ucb_actor_critic: Dict,
             state_sp: Dict,
             action_encoder: Dict,
             sa_sp: Dict
     ):
-        self._state_sp = SpatialPooler(input_source=env, **state_sp)
+        self._state_sp = SpatialPooler(input_source=env, seed=seed, **state_sp)
         self._action_encoder = IntBucketEncoder(n_values=env.n_actions, **action_encoder)
         self._sa_concatenator = SdrConcatenator(input_sources=[
             self._state_sp,
             self._action_encoder
         ])
-        self._sa_sp = SpatialPooler(input_source=self._sa_concatenator, **sa_sp)
+        self._sa_sp = SpatialPooler(input_source=self._sa_concatenator, seed=seed, **sa_sp)
 
         self._ucb_actor_critic = UcbActorCritic(
             cells_sdr_size=self._sa_sp.output_sdr_size,
+            seed=seed,
             **ucb_actor_critic
         )
         self._n_actions = env.n_actions

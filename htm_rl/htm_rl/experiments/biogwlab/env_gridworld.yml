@@ -1,8 +1,8 @@
-seed: &seed
+seed:
+# ^^^^^^^ Requirements ^^^^^^^^^
 
-biogwlab:
+env:
   shape_xy: [8, 8]
-  seed: *seed
 
   actions:
     - stay

@@ -1,8 +1,6 @@
 from tqdm import trange
 
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
-from htm_rl.agents.ucb.ucb_agent import UcbAgent
-from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
 
 
 class UcbExperimentRunner:
@@ -15,12 +13,7 @@ class UcbExperimentRunner:
         self.train_stats = RunStats()
         self.name = 'ucb'
 
-    def run_experiment(self, env_config, agent_config):
-        # view_rect = (-2, 0), (2, 2)
-        # scent_rect = (-3, -2), (3, 4)
-        env = BioGwLabEnvironment(**env_config)
-        agent = UcbAgent(env, **agent_config)
-
+    def run_experiment(self, env, agent):
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = agent.run_episode(env)
             self.train_stats.append_stats(steps, reward, elapsed_time)
