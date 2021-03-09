@@ -5,8 +5,7 @@ from pprint import pprint
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
 from htm_rl.agent.train_eval import RunResultsProcessor
-from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
-from htm_rl.envs.biogwlab0.map_generator import BioGwLabEnvGenerator
+from htm_rl.agents.ucb.experiment_runner import UcbExperimentRunner
 
 
 def read_config(file_path: Path, verbose=False):
@@ -21,7 +20,6 @@ def read_config(file_path: Path, verbose=False):
 def register_classes(yaml: YAML):
     classes = [
         RunResultsProcessor,
-        BioGwLabEnvGenerator,
         UcbExperimentRunner,
     ]
 
