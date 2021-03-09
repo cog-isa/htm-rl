@@ -5,6 +5,45 @@ import numpy as np
 from htm_rl.common.sdr_encoders import IntArrayEncoder
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.areas_generator import AreasGenerator
+from htm_rl.envs.biogwlab.entity import Entity
+
+
+def add_areas(**areas):
+    generator = AreasGenerator(**areas)
+    areas = generator.result
+    return [
+        ('areas_generator', generator),
+        ('areas', areas),
+    ]
+
+
+class AreasRenderer:
+    areas: Entity
+    view_shape: Tuple[int, int]
+
+    _encoder: IntArrayEncoder
+
+    def __init__(self, view_shape):
+        self.view_shape = view_shape
+
+    def set_renderer(self, view_shape):
+        self.view_shape = view_shape
+        self._encoder = IntArrayEncoder(shape=view_shape, n_types=self.areas.n_types)
+        return self._encoder
+
+    def render(self, view_clip=None):
+        if view_clip is not None:
+            view_indices, abs_indices = view_clip
+
+            area_map = np.zeros(self.view_shape, dtype=np.int).flatten()
+            area_map[view_indices] = self.areas.map.flatten()[abs_indices]
+        else:
+            area_map = self.areas.map
+
+        return self._encoder.encode(area_map)
+
+    def render_rgb(self, img: np.ndarray):
+        img[:] = self.areas.map
 
 
 class Areas:

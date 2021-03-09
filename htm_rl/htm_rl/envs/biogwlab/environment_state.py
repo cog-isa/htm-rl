@@ -1,4 +1,4 @@
-from typing import Tuple, Optional, Dict, List
+from typing import Tuple, Optional, Dict, List, Any
 
 import numpy as np
 
@@ -20,12 +20,19 @@ class EnvironmentState:
         'move left', 'move up', 'move right', 'move down',
         'move forward', 'turn left', 'turn right'
     ]
+    supported_entities = {'obstacles', 'areas', 'food'}
+    supported_events = [
+        'on_generate',
+    ]
 
     seed: int
     shape: Tuple[int, int]
     areas: Areas
     obstacles: Obstacles
     food: Food
+
+    modules: Dict[str, Any]
+    handlers: Dict[str, List[Any]]
 
     agent_position: Tuple[int, int]
     agent_view_direction: Optional[int]
@@ -51,6 +58,9 @@ class EnvironmentState:
         width, height = shape_xy
         self.shape = (height, width)
 
+        self.modules = dict()
+        self.handlers = dict()
+
         self.seed = seed
         self.episode_step = 0
         self.step_reward = 0
@@ -62,12 +72,20 @@ class EnvironmentState:
         self.food.reset()
         self.spawn_agent()
 
+    def add_module(self, name, module):
+        self.modules[name] = module
+
+        for event in self.supported_events:
+            if hasattr(module, event):
+                handlers = self.handlers.setdefault(event, [])
+                handlers.append(module)
+
     def observe(self):
         reward = self.step_reward
         obs = self.render()
         is_first = self.episode_step == 0
 
-        plot_grid_images([self.render_rgb()])
+        # plot_grid_images([self.render_rgb()])
         return reward, obs, is_first
 
     def act(self, action: int):

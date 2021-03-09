@@ -1,11 +1,36 @@
 from itertools import product
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 from matplotlib import pyplot as plt
 
+from htm_rl.envs.biogwlab.entity import Entity
+
 
 class AreasGenerator:
+    result: Entity
+
+    _generator: '_AreasGenerator'
+    _last_seed: Optional[int]
+
+    def __init__(self, **areas):
+        self.result = Entity(**areas)
+
+        shape = self.result.shape
+        n_types = self.result.n_types
+        self._generator = _AreasGenerator(shape=shape, n_types=n_types)
+
+    def generate(self, seed):
+        if self._last_seed is not None and self._last_seed == seed:
+            return
+
+        self.result.set(
+            mask=np.ndarray(self.result.shape, dtype=np.bool),
+            map=self._generator.generate(seed)
+        )
+
+
+class _AreasGenerator:
     shape: Tuple[int, int]
     n_types: int
 
@@ -14,6 +39,9 @@ class AreasGenerator:
         self.n_types = n_types
 
     def generate(self, seed):
+        if self.n_types == 1:
+            return np.zeros(self.shape, dtype=np.int)
+
         rng = np.random.default_rng(seed=seed)
         area_centers, area_types = self._spawn_area_centers(rng)
         areas_map = self._spawn_areas(area_centers, area_types)
