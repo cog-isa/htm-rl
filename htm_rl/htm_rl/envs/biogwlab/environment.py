@@ -1,13 +1,14 @@
-from typing import Dict, Tuple
+from typing import Tuple
 
-from htm_rl.envs.biogwlab.areas import add_areas
 from htm_rl.envs.biogwlab.areas_generator import AreasGenerator
 from htm_rl.envs.biogwlab.environment_state import EnvironmentState
-
+from htm_rl.envs.biogwlab.food import add_food
+from htm_rl.envs.biogwlab.obstacles_generator import ObstaclesGenerator
 
 registrar = {
-    'areas': add_areas,
-    'areas_generator': AreasGenerator,
+    'areas': AreasGenerator,
+    'obstacles': ObstaclesGenerator,
+    'food': add_food,
 }
 
 
@@ -20,7 +21,7 @@ class BioGwLabEnvironment:
             shape_xy=shape_xy, seed=seed
         )
 
-        supported_modules = {'areas'}
+        supported_modules = {'areas', 'obstacles', 'food'}
         for module_name, module in modules.items():
             if module_name not in supported_modules:
                 continue
@@ -28,7 +29,7 @@ class BioGwLabEnvironment:
             module_type = module_name
             if module_type not in registrar:
                 module_type = module['_type_']
-                module.remove('_type_')
+                module.pop('_type_')
 
             module = registrar[module_type](env=state, **module)
             state.add_module(module_name, module)

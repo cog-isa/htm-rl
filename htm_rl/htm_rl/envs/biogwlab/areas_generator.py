@@ -7,25 +7,22 @@ from matplotlib import pyplot as plt
 from htm_rl.envs.biogwlab.entity import Entity
 
 
-class AreasGenerator:
-    result: Entity
+class AreasGenerator(Entity):
+    entity = 'areas'
 
     _generator: '_AreasGenerator'
     _last_seed: Optional[int]
 
     def __init__(self, **areas):
-        self.result = Entity(**areas)
-
-        shape = self.result.shape
-        n_types = self.result.n_types
-        self._generator = _AreasGenerator(shape=shape, n_types=n_types)
+        super(AreasGenerator, self).__init__(**areas)
+        self._generator = _AreasGenerator(shape=self.shape, n_types=self.n_types)
 
     def generate(self, seed):
         if self._last_seed is not None and self._last_seed == seed:
             return
 
-        self.result.set(
-            mask=np.ndarray(self.result.shape, dtype=np.bool),
+        self.set(
+            mask=np.ndarray(self.shape, dtype=np.bool),
             map=self._generator.generate(seed)
         )
 

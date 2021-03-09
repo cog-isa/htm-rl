@@ -9,12 +9,7 @@ from htm_rl.envs.biogwlab.entity import Entity
 
 
 def add_areas(**areas):
-    generator = AreasGenerator(**areas)
-    areas = generator.result
-    return [
-        ('areas_generator', generator),
-        ('areas', areas),
-    ]
+    return AreasGenerator(**areas)
 
 
 class AreasRenderer:

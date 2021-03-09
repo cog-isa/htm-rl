@@ -16,12 +16,12 @@ class Obstacles:
     _generator: ObstaclesGenerator
     _encoder: IntArrayEncoder
 
-    def __init__(self, shape, seed, **generator):
+    def __init__(self, shape, **generator):
         self.shape = shape
-        self._generator = ObstaclesGenerator(shape=self.shape, seed=seed, **generator)
+        self._generator = ObstaclesGenerator(shape=self.shape, **generator)
 
-    def generate(self):
-        self.mask = self._generator.generate()
+    def generate(self, seed):
+        self.mask = self._generator.generate(seed=seed)
         self.map = (~self.mask).astype(np.int)
 
     def set_renderer(self, view_shape):

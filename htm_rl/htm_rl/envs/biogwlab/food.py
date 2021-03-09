@@ -7,6 +7,28 @@ from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.food_generator import FoodGenerator
 
 
+def add_food(env, types=None, **food):
+    if types is None:
+        food_types = {'beans': food}
+    else:
+        food_types = types
+
+    rewards = dict()
+
+    for food_type, food_type_config in food_types.items():
+        rewards[food_type] = food_type_config['reward']
+        food_type_config.pop('reward')
+
+    areas = env.get_module('areas')
+    obstacles = env.get_module('obstacles')
+
+    return FoodGenerator(
+        types=food_types, env=env,
+        areas=areas, obstacles=obstacles,
+        **food
+    )
+
+
 class Food:
     shape: Tuple[int, int]
     view_shape: Tuple[int, int]

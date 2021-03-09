@@ -80,6 +80,9 @@ class EnvironmentState:
                 handlers = self.handlers.setdefault(event, [])
                 handlers.append(module)
 
+    def get_module(self, name):
+        return self.modules[name]
+
     def observe(self):
         reward = self.step_reward
         obs = self.render()
