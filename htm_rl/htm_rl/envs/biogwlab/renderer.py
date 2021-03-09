@@ -39,7 +39,8 @@ class Renderer:
             if encoder is not None:
                 self.encoders[data_name] = encoder
 
-        if len(render) == 1:
+        self.output_sdr_size = 0
+        if len(self.encoders) == 1:
             _, encoder = list(self.encoders.values())[0]
             self.output_sdr_size = encoder.output_sdr_size
         else:
@@ -68,8 +69,7 @@ class Renderer:
             else:
                 encoded_data = self.render_entity(entity, encoder, view_clip)
 
-            if encoded_data is not None:
-                observation.append(encoded_data)
+            observation.append(encoded_data)
 
         if len(observation) == 1:
             return observation[0]

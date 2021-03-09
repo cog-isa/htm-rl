@@ -37,8 +37,8 @@ class FoodGenerator(Entity):
         )
         self._last_seed = None
 
-    def generate(self,  seed):
-        if self._last_seed is not None and self._last_seed == seed:
+    def generate(self, seed):
+        if self._last_seed == seed:
             self.mask = self._initial_mask.copy()
             return
 
@@ -50,6 +50,7 @@ class FoodGenerator(Entity):
 
         self.set(mask=food_mask, map=food_map)
         self._initial_mask = food_mask.copy()
+        self._last_seed = seed
 
     def collect(self, position, view_direction):
         reward = 0
