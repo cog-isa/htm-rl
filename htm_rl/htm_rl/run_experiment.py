@@ -5,10 +5,10 @@ from pathlib import Path
 from typing import Dict
 
 from htm_rl.agent.train_eval import RunResultsProcessor
-from htm_rl.agents.ucb.ucb_agent import UcbAgent
-from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
+from htm_rl.agents.ucb.agent import UcbAgent
+from htm_rl.agents.ucb.experiment_runner import UcbExperimentRunner
 from htm_rl.config import read_config
-from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
+from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 
 
 class ExperimentRunner:
@@ -40,7 +40,7 @@ class ExperimentRunner:
 
             env_config = self.get_config('env')
             env_config['seed'] = self.config['seed']
-            env = BioGwLabEnvironment(seed=env_config['seed'], **env_config['env'])
+            env = BioGwLabEnvironment(**env_config)
 
             agent_config = self.get_config('agent')
             agent_config['seed'] = self.config['seed']

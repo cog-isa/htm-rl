@@ -12,8 +12,15 @@ actions:
   - move left
   - move up
 
+action_costs:
+  action_cost: -.01
+  action_weight:
+    stay: .3
+    turn: .5
+    move: 1.
+
 regenerator:
-  episode_max_steps: 200
+  episode_max_steps:
 
 # make it optional on building env
 areas:
@@ -26,16 +33,9 @@ food:
   n_items: 1
   reward: 10.
 
-action_costs:
-  action_cost: -.01
-  action_weight:
-    stay: .3
-    turn: .5
-    move: 1.
-
 rendering:
   render:
     - position
 #    - direction
-  bucket_size: 4
+  bucket_size: 3
 

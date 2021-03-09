@@ -1,5 +1,5 @@
-verbosity: &verbosity 1
-seed: &seed 8713
+seed: 8713
+n_seeds: 2
 
 experiment: !UcbExperimentRunner
   n_episodes: 50
@@ -7,8 +7,8 @@ experiment: !UcbExperimentRunner
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab
   moving_average: 1
-  verbosity: *verbosity
+  verbosity: 1
   test_dir: # leave empty for default behavior - output to the config's dir
 
-env: gridworld
+env: simple_baseline
 agent: ucb

@@ -13,8 +13,8 @@ type: ucb
 agent:
   state_sp:
     <<: *default_spatial_pooler_params
-    output_size: 200
-#    output_dilation_ratio: 1.4
+#    output_size: 200
+    output_dilation_ratio: 1.4
     potential_synapses_ratio: .8
     sparsity: .05
     boost_strength: 4
@@ -26,8 +26,8 @@ agent:
 
   sa_sp:
     <<: *default_spatial_pooler_params
-    output_size: 300
-#    output_dilation_ratio: 1.4
+#    output_size: 300
+    output_dilation_ratio: 1.4
     potential_synapses_ratio: .8
     sparsity: .04
     boost_strength: 4
