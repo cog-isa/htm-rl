@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 
@@ -7,15 +7,17 @@ from htm_rl.common.utils import isnone
 
 class Entity:
     shape: Tuple[int, int]
-    mask: np.ndarray
-    map: np.ndarray
+    mask: Optional[np.ndarray]
+    map: Optional[np.ndarray]
     n_types: int
 
     def __init__(self, shape=None, n_types=1, env=None):
         shape = isnone(shape, env.shape)
         self.shape = shape
         self.n_types = n_types
+        self.mask = None
+        self.map = None
 
-    def set(self, mask: np.ndarray, map: np.ndarray):
+    def set(self, mask: np.ndarray = None, map: np.ndarray = None):
         self.mask = mask
         self.map = map

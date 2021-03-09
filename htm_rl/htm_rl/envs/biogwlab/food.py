@@ -13,11 +13,11 @@ def add_food(env, types=None, **food):
     else:
         food_types = types
 
-    rewards = dict()
+    # rewards = dict()
 
-    for food_type, food_type_config in food_types.items():
-        rewards[food_type] = food_type_config['reward']
-        food_type_config.pop('reward')
+    # for food_type, food_type_config in food_types.items():
+    #     rewards[food_type] = food_type_config['reward']
+    #     food_type_config.pop('reward')
 
     areas = env.get_module('areas')
     obstacles = env.get_module('obstacles')
@@ -25,7 +25,6 @@ def add_food(env, types=None, **food):
     return FoodGenerator(
         types=food_types, env=env,
         areas=areas, obstacles=obstacles,
-        **food
     )
 
 

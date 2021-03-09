@@ -16,6 +16,7 @@ class ObstaclesGenerator(Entity):
     def __init__(self, density, **obstacles):
         super(ObstaclesGenerator, self).__init__(**obstacles)
         self._generator = _ObstaclesGenerator(shape=self.shape, density=density)
+        self._last_seed = None
 
     def generate(self, seed):
         if self._last_seed is not None and self._last_seed == seed:
@@ -24,7 +25,7 @@ class ObstaclesGenerator(Entity):
         mask = self._generator.generate(seed)
         self.set(
             mask=mask,
-            map=(~mask).astype(np.int)
+            map=None
         )
 
 

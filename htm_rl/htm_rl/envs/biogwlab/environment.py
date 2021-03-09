@@ -4,11 +4,13 @@ from htm_rl.envs.biogwlab.areas_generator import AreasGenerator
 from htm_rl.envs.biogwlab.environment_state import EnvironmentState
 from htm_rl.envs.biogwlab.food import add_food
 from htm_rl.envs.biogwlab.obstacles_generator import ObstaclesGenerator
+from htm_rl.envs.biogwlab.renderer import Renderer
 
 registrar = {
     'areas': AreasGenerator,
     'obstacles': ObstaclesGenerator,
     'food': add_food,
+    'rendering': Renderer,
 }
 
 
@@ -16,43 +18,43 @@ class BioGwLabEnvironment:
     output_sdr_size: int
     state: EnvironmentState
 
-    def __init__(self, shape_xy: Tuple[int, int], seed: int, **modules):
+    def __init__(
+            self, shape_xy: Tuple[int, int], seed: int,
+            action_costs, regenerator, actions=None,
+            **modules
+    ):
         state = EnvironmentState(
             shape_xy=shape_xy, seed=seed
         )
+        state.set_actions(actions)
+        state.set_action_costs(**action_costs)
+        state.set_regenerator(**regenerator)
 
-        supported_modules = {'areas', 'obstacles', 'food'}
-        for module_name, module in modules.items():
-            if module_name not in supported_modules:
-                continue
+        BioGwLabEnvironment.add_module(state, modules, 'areas')
+        BioGwLabEnvironment.add_module(state, modules, 'obstacles')
+        BioGwLabEnvironment.add_module(state, modules, 'food')
+        state.add_agent()
 
-            module_type = module_name
-            if module_type not in registrar:
-                module_type = module['_type_']
-                module.pop('_type_')
+        # print(state.modules)
+        # print(state.handlers)
+        state.reset()
 
-            module = registrar[module_type](env=state, **module)
-            state.add_module(module_name, module)
-
-        print(state.modules)
-        print(state.handlers)
-        return
-
-        state.set_actions(environment['actions'])
-        state.set_action_costs(**environment['action_costs'])
-        state.set_areas(**environment.get('areas', dict()))
-        state.set_obstacles(**environment['obstacles'])
-        state.set_food(**environment['food'])
-        state.set_regenerator(**environment['regenerator'])
-
-        state.generate_areas()
-        state.generate_obstacles()
-        state.generate_food()
-
-        state.set_rendering(**environment['rendering'])
-        state.spawn_agent()
+        BioGwLabEnvironment.add_module(state, modules, 'rendering')
 
         self.state = state
+        sdr = state.render()
+        # print(sdr)
+
+    @staticmethod
+    def add_module(env, modules, name):
+        config = modules[name]
+        module_type = name
+        if module_type not in registrar:
+            module_type = config['_type_']
+            config.pop('_type_')
+
+        module = registrar[module_type](env=env, **config)
+        env.add_module(name, module)
 
     def observe(self):
         return self.state.observe()

@@ -16,13 +16,14 @@ class AreasGenerator(Entity):
     def __init__(self, **areas):
         super(AreasGenerator, self).__init__(**areas)
         self._generator = _AreasGenerator(shape=self.shape, n_types=self.n_types)
+        self._last_seed = None
 
     def generate(self, seed):
         if self._last_seed is not None and self._last_seed == seed:
             return
 
         self.set(
-            mask=np.ndarray(self.shape, dtype=np.bool),
+            mask=None,
             map=self._generator.generate(seed)
         )
 
