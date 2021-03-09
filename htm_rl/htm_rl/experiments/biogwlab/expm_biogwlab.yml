@@ -2,7 +2,7 @@ verbosity: &verbosity 1
 seed: &seed 8713
 
 experiment: !UcbExperimentRunner
-  n_episodes: 200
+  n_episodes: 50
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab
