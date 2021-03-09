@@ -1,14 +1,14 @@
 from typing import Tuple
 
-from htm_rl.envs.biogwlab.areas_generator import AreasGenerator
+from htm_rl.envs.biogwlab.areas import Areas
 from htm_rl.envs.biogwlab.environment_state import EnvironmentState
 from htm_rl.envs.biogwlab.food import add_food
-from htm_rl.envs.biogwlab.obstacles_generator import ObstaclesGenerator
+from htm_rl.envs.biogwlab.obstacles import Obstacles
 from htm_rl.envs.biogwlab.renderer import Renderer
 
 registrar = {
-    'areas': AreasGenerator,
-    'obstacles': ObstaclesGenerator,
+    'areas': Areas,
+    'obstacles': Obstacles,
     'food': add_food,
     'rendering': Renderer,
 }

@@ -1,35 +1,11 @@
-from typing import Tuple, Optional
+from typing import Tuple
 
 import numpy as np
-from numpy.random._generator import Generator
 
 from htm_rl.envs.biogwlab.move_dynamics import MOVE_DIRECTIONS, DIRECTIONS_ORDER, MoveDynamics
-from htm_rl.envs.biogwlab.entity import Entity
 
 
-class ObstaclesGenerator(Entity):
-    entity = 'obstacles'
-
-    _generator: '_ObstaclesGenerator'
-    _last_seed: Optional[int]
-
-    def __init__(self, density, **obstacles):
-        super(ObstaclesGenerator, self).__init__(**obstacles)
-        self._generator = _ObstaclesGenerator(shape=self.shape, density=density)
-        self._last_seed = None
-
-    def generate(self, seed):
-        if self._last_seed is not None and self._last_seed == seed:
-            return
-
-        mask = self._generator.generate(seed)
-        self.set(
-            mask=mask,
-            map=None
-        )
-
-
-class _ObstaclesGenerator:
+class ObstaclesGenerator:
     density: float
     shape: Tuple[int, int]
 

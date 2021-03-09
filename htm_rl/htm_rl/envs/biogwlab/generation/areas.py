@@ -1,34 +1,11 @@
 from itertools import product
-from typing import Tuple, Optional
+from typing import Tuple
 
 import numpy as np
 from matplotlib import pyplot as plt
 
-from htm_rl.envs.biogwlab.entity import Entity
 
-
-class AreasGenerator(Entity):
-    entity = 'areas'
-
-    _generator: '_AreasGenerator'
-    _last_seed: Optional[int]
-
-    def __init__(self, **areas):
-        super(AreasGenerator, self).__init__(**areas)
-        self._generator = _AreasGenerator(shape=self.shape, n_types=self.n_types)
-        self._last_seed = None
-
-    def generate(self, seed):
-        if self._last_seed is not None and self._last_seed == seed:
-            return
-
-        self.set(
-            mask=None,
-            map=self._generator.generate(seed)
-        )
-
-
-class _AreasGenerator:
+class AreasGenerator:
     shape: Tuple[int, int]
     n_types: int
 
