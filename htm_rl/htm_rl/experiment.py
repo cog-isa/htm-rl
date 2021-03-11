@@ -1,32 +1,57 @@
+from pathlib import Path
 from typing import Dict
 
+import wandb
 from tqdm import trange
 
 from htm_rl.agent.train_eval import RunStats
-from htm_rl.agents.rnd.agent import RndAgent
 from htm_rl.agents.agent import Agent
+from htm_rl.agents.rnd.agent import RndAgent
 from htm_rl.agents.ucb.agent import UcbAgent
 from htm_rl.common.utils import timed
+from htm_rl.config import Config
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.envs.env import Env
 
 
 class Experiment:
     n_episodes: int
+    use_wandb: bool
+    base_dir: Path
+    project: str
 
-    def __init__(self, n_episodes: int):
+    def __init__(self, n_episodes: int, project: str, base_dir: Path, use_wandb: bool = False):
         self.n_episodes = n_episodes
+        self.base_dir = base_dir
+        self.use_wandb = use_wandb
+        self.project = project
 
-    def run(self, seed: int, agent_config: Dict, env_config: Dict):
+    def run(self, seed: int, agent_config: Config, env_config: Config):
         env = self.materialize_environment(seed, env_config)
         agent = self.materialize_agent(seed, env, agent_config)
         train_stats = RunStats(agent.name)
 
         print(f'AGENT: {agent.name}     SEED: {seed}')
 
+        # temporal dirty flag-based solution
+        run = None
+        if self.use_wandb:
+            run = wandb.init(
+                project=self.project, reinit=True, dir=self.base_dir
+            )
+            run.config.agent = agent_config.name
+            run.config.env = env_config.name
+            run.config.seed = seed
+
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode(env, agent)
             train_stats.append_stats(steps, reward, elapsed_time)
+            if self.use_wandb:
+                run.log({
+                    'steps': steps,
+                    'reward': reward,
+                    'elapsed_time': elapsed_time
+                })
 
         return train_stats
 

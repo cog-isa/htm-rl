@@ -11,6 +11,11 @@ from htm_rl.envs.env import Env
 
 
 class Environment(Env):
+    """
+    Core implementation of the BioGridworldLab environment. It requires manual building, so
+    you may consider to create a wrapper that implement building process and use it instead.
+    """
+
     supported_actions = [
         'stay',
         'move left', 'move up', 'move right', 'move down',

@@ -2,7 +2,8 @@ seed: 8713
 n_seeds: 1
 
 experiment:
-  n_episodes: 10
+  project: test
+  n_episodes: 50
 
 env: simple_baseline
 
