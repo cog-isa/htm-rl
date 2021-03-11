@@ -2,6 +2,8 @@ from tqdm import trange
 
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 
+# OBSOLETE!
+# Kept only to use commented code a bit further
 
 class UcbExperimentRunner:
     n_episodes: int
@@ -10,8 +12,7 @@ class UcbExperimentRunner:
 
     def __init__(self, n_episodes: int):
         self.n_episodes = n_episodes
-        self.train_stats = RunStats()
-        self.name = 'ucb'
+        self.train_stats = RunStats('ucb')
 
     def run_experiment(self, env, agent):
         for _ in trange(self.n_episodes):
@@ -19,7 +20,7 @@ class UcbExperimentRunner:
             self.train_stats.append_stats(steps, reward, elapsed_time)
 
     def store_results(self, run_results_processor: RunResultsProcessor):
-        run_results_processor.store_result(self.train_stats, f'{self.name}')
+        run_results_processor.store_result(self.train_stats)
 
     def show_environments(self, n):
         # for env_map, _ in self.get_environment_maps(n):
