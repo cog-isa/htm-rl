@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Dict
 
-import wandb
 from tqdm import trange
 
 from htm_rl.agent.train_eval import RunStats
@@ -36,6 +35,7 @@ class Experiment:
         # temporal dirty flag-based solution
         run = None
         if self.use_wandb:
+            import wandb
             run = wandb.init(
                 project=self.project, reinit=True, dir=self.base_dir
             )
