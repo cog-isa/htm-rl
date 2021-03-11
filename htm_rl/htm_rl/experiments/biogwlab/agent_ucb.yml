@@ -1,14 +1,13 @@
 seed:
 env:
 
-# ^^^^^^^ Requirements ^^^^^^^^^
+# ^^^^^^^ Will be provided ^^^^^^^^^
+type: ucb
 
 .default_spatial_pooler_params: &default_spatial_pooler_params
   synapse_permanence_deltas: [ .1, .02 ]
   connected_permanence_threshold: .5
   min_activation_threshold: 1
-
-type: ucb
 
 agent:
   state_sp:

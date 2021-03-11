@@ -11,11 +11,13 @@ from htm_rl.common.utils import trace
 
 
 class RunStats:
+    name: str
     steps: List[int]
     rewards: List[float]
     times: List[float]
 
-    def __init__(self):
+    def __init__(self, name: str):
+        self.name = name
         self.steps = []
         self.rewards = []
         self.times = []
@@ -42,7 +44,8 @@ class RunResultsProcessor:
         self.moving_average = moving_average
         self.verbosity = verbosity
 
-    def store_result(self, run_stats: RunStats, agent_info: str):
+    def store_result(self, run_stats: RunStats):
+        agent_info = run_stats.name
         result_table = pd.DataFrame({
             'steps': run_stats.steps,
             'times': run_stats.times,

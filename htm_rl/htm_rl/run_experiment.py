@@ -1,17 +1,18 @@
 import argparse
 import os
 from argparse import ArgumentParser
+from itertools import product
 from pathlib import Path
 from typing import Dict
 
+import numpy as np
+
 from htm_rl.agent.train_eval import RunResultsProcessor
-from htm_rl.agents.ucb.agent import UcbAgent
-from htm_rl.agents.ucb.experiment_runner import UcbExperimentRunner
 from htm_rl.config import read_config
-from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
+from htm_rl.experiment import Experiment
 
 
-class ExperimentRunner:
+class RunConfig:
     config: Dict
 
     def __init__(self, config):
@@ -25,30 +26,30 @@ class ExperimentRunner:
         if run_results_processor.test_dir is None:
             run_results_processor.test_dir = self.config['test_dir']
 
-        experiment_runner = self.config.get('experiment')
+        experiment = Experiment(**self.config['experiment'])
 
         dry_run = self.config['dry_run']
-        if experiment_runner is not None and dry_run:
+        if experiment is not None and dry_run:
             n_envs_to_render = self.config['n_environments_to_render']
-            maps = experiment_runner.get_environment_maps(n_envs_to_render)
+            maps = experiment.get_environment_maps(n_envs_to_render)
             run_results_processor.store_environment_maps(maps)
             return
 
         # by default, if nothing specified then at least `run`
         if not dry_run and (run or not aggregate):
-            experiment_runner: UcbExperimentRunner
+            experiment: Experiment
 
-            env_config = self.get_config('env')
-            env_config['seed'] = self.config['seed']
-            env = BioGwLabEnvironment(**env_config)
+            seeds = self.get_seeds()
+            env_configs = self.read_configs('env')
+            agent_configs = self.read_configs('agent')
 
-            agent_config = self.get_config('agent')
-            agent_config['seed'] = self.config['seed']
-            agent = UcbAgent(env=env, seed=agent_config['seed'], **agent_config['agent'])
-
-            print(f'AGENT: {self.config["agent"]}')
-            experiment_runner.run_experiment(env, agent)
-            experiment_runner.store_results(run_results_processor)
+            experiment_setups = list(product(env_configs, agent_configs, seeds))
+            for env_config, agent_config, seed in experiment_setups:
+                results = experiment.run(
+                    seed=seed, agent_config=agent_config, env_config=env_config
+                )
+                run_results_processor.store_result(results)
+                print('')
 
         if aggregate:
             aggregate_file_masks = self.config['aggregate_masks']
@@ -57,14 +58,33 @@ class ExperimentRunner:
                 aggregate_file_masks, report_name_suffix, silent_run, for_paper
             )
 
-    def get_config(self, key):
-        path: Path = self.config['config_path']
-        config_name = self.config[key]
+    def get_seeds(self):
+        seeds = self.config['seed']
+        if isinstance(seeds, list):
+            ...
+        elif 'n_seeds' in self.config:
+            seed = seeds
+            n_seeds = self.config['n_seeds']
+            rng = np.random.default_rng(seed)
+            seeds = rng.integers(1_000_000, size=n_seeds).tolist()
+        else:
+            seeds = [seeds]
+        return seeds
 
-        # path.
-        config_path = path.with_name(f'{key}_{config_name}.yml')
-        config = read_config(config_path, verbose=False)
-        return config
+    def read_configs(self, key):
+        path: Path = self.config['config_path']
+        names = self.config[key]
+
+        if not isinstance(names, list):
+            names = [names]
+
+        configs = []
+        for name in names:
+            config_path = path.with_name(f'{key}_{name}.yml')
+            config = read_config(config_path, verbose=False)
+            configs.append(config)
+
+        return configs
 
 
 def register_arguments(parser: ArgumentParser):
@@ -104,7 +124,7 @@ def main():
     if aggregate:
         config['aggregate_masks'] = args.aggregate
 
-    runner = ExperimentRunner(config)
+    runner = RunConfig(config)
     runner.run(args.agent, args.run, aggregate)
 
 

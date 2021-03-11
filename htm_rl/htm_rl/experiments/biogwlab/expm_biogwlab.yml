@@ -1,14 +1,17 @@
 seed: 8713
-n_seeds: 2
+n_seeds: 1
 
-experiment: !UcbExperimentRunner
-  n_episodes: 50
+experiment:
+  n_episodes: 10
+
+env: simple_baseline
+
+agent:
+  - rnd
+  - ucb
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab
   moving_average: 1
   verbosity: 1
   test_dir: # leave empty for default behavior - output to the config's dir
-
-env: simple_baseline
-agent: ucb
