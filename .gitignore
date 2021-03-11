@@ -30,6 +30,9 @@ notebooks/**/_*.ipynb
 svg-inkscape/
 reports/**/assets/
 
+# wandb folders
+wandb/
+
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # please, place all project specific rules above this line
 # =====================================================
