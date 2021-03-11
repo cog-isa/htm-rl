@@ -213,9 +213,25 @@ class Block:
             predicted_columns = self.tm.get_predicted_columns(add_exec=self.should_return_exec_predictions,
                                                               add_apical=self.should_return_apical_predictions)
             self.predicted_columns.sparse = predicted_columns
-            # filter columns by Basal Ganglia
+            # form apical input
+            apical_active_columns = list()
+            shift = 0
+
+            for block in self.apical_in:
+                columns = block.get_output('basal')
+                apical_active_columns.append(columns + shift)
+                shift += block.basal_columns
+
+            if len(apical_active_columns) > 0:
+                apical_active_columns = np.concatenate(apical_active_columns)
+            else:
+                apical_active_columns = np.empty(0)
+
+            apical_input = SDR(shift)
+            apical_input.sparse = apical_active_columns
+            # filter columns by Basal Ganglia conditioned on apical input
             if self.bg is not None:
-                return self.bg.filter(self.patterns.get_options(self.predicted_columns.dense))
+                return self.bg.choose(self.patterns.get_options(self.predicted_columns.dense), apical_input)
             else:
                 return predicted_columns
         else:
@@ -411,4 +427,6 @@ class Patterns:
             return np.empty(0)
         else:
             overlaps = np.dot(dense_pattern, self.patterns.T)
-            return self.patterns[overlaps > self.overlap_threshold] * dense_pattern
+            options = self.patterns[overlaps > self.overlap_threshold] * dense_pattern
+            # convert to list of sparse representations
+            return [np.nonzero(option) for option in options]
