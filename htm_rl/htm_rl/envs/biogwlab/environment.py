@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Any
+from typing import Tuple, Dict, List, Any, Union
 
 import numpy as np
 
@@ -88,6 +88,7 @@ class Environment(Env):
         obs = self.render()
         is_first = self.episode_step == 0
 
+        # from htm_rl.common.plot_utils import plot_grid_images
         # plot_grid_images([self.render_rgb()])
         return reward, obs, is_first
 
@@ -169,7 +170,7 @@ class Environment(Env):
         img[obstacles.mask] = 8
 
         food = self.get_module('food')
-        norm_rewards = 5 * food.rewards[food.map[food.mask]] / np.abs(food.rewards).max()
+        norm_rewards = 5 * food._rewards[food.map[food.mask]] / np.abs(food._rewards).max()
         norm_rewards[norm_rewards > 0] = norm_rewards[norm_rewards > 0].astype(np.int8) + 12
         norm_rewards[norm_rewards < 0] = norm_rewards[norm_rewards < 0].astype(np.int8) - 4
         img[food.mask] = norm_rewards
@@ -190,6 +191,9 @@ class Environment(Env):
         self.actions = isnone(actions, self.supported_actions.copy())
         self.ensure_all_actions_supported(self.actions)
 
-    def set_regenerator(self, episode_max_steps: int = None):
-        h, w = self.shape
-        self._episode_max_steps = isnone(episode_max_steps, 2 * h * w)
+    def set_regenerator(self, episode_max_steps: Union[int, str] = None):
+        if isnone(episode_max_steps, 'auto') == 'auto':
+            h, w = self.shape
+            episode_max_steps = 2 * h * w
+
+        self._episode_max_steps = episode_max_steps
