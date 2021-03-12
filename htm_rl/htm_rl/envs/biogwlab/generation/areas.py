@@ -48,7 +48,7 @@ class AreasGenerator:
             max(int(1.7 * n_cells), self.n_types)
         )
         flatten_centers = rng.integers(n_cells, size=n_areas)
-        area_centers = np.divmod(flatten_centers, n_cells)
+        area_centers = np.divmod(flatten_centers, width)
         area_types = rng.integers(self.n_types, size=n_areas)
         return area_centers, area_types
 
