@@ -50,7 +50,9 @@ class UcbAgent(Agent):
         return 'ucb'
 
     def act(self, reward: float, state: SparseSdr, first: bool):
-        if not first:
+        if first:
+            self._ucb_actor_critic.reset()
+        else:
             # process feedback
             state, action = self._current_sa_sdr
             self._current_sa_sdr = self._encode_sa(state, action, learn=True)

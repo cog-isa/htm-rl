@@ -59,10 +59,12 @@ class Experiment:
     def run_episode(self, env, agent):
         step = 0
         total_reward = 0.
-        first = False
 
-        while not (first and step > 0):
+        while True:
             reward, obs, first = env.observe()
+            if first and step > 0:
+                break
+
             action = agent.act(reward, obs, first)
             env.act(action)
 
