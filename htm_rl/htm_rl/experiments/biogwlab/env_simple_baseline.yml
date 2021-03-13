@@ -20,7 +20,7 @@ action_costs:
     move: 1.
 
 regenerator:
-  episode_max_steps:
+  episode_max_steps: auto
 
 # make it optional on building env
 areas:
