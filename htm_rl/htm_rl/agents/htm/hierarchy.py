@@ -27,8 +27,7 @@ class Block:
         self.sp = sp
         self.bg = bg
 
-        self.patterns = SpatialMemory(overlap_threshold=pattern_overlap_threshold,
-                                      pattern_size=self.tm.activation_threshold)
+        self.patterns = SpatialMemory(pattern_overlap_threshold)
 
         if self.sp is not None:
             self.sp_output = SDR(self.sp.getColumnDimensions())
@@ -205,7 +204,7 @@ class Block:
             self.apical_in_pattern = apical_active_cells
             self.basal_in_pattern = basal_active_columns
 
-    def get_output(self, mode):
+    def get_output(self, mode, return_value=False):
         """
         Get block output.
         :param mode: str: type of output, modes: {'basal', 'apical', 'feedback'}
@@ -243,15 +242,26 @@ class Block:
 
                 options, indices = self.patterns.get_options(self.predicted_columns.dense, return_indices=True)
                 if len(options) > 0:
-                    option, option_values = self.bg.choose(options, apical_input, greedy=True, return_values=True)
+                    option, option_value, option_values = self.bg.choose(options, apical_input, greedy=True, return_option_value=True, return_values=True)
                     # reinforce good patterns and punish bad ones
                     values = np.zeros(len(self.patterns))
                     values[indices] = option_values
                     self.patterns.reinforce(values)
+
+                    if return_value:
+                        return option, option_value
+                    else:
+                        return option
                 else:
-                    return list()
+                    if return_value:
+                        return list(), None
+                    else:
+                        return list()
             else:
-                return predicted_columns
+                if return_value:
+                    return predicted_columns, None
+                else:
+                    return predicted_columns
         else:
             raise ValueError(f'There is no such mode {mode}!')
 
@@ -318,10 +328,11 @@ class Hierarchy:
       ...
     ]
     """
-    def __init__(self, blocks: list, input_blocks: list, block_connections: list, logs_dir=None):
+    def __init__(self, blocks: list, input_blocks: list, block_connections: list, output_block=None, logs_dir=None):
         self.queue = list()
         self.blocks = blocks
         self.input_blocks = input_blocks
+        self.output_block = output_block
         self.block_connections = block_connections
         self.block_sizes = list()
         self.block_levels = list()
