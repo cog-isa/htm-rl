@@ -40,16 +40,16 @@ class BasalGanglia:
         self._BS = None
         self._pBS = None
 
-    def choose(self, options, state: SDR):
-        sa_options = list()
+    def choose(self, options, condition: SDR, return_value=False, greedy=False, option_weights=None):
+        conditioned_options = list()
         input_sp = SDR(self.input_size)
         output_sp = SDR(self.sp.getColumnDimensions())
         for option in options:
-            input_sp.sparse = np.concatenate(state.sparse, option+state.size)
+            input_sp.sparse = np.concatenate(condition.sparse, option + condition.size)
             self.sp.compute(input_sp, True, output_sp)
-            sa_options.append(np.copy(output_sp.sparse))
+            conditioned_options.append(np.copy(output_sp.sparse))
 
-        active_input = np.unique(sa_options)
+        active_input = np.unique(conditioned_options)
 
         cortex = np.zeros(self.output_size, dtype=np.int8)
         cortex[active_input] = 1
@@ -61,17 +61,26 @@ class BasalGanglia:
         GPi = np.random.random(GPi.shape) < GPi
         BS = cortex & ~GPi
 
-        value_options = np.zeros(len(sa_options))
-        for ind, sa_option in enumerate(sa_options):
-            value_options[ind] = np.sum(BS[sa_option])
+        value_options = np.zeros(len(conditioned_options))
+        for ind, conditioned_option in enumerate(conditioned_options):
+            value_options[ind] = np.sum(BS[conditioned_option])
 
-        option_probs = softmax(value_options)
-        option_index = np.random.choice(len(sa_options), 1, p=option_probs)[0]
+        if option_weights is not None:
+            value_options *= option_weights
+
+        if greedy:
+            option_index = np.argmax(value_options)
+        else:
+            option_probs = softmax(value_options)
+            option_index = np.random.choice(len(conditioned_options), 1, p=option_probs)[0]
 
         self._BS = np.where(BS)[0]
-        self._BS = np.intersect1d(self._BS, sa_options[option_index])
+        self._BS = np.intersect1d(self._BS, conditioned_options[option_index])
 
-        return options[option_index]
+        if return_value:
+            return options[option_index], value_options[option_index]
+        else:
+            return options[option_index]
 
     def force_dopamine(self, reward: float):
         if self._pBS is not None:
