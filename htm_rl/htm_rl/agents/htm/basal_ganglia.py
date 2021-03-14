@@ -15,7 +15,7 @@ class BasalGanglia:
     gamma: float
     discount_factor: float
 
-    def __init__(self, input_size: int, actions: int, alpha: float, beta: float, gamma: float,
+    def __init__(self, input_size: int, alpha: float, beta: float, gamma: float,
                  discount_factor: float, w_STN: float, sp: SpatialPooler = None):
         self.sp = sp
         self.input_size = input_size
@@ -23,7 +23,7 @@ class BasalGanglia:
             self.output_size = self.sp.getColumnDimensions()
         else:
             self.output_size = input_size
-        self._n_actions = actions
+
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
