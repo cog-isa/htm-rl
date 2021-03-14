@@ -426,7 +426,6 @@ class Hierarchy:
 class SpatialMemory:
     def __init__(self,
                  overlap_threshold: float,
-                 pattern_size: int,
                  initial_permanence: float = 0.55,
                  permanence_increment: float = 0.1,
                  permanence_decrement: float = 0.01,
@@ -437,8 +436,7 @@ class SpatialMemory:
         self.initial_permanence = initial_permanence
         self.patterns = np.empty(0)
         self.permanence = np.empty(0)
-        self.pattern_size = pattern_size
-        self.overlap_threshold = int(pattern_size * overlap_threshold)
+        self.overlap_threshold = overlap_threshold
 
     def __len__(self):
         return self.patterns.shape[0]
@@ -448,8 +446,10 @@ class SpatialMemory:
             self.patterns = dense_pattern.reshape((1, -1))
             self.permanence = np.array([self.initial_permanence])
         else:
-            overlaps = np.dot(dense_pattern, self.patterns.T)
-            if np.any(overlaps > self.overlap_threshold) > 0:
+            pattern_sizes = self.patterns.sum(axis=1)
+            overlaps = np.dot(dense_pattern, self.patterns.T) / (pattern_sizes + 1e-15)
+
+            if np.any(overlaps >= self.overlap_threshold):
                 best_index = np.argmax(overlaps)
                 self.patterns[best_index] = dense_pattern
                 self.permanence[best_index] += self.permanence_increment
