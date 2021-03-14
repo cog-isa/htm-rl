@@ -1,6 +1,6 @@
 import numpy as np
 from htm.bindings.sdr import SDR
-from htm_apical_basal_feeedback import ApicalBasalFeedbackTM
+from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 import os
 import pickle
 
@@ -26,7 +26,9 @@ class Block:
         self.tm = tm
         self.sp = sp
         self.bg = bg
-        self.patterns = Patterns(pattern_overlap_threshold, self.tm.activation_threshold)
+
+        self.patterns = SpatialMemory(overlap_threshold=pattern_overlap_threshold,
+                                      pattern_size=self.tm.activation_threshold)
 
         if self.sp is not None:
             self.sp_output = SDR(self.sp.getColumnDimensions())
@@ -177,6 +179,8 @@ class Block:
                 self.patterns.add(self.sp_output.dense)
             else:
                 self.patterns.add(self.sp_input.dense)
+            # model forgetting
+            self.patterns.reinforce(np.zeros(len(self.patterns)) - 1)
             # TM
             self.tm.set_active_columns(basal_active_columns)
             self.tm.activate_cells(learn)
@@ -202,6 +206,11 @@ class Block:
             self.basal_in_pattern = basal_active_columns
 
     def get_output(self, mode):
+        """
+        Get block output.
+        :param mode: str: type of output, modes: {'basal', 'apical', 'feedback'}
+        :return: depends on mode
+        """
         if mode == 'basal':
             # active columns without filtration
             return self.tm.get_active_columns()
@@ -213,25 +222,34 @@ class Block:
             predicted_columns = self.tm.get_predicted_columns(add_exec=self.should_return_exec_predictions,
                                                               add_apical=self.should_return_apical_predictions)
             self.predicted_columns.sparse = predicted_columns
-            # form apical input
-            apical_active_columns = list()
-            shift = 0
-
-            for block in self.apical_in:
-                columns = block.get_output('basal')
-                apical_active_columns.append(columns + shift)
-                shift += block.basal_columns
-
-            if len(apical_active_columns) > 0:
-                apical_active_columns = np.concatenate(apical_active_columns)
-            else:
-                apical_active_columns = np.empty(0)
-
-            apical_input = SDR(shift)
-            apical_input.sparse = apical_active_columns
             # filter columns by Basal Ganglia conditioned on apical input
             if self.bg is not None:
-                return self.bg.choose(self.patterns.get_options(self.predicted_columns.dense), apical_input)
+                # form apical input
+                apical_active_columns = list()
+                shift = 0
+
+                for block in self.apical_in:
+                    columns = block.get_output('basal')
+                    apical_active_columns.append(columns + shift)
+                    shift += block.basal_columns
+
+                if len(apical_active_columns) > 0:
+                    apical_active_columns = np.concatenate(apical_active_columns)
+                else:
+                    apical_active_columns = np.empty(0)
+
+                apical_input = SDR(shift)
+                apical_input.sparse = apical_active_columns
+
+                options, indices = self.patterns.get_options(self.predicted_columns.dense, return_indices=True)
+                if len(options) > 0:
+                    option, option_values = self.bg.choose(options, apical_input, greedy=True, return_values=True)
+                    # reinforce good patterns and punish bad ones
+                    values = np.zeros(len(self.patterns))
+                    values[indices] = option_values
+                    self.patterns.reinforce(values)
+                else:
+                    return list()
             else:
                 return predicted_columns
         else:
@@ -405,28 +423,66 @@ class Hierarchy:
             raise ValueError('Log dir is not defined!')
 
 
-class Patterns:
-    def __init__(self, overlap_threshold: float, pattern_size: int):
+class SpatialMemory:
+    def __init__(self,
+                 overlap_threshold: float,
+                 pattern_size: int,
+                 initial_permanence: float = 0.55,
+                 permanence_increment: float = 0.1,
+                 permanence_decrement: float = 0.01,
+                 permanence_threshold: float = 0.5):
+        self.permanence_threshold = permanence_threshold
+        self.permanence_decrement = permanence_decrement
+        self.permanence_increment = permanence_increment
+        self.initial_permanence = initial_permanence
         self.patterns = np.empty(0)
+        self.permanence = np.empty(0)
         self.pattern_size = pattern_size
         self.overlap_threshold = int(pattern_size * overlap_threshold)
+
+    def __len__(self):
+        return self.patterns.shape[0]
 
     def add(self, dense_pattern: np.array):
         if self.patterns.size == 0:
             self.patterns = dense_pattern.reshape((1, -1))
+            self.permanence = np.array([self.initial_permanence])
         else:
             overlaps = np.dot(dense_pattern, self.patterns.T)
             if np.any(overlaps > self.overlap_threshold) > 0:
                 best_index = np.argmax(overlaps)
                 self.patterns[best_index] = dense_pattern
+                self.permanence[best_index] += self.permanence_increment
             else:
                 self.patterns = np.vstack(self.patterns, dense_pattern.reshape(1, -1))
+                self.permanence = np.concatenate([self.permanence, self.initial_permanence])
 
-    def get_options(self, dense_pattern):
+    def reinforce(self, values: np.array):
+        """
+        Reinforce plausible patterns, forget patterns with permanence under threshold
+        :param values: array of values from BG
+        :return:
+        """
+        values[values < 0] = -self.permanence_decrement
+        values[values > 0] /= (values[values > 0].max() + 1e-15) * self.permanence_increment
+        self.permanence += values
+        self.patterns = self.patterns[self.permanence > self.permanence_threshold]
+        self.permanence = self.permanence[self.permanence > self.permanence_threshold]
+
+    def get_options(self, dense_pattern, return_indices=False):
         if self.patterns.size == 0:
-            return np.empty(0)
+            return list()
         else:
             overlaps = np.dot(dense_pattern, self.patterns.T)
-            options = self.patterns[overlaps > self.overlap_threshold] * dense_pattern
+            indices = np.flatnonzero(overlaps > self.overlap_threshold)
+            options = self.patterns[indices]
+            if options.size > 0:
+                options *= dense_pattern
             # convert to list of sparse representations
-            return [np.nonzero(option) for option in options]
+            if return_indices:
+                return [np.flatnonzero(option) for option in options], indices
+            else:
+                return [np.flatnonzero(option) for option in options]
+
+    def get_sparse_patterns(self):
+        return [np.flatnonzero(pattern) for pattern in self.patterns]
