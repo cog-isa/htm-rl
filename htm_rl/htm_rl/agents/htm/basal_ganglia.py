@@ -40,7 +40,7 @@ class BasalGanglia:
         self._BS = None
         self._pBS = None
 
-    def choose(self, options, condition: SDR, return_value=False, greedy=False, option_weights=None):
+    def choose(self, options, condition: SDR, return_option_value=False, greedy=False, option_weights=None, return_values=False):
         conditioned_options = list()
         input_sp = SDR(self.input_size)
         output_sp = SDR(self.sp.getColumnDimensions())
@@ -77,8 +77,10 @@ class BasalGanglia:
         self._BS = np.where(BS)[0]
         self._BS = np.intersect1d(self._BS, conditioned_options[option_index])
 
-        if return_value:
-            return options[option_index], value_options[option_index]
+        if return_option_value and return_values:
+            return options[option_index], value_options[option_index], value_options
+        elif return_values:
+            return options[option_index], value_options
         else:
             return options[option_index]
 
