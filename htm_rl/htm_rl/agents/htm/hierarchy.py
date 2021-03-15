@@ -357,6 +357,8 @@ class Hierarchy:
         self.block_sizes = list()
         self.block_levels = list()
 
+        self.rejected = False
+
         # wire blocks together
         for block_id, connections, block in zip(range(len(blocks)), block_connections, blocks):
             block.apical_in = [blocks[i] for i in connections['apical_in']]
@@ -405,8 +407,11 @@ class Hierarchy:
             self.queue.extend(tasks)
         elif (block.anomaly <= block.anomaly_threshold) and (block.confidence < block.confidence_threshold):
             self.queue.append((block, {'learn': learn, 'add_exec': True}))
-
-        if block.anomaly > block.anomaly_threshold:
+            # end of option
+            for block in block.feedback_in:
+                block.reinforce()
+        # interruption of option
+        if (block.anomaly > block.anomaly_threshold) and self.rejected:
             for block in block.feedback_in:
                 block.reinforce()
 

@@ -76,16 +76,18 @@ class HTMAgent:
             action_pattern = bg_action_pattern
             self.hierarchy_made_decision = False
         else:
-            prob = softmax(np.array([hierarchy_value, bg_value]))
+            prob = softmax(np.array([hierarchy_value, bg_value]))  # ???
             gamma = np.random.random()
             if gamma < prob[0]:
                 self.muscles.set_active_input(hierarchy_action_pattern)
                 self.muscles.depolarize_muscles()
                 action_pattern = self.muscles.get_depolarized_muscles()
                 self.hierarchy_made_decision = True
+                self.hierarchy.rejected = False
             else:
                 action_pattern = bg_action_pattern
                 self.hierarchy_made_decision = False
+                self.hierarchy.rejected = True
 
         self.action_pattern = action_pattern
         # convert muscles activation pattern to environment action
@@ -106,9 +108,9 @@ class HTMAgent:
             self.hierarchy.output_block.add_reward(reward)
             self.hierarchy.output_block.reinforce()
 
-            self.bg.force_dopamine(self.punish_reward)
+            self.bg.force_dopamine(self.punish_reward)  # ??
         else:
-            self.hierarchy.output_block.add_reward(self.punish_reward)
+            self.hierarchy.output_block.add_reward(self.punish_reward)  # ??
             self.hierarchy.output_block.reinforce()
 
             self.bg.force_dopamine(reward)
@@ -128,5 +130,4 @@ class HTMAgent:
             return np.random.choice([0, 1], size=(n_patterns_to_gen, self.muscles.muscles_size))
         else:
             return np.empty(0)
-
 
