@@ -21,7 +21,8 @@ class Block:
                  bg=None,
                  id_=None,
                  level=None,
-                 pattern_overlap_threshold=0.9):
+                 pattern_overlap_threshold=0.9,
+                 gamma=0.9):
         
         self.tm = tm
         self.sp = sp
@@ -65,6 +66,11 @@ class Block:
         self.feedback_in_size = 0
         self.apical_in_size = 0
         self.basal_in_size = 0
+
+        self.reward = 0
+        self.k = 0
+        self.gamma = gamma
+        self.made_decision = False
 
     def __str__(self):
         return f"Block_{self.id}"
@@ -248,6 +254,8 @@ class Block:
                     values[indices] = option_values
                     self.patterns.reinforce(values)
 
+                    self.made_decision = True
+
                     if return_value:
                         return option, option_value
                     else:
@@ -270,6 +278,18 @@ class Block:
         self.apical_in_size = sum([block.tm.basal_total_cells for block in self.apical_in])
         self.basal_in_size = sum([block.basal_columns for block in self.basal_in])
         return self.feedback_in_size, self.apical_in_size, self.basal_in_size
+
+    def add_reward(self, reward):
+        if self.made_decision and (self.bg is not None):
+            self.reward += (self.gamma ** self.k) * reward
+            self.k += 1
+
+    def reinforce(self):
+        if (self.k != 0) and self.made_decision and (self.bg is not None):
+            self.bg.force_dopamine(self.reward)
+            self.k = 0
+            self.reward = 0
+            self.made_decision = False
 
 
 class InputBlock:
@@ -386,6 +406,10 @@ class Hierarchy:
         elif (block.anomaly <= block.anomaly_threshold) and (block.confidence < block.confidence_threshold):
             self.queue.append((block, {'learn': learn, 'add_exec': True}))
 
+        if block.anomaly > block.anomaly_threshold:
+            for block in block.feedback_in:
+                block.reinforce()
+
         # logging
         if self.logs_dir is not None:
             self.logs['tasks'].append((block.id, kwargs))
@@ -424,6 +448,10 @@ class Hierarchy:
         self.queue = self.queue[::-1]
         # start processing input
         self.compute(learn=learn)
+
+    def add_rewards(self, rewards):
+        for reward, block in zip(rewards, self.blocks):
+            block.add_reward(reward)
 
     def save_logs(self):
         if self.logs_dir is not None:

@@ -36,6 +36,7 @@ class BioGwLabAction:
 
 class HTMAgent:
     def __init__(self, config, hierarchy: Hierarchy = None):
+        self.punish_reward = config['punish_reward']
         self.hierarchy = hierarchy
         self.action = BioGwLabAction(**config['action'])
 
@@ -46,6 +47,7 @@ class HTMAgent:
         self.total_patterns = 2**self.muscles.muscles_size
         # there is no first action
         self.action_pattern = np.empty(0)
+        self.hierarchy_made_decision = False
         # proportionality for random generator
         self.alpha = config['alpha']
 
@@ -72,6 +74,7 @@ class HTMAgent:
         # decide which pattern to use
         if hierarchy_value is None:
             action_pattern = bg_action_pattern
+            self.hierarchy_made_decision = False
         else:
             prob = softmax(np.array([hierarchy_value, bg_value]))
             gamma = np.random.random()
@@ -79,17 +82,41 @@ class HTMAgent:
                 self.muscles.set_active_input(hierarchy_action_pattern)
                 self.muscles.depolarize_muscles()
                 action_pattern = self.muscles.get_depolarized_muscles()
+                self.hierarchy_made_decision = True
             else:
                 action_pattern = bg_action_pattern
+                self.hierarchy_made_decision = False
 
         self.action_pattern = action_pattern
         # convert muscles activation pattern to environment action
         action = self.action.get_action(action_pattern)
         return action
 
-    def reinforce(self, reward):
-        # TODO reinforce BasalGanglia by external reward
-        pass
+    def reinforce(self, reward, pseudo_rewards=None):
+        """
+        Reinforce BasalGanglia.
+        :param reward: float:
+        Main reward of the environment.
+        :param pseudo_rewards: list or None
+        Rewards for all blocks in hierarchy, they may differ from actual reward.
+        List should be length of number of blocks in hierarchy.
+        :return:
+        """
+        if self.hierarchy_made_decision:
+            self.hierarchy.output_block.add_reward(reward)
+            self.hierarchy.output_block.reinforce()
+
+            self.bg.force_dopamine(self.punish_reward)
+        else:
+            self.hierarchy.output_block.add_reward(self.punish_reward)
+            self.hierarchy.output_block.reinforce()
+
+            self.bg.force_dopamine(reward)
+
+        if pseudo_rewards is None:
+            self.hierarchy.add_rewards([reward] * len(self.hierarchy.blocks))
+        else:
+            self.hierarchy.add_rewards(pseudo_rewards)
 
     def generate_patterns(self):
         """
