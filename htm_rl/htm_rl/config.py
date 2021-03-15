@@ -1,12 +1,13 @@
 from inspect import getattr_static
 from pathlib import Path
 from pprint import pprint
+from typing import Dict
 
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
 from htm_rl.agent.train_eval import RunResultsProcessor
-from htm_rl.agents.ucb.ucb_experiment_runner import UcbExperimentRunner
-from htm_rl.envs.biogwlab0.map_generator import BioGwLabEnvGenerator
+from htm_rl.agents.ucb.experiment_runner import UcbExperimentRunner
+from htm_rl.common.utils import isnone
 
 
 def read_config(file_path: Path, verbose=False):
@@ -21,7 +22,6 @@ def read_config(file_path: Path, verbose=False):
 def register_classes(yaml: YAML):
     classes = [
         RunResultsProcessor,
-        BioGwLabEnvGenerator,
         UcbExperimentRunner,
     ]
 
@@ -57,4 +57,44 @@ def register_static_methods_as_tags(cls, yaml: YAML):
         constructor.add_constructor(f'!{tag}', func)
 
 
+class Config(dict):
+    def __init__(self, *args, **kwargs):
+        super(Config, self).__init__(*args, **kwargs)
 
+    @property
+    def name(self) -> str:
+        raise NotImplementedError
+
+
+class FileConfig(Config):
+    path: Path
+    content: Dict
+
+    _name: str
+
+    def __init__(self, path: Path, name: str = None):
+        self.path = path
+        self.content = read_config(path)
+        self._name = isnone(name, self.path.stem)
+
+        super().__init__(self.content)
+
+    @property
+    def name(self):
+        return self._name
+
+
+class DictConfig(Config):
+    content: Dict
+
+    _name: str
+
+    def __init__(self, content: Dict, name: str):
+        self.content = content
+        self._name = name
+
+        super().__init__(self.content)
+
+    @property
+    def name(self):
+        return self._name

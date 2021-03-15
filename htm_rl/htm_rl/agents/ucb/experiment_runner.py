@@ -1,10 +1,9 @@
 from tqdm import trange
 
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
-from htm_rl.agents.ucb.ucb_agent import UcbAgent
-from htm_rl.common.utils import trace
-from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
 
+# OBSOLETE!
+# Kept only to use commented code a bit further
 
 class UcbExperimentRunner:
     n_episodes: int
@@ -13,21 +12,15 @@ class UcbExperimentRunner:
 
     def __init__(self, n_episodes: int):
         self.n_episodes = n_episodes
-        self.train_stats = RunStats()
-        self.name = 'ucb'
+        self.train_stats = RunStats('ucb')
 
-    def run_experiment(self, env_config, agent_config):
-        # view_rect = (-2, 0), (2, 2)
-        # scent_rect = (-3, -2), (3, 4)
-        env = BioGwLabEnvironment(**env_config)
-        agent = UcbAgent(env, **agent_config)
-
+    def run_experiment(self, env, agent):
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = agent.run_episode(env)
             self.train_stats.append_stats(steps, reward, elapsed_time)
 
     def store_results(self, run_results_processor: RunResultsProcessor):
-        run_results_processor.store_result(self.train_stats, f'{self.name}')
+        run_results_processor.store_result(self.train_stats)
 
     def show_environments(self, n):
         # for env_map, _ in self.get_environment_maps(n):

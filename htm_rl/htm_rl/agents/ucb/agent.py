@@ -1,15 +1,16 @@
-from typing import Dict
+from typing import Dict, Optional, List
 
+from htm_rl.agents.agent import Agent
 from htm_rl.agents.ucb.ucb_actor_critic import UcbActorCritic
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
-from htm_rl.common.utils import timed
-from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
+from htm_rl.envs.env import Env
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
-class UcbAgent:
+class UcbAgent(Agent):
     _n_actions: int
+    _current_sa_sdr: Optional[SparseSdr]
 
     _state_sp: SpatialPooler
     _action_encoder: IntBucketEncoder
@@ -20,65 +21,60 @@ class UcbAgent:
 
     def __init__(
             self,
-            env: BioGwLabEnvironment,
+            env: Env,
+            seed: int,
             ucb_actor_critic: Dict,
             state_sp: Dict,
             action_encoder: Dict,
             sa_sp: Dict
     ):
-        self._state_sp = SpatialPooler(input_source=env, **state_sp)
+        self._state_sp = SpatialPooler(input_source=env, seed=seed, **state_sp)
         self._action_encoder = IntBucketEncoder(n_values=env.n_actions, **action_encoder)
         self._sa_concatenator = SdrConcatenator(input_sources=[
             self._state_sp,
             self._action_encoder
         ])
-        self._sa_sp = SpatialPooler(input_source=self._sa_concatenator, **sa_sp)
+        self._sa_sp = SpatialPooler(input_source=self._sa_concatenator, seed=seed, **sa_sp)
 
         self._ucb_actor_critic = UcbActorCritic(
             cells_sdr_size=self._sa_sp.output_sdr_size,
+            seed=seed,
             **ucb_actor_critic
         )
         self._n_actions = env.n_actions
 
-    @timed
-    def run_episode(self, env):
-        self._ucb_actor_critic.reset()
-        step = 0
-        total_reward = 0.
+        self._current_sa_sdr = None
 
-        reward, state, first = env.observe()
-        while not (first and step > 0):
-            action = self.choose_action(state)
-            env.act(action)
+    @property
+    def name(self):
+        return 'ucb'
 
-            reward, new_state, first = env.observe()
-            self.get_feedback(state, action, reward, new_state)
+    def act(self, reward: float, state: SparseSdr, first: bool):
+        if first:
+            self._ucb_actor_critic.reset()
+        else:
+            # process feedback
+            state, action = self._current_sa_sdr
+            self._current_sa_sdr = self._encode_sa(state, action, learn=True)
+            self._ucb_actor_critic.add_step(self._current_sa_sdr, reward)
 
-            state = new_state
-            step += 1
-            total_reward += reward
-
-        return step, total_reward
-
-    def choose_action(self, state):
-        actions = self.encode_actions(state)
+        actions = self._encode_actions(state)
         action = self._ucb_actor_critic.choose(actions)
+        # self._current_sa_sdr = actions[action]
+        self._current_sa_sdr = state, action
+
         return action
 
-    def get_feedback(self, state, action, reward, new_state):
-        sa_sdr = self.encode_sa(state, action, learn=True)
-        self._ucb_actor_critic.add_step(sa_sdr, reward)
-
-    def encode_actions(self, state: SparseSdr):
+    def _encode_actions(self, state: SparseSdr) -> List[SparseSdr]:
         actions = []
 
         for action in range(self._n_actions):
-            sa_sdr = self.encode_sa(state, action, learn=False)
+            sa_sdr = self._encode_sa(state, action, learn=False)
             actions.append(sa_sdr)
 
         return actions
 
-    def encode_sa(self, state: SparseSdr, action: int, learn: bool) -> SparseSdr:
+    def _encode_sa(self, state: SparseSdr, action: int, learn: bool) -> SparseSdr:
         s = self._state_sp.compute(state, learn=learn)
         a = self._action_encoder.encode(action)
 

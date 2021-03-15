@@ -1,0 +1,43 @@
+# Simplest environment with 1 food item and agent position as observation
+
+shape_xy: [5, 5]
+
+actions:
+#    - stay
+#    - move forward
+#    - turn right
+#    - turn left
+  - move right
+  - move down
+  - move left
+  - move up
+
+action_costs:
+  action_cost: -.01
+  action_weight:
+    stay: .3
+    turn: .5
+    move: 1.
+
+obstacles:
+  density: .25
+
+food:
+  n_items: 1
+  reward: 10.
+
+terminate:
+  episode_max_steps: auto
+  early_stop: true
+
+#regenerate:
+#  s0:
+#  food:
+#  obstacles:
+
+rendering:
+  render:
+    - position
+#    - direction
+  bucket_size: 3
+

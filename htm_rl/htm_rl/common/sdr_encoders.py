@@ -109,7 +109,10 @@ class IntArrayEncoder:
         self.n_types = n_types
         self.output_sdr_size = self.n_types * n_values
 
-    def encode(self, x: np.ndarray, mask: np.ndarray = None):
+    def encode(self, x: np.ndarray = None, mask: np.ndarray = None):
+        if x is None:
+            x = ~mask
+
         x = x.flatten()
         if mask is not None:
             indices = np.flatnonzero(mask)

@@ -1,0 +1,55 @@
+seed:
+# ^^^^^^^ Requirements ^^^^^^^^^
+
+env:
+  shape_xy: [8, 8]
+
+  actions:
+    - stay
+#    - move forward
+#    - turn right
+#    - turn left
+    - move right
+    - move down
+    - move left
+    - move up
+
+  regenerator:
+    episode_max_steps: 200
+
+  areas:
+    n_types: 2
+
+  obstacles:
+    density: .25
+
+  food:
+    n_items: 4
+#    reward: 20.
+    types:
+      beans:
+        reward: 20.
+      rancid beans:
+        reward: -10.
+      fruits:
+        reward: 100.
+      rancid fruits:
+        reward: -200.
+
+  action_costs:
+    action_cost: -.01
+    action_weight:
+      stay: .3
+      turn: .5
+      move: 1.
+
+  rendering:
+    view_rectangle: [[-3, -3], [3, 3]]
+    render:
+      - obstacles
+      - areas
+      - food
+      - position
+      - direction
+    bucket_size: 3
+
