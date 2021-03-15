@@ -5,6 +5,7 @@ from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.episode_terminator import EpisodeTerminator
 from htm_rl.envs.biogwlab.food import add_food
 from htm_rl.envs.biogwlab.obstacles import Obstacles
+from htm_rl.envs.biogwlab.regenerator import Regenerator
 from htm_rl.envs.biogwlab.renderer import Renderer
 from htm_rl.envs.wrapper import Wrapper
 
@@ -14,6 +15,7 @@ registry = {
     'food': add_food,
     'rendering': Renderer,
     'terminate': EpisodeTerminator,
+    'regenerate': Regenerator,
 }
 
 
@@ -30,16 +32,17 @@ class BioGwLabEnvironment(Wrapper):
         )
         env.set_actions(actions)
         env.set_action_costs(**action_costs)
-        # env.set_regenerator(**regenerator)
 
         add_module(env, modules, 'areas')
         add_module(env, modules, 'obstacles')
         add_module(env, modules, 'food')
         env.add_agent()
 
+        add_module(env, modules, 'terminate')
+        add_module(env, modules, 'regenerate')
+
         env.reset()
         add_module(env, modules, 'rendering')
-        add_module(env, modules, 'terminate')
 
         super(BioGwLabEnvironment, self).__init__(env)
 

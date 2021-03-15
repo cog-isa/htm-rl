@@ -52,7 +52,8 @@ class Food(Entity):
         )
         self._last_seed = None
 
-    def generate(self, seed):
+    def generate(self, seeds):
+        seed = seeds['food']
         if self._last_seed == seed:
             self.mask = self._initial_mask.copy()
             return

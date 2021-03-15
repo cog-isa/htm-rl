@@ -29,12 +29,12 @@ class EpisodeTerminator:
         self._food = env.get_module('food')
         self.terminated = False
 
-    def generate(self, _):
+    def reset(self):
         self.terminated = False
 
     def collected(self):
         food = self._food
-        # TODO: ugly workaround
+        # WARN: ugly workaround
         self.terminated = not np.any(food._rewards[food.map[food.mask]])
 
     def is_terminal(self, episode_step):

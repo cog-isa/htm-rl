@@ -30,10 +30,11 @@ terminate:
   episode_max_steps: auto
   early_stop: true
 
-#regenerate:
-#  s0:
-#  food:
-#  obstacles:
+# every N episodes (agent, food, map)
+regenerate:
+  agent:
+  food:
+  map: 1
 
 rendering:
   render:

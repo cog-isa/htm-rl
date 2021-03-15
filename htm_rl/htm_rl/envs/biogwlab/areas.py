@@ -18,7 +18,8 @@ class Areas(Entity):
         self._generator = AreasGenerator(shape=self.shape, n_types=self.n_types)
         self._last_seed = None
 
-    def generate(self, seed):
+    def generate(self, seeds):
+        seed = seeds['map']
         if self._last_seed is not None and self._last_seed == seed:
             return
 

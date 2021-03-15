@@ -15,7 +15,8 @@ class Obstacles(Entity):
         self._generator = ObstaclesGenerator(shape=self.shape, density=density)
         self._last_seed = None
 
-    def generate(self, seed):
+    def generate(self, seeds):
+        seed = seeds['map']
         if self._last_seed is not None and self._last_seed == seed:
             return
 
