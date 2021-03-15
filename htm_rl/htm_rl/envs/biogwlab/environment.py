@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Any, Union
+from typing import Tuple, Dict, List, Any
 
 import numpy as np
 
@@ -25,6 +25,8 @@ class Environment(Env):
     supported_events = [
         'generate',
         'move', 'turn', 'collect',
+        'collected',
+        'is_terminal',
         'render'
     ]
 
@@ -42,7 +44,6 @@ class Environment(Env):
     action_weight: Dict[str, float]
 
     actions: List[str]
-    _episode_max_steps: int
 
     def __init__(self, shape_xy: Tuple[int, int], seed: int):
         # convert from x,y to i,j
@@ -136,12 +137,20 @@ class Environment(Env):
 
     def collect(self):
         for handler in self.handlers['collect']:
-            reward = handler(self.agent.position, self.agent.view_direction)
-            self.step_reward += reward
+            reward, success = handler(self.agent.position, self.agent.view_direction)
+            if success:
+                self.step_reward += reward
+                self.collected()
+
+    def collected(self):
+        for handler in self.handlers['collected']:
+            handler()
 
     def is_terminal(self):
-        steps_exceed = self.episode_step >= self._episode_max_steps
-        return steps_exceed
+        for handler in self.handlers['is_terminal']:
+            if handler(self.episode_step):
+                return True
+        return False
 
     def set_action_costs(self, action_cost: float, action_weight: Dict[str, float]):
         self.action_cost = action_cost
@@ -190,10 +199,3 @@ class Environment(Env):
     def set_actions(self, actions):
         self.actions = isnone(actions, self.supported_actions.copy())
         self.ensure_all_actions_supported(self.actions)
-
-    def set_regenerator(self, episode_max_steps: Union[int, str] = None):
-        if isnone(episode_max_steps, 'auto') == 'auto':
-            h, w = self.shape
-            episode_max_steps = 2 * h * w
-
-        self._episode_max_steps = episode_max_steps

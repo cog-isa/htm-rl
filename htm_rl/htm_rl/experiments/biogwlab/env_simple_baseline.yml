@@ -19,19 +19,21 @@ action_costs:
     turn: .5
     move: 1.
 
-regenerator:
-  episode_max_steps: auto
-
-# make it optional on building env
-areas:
-  n_types: 1
-
 obstacles:
   density: .25
 
 food:
   n_items: 1
   reward: 10.
+
+terminate:
+  episode_max_steps: auto
+  early_stop: true
+
+#regenerate:
+#  s0:
+#  food:
+#  obstacles:
 
 rendering:
   render:

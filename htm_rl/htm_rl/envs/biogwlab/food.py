@@ -68,12 +68,13 @@ class Food(Entity):
         self._last_seed = seed
 
     def collect(self, position, view_direction):
-        reward = 0
+        reward, success = 0, False
         if self.mask[position]:
             self.mask[position] = False
+            success = True
             if self.n_types == 1:
                 reward = self._rewards[0]
             else:
                 reward = self._rewards[self.map[position]]
 
-        return reward
+        return reward, success
