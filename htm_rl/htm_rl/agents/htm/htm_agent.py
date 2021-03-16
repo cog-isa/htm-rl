@@ -1,7 +1,10 @@
-from htm_rl.agents.htm.hierarchy import Hierarchy, SpatialMemory
+from htm_rl.agents.htm.hierarchy import Hierarchy, SpatialMemory, Block, InputBlock
 from htm_rl.agents.htm.muscles import Muscles
 from htm_rl.agents.htm.basal_ganglia import BasalGanglia, softmax
-from htm_rl.envs.biogwlab.environment import BioGwLabEnvironment
+from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
+from htm.bindings.algorithms import SpatialPooler
+from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
+from htm.bindings.sdr import SDR
 import numpy as np
 
 
@@ -24,8 +27,8 @@ class BioGwLabAction:
         dense_pattern = np.zeros(self.muscles_size)
         dense_pattern[sparse_pattern] = 1
 
-        pattern_sizes = dense_pattern.sum(axis=1)
-        overlaps = np.dot(dense_pattern, self.patterns.T) / pattern_sizes
+        pattern_sizes = self.patterns.sum(axis=1)
+        overlaps = np.dot(dense_pattern, self.patterns.T) / (pattern_sizes + 1e-15)
 
         if np.any(overlaps >= (1 - self.noise_tolerance)):
             return np.argmax(overlaps)
@@ -35,23 +38,32 @@ class BioGwLabAction:
 
 
 class HTMAgent:
-    def __init__(self, config, hierarchy: Hierarchy = None):
+    def __init__(self, config, hierarchy: Hierarchy):
         self.punish_reward = config['punish_reward']
         self.hierarchy = hierarchy
         self.action = BioGwLabAction(**config['action'])
 
         self.memory = SpatialMemory(**config['sm'])
-        self.bg = BasalGanglia(**config['bg'])
+
+        if config['bg_sp'] is not None:
+            bg_sp = SpatialPooler(**config['bg_sp'])
+        else:
+            bg_sp = None
+        self.bg = BasalGanglia(sp=bg_sp, **config['bg'])
+
         self.muscles = Muscles(**config['muscles'])
 
         self.total_patterns = 2**self.muscles.muscles_size
         # there is no first action
         self.action_pattern = np.empty(0)
+        self.state_pattern = SDR(config['state_size'])
+
         self.hierarchy_made_decision = False
         # proportionality for random generator
         self.alpha = config['alpha']
 
     def make_action(self, state_pattern):
+        self.state_pattern.sparse = state_pattern
         # add new patterns to memory
         new_patterns = self.generate_patterns()
         for pattern in new_patterns:
@@ -67,7 +79,7 @@ class HTMAgent:
         self.muscles.learn()
         # get action from lowest bg
         options = self.memory.get_sparse_patterns()
-        bg_action_pattern, bg_value, option_values = self.bg.choose(options, condition=state_pattern,
+        bg_action_pattern, bg_value, option_values = self.bg.choose(options, condition=self.state_pattern,
                                                                     return_option_value=True, return_values=True)
         # train memory
         self.memory.reinforce(option_values)
@@ -125,9 +137,57 @@ class HTMAgent:
         Generate random muscles activation patterns. Number of patterns proportional to patterns in memory.
         :return: numpy array
         """
-        n_patterns_to_gen = np.clip(self.alpha * (self.total_patterns - len(self.memory)), a_min=0)
+        n_patterns_to_gen = np.clip(self.alpha * (self.total_patterns - len(self.memory)),
+                                    a_min=0, a_max=self.total_patterns)
         if n_patterns_to_gen > 0:
-            return np.random.choice([0, 1], size=(n_patterns_to_gen, self.muscles.muscles_size))
+            return np.random.choice([0, 1], size=(int(n_patterns_to_gen), self.muscles.muscles_size))
         else:
             return np.empty(0)
+
+
+class HTMAgentRunner:
+    def __init__(self, config):
+        sp_default = config['spatial_pooler_default']
+        tm_default = config['temporal_memory_default']
+        bg_default = config['basal_ganglia_default']
+
+        block_configs = config['blocks']
+        block_default = config['block_default']
+
+        input_block_configs = config['input_blocks']
+        input_block_default = config['input_block_default']
+
+        blocks = list()
+
+        for block_conf in input_block_configs:
+            blocks.append(InputBlock(**block_conf, **input_block_default))
+
+        for block_conf in block_configs:
+            tm = ApicalBasalFeedbackTM(**block_conf['tm'], **tm_default)
+
+            if block_conf['sp'] is not None:
+                sp = SpatialPooler(**block_conf['sp'], **sp_default)
+            else:
+                sp = None
+
+            if block_conf['bg'] is not None:
+                if block_conf['bg_sp'] is not None:
+                    bg_sp = SpatialPooler(**block_conf['bg_sp'], **sp_default)
+                else:
+                    bg_sp = None
+                bg = BasalGanglia(sp=bg_sp, **block_conf['bg'], **bg_default)
+            else:
+                bg = None
+
+            blocks.append(Block(tm=tm, sp=sp, bg=bg, **block_conf['block'], **block_default))
+
+        hierarchy = Hierarchy(blocks, **config['hierarchy'])
+
+        self.agent = HTMAgent(config['agent'], hierarchy)
+        self.environment = BioGwLabEnvironment(**config['environment'])
+
+    def run_episode(self):
+        pass
+
+
 

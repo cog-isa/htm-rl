@@ -330,7 +330,8 @@ class Hierarchy:
     """
     Compute hierarchy of blocks
     :param blocks: list(Block)
-    :param input_blocks: list(InputBlocks)
+    :param input_blocks: list of indices of blocks
+    :param output_block: index of output block
     :param block_connections: list
     List of dicts. Every dict corresponds to block and describes its connections.
     block id corresponds to dict position in block_connections
@@ -348,15 +349,16 @@ class Hierarchy:
       ...
     ]
     """
-    def __init__(self, blocks: list, input_blocks: list, block_connections: list, output_block=None, logs_dir=None):
+    def __init__(self, blocks: list, input_blocks: list, output_block: int, block_connections: list, logs_dir=None):
         self.queue = list()
         self.blocks = blocks
-        self.input_blocks = input_blocks
-        self.output_block = output_block
+        self.input_blocks = [blocks[i] for i in input_blocks]
+        self.output_block = blocks[output_block]
         self.block_connections = block_connections
         self.block_sizes = list()
         self.block_levels = list()
 
+        # hierarchy state
         self.rejected = False
 
         # wire blocks together
@@ -378,6 +380,7 @@ class Hierarchy:
                                      'basal_out': basal_out_size})
             self.block_levels.append(block.level)
 
+        # logging
         self.logs_dir = logs_dir
         self.logs = {'tasks': list(),
                      'patterns': {'feedback_in': list(),
@@ -490,16 +493,25 @@ class SpatialMemory:
             self.patterns = dense_pattern.reshape((1, -1))
             self.permanence = np.array([self.initial_permanence])
         else:
-            pattern_sizes = self.patterns.sum(axis=1)
-            overlaps = np.dot(dense_pattern, self.patterns.T) / (pattern_sizes + 1e-15)
+            if dense_pattern.sum() != 0:
+                pattern_sizes = self.patterns.sum(axis=1)
+                overlaps = np.dot(dense_pattern, self.patterns.T) / (pattern_sizes + 1e-15)
 
-            if np.any(overlaps >= self.overlap_threshold):
-                best_index = np.argmax(overlaps)
-                self.patterns[best_index] = dense_pattern
-                self.permanence[best_index] += self.permanence_increment
+                if np.any(overlaps >= self.overlap_threshold):
+                    best_index = np.argmax(overlaps)
+                    self.patterns[best_index] = dense_pattern
+                    self.permanence[best_index] += self.permanence_increment
+                else:
+                    self.patterns = np.vstack([self.patterns, dense_pattern.reshape(1, -1)])
+                    self.permanence = np.append(self.permanence, self.initial_permanence)
             else:
-                self.patterns = np.vstack(self.patterns, dense_pattern.reshape(1, -1))
-                self.permanence = np.concatenate([self.permanence, self.initial_permanence])
+                pattern_sizes = self.patterns.sum(axis=1)
+                zero_mask = (pattern_sizes == 0)
+                if np.any(zero_mask):
+                    self.permanence[zero_mask] += self.permanence_increment
+                else:
+                    self.patterns = np.vstack([self.patterns, dense_pattern.reshape(1, -1)])
+                    self.permanence = np.append(self.permanence, self.initial_permanence)
 
     def reinforce(self, values: np.array):
         """
@@ -507,8 +519,10 @@ class SpatialMemory:
         :param values: array of values from BG
         :return:
         """
-        values[values < 0] = -self.permanence_decrement
-        values[values > 0] /= (values[values > 0].max() + 1e-15) * self.permanence_increment
+        mean = values.mean()
+        values[values < mean] = -self.permanence_decrement
+        positive = values >= mean
+        values[positive] /= (values[positive].max() + 1e-15) * self.permanence_increment
         self.permanence += values
         self.patterns = self.patterns[self.permanence > self.permanence_threshold]
         self.permanence = self.permanence[self.permanence > self.permanence_threshold]

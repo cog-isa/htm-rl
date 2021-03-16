@@ -19,6 +19,7 @@ class BasalGanglia:
                  discount_factor: float, w_STN: float, sp: SpatialPooler = None):
         self.sp = sp
         self.input_size = input_size
+
         if self.sp is not None:
             self.output_size = self.sp.getColumnDimensions()
         else:
@@ -30,9 +31,9 @@ class BasalGanglia:
         self.discount_factor = discount_factor
         self.w_STN = w_STN
 
-        self._D1 = 0.55 * np.ones(input_size)
-        self._D2 = 0.45 * np.ones(input_size)
-        self._STN = np.zeros(input_size)
+        self._D1 = 0.55 * np.ones(self.output_size)
+        self._D2 = 0.45 * np.ones(self.output_size)
+        self._STN = np.zeros(self.output_size)
         self._BS = None
         self._pBS = None
 
@@ -45,7 +46,7 @@ class BasalGanglia:
         input_sp = SDR(self.input_size)
         output_sp = SDR(self.sp.getColumnDimensions())
         for option in options:
-            input_sp.sparse = np.concatenate(condition.sparse, option + condition.size)
+            input_sp.sparse = np.concatenate([condition.sparse, option + condition.size])
             self.sp.compute(input_sp, True, output_sp)
             conditioned_options.append(np.copy(output_sp.sparse))
 
