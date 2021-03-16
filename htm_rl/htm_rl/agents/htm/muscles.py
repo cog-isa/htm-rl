@@ -97,7 +97,7 @@ class Muscles:
 
         for segments in (learning_active_segments, learning_matching_segments):
             self._learn(self.connections, segments,
-                        self.active_input.sparse,
+                        self.active_input,
                         self.active_input.sparse,
                         self.num_potential,
                         self.sample_size,
@@ -106,7 +106,7 @@ class Muscles:
         if self.depolarized_decrement != 0.0:
             for segments in (active_segments_to_punish, matching_segments_to_punish):
                 for segment in segments:
-                    self.connections.adaptSegment(segment, self.active_input.sparse,
+                    self.connections.adaptSegment(segment, self.active_input,
                                                   -self.depolarized_decrement, 0.0, False)
 
         if len(self.active_input.sparse) > 0:

@@ -262,9 +262,9 @@ class Block:
                         return option
                 else:
                     if return_value:
-                        return list(), None
+                        return np.empty(0), None
                     else:
-                        return list()
+                        return np.empty(0)
             else:
                 if return_value:
                     return predicted_columns, None
@@ -324,6 +324,9 @@ class InputBlock:
 
     def get_in_sizes(self):
         return 0, 0, 0
+
+    def add_reward(self, reward):
+        pass
 
 
 class Hierarchy:
