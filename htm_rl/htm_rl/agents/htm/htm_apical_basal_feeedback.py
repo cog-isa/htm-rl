@@ -238,7 +238,8 @@ class ApicalBasalFeedbackTM:
 
     def activate_inhib_dendrites(self):
         self.active_inhib_basal_segments, self.matching_inhib_basal_segments, self.inhibited_basal_cells, self.num_inhib_basal_potential = self._activate_dendrites(
-            self.inhib_connections, self.active_basal_cells, self.activation_inhib_basal_threshold, self.learning_inhib_basal_threshold
+            self.inhib_connections, self.active_basal_cells, self.activation_inhib_basal_threshold,
+            self.learning_inhib_basal_threshold
         )
 
         self.active_inhib_feedback_segments, self.matching_inhib_feedback_segments, self.inhibited_feedback_cells, self.num_inhib_feedback_potential = self._activate_dendrites(
@@ -280,7 +281,7 @@ class ApicalBasalFeedbackTM:
 
         confidence = len(self.predicted_cells.sparse) / self.basal_columns
         self.confidence_threshold = self.confidence_threshold + (
-                    confidence - self.confidence[0]) / self.confidence_window
+                confidence - self.confidence[0]) / self.confidence_window
         self.confidence.append(confidence)
         self.confidence.pop(0)
 
@@ -358,7 +359,8 @@ class ApicalBasalFeedbackTM:
                         self.sample_inhib_basal_size == -1):
                     inhib_basal_candidates = self.winner_basal_cells.sparse
                 else:
-                    inhib_basal_candidates = np.random.choice(self.winner_basal_cells.sparse, self.sample_inhib_basal_size,
+                    inhib_basal_candidates = np.random.choice(self.winner_basal_cells.sparse,
+                                                              self.sample_inhib_basal_size,
                                                               replace=False)
                 if (self.active_feedback_columns.sparse.size <= self.sample_inhib_feedback_size or
                         self.sample_inhib_feedback_size == -1):
@@ -416,8 +418,8 @@ class ApicalBasalFeedbackTM:
                                             self.sample_inhib_basal_size + self.sample_inhib_feedback_size,
                                             self.max_inhib_synapses_per_segment)
 
-        self.active_basal_cells.sparse = new_active_cells.astype('uint32')
-        self.winner_basal_cells.sparse = new_winner_cells.astype('uint32')
+        self.active_basal_cells.sparse = np.unique(new_active_cells.astype('uint32'))
+        self.winner_basal_cells.sparse = np.unique(new_winner_cells)
 
         anomaly = len(bursting_columns) / self.basal_columns
         self.anomaly_threshold = self.anomaly_threshold + (anomaly - self.anomaly[0]) / self.anomaly_window
@@ -655,11 +657,13 @@ class ApicalBasalFeedbackTM:
             cells_to_grow_apical_segments = cells_for_learning_basal_segments[np.in1d(cells_for_learning_basal_segments,
                                                                                       cells_for_apical_segments,
                                                                                       invert=True)]
-            # filter cells by resolved columns and choose best apical segment for column
-            candidate_apical_segments = self._filter_by_basal_columns(candidate_apical_segments,
-                                                                      np.unique(self._basal_columns_for_cells(
-                                                                          cells_for_learning_basal_segments)),
-                                                                      invert=True)
+            # filter segments by resolved columns and choose best apical segment for column
+            cells_to_filter = self._filter_by_basal_columns(
+                np.unique(self.apical_connections.mapSegmentsToCells(candidate_apical_segments)),
+                np.unique(self._basal_columns_for_cells(cells_for_learning_basal_segments)),
+                invert=True)
+            candidate_apical_segments = self.apical_connections.filterSegmentsByCell(candidate_apical_segments,
+                                                                                     cells_to_filter)
         else:
             learning_apical_segments = np.empty(0)
             learning_basal_segments = np.empty(0)
@@ -765,8 +769,12 @@ class ApicalBasalFeedbackTM:
         :param cells: numpy array of cells id
         :return: numpy array of columns id for every cell
         """
-        basal_cells = cells[(cells >= self.basal_range[0]) & (cells < self.basal_range[1])] - self.basal_range[0]
-        return basal_cells // self.basal_cells_per_column
+        if np.any(cells < self.basal_range[0]) or np.any(cells >= self.basal_range[1]):
+            raise ValueError('cells are not in bounds')
+
+        basal_cells = cells - self.basal_range[0]
+        basal_columns = basal_cells // self.basal_cells_per_column
+        return basal_columns
 
     def _filter_by_basal_columns(self, cells, columns, invert=False):
         """
