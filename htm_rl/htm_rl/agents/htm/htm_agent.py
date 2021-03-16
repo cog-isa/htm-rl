@@ -190,4 +190,26 @@ class HTMAgentRunner:
         pass
 
 
+if __name__ == '__main__':
+    import yaml
+    with open('../../experiments/htm_agent/htm_runner_config_test.yaml', 'rb') as file:
+        config = yaml.load(file, Loader=yaml.Loader)
+
+    runner = HTMAgentRunner(config)
+
+    reward, state, _ = runner.environment.observe()
+
+    for i in range(200):
+        # print(runner.environment.callmethod('render_rgb'))
+
+        action = runner.agent.make_action(state)
+        runner.environment.act(action)
+
+        reward, state, _ = runner.environment.observe()
+        runner.agent.reinforce(reward)
+        # print(f'action:{action}, reward: {reward}')
+    print(runner.agent.memory.get_sparse_patterns())
+    print(runner.agent.hierarchy.output_block.patterns.get_sparse_patterns())
+    print(runner.agent.hierarchy.blocks[5].patterns.get_sparse_patterns())
+
 
