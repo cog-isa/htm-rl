@@ -28,7 +28,7 @@ class BioGwLabAction:
         dense_pattern[sparse_pattern] = 1
 
         pattern_sizes = self.patterns.sum(axis=1)
-        overlaps = np.dot(dense_pattern, self.patterns.T) / (pattern_sizes + 1e-15)
+        overlaps = 1 - np.sum(np.abs(self.patterns - dense_pattern), axis=1) / (pattern_sizes + 1e-15)
 
         if np.any(overlaps >= (1 - self.noise_tolerance)):
             return np.argmax(overlaps)

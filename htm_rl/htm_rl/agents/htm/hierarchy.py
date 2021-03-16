@@ -493,25 +493,16 @@ class SpatialMemory:
             self.patterns = dense_pattern.reshape((1, -1))
             self.permanence = np.array([self.initial_permanence])
         else:
-            if dense_pattern.sum() != 0:
-                pattern_sizes = self.patterns.sum(axis=1)
-                overlaps = np.dot(dense_pattern, self.patterns.T) / (pattern_sizes + 1e-15)
+            pattern_sizes = self.patterns.sum(axis=1)
+            overlaps = 1 - np.sum(np.abs(self.patterns - dense_pattern), axis=1) / (pattern_sizes + 1e-15)
 
-                if np.any(overlaps >= self.overlap_threshold):
-                    best_index = np.argmax(overlaps)
-                    self.patterns[best_index] = dense_pattern
-                    self.permanence[best_index] += self.permanence_increment
-                else:
-                    self.patterns = np.vstack([self.patterns, dense_pattern.reshape(1, -1)])
-                    self.permanence = np.append(self.permanence, self.initial_permanence)
+            if np.any(overlaps >= self.overlap_threshold):
+                best_index = np.argmax(overlaps)
+                self.patterns[best_index] = dense_pattern
+                self.permanence[best_index] += self.permanence_increment
             else:
-                pattern_sizes = self.patterns.sum(axis=1)
-                zero_mask = (pattern_sizes == 0)
-                if np.any(zero_mask):
-                    self.permanence[zero_mask] += self.permanence_increment
-                else:
-                    self.patterns = np.vstack([self.patterns, dense_pattern.reshape(1, -1)])
-                    self.permanence = np.append(self.permanence, self.initial_permanence)
+                self.patterns = np.vstack([self.patterns, dense_pattern.reshape(1, -1)])
+                self.permanence = np.append(self.permanence, self.initial_permanence)
 
     def reinforce(self, values: np.array):
         """
