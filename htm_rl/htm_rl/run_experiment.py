@@ -43,6 +43,16 @@ class RunConfig(FileConfig):
             seeds = self.get_seeds()
             env_configs = self.read_configs('env')
             agent_configs = self.read_configs('agent')
+            if agent_key is not None:
+                if isinstance(agent_key, str):
+                    agent_keys = [agent_key]
+                else:
+                    agent_keys = agent_key
+                agent_configs = [
+                    agent
+                    for agent in agent_configs
+                    if agent.name in agent_keys
+                ]
 
             experiment_setups = list(product(env_configs, agent_configs, seeds))
             for env_config, agent_config, seed in experiment_setups:
