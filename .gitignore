@@ -167,3 +167,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/notebooks/htm_agent_test.ipynb
