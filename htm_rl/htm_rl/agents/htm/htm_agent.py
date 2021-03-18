@@ -195,30 +195,46 @@ class HTMAgentRunner:
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
 
-    def run_episode(self):
-        pass
+    def run_episodes(self, n_episodes, verbosity=0):
+        steps_history = list()
+        steps = 0
+        episode = 0
+        while episode < n_episodes:
+            reward, obs, is_first = self.environment.observe()
+
+            if is_first:
+                self.agent.reset()
+                steps_history.append(steps)
+                steps = 0
+                episode += 1
+                if verbosity > 0:
+                    print(f'episode: {episode}\r')
+            else:
+                if (reward > 0) and (verbosity > 0):
+                    print('nyam')
+                self.agent.reinforce(reward, punish_for_muscles_activation=True)
+
+            action = self.agent.make_action(obs)
+            self.environment.act(action)
+
+            steps += 1
+
+        return steps_history
 
 
 if __name__ == '__main__':
     import yaml
+    import matplotlib.pyplot as plt
+
     with open('../../experiments/htm_agent/htm_runner_config_test.yaml', 'rb') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
     runner = HTMAgentRunner(config)
+    plt.imshow(runner.environment.callmethod('render_rgb'))
+    plt.show()
 
-    reward, state, _ = runner.environment.observe()
+    history = runner.run_episodes(100, verbosity=1)
 
-    for i in range(200):
-        # print(runner.environment.callmethod('render_rgb'))
-
-        action = runner.agent.make_action(state)
-        runner.environment.act(action)
-
-        reward, state, _ = runner.environment.observe()
-        runner.agent.reinforce(reward)
-        # print(f'action:{action}, reward: {reward}')
-    print(runner.agent.memory.get_sparse_patterns())
-    print(runner.agent.hierarchy.output_block.patterns.get_sparse_patterns())
-    print(runner.agent.hierarchy.blocks[5].patterns.get_sparse_patterns())
-
+    plt.plot(history)
+    plt.show()
 
