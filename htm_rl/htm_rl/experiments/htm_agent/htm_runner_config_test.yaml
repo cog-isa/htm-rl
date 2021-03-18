@@ -45,10 +45,12 @@ basal_ganglia_default:
   gamma: 0.01
   discount_factor: 0.95
   w_STN: 0.001
+  value_window: 100
 
 block_default:
   pattern_overlap_threshold: 0.9
   gamma: 0.9
+  predicted_boost: 0.2
 
 input_block_default: {}
 
@@ -98,7 +100,7 @@ input_blocks:
   - level: 0 # state
     columns: 18
   - level: 0 # action
-    columns: *muscles_size
+    columns: 8
 
 blocks:
   - block: {level: 1} # state block
@@ -107,7 +109,7 @@ blocks:
       columnDimensions: [ 36 ]
       potentialRadius: 18
     tm:
-      apical_columns: 8
+      apical_columns: 16
       apical_cells_per_column: *cells_per_column
       basal_columns: 36
       basal_cells_per_column: *cells_per_column
@@ -116,29 +118,29 @@ blocks:
     bg_sp: null
   - block: {level: 1} # action block
     sp:
-      inputDimensions: [ *muscles_size ]
-      columnDimensions: [ 8 ]
-      potentialRadius: *muscles_size
+      inputDimensions: [ 8 ]
+      columnDimensions: [ 16 ]
+      potentialRadius: 8
     tm:
       apical_columns: 36
       apical_cells_per_column: *cells_per_column
-      basal_columns: 8
+      basal_columns: 16
       basal_cells_per_column: *cells_per_column
-      feedback_columns: 16
+      feedback_columns: 32
     bg:
-      input_size: 44
+      input_size: 52
     bg_sp:
-      inputDimensions: [ 44 ]
-      columnDimensions: [ 88 ]
-      potentialRadius: 44
+      inputDimensions: [ 52 ]
+      columnDimensions: [ 104 ]
+      potentialRadius: 52
 
   - block: {level: 2} # state block
     sp:
       inputDimensions: [ 36 ]
       columnDimensions: [ 72 ]
-      potentialRadius: *muscles_size
+      potentialRadius: 36
     tm:
-      apical_columns: 16
+      apical_columns: 32
       apical_cells_per_column: *cells_per_column
       basal_columns: 72
       basal_cells_per_column: *cells_per_column
@@ -147,21 +149,21 @@ blocks:
     bg_sp: null
   - block: {level: 2} # action block
     sp:
-      inputDimensions: [ 8 ]
-      columnDimensions: [ 16 ]
-      potentialRadius: 8
+      inputDimensions: [ 16 ]
+      columnDimensions: [ 32 ]
+      potentialRadius: 16
     tm:
       apical_columns: 72
       apical_cells_per_column: *cells_per_column
-      basal_columns: 16
+      basal_columns: 32
       basal_cells_per_column: *cells_per_column
       feedback_columns: 0
     bg:
-      input_size: 88
+      input_size: 104
     bg_sp:
-      inputDimensions: [ 88 ]
-      columnDimensions: [ 176 ]
-      potentialRadius: 88
+      inputDimensions: [ 104 ]
+      columnDimensions: [ 208 ]
+      potentialRadius: 104
 
 hierarchy:
   input_blocks: [ 0, 1 ]
@@ -237,15 +239,9 @@ agent:
         [ 0, 0, 0, 1 ],
         [ 0, 0, 0, 0 ]
       ]
-  sm:
-    overlap_threshold: 0.9
-    initial_permanence: 0.55
-    permanence_increment: 0.1
-    permanence_decrement: 0.01
-    permanence_threshold: 0.5
   muscles:
-    input_size: 8
-    muscles_size: *muscles_size
+    input_size: 16
+    muscles_size: 8
     activation_threshold: *columns_per_area
     learning_threshold: *columns_per_area
     permanence_increment: 0.1
@@ -257,18 +253,4 @@ agent:
     sample_size: *columns_per_area
     max_segments_per_cell: 255
     seed: *seed
-  bg:
-    input_size: 22
-    alpha: 0.1
-    beta: 0.1
-    gamma: 0.01
-    discount_factor: 0.95
-    w_STN: 0.001
-  bg_sp:
-    inputDimensions: [ 22 ]
-    columnDimensions: [ 44 ]
-    potentialRadius: 22
-    globalInhibition: True
-    numActiveColumnsPerInhArea: *columns_per_area
-    localAreaDensity: 0
 

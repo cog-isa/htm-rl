@@ -1,6 +1,8 @@
 import numpy as np
 from htm.bindings.sdr import SDR
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
+from htm.bindings.algorithms import SpatialPooler
+from htm_rl.agents.htm.basal_ganglia import BasalGanglia
 import os
 import pickle
 
@@ -15,12 +17,17 @@ class Block:
     :param bg: BasalGanglia or None
         Basal ganglia
     """
+    tm: ApicalBasalFeedbackTM
+    sp: SpatialPooler
+    bg: BasalGanglia
+
     def __init__(self,
                  tm: ApicalBasalFeedbackTM,
                  sp=None,
                  bg=None,
                  id_=None,
                  level=None,
+                 predicted_boost=0.2,
                  pattern_overlap_threshold=0.9,
                  gamma=0.9):
         
@@ -72,6 +79,9 @@ class Block:
         self.gamma = gamma
         self.made_decision = False
 
+        self.predicted_boost = predicted_boost
+        self.feedback_boost = 0
+
     def __str__(self):
         return f"Block_{self.id}"
 
@@ -106,10 +116,14 @@ class Block:
             self.should_return_exec_predictions = True
             feedback_active_columns = list()
             shift = 0
+            total_value = 0
 
             for block in self.feedback_in:
-                feedback_active_columns.append(block.get_output('feedback') + shift)
+                pattern, value = block.get_output('feedback', return_value=True)
+                feedback_active_columns.append(pattern + shift)
                 shift += block.basal_columns
+                if value is not None:
+                    total_value += value
 
             if len(feedback_active_columns) > 0:
                 feedback_active_columns = np.concatenate(feedback_active_columns)
@@ -128,6 +142,9 @@ class Block:
 
             self.anomaly = -float('inf')
             self.confidence = float('inf')
+
+            # evaluate feedback boost
+            self.feedback_boost = total_value
         else:
             basal_active_columns = list()
             shift = 0
@@ -245,16 +262,30 @@ class Block:
 
                 apical_input = SDR(shift)
                 apical_input.sparse = apical_active_columns
+                # detect options among predictions
+                predicted_options, indices = self.patterns.get_options(self.predicted_columns.dense, return_indices=True)
+                # all options
+                options = self.patterns.get_sparse_patterns()
 
-                options, indices = self.patterns.get_options(self.predicted_columns.dense, return_indices=True)
                 if len(options) > 0:
-                    option, option_value, option_values = self.bg.choose(options, apical_input, greedy=True, return_option_value=True, return_values=True)
+                    boost_predicted_options = np.ones(len(self.patterns))
+                    if indices.size > 0:
+                        # boost predicted options
+                        boost_predicted_options[indices] += self.predicted_boost
+                        # feedback boost
+                        boost_predicted_options[indices] += self.feedback_boost
+
+                    option, option_value, option_values, option_index = self.bg.choose(options, apical_input, option_weights=boost_predicted_options,
+                                                                                       return_option_value=True, return_values=True, return_index=True)
                     # reinforce good patterns and punish bad ones
-                    values = np.zeros(len(self.patterns))
-                    values[indices] = option_values
-                    self.patterns.reinforce(values)
+                    self.patterns.reinforce(option_values)
 
                     self.made_decision = True
+                    # jumped off a high level option
+                    if not np.isin(option_index, indices):
+                        self.feedback_boost = 0
+                        for block in self.feedback_in:
+                            block.reinforce()
 
                     if return_value:
                         return option, option_value
@@ -289,7 +320,8 @@ class Block:
             self.bg.force_dopamine(self.reward)
             self.k = 0
             self.reward = 0
-            self.made_decision = False
+
+        self.made_decision = False
 
     def reset(self):
         self.tm.reset()
@@ -369,6 +401,8 @@ class Hierarchy:
       ...
     ]
     """
+    output_block: Block
+
     def __init__(self, blocks: list, input_blocks: list, output_block: int, block_connections: list, logs_dir=None):
         self.queue = list()
         self.blocks = blocks
@@ -377,9 +411,6 @@ class Hierarchy:
         self.block_connections = block_connections
         self.block_sizes = list()
         self.block_levels = list()
-
-        # hierarchy state
-        self.rejected = False
 
         # wire blocks together
         for block_id, connections, block in zip(range(len(blocks)), block_connections, blocks):
@@ -434,7 +465,7 @@ class Hierarchy:
             for block in block.feedback_in:
                 block.reinforce()
         # interruption of option
-        if (block.anomaly > block.anomaly_threshold) and self.rejected:
+        if block.anomaly > block.anomaly_threshold:
             for block in block.feedback_in:
                 block.reinforce()
 
@@ -535,8 +566,9 @@ class SpatialMemory:
         :return:
         """
         mean = values.mean()
-        values[values < mean] = -self.permanence_decrement
-        positive = values >= mean
+        positive = values >= (mean - 1e-6)
+        values[~positive] = -self.permanence_decrement
+
         values[positive] /= (values[positive].max() + 1e-15)
         values[positive] *= self.permanence_increment
         self.permanence += values

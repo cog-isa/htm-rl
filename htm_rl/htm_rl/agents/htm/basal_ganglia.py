@@ -16,7 +16,7 @@ class BasalGanglia:
     discount_factor: float
 
     def __init__(self, input_size: int, alpha: float, beta: float, gamma: float,
-                 discount_factor: float, w_STN: float, sp: SpatialPooler = None):
+                 discount_factor: float, w_STN: float, sp: SpatialPooler = None, value_window=10):
         self.sp = sp
         self.input_size = input_size
 
@@ -37,11 +37,15 @@ class BasalGanglia:
         self._BS = None
         self._pBS = None
 
+        self.output_values = [0]*value_window
+        self.inhib_threshold = 0
+        self.value_window = value_window
+
     def reset(self):
         self._BS = None
         self._pBS = None
 
-    def choose(self, options, condition: SDR, return_option_value=False, greedy=False, option_weights=None, return_values=False):
+    def choose(self, options, condition: SDR, return_option_value=False, greedy=False, option_weights=None, return_values=False, return_index=False):
         conditioned_options = list()
         input_sp = SDR(self.input_size)
         output_sp = SDR(self.sp.getColumnDimensions())
@@ -77,13 +81,21 @@ class BasalGanglia:
 
         self._BS = np.where(BS)[0]
         self._BS = np.intersect1d(self._BS, conditioned_options[option_index])
+        # moving average inhibition threshold
+        option_value = value_options[option_index]
+        self.inhib_threshold = self.inhib_threshold + (
+                option_value - self.output_values[0]) / self.value_window
+        self.output_values.append(option_value)
+        self.output_values.pop(0)
 
-        if return_option_value and return_values:
-            return options[option_index], value_options[option_index], value_options
-        elif return_values:
-            return options[option_index], value_options
-        else:
-            return options[option_index]
+        value_options /= self.sp.getNumActiveColumnsPerInhArea()
+        value_options -= self.inhib_threshold
+
+        answer = [options[option_index]]
+        for flag, result in zip((return_option_value, return_values, return_index), (value_options[option_index], value_options, option_index)):
+            if flag:
+                answer.append(result)
+        return answer
 
     def force_dopamine(self, reward: float):
         if self._pBS is not None:
