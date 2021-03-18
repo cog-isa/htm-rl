@@ -291,6 +291,20 @@ class Block:
             self.reward = 0
             self.made_decision = False
 
+    def reset(self):
+        self.tm.reset()
+
+        self.reward = 0
+        self.k = 0
+        self.made_decision = False
+
+        self.should_return_exec_predictions = False
+        self.should_return_apical_predictions = False
+
+        self.feedback_in_pattern = np.empty(0)
+        self.apical_in_pattern = np.empty(0)
+        self.basal_in_pattern = np.empty(0)
+
 
 class InputBlock:
     """
@@ -327,6 +341,9 @@ class InputBlock:
 
     def add_reward(self, reward):
         pass
+
+    def reset(self):
+        self.pattern = np.empty(0)
 
 
 class Hierarchy:
@@ -472,6 +489,10 @@ class Hierarchy:
         else:
             raise ValueError('Log dir is not defined!')
 
+    def reset(self):
+        for block in self.blocks:
+            block.reset()
+
 
 class SpatialMemory:
     def __init__(self,
@@ -516,7 +537,8 @@ class SpatialMemory:
         mean = values.mean()
         values[values < mean] = -self.permanence_decrement
         positive = values >= mean
-        values[positive] /= (values[positive].max() + 1e-15) * self.permanence_increment
+        values[positive] /= (values[positive].max() + 1e-15)
+        values[positive] *= self.permanence_increment
         self.permanence += values
         self.patterns = self.patterns[self.permanence > self.permanence_threshold]
         self.permanence = self.permanence[self.permanence > self.permanence_threshold]

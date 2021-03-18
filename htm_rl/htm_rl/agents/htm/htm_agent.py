@@ -106,7 +106,7 @@ class HTMAgent:
         action = self.action.get_action(action_pattern)
         return action
 
-    def reinforce(self, reward, pseudo_rewards=None):
+    def reinforce(self, reward, pseudo_rewards=None, punish_for_muscles_activation = False):
         """
         Reinforce BasalGanglia.
         :param reward: float:
@@ -116,6 +116,9 @@ class HTMAgent:
         List should be length of number of blocks in hierarchy.
         :return:
         """
+        if punish_for_muscles_activation:
+            reward += (len(self.action_pattern) * (self.punish_reward/self.muscles.muscles_size))
+
         if self.hierarchy_made_decision:
             self.hierarchy.output_block.add_reward(reward)
             self.hierarchy.output_block.reinforce()
@@ -131,6 +134,12 @@ class HTMAgent:
             self.hierarchy.add_rewards([reward] * len(self.hierarchy.blocks))
         else:
             self.hierarchy.add_rewards(pseudo_rewards)
+
+    def reset(self):
+        self.hierarchy.reset()
+        self.action_pattern = np.empty(0)
+        self.state_pattern.sparse = np.empty(0)
+        self.hierarchy_made_decision = False
 
     def generate_patterns(self):
         """

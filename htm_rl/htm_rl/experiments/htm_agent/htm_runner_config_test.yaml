@@ -1,4 +1,4 @@
-seed: &seed 0
+seed: &seed 77
 muscles_size: &muscles_size 4
 columns_per_area: &columns_per_area 2
 cells_per_column: &cells_per_column 3
@@ -63,8 +63,9 @@ environment:
     - move up
     - stay
 
-  regenerator:
-    episode_max_steps: 200
+  terminate:
+    episode_max_steps: 50
+    early_stop: true
 
   areas:
     n_types: 1
@@ -73,17 +74,13 @@ environment:
     density: .25
 
   food:
-    n_types: 1
-    reward: 20.
-#    food_types: [ 0, 1, 2, 3 ]
-#    rewards: [ 20., -10., 100., -200. ]
-    n_items: 6
-    n_foods_to_find: 2
+    n_items: 1
+    reward: 2000.
 
   action_costs:
     action_cost: -0.01
     action_weight:
-      stay: .3
+      stay: 1.
       turn: .5
       move: 1.
 
