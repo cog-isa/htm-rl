@@ -1,4 +1,4 @@
-from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock
+from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.muscles import Muscles
 from htm_rl.agents.htm.basal_ganglia import BasalGanglia
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
@@ -6,26 +6,24 @@ from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm.bindings.sdr import SDR
 import numpy as np
+import random
 
 
 class BioGwLabAction:
     """
     Muscles adapter to BioGwLabEnvironment.
     """
-    def __init__(self, muscles_size, n_actions, noise_tolerance=0.1, patterns=None):
+    def __init__(self, muscles_size, n_actions, patterns, noise_tolerance=0.1, do_nothing_action='random'):
         self.muscles_size = muscles_size
         self.n_actions = n_actions
         self.noise_tolerance = noise_tolerance
+        self.do_nothing_action = do_nothing_action
 
-        if patterns is None:
-            # generate random pattern for every action
-            self.patterns = np.random.choice([0, 1], size=(n_actions, self.muscles_size))
-        else:
-            self.patterns = np.array(patterns)
+        self.patterns = np.array(patterns)
 
     def get_action(self, sparse_pattern):
         dense_pattern = np.zeros(self.muscles_size)
-        dense_pattern[sparse_pattern[sparse_pattern < self.muscles_size]] = 1
+        dense_pattern[sparse_pattern] = 1
 
         pattern_sizes = self.patterns.sum(axis=1)
         overlaps = 1 - np.sum(np.abs(self.patterns - dense_pattern), axis=1) / (pattern_sizes + 1e-15)
@@ -34,7 +32,10 @@ class BioGwLabAction:
             return np.argmax(overlaps)
         else:
             # do nothing action
-            return self.n_actions - 1
+            if self.do_nothing_action == 'random':
+                return np.random.randint(self.n_actions)
+            else:
+                return self.do_nothing_action
 
 
 class HTMAgent:
@@ -58,19 +59,6 @@ class HTMAgent:
 
     def make_action(self, state_pattern):
         self.state_pattern.sparse = state_pattern
-        # add new patterns to memory of output block
-        new_patterns = self.generate_patterns()
-        for pattern in new_patterns:
-            # train memory
-            self.sp_input.dense = np.concatenate([pattern, 1 - pattern])
-            self.hierarchy.output_block.sp.compute(self.sp_input, True, self.sp_output)
-            self.hierarchy.output_block.patterns.add(self.sp_output.dense)
-            # train muscles
-            self.muscles.set_active_muscles(self.sp_input.sparse)
-            self.muscles.set_active_input(self.sp_output.sparse)
-            self.muscles.depolarize_muscles()
-            self.muscles.learn()
-
         # get action from hierarchy
         self.hierarchy.set_input((state_pattern, self.action_pattern))
         hierarchy_action_pattern = self.hierarchy.output_block.get_output('feedback')
@@ -89,7 +77,7 @@ class HTMAgent:
         action = self.action.get_action(action_pattern)
         return action
 
-    def reinforce(self, reward, pseudo_rewards=None, punish_for_muscles_activation = False):
+    def reinforce(self, reward, pseudo_rewards=None):
         """
         Reinforce BasalGanglia.
         :param reward: float:
@@ -99,9 +87,6 @@ class HTMAgent:
         List should be length of number of blocks in hierarchy.
         :return:
         """
-        if punish_for_muscles_activation:
-            reward += (len(self.action_pattern) * (self.punish_reward/self.muscles.muscles_size))
-
         self.hierarchy.output_block.add_reward(reward)
         self.hierarchy.output_block.reinforce()
 
@@ -120,19 +105,44 @@ class HTMAgent:
         Generate random muscles activation patterns. Number of patterns proportional to patterns in memory.
         :return: numpy array
         """
-        n_patterns_to_gen = np.clip(self.alpha * (self.total_patterns - len(self.hierarchy.output_block.patterns)),
+        n_patterns_to_gen = np.clip(self.alpha * (self.total_patterns - len(self.hierarchy.output_block.sm)),
                                     a_min=0, a_max=self.total_patterns)
         if n_patterns_to_gen > 0:
             return np.random.choice([0, 1], size=(int(n_patterns_to_gen), self.muscles.muscles_size//2))
         else:
             return np.empty(0)
 
+    def train_patterns(self, n_steps=1, train_muscles=True, train_memory=True):
+        patterns = self.action.patterns
+        for step in range(n_steps):
+            for pattern in patterns:
+                # train memory
+                self.sp_input.dense = pattern
+                learn = self.hierarchy.output_block.learn_sp
+                self.hierarchy.output_block.sp.compute(self.sp_input, learn, self.sp_output)
+                if train_memory:
+                    self.hierarchy.output_block.sm.add(self.sp_output.dense.copy())
+
+                # train muscles
+                if train_muscles:
+                    self.muscles.set_active_muscles(self.sp_input.sparse)
+                    self.muscles.set_active_input(self.sp_output.sparse)
+                    self.muscles.depolarize_muscles()
+                    self.muscles.learn()
+
+            self.hierarchy.output_block.sm.forget()
+
 
 class HTMAgentRunner:
     def __init__(self, config):
+        seed = config['seed']
+        np.random.seed(seed)
+        random.seed(seed)
+
         sp_default = config['spatial_pooler_default']
         tm_default = config['temporal_memory_default']
         bg_default = config['basal_ganglia_default']
+        sm_default = config['spatial_memory_default']
 
         block_configs = config['blocks']
         block_default = config['block_default']
@@ -148,6 +158,8 @@ class HTMAgentRunner:
         for block_conf in block_configs:
             tm = ApicalBasalFeedbackTM(**block_conf['tm'], **tm_default)
 
+            sm = SpatialMemory(**block_conf['sm'], **sm_default)
+
             if block_conf['sp'] is not None:
                 sp = SpatialPooler(**block_conf['sp'], **sp_default)
             else:
@@ -162,15 +174,17 @@ class HTMAgentRunner:
             else:
                 bg = None
 
-            blocks.append(Block(tm=tm, sp=sp, bg=bg, **block_conf['block'], **block_default))
+            blocks.append(Block(tm=tm, sm=sm, sp=sp, bg=bg, **block_conf['block'], **block_default))
 
         hierarchy = Hierarchy(blocks, **config['hierarchy'])
 
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
 
-    def run_episodes(self, n_episodes, verbosity=0):
-        steps_history = list()
+    def run_episodes(self, n_episodes, verbosity=0, train_patterns=True):
+        history = {'steps': list(), 'reward': list()}
+
+        total_reward = 0
         steps = 0
         episode = 0
         while episode < n_episodes:
@@ -178,8 +192,12 @@ class HTMAgentRunner:
 
             if is_first:
                 self.agent.reset()
-                steps_history.append(steps)
+
+                history['steps'].append(steps)
+                history['reward'].append(reward)
                 steps = 0
+                total_reward = 0
+
                 episode += 1
                 if verbosity > 0:
                     print(f'episode: {episode}\r')
@@ -188,27 +206,32 @@ class HTMAgentRunner:
                     print('nyam')
                 self.agent.reinforce(reward)
 
+                steps += 1
+                total_reward += reward
+
+            if train_patterns:
+                self.agent.train_patterns()
+
             action = self.agent.make_action(obs)
             self.environment.act(action)
 
-            steps += 1
-
-        return steps_history
+        return history
 
 
 if __name__ == '__main__':
     import yaml
     import matplotlib.pyplot as plt
 
-    with open('../../experiments/htm_agent/htm_runner_config_test.yaml', 'rb') as file:
+    with open('../../experiments/htm_agent/htm_runner_config2_test.yaml', 'rb') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
     runner = HTMAgentRunner(config)
+
     plt.imshow(runner.environment.callmethod('render_rgb'))
     plt.show()
 
-    history = runner.run_episodes(100, verbosity=1)
+    history = runner.run_episodes(500, verbosity=1)
 
-    plt.plot(history)
+    plt.plot(np.convolve(np.array(history['steps']), np.ones(10)/10, mode='valid'))
     plt.show()
 
