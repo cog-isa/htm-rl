@@ -7,6 +7,80 @@ import os
 import pickle
 
 
+class SpatialMemory:
+    def __init__(self,
+                 overlap_threshold: float,
+                 initial_permanence: float = 0.55,
+                 permanence_increment: float = 0.1,
+                 permanence_decrement: float = 0.05,
+                 permanence_threshold: float = 0.5,
+                 permanence_forgetting_decrement: float = 0.01):
+        self.permanence_forgetting_decrement = permanence_forgetting_decrement
+        self.permanence_threshold = permanence_threshold
+        self.permanence_decrement = permanence_decrement
+        self.permanence_increment = permanence_increment
+        self.initial_permanence = initial_permanence
+        self.patterns = np.empty(0)
+        self.permanence = np.empty(0)
+        self.overlap_threshold = overlap_threshold
+
+    def __len__(self):
+        return self.patterns.shape[0]
+
+    def add(self, dense_pattern: np.array):
+        if self.patterns.size == 0:
+            self.patterns = dense_pattern.reshape((1, -1))
+            self.permanence = np.array([self.initial_permanence])
+        else:
+            pattern_sizes = self.patterns.sum(axis=1)
+            overlaps = 1 - np.sum(np.abs(self.patterns - dense_pattern), axis=1) / (pattern_sizes + 1e-15)
+
+            if np.any(overlaps >= self.overlap_threshold):
+                best_index = np.argmax(overlaps)
+                self.patterns[best_index] = dense_pattern
+                self.permanence[best_index] += self.permanence_increment
+            else:
+                self.patterns = np.vstack([self.patterns, dense_pattern.reshape(1, -1)])
+                self.permanence = np.append(self.permanence, self.initial_permanence)
+
+    def reinforce(self, values: np.array):
+        """
+        Reinforce plausible patterns, forget patterns with permanence under threshold
+        :param values: array of values from BG
+        :return:
+        """
+        values -= values.mean()
+        values /= (values.std() + 1e-8)
+        positive = values > 0
+        values[positive] *= self.permanence_increment
+        values[~positive] *= self.permanence_decrement
+
+        self.permanence += values
+        self.patterns = self.patterns[self.permanence > self.permanence_threshold]
+        self.permanence = self.permanence[self.permanence > self.permanence_threshold]
+
+    def forget(self):
+        self.permanence -= self.permanence_forgetting_decrement
+        self.patterns = self.patterns[self.permanence > self.permanence_threshold]
+        self.permanence = self.permanence[self.permanence > self.permanence_threshold]
+
+    def get_options(self, dense_pattern, return_indices=False):
+        if self.patterns.size == 0:
+            return list()
+        else:
+            overlaps = np.dot(dense_pattern, self.patterns.T)
+            indices = np.flatnonzero(overlaps > self.overlap_threshold)
+            options = self.patterns[indices]
+            # convert to list of sparse representations
+            if return_indices:
+                return [np.flatnonzero(option) for option in options], indices
+            else:
+                return [np.flatnonzero(option) for option in options]
+
+    def get_sparse_patterns(self):
+        return [np.flatnonzero(pattern) for pattern in self.patterns]
+
+
 class Block:
     """
     Processing unit of Hierarchy.
@@ -20,22 +94,22 @@ class Block:
     tm: ApicalBasalFeedbackTM
     sp: SpatialPooler
     bg: BasalGanglia
+    sm: SpatialMemory
 
     def __init__(self,
                  tm: ApicalBasalFeedbackTM,
+                 sm: SpatialMemory,
                  sp=None,
                  bg=None,
                  id_=None,
                  level=None,
                  predicted_boost=0.2,
-                 pattern_overlap_threshold=0.9,
                  gamma=0.9):
         
         self.tm = tm
         self.sp = sp
         self.bg = bg
-
-        self.patterns = SpatialMemory(pattern_overlap_threshold)
+        self.sm = sm
 
         if self.sp is not None:
             self.sp_output = SDR(self.sp.getColumnDimensions())
@@ -82,33 +156,38 @@ class Block:
         self.predicted_boost = predicted_boost
         self.feedback_boost = 0
 
+        self.learn_tm = True
+        self.learn_sp = True
+        self.learn_sm = True
+
     def __str__(self):
         return f"Block_{self.id}"
 
-    def compute(self, learn=True, add_exec=False, learn_exec=False):
+    def compute(self, add_exec=False, learn_exec=False):
         self.should_return_exec_predictions = False
         self.should_return_apical_predictions = False
         # gather all inputs
         # form basal input sdr(columns)
-        if learn and learn_exec:
-            feedback_active_columns = list()
-            shift = 0
+        if learn_exec:
+            if self.learn_tm:
+                feedback_active_columns = list()
+                shift = 0
 
-            for block in self.feedback_in:
-                feedback_active_columns.append(block.get_output('basal') + shift)
-                shift += block.basal_columns
+                for block in self.feedback_in:
+                    feedback_active_columns.append(block.get_output('basal') + shift)
+                    shift += block.basal_columns
 
-            if len(feedback_active_columns) > 0:
-                feedback_active_columns = np.concatenate(feedback_active_columns)
-            else:
-                feedback_active_columns = np.empty(0)
+                if len(feedback_active_columns) > 0:
+                    feedback_active_columns = np.concatenate(feedback_active_columns)
+                else:
+                    feedback_active_columns = np.empty(0)
 
-            self.tm.set_active_feedback_columns(feedback_active_columns)
-            self.tm.learn_exec_feedback_segments()
+                self.tm.set_active_feedback_columns(feedback_active_columns)
+                self.tm.learn_exec_feedback_segments()
 
-            self.feedback_in_pattern = feedback_active_columns
-            self.apical_in_pattern = np.empty(0)
-            self.basal_in_pattern = np.empty(0)
+                self.feedback_in_pattern = feedback_active_columns
+                self.apical_in_pattern = np.empty(0)
+                self.basal_in_pattern = np.empty(0)
 
             self.anomaly = -float('inf')
             self.confidence = float('inf')
@@ -195,17 +274,20 @@ class Block:
             # SP
             self.sp_input.sparse = basal_active_columns
             if self.sp is not None:
-                self.sp.compute(self.sp_input, learn, self.sp_output)
+                self.sp.compute(self.sp_input, self.learn_sp, self.sp_output)
                 basal_active_columns = self.sp_output.sparse
             # refresh patterns
-                self.patterns.add(self.sp_output.dense)
+                if self.learn_sm:
+                    self.sm.add(self.sp_output.dense.copy())
             else:
-                self.patterns.add(self.sp_input.dense)
+                if self.learn_sm:
+                    self.sm.add(self.sp_input.dense.copy())
             # model forgetting
-            self.patterns.reinforce(np.zeros(len(self.patterns)) - 1)
+            if self.learn_sm:
+                self.sm.forget()
             # TM
             self.tm.set_active_columns(basal_active_columns)
-            self.tm.activate_cells(learn)
+            self.tm.activate_cells(self.learn_tm)
 
             self.anomaly = self.tm.anomaly[-1]
             self.anomaly_threshold = self.tm.anomaly_threshold
@@ -263,12 +345,12 @@ class Block:
                 apical_input = SDR(shift)
                 apical_input.sparse = apical_active_columns
                 # detect options among predictions
-                predicted_options, indices = self.patterns.get_options(self.predicted_columns.dense, return_indices=True)
+                predicted_options, indices = self.sm.get_options(self.predicted_columns.dense, return_indices=True)
                 # all options
-                options = self.patterns.get_sparse_patterns()
+                options = self.sm.get_sparse_patterns()
 
                 if len(options) > 0:
-                    boost_predicted_options = np.ones(len(self.patterns))
+                    boost_predicted_options = np.ones(len(self.sm))
                     if indices.size > 0:
                         # boost predicted options
                         boost_predicted_options[indices] += self.predicted_boost
@@ -278,7 +360,8 @@ class Block:
                     option, option_value, option_values, option_index = self.bg.choose(options, apical_input, option_weights=boost_predicted_options,
                                                                                        return_option_value=True, return_values=True, return_index=True)
                     # reinforce good patterns and punish bad ones
-                    self.patterns.reinforce(option_values)
+                    if self.learn_sm:
+                        self.sm.reinforce(option_values)
 
                     self.made_decision = True
                     # jumped off a high level option
@@ -326,6 +409,9 @@ class Block:
     def reset(self):
         self.tm.reset()
 
+        if self.bg is not None:
+            self.bg.reset()
+
         self.reward = 0
         self.k = 0
         self.made_decision = False
@@ -336,6 +422,20 @@ class Block:
         self.feedback_in_pattern = np.empty(0)
         self.apical_in_pattern = np.empty(0)
         self.basal_in_pattern = np.empty(0)
+
+    def freeze(self):
+        self.learn_sp = False
+        self.learn_tm = False
+        self.learn_sm = False
+        if self.bg is not None:
+            self.bg.learn_sp = False
+
+    def unfreeze(self):
+        self.learn_sp = True
+        self.learn_tm = True
+        self.learn_sm = True
+        if self.bg is not None:
+            self.bg.learn_sp = True
 
 
 class InputBlock:
@@ -359,6 +459,12 @@ class InputBlock:
         self.id = id_
         self.level = level
 
+        self.learn_sp = False
+        self.learn_tm = False
+        self.bg = None
+        self.tm = None
+        self.sp = None
+
     def __str__(self):
         return f"InputBlock_{self.id}"
 
@@ -376,6 +482,12 @@ class InputBlock:
 
     def reset(self):
         self.pattern = np.empty(0)
+
+    def freeze(self):
+        pass
+
+    def unfreeze(self):
+        pass
 
 
 class Hierarchy:
@@ -447,20 +559,20 @@ class Hierarchy:
                              'block_levels': self.block_levels},
                             file)
 
-    def compute(self, learn=True):
+    def compute(self):
         block, kwargs = self.queue.pop()
 
         if kwargs is None:
-            block.compute(learn=learn)
+            block.compute()
         else:
             block.compute(**kwargs)
 
         if (block.anomaly > block.anomaly_threshold) and (block.confidence >= block.confidence_threshold):
-            tasks = zip(block.basal_out, [{'learn': learn}]*len(block.basal_out))
-            self.queue.append((block, {'learn': learn, 'learn_exec': True}))
+            tasks = zip(block.basal_out, [None]*len(block.basal_out))
+            self.queue.append((block, {'learn_exec': True}))
             self.queue.extend(tasks)
         elif (block.anomaly <= block.anomaly_threshold) and (block.confidence < block.confidence_threshold):
-            self.queue.append((block, {'learn': learn, 'add_exec': True}))
+            self.queue.append((block, {'add_exec': True}))
             # end of option
             for block in block.feedback_in:
                 block.reinforce()
@@ -478,23 +590,21 @@ class Hierarchy:
             self.logs['confidence'].append((block.confidence, block.confidence_threshold))
 
         if len(self.queue) > 0:
-            self.compute(learn=learn)
+            self.compute()
 
-    def set_input(self, patterns, learn=True):
+    def set_input(self, patterns):
         """
         Set patterns to input blocks
         :param patterns: list of lists of active bits or None
         None if there is no pattern for specific input
         For example: [None, [1, 2, 3], [4, 5, 6]]
         So there is no pattern for the first input block
-        :param learn: bool
-        If true, then memory will learn patterns
         :return:
         """
         for pattern, block in zip(patterns, self.input_blocks):
             # logging
             if self.logs_dir is not None:
-                self.logs['tasks'].append((block.id, {'learn': learn, 'input_block': True}))
+                self.logs['tasks'].append((block.id, {'input_block': True}))
                 self.logs['patterns']['basal_out'].append(pattern)
                 self.logs['patterns']['feedback_in'].append(np.empty(0))
                 self.logs['anomaly'].append(None)
@@ -502,11 +612,11 @@ class Hierarchy:
 
             if pattern is not None:
                 block.set_pattern(pattern)
-                tasks = list(zip(block.basal_out, [{'learn': learn}]*len(block.basal_out)))
+                tasks = list(zip(block.basal_out, [None]*len(block.basal_out)))
                 self.queue.extend(tasks)
         self.queue = self.queue[::-1]
         # start processing input
-        self.compute(learn=learn)
+        self.compute()
 
     def add_rewards(self, rewards):
         for reward, block in zip(rewards, self.blocks):
@@ -524,71 +634,10 @@ class Hierarchy:
         for block in self.blocks:
             block.reset()
 
+    def freeze(self):
+        for block in self.blocks:
+            block.freeze()
 
-class SpatialMemory:
-    def __init__(self,
-                 overlap_threshold: float,
-                 initial_permanence: float = 0.55,
-                 permanence_increment: float = 0.1,
-                 permanence_decrement: float = 0.01,
-                 permanence_threshold: float = 0.5):
-        self.permanence_threshold = permanence_threshold
-        self.permanence_decrement = permanence_decrement
-        self.permanence_increment = permanence_increment
-        self.initial_permanence = initial_permanence
-        self.patterns = np.empty(0)
-        self.permanence = np.empty(0)
-        self.overlap_threshold = overlap_threshold
-
-    def __len__(self):
-        return self.patterns.shape[0]
-
-    def add(self, dense_pattern: np.array):
-        if self.patterns.size == 0:
-            self.patterns = dense_pattern.reshape((1, -1))
-            self.permanence = np.array([self.initial_permanence])
-        else:
-            pattern_sizes = self.patterns.sum(axis=1)
-            overlaps = 1 - np.sum(np.abs(self.patterns - dense_pattern), axis=1) / (pattern_sizes + 1e-15)
-
-            if np.any(overlaps >= self.overlap_threshold):
-                best_index = np.argmax(overlaps)
-                self.patterns[best_index] = dense_pattern
-                self.permanence[best_index] += self.permanence_increment
-            else:
-                self.patterns = np.vstack([self.patterns, dense_pattern.reshape(1, -1)])
-                self.permanence = np.append(self.permanence, self.initial_permanence)
-
-    def reinforce(self, values: np.array):
-        """
-        Reinforce plausible patterns, forget patterns with permanence under threshold
-        :param values: array of values from BG
-        :return:
-        """
-        mean = values.mean()
-        positive = values >= (mean - 1e-6)
-        values[~positive] = -self.permanence_decrement
-
-        values[positive] /= (values[positive].max() + 1e-15)
-        values[positive] *= self.permanence_increment
-        self.permanence += values
-        self.patterns = self.patterns[self.permanence > self.permanence_threshold]
-        self.permanence = self.permanence[self.permanence > self.permanence_threshold]
-
-    def get_options(self, dense_pattern, return_indices=False):
-        if self.patterns.size == 0:
-            return list()
-        else:
-            overlaps = np.dot(dense_pattern, self.patterns.T)
-            indices = np.flatnonzero(overlaps > self.overlap_threshold)
-            options = self.patterns[indices]
-            if options.size > 0:
-                options *= dense_pattern
-            # convert to list of sparse representations
-            if return_indices:
-                return [np.flatnonzero(option) for option in options], indices
-            else:
-                return [np.flatnonzero(option) for option in options]
-
-    def get_sparse_patterns(self):
-        return [np.flatnonzero(pattern) for pattern in self.patterns]
+    def unfreeze(self):
+        for block in self.blocks:
+            block.unfreeze()
