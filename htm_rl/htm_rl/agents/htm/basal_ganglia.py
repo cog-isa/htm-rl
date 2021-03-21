@@ -2,7 +2,6 @@ from htm.bindings.algorithms import SpatialPooler
 from htm.bindings.sdr import SDR
 import copy
 import numpy as np
-from numpy.random._generator import Generator
 
 
 def softmax(x):
@@ -16,7 +15,10 @@ class BasalGanglia:
     discount_factor: float
 
     def __init__(self, input_size: int, alpha: float, beta: float, gamma: float,
-                 discount_factor: float, w_STN: float, sp: SpatialPooler = None, value_window=10):
+                 discount_factor: float, w_STN: float, sp: SpatialPooler = None, value_window=10,
+                 greedy=False, eps=None, learn_sp=True, seed=None):
+        np.random.seed(seed)
+
         self.sp = sp
         self.input_size = input_size
 
@@ -41,17 +43,21 @@ class BasalGanglia:
         self.inhib_threshold = 0
         self.value_window = value_window
 
+        self.learn_sp = learn_sp
+        self.greedy = greedy
+        self.eps = eps
+
     def reset(self):
         self._BS = None
         self._pBS = None
 
-    def choose(self, options, condition: SDR, return_option_value=False, greedy=False, option_weights=None, return_values=False, return_index=False):
+    def choose(self, options, condition: SDR, return_option_value=False, greedy=None, eps=None, option_weights=None, return_values=False, return_index=False):
         conditioned_options = list()
         input_sp = SDR(self.input_size)
         output_sp = SDR(self.sp.getColumnDimensions())
         for option in options:
             input_sp.sparse = np.concatenate([condition.sparse, option + condition.size])
-            self.sp.compute(input_sp, True, output_sp)
+            self.sp.compute(input_sp, self.learn_sp, output_sp)
             conditioned_options.append(np.copy(output_sp.sparse))
 
         active_input = np.unique(conditioned_options)
@@ -71,12 +77,31 @@ class BasalGanglia:
             value_options[ind] = np.sum(BS[conditioned_option])
 
         if option_weights is not None:
-            value_options *= option_weights
+            weighted_value_options = value_options * option_weights
+        else:
+            weighted_value_options = value_options
+
+        if greedy is None:
+            greedy = self.greedy
+
+        if eps is None:
+            eps = self.eps
 
         if greedy:
-            option_index = np.argmax(value_options)
+            if eps is not None:
+                gamma = np.random.random()
+                if gamma < eps:
+                    option_index = np.random.randint(len(value_options))
+                else:
+                    max_value = weighted_value_options.max()
+                    max_indices = np.flatnonzero(weighted_value_options == max_value)
+                    option_index = np.random.choice(max_indices, 1)[0]
+            else:
+                max_value = weighted_value_options.max()
+                max_indices = np.flatnonzero(weighted_value_options == max_value)
+                option_index = np.random.choice(max_indices, 1)[0]
         else:
-            option_probs = softmax(value_options)
+            option_probs = softmax(weighted_value_options)
             option_index = np.random.choice(len(conditioned_options), 1, p=option_probs)[0]
 
         self._BS = np.where(BS)[0]
@@ -88,8 +113,8 @@ class BasalGanglia:
         self.output_values.append(option_value)
         self.output_values.pop(0)
 
-        value_options /= self.sp.getNumActiveColumnsPerInhArea()
         value_options -= self.inhib_threshold
+        value_options /= self.sp.getNumActiveColumnsPerInhArea()
 
         answer = [options[option_index]]
         for flag, result in zip((return_option_value, return_values, return_index), (value_options[option_index], value_options, option_index)):
