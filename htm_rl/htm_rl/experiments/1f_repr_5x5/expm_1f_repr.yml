@@ -1,0 +1,24 @@
+seed: 8713
+n_seeds: 1
+
+experiment:
+  project: test_1f_repr
+  n_episodes: 20
+
+env:
+#  - 1food_pos_5x5
+#  - 1food_dir_5x5
+#  - 1food_map_5x5
+  - 1food_dir_10x10
+  - 1food_map_10x10
+
+agent:
+  - rnd
+  - ucb
+  - svpn
+
+run_results_processor: !RunResultsProcessor
+  env_name: biogwlab
+  moving_average: 4
+  verbosity: 1
+  test_dir: # leave empty for default behavior - output to the config's dir
