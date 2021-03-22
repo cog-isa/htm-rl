@@ -63,6 +63,7 @@ class SparseValueNetwork:
 
     def update(self, sa: SparseSdr, reward: float, sa_next: SparseSdr, td_lambda=True):
         self._update_cell_visit_counter(sa)
+        self._update_reward_bounds(reward)
         if td_lambda:
             self._update_cell_value(sa, reward, sa_next)
         else:
@@ -107,11 +108,10 @@ class SparseValueNetwork:
         if low <= reward <= high:
             return
 
-        alpha = self.learning_rate
         if reward < low:
-            low = low * (1 - alpha) + reward * alpha
+            low = reward
         else:
-            high = high * (1 - alpha) + reward * alpha
+            high = reward
         self.reward_bounds = low, high
 
     # noinspection PyPep8Naming

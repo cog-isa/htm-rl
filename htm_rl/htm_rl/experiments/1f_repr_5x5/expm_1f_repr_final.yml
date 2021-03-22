@@ -3,14 +3,13 @@ n_seeds: 10
 
 experiment:
   project: test_1f_repr
-  n_episodes: 100
+  n_episodes: 200
 
 env:
-#  - 1food_pos_5x5
-#  - 1food_dir_5x5
-#  - 1food_map_5x5
-  - 1food_dir_10x10
-  - 1food_map_10x10
+  - pos
+  - dir
+  - map
+  - obs
 
 agent:
   - rnd

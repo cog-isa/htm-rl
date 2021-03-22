@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 import numpy as np
 
@@ -17,6 +17,7 @@ class SvpnAgent(UcbAgent):
 
     learning_rate: float
     first_planning_episode: int
+    last_planning_episode: Optional[int]
     prediction_depth: int
     n_prediction_rollouts: int
 
@@ -25,9 +26,10 @@ class SvpnAgent(UcbAgent):
     def __init__(
             self, env: Env, seed: int,
             tm: Dict,
-            first_planning_episode: int,
             prediction_depth: int,
             n_prediction_rollouts: int,
+            first_planning_episode: int,
+            last_planning_episode: int = None,
             learning_rate: float = None,
             **ucb_agent_kwargs
     ):
@@ -38,9 +40,10 @@ class SvpnAgent(UcbAgent):
         )
         self.reward_model = np.zeros(self.state_sp.output_sdr_size, dtype=np.float)
 
-        self.first_planning_episode = first_planning_episode
         self.prediction_depth = prediction_depth
         self.n_prediction_rollouts = n_prediction_rollouts
+        self.first_planning_episode = first_planning_episode
+        self.last_planning_episode = isnone(last_planning_episode, 999999)
         self.learning_rate = isnone(learning_rate, self.q_network.learning_rate)
         self.episode = 0
 
@@ -53,7 +56,7 @@ class SvpnAgent(UcbAgent):
 
         if not first:
             self._update_reward_model(s, reward)
-            if self.episode >= self.first_planning_episode:
+            if self.first_planning_episode <= self.episode < self.last_planning_episode:
                 for i in range(self.n_prediction_rollouts):
                     self.dream(reward, s, depth=self.prediction_depth)
         else:

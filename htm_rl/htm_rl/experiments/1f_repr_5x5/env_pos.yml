@@ -4,9 +4,6 @@ shape_xy: [5, 5]
 
 actions:
   - stay
-#  - move forward
-#  - turn right
-#  - turn left
   - move right
   - move down
   - move left
@@ -27,18 +24,11 @@ food:
   reward: 10.
 
 terminate:
-  episode_max_steps: 50
+  episode_max_steps: 60
   early_stop: true
-
-# every N episodes (agent, food, map)
-regenerate:
-  agent:
-  food:
-  map:
 
 rendering:
   render:
     - position
-#    - direction
   bucket_size: 4
 

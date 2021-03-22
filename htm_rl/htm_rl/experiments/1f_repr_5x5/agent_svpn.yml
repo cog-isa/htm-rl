@@ -13,7 +13,6 @@ type: svpn
 agent:
   state_sp:
     <<: *default_spatial_pooler_params
-#    output_size: 200
     output_dilation_ratio: 1.4
     potential_synapses_ratio: .8
     sparsity: .05
@@ -22,11 +21,10 @@ agent:
     expected_normal_overlap_frequency: .002
 
   action_encoder:
-    bucket_size: 5
+    bucket_size: 6
 
   sa_sp:
     <<: *default_spatial_pooler_params
-#    output_size: 300
     output_dilation_ratio: 1.4
     potential_synapses_ratio: .8
     sparsity: .04
@@ -40,9 +38,10 @@ agent:
     learning_rate: &lr .002
 
   learning_rate: *lr
-  first_planning_episode: 10
-  prediction_depth: 4
-  n_prediction_rollouts: 3
+  first_planning_episode: 20
+  last_planning_episode: 30
+  prediction_depth: 5
+  n_prediction_rollouts: 1
 
   tm:
     cells_per_column: 1
@@ -51,8 +50,8 @@ agent:
     activation_threshold: .9
     learning_threshold: .66
     max_new_synapse_count: 1.
-    max_synapses_per_segment: 1.1
+    max_synapses_per_segment: 1.2
     predictedSegmentDecrement: .0001
     permanenceIncrement: .1
     permanenceDecrement: .03
-    maxSegmentsPerCell: 8
+    maxSegmentsPerCell: 6

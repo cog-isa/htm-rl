@@ -21,14 +21,8 @@ food:
   reward: 10.
 
 terminate:
-  episode_max_steps: 100
+  episode_max_steps: 150
   early_stop: true
-
-# every N episodes (agent, food, map)
-regenerate:
-  agent:
-  food:
-  map:
 
 rendering:
   view_rectangle: [[-2, -2], [2, 2]]
