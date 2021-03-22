@@ -27,18 +27,18 @@ food:
   reward: 10.
 
 terminate:
-  episode_max_steps: auto
+  episode_max_steps: 50
   early_stop: true
 
 # every N episodes (agent, food, map)
 regenerate:
   agent:
   food:
-  map: 1
+  map:
 
 rendering:
   render:
     - position
 #    - direction
-  bucket_size: 3
+  bucket_size: 4
 

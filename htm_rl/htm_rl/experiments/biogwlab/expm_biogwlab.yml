@@ -10,9 +10,10 @@ env: simple_baseline
 agent:
   - rnd
   - ucb
+  - svpn
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab
-  moving_average: 1
+  moving_average: 5
   verbosity: 1
   test_dir: # leave empty for default behavior - output to the config's dir

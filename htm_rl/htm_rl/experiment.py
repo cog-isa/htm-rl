@@ -6,6 +6,7 @@ from tqdm import trange
 from htm_rl.agent.train_eval import RunStats
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.rnd.agent import RndAgent
+from htm_rl.agents.svpn.agent import SvpnAgent
 from htm_rl.agents.ucb.agent import UcbAgent
 from htm_rl.common.utils import timed
 from htm_rl.config import Config
@@ -82,6 +83,9 @@ class Experiment:
         elif agent_type == 'ucb':
             agent_config = config['agent']
             return UcbAgent(seed=seed, env=env, **agent_config)
+        elif agent_type == 'svpn':
+            agent_config = config['agent']
+            return SvpnAgent(seed=seed, env=env, **agent_config)
         else:
             raise NameError(agent_type)
 
