@@ -18,6 +18,7 @@ class Muscles:
                  max_synapses_per_segment,
                  sample_size,
                  max_segments_per_cell,
+                 noise_tolerance,
                  seed):
         self.max_segments_per_cell = max_segments_per_cell
         self.initial_permanence = initial_permanence
@@ -31,6 +32,7 @@ class Muscles:
         self.input_size = input_size
         self.muscles_size = muscles_size
         self.activation_threshold = activation_threshold
+        self.noise_tolerance = noise_tolerance
 
         self.total_size = self.input_size + self.muscles_size
 
