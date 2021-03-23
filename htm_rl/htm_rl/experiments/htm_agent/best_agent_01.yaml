@@ -57,7 +57,7 @@ basal_ganglia_default:
   learn_sp: true
   seed: 123
   value_window: 100
-  w_STN: 0.001
+  w_stn: 0.001
 block_default:
   gamma: 0.95
   predicted_boost: 0.0
@@ -69,11 +69,11 @@ blocks:
       level: 1
     sm: {}
     sp:
-      boostStrength: 0.5
-      localAreaDensity: 0.11413177841063361
-      potentialPct: 0.6232862419498342
+      boostStrength: 0.0
+      localAreaDensity: 0.04
+      potentialPct: 1.0
     tm:
-      basal_columns: 2000
+      basal_columns: 400
   1:
     bg:
       eps: 0.02
@@ -84,11 +84,11 @@ blocks:
       level: 1
     sm: {}
     sp:
-      boostStrength: 0
-      localAreaDensity: 0.1610537803183371
-      potentialPct: 0.42801860084179266
+      boostStrength: 0.0
+      localAreaDensity: 0.04
+      potentialPct: 1.0
     tm:
-      basal_columns: 300
+      basal_columns: 400
 cells_per_column: 1
 environment:
   action_costs:
@@ -106,7 +106,7 @@ environment:
     n_types: 2
   food:
     n_items: 1
-    reward: 20.0
+    reward: 1.0
   obstacles:
     density: 0.25
   rendering:
@@ -124,7 +124,7 @@ environment:
   - 4
   terminate:
     early_stop: true
-    episode_max_steps: 100
+    episode_max_steps: 50
 hierarchy:
   block_connections:
   - apical_in: []

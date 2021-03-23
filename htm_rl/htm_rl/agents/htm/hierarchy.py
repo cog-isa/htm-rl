@@ -53,7 +53,7 @@ class SpatialMemory:
         :return:
         """
         values -= values.mean()
-        values /= (values.std() + 1e-8)
+        values /= (values.std() + 1e-12)
         positive = values > 0
         values[positive] *= self.permanence_increment
         values[~positive] *= self.permanence_decrement

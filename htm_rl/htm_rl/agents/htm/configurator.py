@@ -101,7 +101,7 @@ def configure(config):
         ))
 
         if block['bg'] is not None:
-            block['bg'].update({'input_size': apical_input_size + block['tm']['basal_columns']})
+            block['bg'].update({'input_size': apical_input_size, 'output_size': block['tm']['basal_columns']})
 
         if block['bg_sp'] is not None:
             block['bg_sp'].update({'inputDimensions': [apical_input_size + block['tm']['basal_columns']]})

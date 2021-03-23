@@ -1,11 +1,13 @@
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.muscles import Muscles
-from htm_rl.agents.htm.basal_ganglia import BasalGanglia
+from htm_rl.agents.htm.basal_ganglia import BasalGanglia2
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
+from htm_rl.common.sdr_encoders import IntBucketEncoder
 from htm.bindings.sdr import SDR
+import imageio
 import numpy as np
 import random
 import yaml
@@ -166,7 +168,7 @@ class HTMAgentRunner:
                     bg_sp = SpatialPooler(**block_conf['bg_sp'])
                 else:
                     bg_sp = None
-                bg = BasalGanglia(sp=bg_sp, **block_conf['bg'])
+                bg = BasalGanglia2(sp=bg_sp, **block_conf['bg'])
             else:
                 bg = None
 
@@ -183,10 +185,19 @@ class HTMAgentRunner:
         total_reward = 0
         steps = 0
         episode = -1
+        animation = False
         while episode < n_episodes:
             reward, obs, is_first = self.environment.observe()
 
             if is_first:
+                if animation:
+                    animation = False
+                    with imageio.get_writer(f'/tmp/steps_{episode}.gif', mode='I') as writer:
+                        for i in range(steps):
+                            image = imageio.imread(f'/tmp/step_{i}.png')
+                            writer.append_data(image)
+                    logger.log({f'animation_{episode}': logger.Video(f'/tmp/steps_{episode}.gif', fps=4, format='gif')})
+
                 self.agent.reset()
 
                 history['steps'].append(steps)
@@ -198,6 +209,24 @@ class HTMAgentRunner:
                 episode += 1
                 steps = 0
                 total_reward = 0
+
+                if ((episode % 50) == 0) and (logger is not None):
+                    q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
+                    table = list()
+                    state_encoder = IntBucketEncoder(16, 5)
+                    for i in range(16):
+                        state = state_encoder.encode(i)
+                        sp_input = SDR(state_encoder.output_sdr_size)
+                        sp_input.sparse = state
+                        sp_state = SDR(self.agent.hierarchy.blocks[2].tm.basal_columns)
+                        self.agent.hierarchy.blocks[2].sp.compute(sp_input, False, sp_state)
+                        row = [str((i // 4, i % 4))]
+                        for j, option in enumerate(self.agent.hierarchy.output_block.sm.get_sparse_patterns()):
+                            row.append(str(round(q[option, sp_state.sparse].mean(), 4)))
+                        table.append(row)
+                    logger.log({f'table_{episode}': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])})
+
+                    animation = True
             else:
                 self.agent.reinforce(reward)
 
@@ -207,17 +236,18 @@ class HTMAgentRunner:
             if train_patterns:
                 self.agent.train_patterns()
 
+            if animation:
+                plt.imsave(f'/tmp/step_{steps}.png', self.environment.callmethod('render_rgb'))
+
             action = self.agent.make_action(obs)
             self.environment.act(action)
-
         return history
 
 
 if __name__ == '__main__':
     with open('../../experiments/htm_agent/best_agent_01.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
-    # wandb.init(project="HTM", config=config, group='one level')
-    # config = wandb.config
+    wandb.init(project="HTM", config=config, group='one level new bg')
 
     # import sys
     # for arg in sys.argv[1:]:
@@ -245,11 +275,12 @@ if __name__ == '__main__':
     #     yaml.dump(config, file, Dumper=yaml.Dumper)
 
     runner = HTMAgentRunner(configure(config))
+    runner.agent.train_patterns()
 
-    # plt.imsave(f'/tmp/map_{config["seed"]}.png', runner.environment.callmethod('render_rgb'))
-    # wandb.log({'map': wandb.Image(f'/tmp/map_{config["seed"]}.png',)})
+    plt.imsave(f'/tmp/map_{config["seed"]}.png', runner.environment.callmethod('render_rgb'))
+    wandb.log({'map': wandb.Image(f'/tmp/map_{config["seed"]}.png',)})
 
-    history = runner.run_episodes(500, logger=None)
+    history = runner.run_episodes(500, logger=wandb)
 
     # wandb.log({'av_steps': np.array(history['steps']).mean()})
 

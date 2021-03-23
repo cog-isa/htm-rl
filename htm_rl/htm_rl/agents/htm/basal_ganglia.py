@@ -138,11 +138,12 @@ class BasalGanglia:
 
 class BasalGanglia2:
     def __init__(self, input_size, output_size, greedy=False, eps=0.01, value_window=10, gamma=0.1, alpha=0.1, beta=0.1,
-                 discount_factor=0.95, w_stn=0.1, sp=None, learn_sp=False):
+                 discount_factor=0.95, w_stn=0.1, sp=None, learn_sp=False, seed=None):
+        np.random.seed(seed)
         self.input_size = input_size
         self.output_size = output_size
-        self.input_weights_d1 = np.random.random((output_size, input_size))
-        self.input_weights_d2 = np.random.random((output_size, input_size))
+        self.input_weights_d1 = np.zeros((output_size, input_size))
+        self.input_weights_d2 = np.zeros((output_size, input_size))
         self.greedy = greedy
         self.eps = eps
         self.discount_factor = discount_factor
@@ -175,8 +176,8 @@ class BasalGanglia2:
         d1 = np.dot(self.input_weights_d1, condition.dense.T)
         d2 = np.dot(self.input_weights_d2, condition.dense.T)
 
-        option_values = d1 - d2
-        gpi = - option_values
+        values = d1 - d2
+        gpi = - values
         gpi = (gpi - gpi.min()) / (gpi.max() - gpi.min() + 1e-12)
         gpi = self.w_stn * self._stn + (1 - self.w_stn) * gpi
         self._stn = self._stn * (1 - self.gamma) + gpi * self.gamma
@@ -185,8 +186,10 @@ class BasalGanglia2:
         bs = ~gpi
 
         option_active_columns = np.zeros(len(options))
+        option_values = np.zeros(len(options))
         for ind, option in enumerate(options):
             option_active_columns[ind] = np.sum(bs[option])
+            option_values[ind] = values[option].mean()
 
         if option_weights is not None:
             weighted_active_columns = option_active_columns * option_weights
@@ -216,21 +219,18 @@ class BasalGanglia2:
             option_probs = softmax(weighted_active_columns)
             option_index = np.random.choice(len(options), 1, p=option_probs)[0]
 
-        self.previous_condition = np.copy(self.current_condition)
-        self.previous_option = np.copy(self.current_option)
-
-        self.current_condition = condition.dense.copy()
-        self.current_option = np.intersect1d(np.flatnonzero(bs), options[option_index])
+        self.current_condition = np.copy(condition.dense)
+        self.current_option = np.copy(options[option_index])
 
         # moving average inhibition threshold
-        option_value = option_values[self.current_option].mean()
+        option_value = option_values[option_index]
         self.inhib_threshold = self.inhib_threshold + (
                 option_value - self.output_values[0]) / self.value_window
         self.output_values.append(option_value)
         self.output_values.pop(0)
 
         option_values -= self.inhib_threshold
-        option_values /= max(self.output_values)
+        option_values /= (max(self.output_values) + 1e-12)
 
         answer = [options[option_index]]
         for flag, result in zip((return_option_value, return_values, return_index),
@@ -241,15 +241,21 @@ class BasalGanglia2:
 
     def force_dopamine(self, reward: float):
         if (self.current_option is not None) and (self.previous_option is not None):
-            prev_values = np.dot(self.input_weights_d1[self.previous_option], self.previous_condition)
-            next_values = np.dot(self.input_weights_d1[self.current_option], self.current_condition)
+            if (self.previous_option.size > 0) and (self.current_option.size > 0):
+                prev_values = np.dot(self.input_weights_d1[self.previous_option], self.previous_condition.T)
+                next_values = np.dot(self.input_weights_d1[self.current_option], self.current_condition.T)
 
-            deltas = (reward + self.gamma * next_values.mean()) - prev_values
+                deltas = (reward + self.discount_factor * next_values.mean()) - prev_values
 
-            deltas *= self.previous_condition
+                deltas = np.dot(deltas.reshape((-1, 1)), self.previous_condition.reshape((1, -1)))
 
-            self.input_weights_d1[self.previous_option] += (self.alpha * deltas)
-            self.input_weights_d2[self.previous_option] -= (self.beta * deltas)
+                self.input_weights_d1[self.previous_option] += (self.alpha * deltas)
+                self.input_weights_d2[self.previous_option] -= (self.beta * deltas)
+
+        self.previous_option = copy.deepcopy(self.current_option)
+        self.previous_condition = copy.deepcopy(self.current_condition)
+        self.current_option = None
+        self.current_condition = None
 
     def reset(self):
         self.current_option = None
