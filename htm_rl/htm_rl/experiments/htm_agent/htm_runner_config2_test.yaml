@@ -66,6 +66,7 @@ spatial_memory_default:
   permanence_decrement: 0.05
   permanence_threshold: 0.5
   permanence_forgetting_decrement: 0.01
+  activation_threshold: 1
 
 block_default:
   gamma: 0.9
@@ -84,7 +85,7 @@ environment:
     - move up
 
   terminate:
-    episode_max_steps: 50
+    episode_max_steps: 100
     early_stop: true
 
   areas:
@@ -95,7 +96,7 @@ environment:
 
   food:
     n_items: 1
-    reward: 2000.
+    reward: 20.
 
   action_costs:
     action_cost: -0.01
@@ -107,30 +108,30 @@ environment:
   rendering:
     view_rectangle: [ [ -4, -4 ], [ 4, 4 ] ]
     render:
-      - obstacles
-      - areas
-      - food
-    #  - position
+#      - obstacles
+#      - areas
+#      - food
+      - position
     #      - direction
-    bucket_size: 3
+    bucket_size: 2
 
 input_blocks:
   - level: 0 # state
-    columns: 324
+    columns: 32
   - level: 0 # action
     columns: 8
 
 blocks:
   - block: {level: 1} # state block
     sp:
-      inputDimensions: [ 324 ]
-      columnDimensions: [ 200 ]
-      potentialRadius: 324
-      numActiveColumnsPerInhArea: *columns_per_area
+      inputDimensions: [ 32 ]
+      columnDimensions: [ 1000 ]
+      potentialRadius: 32
+      numActiveColumnsPerInhArea: 20
     tm:
       apical_columns: 200
       apical_cells_per_column: *cells_per_column
-      basal_columns: 200
+      basal_columns: 1000
       basal_cells_per_column: *cells_per_column
       feedback_columns: 0
     bg: null
@@ -139,24 +140,24 @@ blocks:
   - block: {level: 1} # action block
     sp:
       inputDimensions: [ 8 ]
-      columnDimensions: [ 200 ]
+      columnDimensions: [ 1000 ]
       potentialRadius: 8
-      numActiveColumnsPerInhArea: *columns_per_area
+      numActiveColumnsPerInhArea: 20
     tm:
-      apical_columns: 200
+      apical_columns: 1000
       apical_cells_per_column: *cells_per_column
-      basal_columns: 200
+      basal_columns: 1000
       basal_cells_per_column: *cells_per_column
       feedback_columns: 0
     bg:
-      input_size: 400
+      input_size: 2000
       greedy: False
       eps: 0.02
       learn_sp: True
     bg_sp:
-      inputDimensions: [ 400 ]
-      columnDimensions: [ 200 ]
-      potentialRadius: 400
+      inputDimensions: [ 2000 ]
+      columnDimensions: [ 1000 ]
+      potentialRadius: 2000
       numActiveColumnsPerInhArea: 10
     sm: {}
 
@@ -202,7 +203,7 @@ hierarchy:
 
   ]
 agent:
-  state_size: 324
+  state_size: 32
   punish_reward: -0.01
   alpha: 1.0
   action:
@@ -218,7 +219,7 @@ agent:
       ]
     do_nothing_action: random
   muscles:
-    input_size: 200
+    input_size: 1000
     muscles_size: 8
     activation_threshold: *columns_per_area
     learning_threshold: *columns_per_area
