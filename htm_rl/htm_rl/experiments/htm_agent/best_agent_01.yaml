@@ -77,14 +77,9 @@ blocks:
   1:
     bg:
       eps: 0.02
-      greedy: true
-      learn_sp: true
-    bg_sp:
-      boostStrength: 3
-      columnDimensions:
-      - 100
-      localAreaDensity: 0.1529665791982877
-      potentialPct: 0.6293260812355144
+      greedy: False
+      learn_sp: False
+    bg_sp: null
     block:
       level: 1
     sm: {}

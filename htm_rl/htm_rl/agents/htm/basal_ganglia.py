@@ -1,4 +1,3 @@
-from htm_rl.agents.htm.hierarchy import SpatialMemory
 from htm.bindings.algorithms import SpatialPooler
 from htm.bindings.sdr import SDR
 import copy
@@ -139,7 +138,7 @@ class BasalGanglia:
 
 class BasalGanglia2:
     def __init__(self, input_size, output_size, greedy=False, eps=0.01, value_window=10, gamma=0.1, alpha=0.1, beta=0.1,
-                 discount_factor=0.95, w_stn=0.1):
+                 discount_factor=0.95, w_stn=0.1, sp=None, learn_sp=False):
         self.input_size = input_size
         self.output_size = output_size
         self.input_weights_d1 = np.random.random((output_size, input_size))
@@ -162,54 +161,80 @@ class BasalGanglia2:
         self.current_condition = None
         self.previous_condition = None
 
-    def choose(self, condition: SDR, return_option_value=False, option_weights=None, return_values=False, return_index=False):
-        """
+        self.sp = sp
+        self.learn_sp = learn_sp
 
-        :param condition: cortex sdr
-        :param return_option_value:
-        :param option_weights:
-        :param return_values:
-        :param return_index:
-        :return:
-        """
+    def choose(self, options, condition: SDR,
+               greedy=None,
+               eps=None,
+               return_option_value=False,
+               option_weights=None,
+               return_values=False,
+               return_index=False):
         # get d1 and d2 activations
         d1 = np.dot(self.input_weights_d1, condition.dense.T)
         d2 = np.dot(self.input_weights_d2, condition.dense.T)
 
-        value_options = d1 - d2
-        value_options = (value_options - value_options.min()) / (value_options.max() - value_options.min() + 1e-12)
-
-        if option_weights is not None:
-            weighted_value_options = value_options * option_weights
-        else:
-            weighted_value_options = value_options
-
-        gpi = 1 - weighted_value_options
+        option_values = d1 - d2
+        gpi = - option_values
+        gpi = (gpi - gpi.min()) / (gpi.max() - gpi.min() + 1e-12)
         gpi = self.w_stn * self._stn + (1 - self.w_stn) * gpi
         self._stn = self._stn * (1 - self.gamma) + gpi * self.gamma
 
         gpi = np.random.random(gpi.shape) < gpi
         bs = ~gpi
-        sparse_bs = np.flatnonzero(bs)
 
-        self.previous_condition = self.current_condition.copy()
-        self.previous_option = self.current_option.copy()
+        option_active_columns = np.zeros(len(options))
+        for ind, option in enumerate(options):
+            option_active_columns[ind] = np.sum(bs[option])
+
+        if option_weights is not None:
+            weighted_active_columns = option_active_columns * option_weights
+        else:
+            weighted_active_columns = option_active_columns
+
+        if greedy is None:
+            greedy = self.greedy
+
+        if eps is None:
+            eps = self.eps
+
+        if greedy:
+            if eps is not None:
+                gamma = np.random.random()
+                if gamma < eps:
+                    option_index = np.random.randint(len(option_active_columns))
+                else:
+                    max_value = weighted_active_columns.max()
+                    max_indices = np.flatnonzero(weighted_active_columns == max_value)
+                    option_index = np.random.choice(max_indices, 1)[0]
+            else:
+                max_value = weighted_active_columns.max()
+                max_indices = np.flatnonzero(weighted_active_columns == max_value)
+                option_index = np.random.choice(max_indices, 1)[0]
+        else:
+            option_probs = softmax(weighted_active_columns)
+            option_index = np.random.choice(len(options), 1, p=option_probs)[0]
+
+        self.previous_condition = np.copy(self.current_condition)
+        self.previous_option = np.copy(self.current_option)
 
         self.current_condition = condition.dense.copy()
-        self.current_option = bs
+        self.current_option = np.intersect1d(np.flatnonzero(bs), options[option_index])
 
         # moving average inhibition threshold
-        option_value = value_options[bs].mean()
+        option_value = option_values[self.current_option].mean()
         self.inhib_threshold = self.inhib_threshold + (
                 option_value - self.output_values[0]) / self.value_window
         self.output_values.append(option_value)
         self.output_values.pop(0)
 
-        value_options -= self.inhib_threshold
+        option_values -= self.inhib_threshold
+        option_values /= max(self.output_values)
 
-        answer = [sparse_bs]
+        answer = [options[option_index]]
         for flag, result in zip((return_option_value, return_values, return_index),
-                                (option_value, value_options, sparse_bs)):
+                                (option_values[option_index], option_values, option_index)):
             if flag:
                 answer.append(result)
         return answer
@@ -219,9 +244,15 @@ class BasalGanglia2:
             prev_values = np.dot(self.input_weights_d1[self.previous_option], self.previous_condition)
             next_values = np.dot(self.input_weights_d1[self.current_option], self.current_condition)
 
-            deltas = (reward + self.gamma * next_values) - prev_values
+            deltas = (reward + self.gamma * next_values.mean()) - prev_values
 
             deltas *= self.previous_condition
 
             self.input_weights_d1[self.previous_option] += (self.alpha * deltas)
             self.input_weights_d2[self.previous_option] -= (self.beta * deltas)
+
+    def reset(self):
+        self.current_option = None
+        self.previous_option = None
+        self.current_condition = None
+        self.previous_condition = None
