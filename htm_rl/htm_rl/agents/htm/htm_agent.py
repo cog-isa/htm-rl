@@ -2,11 +2,15 @@ from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMem
 from htm_rl.agents.htm.muscles import Muscles
 from htm_rl.agents.htm.basal_ganglia import BasalGanglia
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
+from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm.bindings.sdr import SDR
 import numpy as np
 import random
+import yaml
+import matplotlib.pyplot as plt
+import wandb
 
 
 class BioGwLabAction:
@@ -139,54 +143,46 @@ class HTMAgentRunner:
         np.random.seed(seed)
         random.seed(seed)
 
-        sp_default = config['spatial_pooler_default']
-        tm_default = config['temporal_memory_default']
-        bg_default = config['basal_ganglia_default']
-        sm_default = config['spatial_memory_default']
-
         block_configs = config['blocks']
-        block_default = config['block_default']
-
         input_block_configs = config['input_blocks']
-        input_block_default = config['input_block_default']
 
         blocks = list()
 
         for block_conf in input_block_configs:
-            blocks.append(InputBlock(**block_conf, **input_block_default))
+            blocks.append(InputBlock(**block_conf))
 
         for block_conf in block_configs:
-            tm = ApicalBasalFeedbackTM(**block_conf['tm'], **tm_default)
+            tm = ApicalBasalFeedbackTM(**block_conf['tm'])
 
-            sm = SpatialMemory(**block_conf['sm'], **sm_default)
+            sm = SpatialMemory(**block_conf['sm'])
 
             if block_conf['sp'] is not None:
-                sp = SpatialPooler(**block_conf['sp'], **sp_default)
+                sp = SpatialPooler(**block_conf['sp'])
             else:
                 sp = None
 
             if block_conf['bg'] is not None:
                 if block_conf['bg_sp'] is not None:
-                    bg_sp = SpatialPooler(**block_conf['bg_sp'], **sp_default)
+                    bg_sp = SpatialPooler(**block_conf['bg_sp'])
                 else:
                     bg_sp = None
-                bg = BasalGanglia(sp=bg_sp, **block_conf['bg'], **bg_default)
+                bg = BasalGanglia(sp=bg_sp, **block_conf['bg'])
             else:
                 bg = None
 
-            blocks.append(Block(tm=tm, sm=sm, sp=sp, bg=bg, **block_conf['block'], **block_default))
+            blocks.append(Block(tm=tm, sm=sm, sp=sp, bg=bg, **block_conf['block']))
 
         hierarchy = Hierarchy(blocks, **config['hierarchy'])
 
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
 
-    def run_episodes(self, n_episodes, verbosity=0, train_patterns=True):
+    def run_episodes(self, n_episodes, train_patterns=True, logger=None):
         history = {'steps': list(), 'reward': list()}
 
         total_reward = 0
         steps = 0
-        episode = 0
+        episode = -1
         while episode < n_episodes:
             reward, obs, is_first = self.environment.observe()
 
@@ -194,16 +190,15 @@ class HTMAgentRunner:
                 self.agent.reset()
 
                 history['steps'].append(steps)
-                history['reward'].append(reward)
-                steps = 0
-                total_reward = 0
+                history['reward'].append(total_reward)
+
+                if (logger is not None) and (episode > -1):
+                    logger.log({'steps': steps, 'reward': total_reward, 'episode': episode})
 
                 episode += 1
-                if verbosity > 0:
-                    print(f'episode: {episode}\r')
+                steps = 0
+                total_reward = 0
             else:
-                if (reward > 0) and (verbosity > 0):
-                    print('nyam')
                 self.agent.reinforce(reward)
 
                 steps += 1
@@ -219,19 +214,42 @@ class HTMAgentRunner:
 
 
 if __name__ == '__main__':
-    import yaml
-    import matplotlib.pyplot as plt
-
-    with open('../../experiments/htm_agent/htm_runner_config2_test.yaml', 'rb') as file:
+    with open('../../experiments/htm_agent/best_agent_01.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
+    # wandb.init(project="HTM", config=config, group='one level')
+    # config = wandb.config
 
-    runner = HTMAgentRunner(config)
+    # import sys
+    # for arg in sys.argv[1:]:
+    #     key, value = arg.split('=')
+    #
+    #     if value == 'True':
+    #         value = True
+    #     elif value == 'False':
+    #         value = False
+    #     else:
+    #         try:
+    #             value = int(value)
+    #         except:
+    #             try:
+    #                 value = float(value)
+    #             except:
+    #                 value = [int(value.strip('[]'))]
+    #
+    #     key = key.lstrip('-')
+    #     tokens = key.split('.')
+    #     if len(tokens) == 4:
+    #         config[tokens[0]][int(tokens[1])][tokens[2]][tokens[3]] = value
 
-    plt.imshow(runner.environment.callmethod('render_rgb'))
-    plt.show()
+    # with open('../../experiments/htm_agent/best_agent_01.yaml', 'w') as file:
+    #     yaml.dump(config, file, Dumper=yaml.Dumper)
 
-    history = runner.run_episodes(500, verbosity=1)
+    runner = HTMAgentRunner(configure(config))
 
-    plt.plot(np.convolve(np.array(history['steps']), np.ones(10)/10, mode='valid'))
-    plt.show()
+    # plt.imsave(f'/tmp/map_{config["seed"]}.png', runner.environment.callmethod('render_rgb'))
+    # wandb.log({'map': wandb.Image(f'/tmp/map_{config["seed"]}.png',)})
+
+    history = runner.run_episodes(500, logger=None)
+
+    # wandb.log({'av_steps': np.array(history['steps']).mean()})
 
