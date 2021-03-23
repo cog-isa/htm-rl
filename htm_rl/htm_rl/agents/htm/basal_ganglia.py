@@ -114,7 +114,7 @@ class BasalGanglia:
         self.output_values.pop(0)
 
         value_options -= self.inhib_threshold
-        value_options /= self.sp.getNumActiveColumnsPerInhArea()
+        value_options /= conditioned_options[0].size
 
         answer = [options[option_index]]
         for flag, result in zip((return_option_value, return_values, return_index), (value_options[option_index], value_options, option_index)):
