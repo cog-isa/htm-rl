@@ -1,0 +1,210 @@
+agent:
+  action:
+    do_nothing_action: random
+    noise_tolerance: 0.0
+    patterns:
+    - - 1
+      - 0
+      - 0
+      - 0
+      - 0
+      - 1
+      - 1
+      - 1
+    - - 0
+      - 1
+      - 0
+      - 0
+      - 1
+      - 0
+      - 1
+      - 1
+    - - 0
+      - 0
+      - 1
+      - 0
+      - 1
+      - 1
+      - 0
+      - 1
+    - - 0
+      - 0
+      - 0
+      - 1
+      - 1
+      - 1
+      - 1
+      - 0
+  alpha: 1.0
+  muscles:
+    connected_permanence: 0.5
+    depolarized_decrement: 0.01
+    initial_permanence: 0.6
+    max_segments_per_cell: 255
+    noise_tolerance: 0.0
+    permanence_decrement: 0.02
+    permanence_increment: 0.1
+    sample_size: 1.0
+    seed: 123
+  punish_reward: -0.01
+basal_ganglia_default:
+  alpha: 0.1
+  beta: 0.1
+  discount_factor: 0.95
+  eps: 0.02
+  gamma: 0.01
+  greedy: false
+  learn_sp: true
+  seed: 123
+  value_window: 100
+  w_STN: 0.001
+block_default:
+  gamma: 0.95
+  predicted_boost: 0.0
+blocks:
+  0:
+    bg: null
+    bg_sp: null
+    block:
+      level: 1
+    sm: {}
+    sp:
+      boostStrength: 0.5
+      localAreaDensity: 0.11413177841063361
+      potentialPct: 0.6232862419498342
+    tm:
+      basal_columns: 2000
+  1:
+    bg:
+      eps: 0.02
+      greedy: true
+      learn_sp: true
+    bg_sp:
+      boostStrength: 3
+      columnDimensions:
+      - 100
+      localAreaDensity: 0.1529665791982877
+      potentialPct: 0.6293260812355144
+    block:
+      level: 1
+    sm: {}
+    sp:
+      boostStrength: 0
+      localAreaDensity: 0.1610537803183371
+      potentialPct: 0.42801860084179266
+    tm:
+      basal_columns: 300
+cells_per_column: 1
+environment:
+  action_costs:
+    action_cost: -0.01
+    action_weight:
+      move: 1.0
+      stay: 2.0
+      turn: 0.0
+  actions:
+  - move right
+  - move down
+  - move left
+  - move up
+  areas:
+    n_types: 2
+  food:
+    n_items: 1
+    reward: 20.0
+  obstacles:
+    density: 0.25
+  rendering:
+    bucket_size: 5
+    render:
+    - position
+    view_rectangle:
+    - - -4
+      - -4
+    - - 4
+      - 4
+  seed: 88
+  shape_xy:
+  - 4
+  - 4
+  terminate:
+    early_stop: true
+    episode_max_steps: 100
+hierarchy:
+  block_connections:
+  - apical_in: []
+    apical_out: []
+    basal_in: []
+    basal_out:
+    - 2
+    feedback_in: []
+    feedback_out: []
+  - apical_in: []
+    apical_out: []
+    basal_in: []
+    basal_out:
+    - 3
+    feedback_in: []
+    feedback_out: []
+  - apical_in:
+    - 3
+    apical_out:
+    - 3
+    basal_in:
+    - 0
+    basal_out: []
+    feedback_in: []
+    feedback_out: []
+  - apical_in:
+    - 2
+    apical_out:
+    - 2
+    basal_in:
+    - 1
+    basal_out: []
+    feedback_in: []
+    feedback_out: []
+  input_blocks:
+  - 0
+  - 1
+  output_block: 3
+input_block_default:
+  columns: 0
+  level: 0
+muscles_size: 4
+seed: 123
+spatial_memory_default:
+  activation_threshold: 1
+  initial_permanence: 0.55
+  overlap_threshold: 0.9
+  permanence_decrement: 0.05
+  permanence_forgetting_decrement: 0.01
+  permanence_increment: 0.1
+  permanence_threshold: 0.5
+spatial_pooler_default:
+  boostStrength: 0.0
+  columnDimensions:
+  - 1000
+  dutyCyclePeriod: 1000
+  globalInhibition: true
+  localAreaDensity: 0.04
+  minPctOverlapDutyCycle: 0.001
+  numActiveColumnsPerInhArea: 0
+  potentialPct: 0.5
+  seed: 123
+  spVerbosity: 0
+  stimulusThreshold: 1
+  synPermActiveInc: 0.1
+  synPermConnected: 0.1
+  synPermInactiveDec: 0.01
+  wrapAround: true
+temporal_memory_default:
+  apical_cells_per_column: 1
+  basal_cells_per_column: 1
+  connected_threshold: 0.5
+  initial_permanence: 0.4
+  noise_tolerance: 0.0
+  permanence_decrement: 0.02
+  permanence_increment: 0.1
+  predicted_segment_decrement: 0.001
+  seed: 123
