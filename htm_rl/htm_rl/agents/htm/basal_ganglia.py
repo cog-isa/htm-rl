@@ -1,3 +1,4 @@
+from htm_rl.agents.htm.hierarchy import SpatialMemory
 from htm.bindings.algorithms import SpatialPooler
 from htm.bindings.sdr import SDR
 import copy
@@ -134,3 +135,93 @@ class BasalGanglia:
             self._D2[self._pBS] = self._D2[self._pBS] - self.beta * delta[self._pBS]
         self._pBS = copy.deepcopy(self._BS)
         self._BS = None
+
+
+class BasalGanglia2:
+    def __init__(self, input_size, output_size, greedy=False, eps=0.01, value_window=10, gamma=0.1, alpha=0.1, beta=0.1,
+                 discount_factor=0.95, w_stn=0.1):
+        self.input_size = input_size
+        self.output_size = output_size
+        self.input_weights_d1 = np.random.random((output_size, input_size))
+        self.input_weights_d2 = np.random.random((output_size, input_size))
+        self.greedy = greedy
+        self.eps = eps
+        self.discount_factor = discount_factor
+        self.gamma = gamma
+        self.alpha = alpha
+        self.beta = beta
+        self.w_stn = w_stn
+
+        self.output_values = [0]*value_window
+        self.inhib_threshold = 0
+        self.value_window = value_window
+
+        self._stn = np.zeros(output_size)
+        self.current_option = None
+        self.previous_option = None
+        self.current_condition = None
+        self.previous_condition = None
+
+    def choose(self, condition: SDR, return_option_value=False, option_weights=None, return_values=False, return_index=False):
+        """
+
+        :param condition: cortex sdr
+        :param return_option_value:
+        :param option_weights:
+        :param return_values:
+        :param return_index:
+        :return:
+        """
+        # get d1 and d2 activations
+        d1 = np.dot(self.input_weights_d1, condition.dense.T)
+        d2 = np.dot(self.input_weights_d2, condition.dense.T)
+
+        value_options = d1 - d2
+        value_options = (value_options - value_options.min()) / (value_options.max() - value_options.min() + 1e-12)
+
+        if option_weights is not None:
+            weighted_value_options = value_options * option_weights
+        else:
+            weighted_value_options = value_options
+
+        gpi = 1 - weighted_value_options
+        gpi = self.w_stn * self._stn + (1 - self.w_stn) * gpi
+        self._stn = self._stn * (1 - self.gamma) + gpi * self.gamma
+
+        gpi = np.random.random(gpi.shape) < gpi
+        bs = ~gpi
+        sparse_bs = np.flatnonzero(bs)
+
+        self.previous_condition = self.current_condition.copy()
+        self.previous_option = self.current_option.copy()
+
+        self.current_condition = condition.dense.copy()
+        self.current_option = bs
+
+        # moving average inhibition threshold
+        option_value = value_options[bs].mean()
+        self.inhib_threshold = self.inhib_threshold + (
+                option_value - self.output_values[0]) / self.value_window
+        self.output_values.append(option_value)
+        self.output_values.pop(0)
+
+        value_options -= self.inhib_threshold
+
+        answer = [sparse_bs]
+        for flag, result in zip((return_option_value, return_values, return_index),
+                                (option_value, value_options, sparse_bs)):
+            if flag:
+                answer.append(result)
+        return answer
+
+    def force_dopamine(self, reward: float):
+        if (self.current_option is not None) and (self.previous_option is not None):
+            prev_values = np.dot(self.input_weights_d1[self.previous_option], self.previous_condition)
+            next_values = np.dot(self.input_weights_d1[self.current_option], self.current_condition)
+
+            deltas = (reward + self.gamma * next_values) - prev_values
+
+            deltas *= self.previous_condition
+
+            self.input_weights_d1[self.previous_option] += (self.alpha * deltas)
+            self.input_weights_d2[self.previous_option] -= (self.beta * deltas)
