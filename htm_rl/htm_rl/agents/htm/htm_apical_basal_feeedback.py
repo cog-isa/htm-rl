@@ -38,7 +38,8 @@ class ApicalBasalFeedbackTM:
                  max_exec_synapses_per_segment=-1,
                  max_segments_per_cell=255,
                  anomaly_window=10,
-                 confidence_window=10
+                 confidence_window=10,
+                 noise_tolerance=0.0
                  ):
         self.apical_columns = apical_columns
         self.apical_cells_per_column = apical_cells_per_column
@@ -146,6 +147,8 @@ class ApicalBasalFeedbackTM:
         self.confidence = [0 for _ in range(self.confidence_window)]
         self.anomaly_threshold = 0
         self.confidence_threshold = 0
+
+        self.noise_tolerance = noise_tolerance
 
         if seed:
             self.rng = Random(seed)
