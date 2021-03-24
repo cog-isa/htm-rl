@@ -15,23 +15,24 @@ class BasalGanglia:
     discount_factor: float
 
     def __init__(self, input_size: int, alpha: float, beta: float, gamma: float,
-                 discount_factor: float, w_STN: float, sp: SpatialPooler = None, value_window=10,
-                 greedy=False, eps=None, learn_sp=True, seed=None):
+                 discount_factor: float, w_stn: float, sp: SpatialPooler = None, value_window=10,
+                 greedy=False, eps=None, learn_sp=True, seed=None, **kwargs):
         np.random.seed(seed)
 
         self.sp = sp
-        self.input_size = input_size
 
         if self.sp is not None:
+            self.input_size = self.sp.getInputDimensions()[0]
             self.output_size = self.sp.getColumnDimensions()
         else:
+            self.input_size = input_size
             self.output_size = input_size
 
         self.alpha = alpha
         self.beta = beta
         self.gamma = gamma
         self.discount_factor = discount_factor
-        self.w_STN = w_STN
+        self.w_STN = w_stn
 
         self._D1 = 0.55 * np.ones(self.output_size)
         self._D2 = 0.45 * np.ones(self.output_size)
@@ -138,7 +139,7 @@ class BasalGanglia:
 
 class BasalGanglia2:
     def __init__(self, input_size, output_size, greedy=False, eps=0.01, value_window=10, gamma=0.1, alpha=0.1, beta=0.1,
-                 discount_factor=0.95, w_stn=0.1, sp=None, learn_sp=False, seed=None):
+                 discount_factor=0.95, w_stn=0.1, sp=None, learn_sp=False, seed=None, **kwargs):
         np.random.seed(seed)
         self.input_size = input_size
         self.output_size = output_size
@@ -173,8 +174,8 @@ class BasalGanglia2:
                return_values=False,
                return_index=False):
         # get d1 and d2 activations
-        d1 = np.dot(self.input_weights_d1, condition.dense.T)
-        d2 = np.dot(self.input_weights_d2, condition.dense.T)
+        d1 = self.input_weights_d1[:, condition.sparse].mean(axis=-1)
+        d2 = self.input_weights_d2[:, condition.sparse].mean(axis=-1)
 
         values = d1 - d2
         gpi = - values
@@ -219,7 +220,7 @@ class BasalGanglia2:
             option_probs = softmax(weighted_active_columns)
             option_index = np.random.choice(len(options), 1, p=option_probs)[0]
 
-        self.current_condition = np.copy(condition.dense)
+        self.current_condition = np.copy(condition.sparse)
         self.current_option = np.copy(options[option_index])
 
         # moving average inhibition threshold
@@ -242,15 +243,13 @@ class BasalGanglia2:
     def force_dopamine(self, reward: float):
         if (self.current_option is not None) and (self.previous_option is not None):
             if (self.previous_option.size > 0) and (self.current_option.size > 0):
-                prev_values = np.dot(self.input_weights_d1[self.previous_option], self.previous_condition.T)
-                next_values = np.dot(self.input_weights_d1[self.current_option], self.current_condition.T)
+                prev_values = (self.input_weights_d1[self.previous_option] - self.input_weights_d2[self.previous_option])[:, self.previous_condition].mean(axis=-1)
+                next_values = (self.input_weights_d1[self.current_option] - self.input_weights_d2[self.current_option])[:, self.current_condition].mean(axis=-1)
 
-                deltas = (reward + self.discount_factor * next_values.mean()) - prev_values
+                deltas = (reward/self.previous_option.size + self.discount_factor * next_values.mean()) - prev_values
 
-                deltas = np.dot(deltas.reshape((-1, 1)), self.previous_condition.reshape((1, -1)))
-
-                self.input_weights_d1[self.previous_option] += (self.alpha * deltas)
-                self.input_weights_d2[self.previous_option] -= (self.beta * deltas)
+                self.input_weights_d1[self.previous_option.reshape((-1, 1)), self.previous_condition] += (self.alpha * deltas).reshape((-1, 1))
+                self.input_weights_d2[self.previous_option.reshape((-1, 1)), self.previous_condition] -= (self.beta * deltas).reshape((-1, 1))
 
         self.previous_option = copy.deepcopy(self.current_option)
         self.previous_condition = copy.deepcopy(self.current_condition)

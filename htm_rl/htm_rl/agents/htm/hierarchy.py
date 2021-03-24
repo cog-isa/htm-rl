@@ -69,7 +69,10 @@ class SpatialMemory:
 
     def get_options(self, dense_pattern, return_indices=False):
         if self.patterns.size == 0:
-            return list()
+            if return_indices:
+                return list(), list()
+            else:
+                return list()
         else:
             overlaps = np.dot(dense_pattern, self.patterns.T)
             indices = np.flatnonzero(overlaps > self.overlap_threshold)

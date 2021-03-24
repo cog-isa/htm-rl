@@ -10,7 +10,7 @@ def configure(config):
 
     # define input blocks
     new_config['input_blocks'] = [{'level': 0, 'columns': environment.env.output_sdr_size},
-                                  {'level': 0, 'columns': config['muscles_size'] * 2}]
+                                  {'level': 0, 'columns': config['muscles_size']}]
 
     # other blocks
     input_blocks = config['hierarchy']['input_blocks']
@@ -111,7 +111,7 @@ def configure(config):
     new_config['agent']['state_size'] = environment.env.output_sdr_size
     new_config['agent']['action'].update(
         dict(
-            muscles_size=config['muscles_size'] * 2,
+            muscles_size=config['muscles_size'],
             n_actions=environment.n_actions
         )
     )
@@ -120,7 +120,7 @@ def configure(config):
     new_config['agent']['muscles'].update(
         dict(
             input_size=blocks[output_block - len(input_blocks)]['tm']['basal_columns'],
-            muscles_size=config['muscles_size'] * 2,
+            muscles_size=config['muscles_size'],
             activation_threshold=int(n_active_bits * (1 - config['agent']['muscles']['noise_tolerance'])),
             learning_threshold=int(n_active_bits * (1 - config['agent']['muscles']['noise_tolerance'])),
             max_synapses_per_segment=n_active_bits,

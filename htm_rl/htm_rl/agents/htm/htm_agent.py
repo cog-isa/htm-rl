@@ -1,6 +1,6 @@
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.muscles import Muscles
-from htm_rl.agents.htm.basal_ganglia import BasalGanglia2
+from htm_rl.agents.htm.basal_ganglia import BasalGanglia2, BasalGanglia
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
@@ -179,7 +179,7 @@ class HTMAgentRunner:
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
 
-    def run_episodes(self, n_episodes, train_patterns=True, logger=None):
+    def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50):
         history = {'steps': list(), 'reward': list()}
 
         total_reward = 0
@@ -187,6 +187,9 @@ class HTMAgentRunner:
         episode = -1
         animation = False
         while episode < n_episodes:
+            if train_patterns:
+                self.agent.train_patterns()
+
             reward, obs, is_first = self.environment.observe()
 
             if is_first:
@@ -196,7 +199,7 @@ class HTMAgentRunner:
                         for i in range(steps):
                             image = imageio.imread(f'/tmp/step_{i}.png')
                             writer.append_data(image)
-                    logger.log({f'animation_{episode}': logger.Video(f'/tmp/steps_{episode}.gif', fps=4, format='gif')})
+                    logger.log({f'animation': logger.Video(f'/tmp/steps_{episode}.gif', fps=4, format='gif')})
 
                 self.agent.reset()
 
@@ -210,21 +213,47 @@ class HTMAgentRunner:
                 steps = 0
                 total_reward = 0
 
-                if ((episode % 50) == 0) and (logger is not None):
-                    q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
-                    table = list()
-                    state_encoder = IntBucketEncoder(16, 5)
-                    for i in range(16):
+                if ((episode % log_every_episode) == 0) and (logger is not None):
+                    if log_q_table:
+                        q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
+                        table = list()
+                    grid_shape = self.environment.env.shape
+                    n_states = grid_shape[0] * grid_shape[1]
+                    state_encoder = IntBucketEncoder(n_states, 5)
+                    sp_state = SDR(self.agent.hierarchy.blocks[2].tm.basal_columns)
+                    sp_input = SDR(state_encoder.output_sdr_size)
+                    sp_action_input = SDR(self.agent.muscles.muscles_size)
+                    sp_action = SDR(self.agent.hierarchy.output_block.tm.basal_columns)
+                    states_patterns = np.zeros((n_states, sp_state.size))
+                    action_patterns = np.zeros((self.agent.action.n_actions-1, sp_action.size))
+                    action_sparse_patterns = list()
+                    for j in range(self.agent.action.n_actions-1):
+                        sp_action_input.dense = self.agent.action.patterns[j]
+                        self.agent.hierarchy.output_block.sp.compute(sp_action_input, False, sp_action)
+                        action_sparse_patterns.append(np.copy(sp_action.sparse))
+                        action_patterns[j, sp_action.sparse] = 1
+
+                    for i in range(n_states):
                         state = state_encoder.encode(i)
-                        sp_input = SDR(state_encoder.output_sdr_size)
                         sp_input.sparse = state
-                        sp_state = SDR(self.agent.hierarchy.blocks[2].tm.basal_columns)
                         self.agent.hierarchy.blocks[2].sp.compute(sp_input, False, sp_state)
-                        row = [str((i // 4, i % 4))]
-                        for j, option in enumerate(self.agent.hierarchy.output_block.sm.get_sparse_patterns()):
-                            row.append(str(round(q[option, sp_state.sparse].mean(), 4)))
-                        table.append(row)
-                    logger.log({f'table_{episode}': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])})
+                        states_patterns[i, sp_state.sparse] = 1
+                        row = [str((i // grid_shape[0], i % grid_shape[1]))]
+                        if log_q_table:
+                            for j, option in enumerate(action_sparse_patterns):
+                                row.append(str(round(q[option][:, sp_state.sparse].mean(), 4)))
+                            table.append(row)
+                    if log_q_table:
+                        logger.log({f'table': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])})
+
+                    plt.imsave(f'/tmp/states_{config["seed"]}.png', states_patterns)
+                    logger.log({'states': wandb.Image(f'/tmp/states_{config["seed"]}.png', )})
+
+                    plt.imsave(f'/tmp/sm_options_{config["seed"]}.png', self.agent.hierarchy.output_block.sm.patterns)
+                    logger.log({'sm options': wandb.Image(f'/tmp/sm_options_{config["seed"]}.png', )})
+
+                    plt.imsave(f'/tmp/actions_{config["seed"]}.png', action_patterns)
+                    logger.log({'actions': wandb.Image(f'/tmp/actions_{config["seed"]}.png', )})
 
                     animation = True
             else:
@@ -232,9 +261,6 @@ class HTMAgentRunner:
 
                 steps += 1
                 total_reward += reward
-
-            if train_patterns:
-                self.agent.train_patterns()
 
             if animation:
                 plt.imsave(f'/tmp/step_{steps}.png', self.environment.callmethod('render_rgb'))
@@ -245,7 +271,7 @@ class HTMAgentRunner:
 
 
 if __name__ == '__main__':
-    with open('../../experiments/htm_agent/best_agent_01.yaml', 'r') as file:
+    with open('../../experiments/htm_agent/best_agent_01_new_basal.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
     wandb.init(project="HTM", config=config, group='one level new bg')
 
@@ -271,16 +297,16 @@ if __name__ == '__main__':
     #     if len(tokens) == 4:
     #         config[tokens[0]][int(tokens[1])][tokens[2]][tokens[3]] = value
 
-    # with open('../../experiments/htm_agent/best_agent_01.yaml', 'w') as file:
+    # with open('../../experiments/htm_agent/best_agent_01_new_basal.yaml', 'w') as file:
     #     yaml.dump(config, file, Dumper=yaml.Dumper)
 
     runner = HTMAgentRunner(configure(config))
     runner.agent.train_patterns()
 
-    plt.imsave(f'/tmp/map_{config["seed"]}.png', runner.environment.callmethod('render_rgb'))
-    wandb.log({'map': wandb.Image(f'/tmp/map_{config["seed"]}.png',)})
+    plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', runner.environment.callmethod('render_rgb'))
+    wandb.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png',)})
 
-    history = runner.run_episodes(500, logger=wandb)
+    history = runner.run_episodes(500, logger=wandb, log_q_table=True, log_every_episode=50)
 
     # wandb.log({'av_steps': np.array(history['steps']).mean()})
 

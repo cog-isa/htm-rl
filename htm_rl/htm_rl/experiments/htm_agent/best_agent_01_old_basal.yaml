@@ -1,52 +1,25 @@
+seed: &seed 109
 agent:
   action:
-    do_nothing_action: random
-    noise_tolerance: 0.0
+    do_nothing_action: 4
+    noise_tolerance: 0.4
     patterns:
-    - - 1
-      - 0
-      - 0
-      - 0
-      - 0
-      - 1
-      - 1
-      - 1
-    - - 0
-      - 1
-      - 0
-      - 0
-      - 1
-      - 0
-      - 1
-      - 1
-    - - 0
-      - 0
-      - 1
-      - 0
-      - 1
-      - 1
-      - 0
-      - 1
-    - - 0
-      - 0
-      - 0
-      - 1
-      - 1
-      - 1
-      - 1
-      - 0
+    - [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+    - [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
+    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,]
   alpha: 1.0
   muscles:
     connected_permanence: 0.5
     depolarized_decrement: 0.01
     initial_permanence: 0.6
     max_segments_per_cell: 255
-    noise_tolerance: 0.0
+    noise_tolerance: 0.4
     permanence_decrement: 0.02
     permanence_increment: 0.1
     sample_size: 1.0
-    seed: 123
-  punish_reward: -0.01
+    seed: *seed
+  punish_reward: -0.05
 basal_ganglia_default:
   alpha: 0.1
   beta: 0.1
@@ -55,7 +28,7 @@ basal_ganglia_default:
   gamma: 0.01
   greedy: false
   learn_sp: true
-  seed: 123
+  seed: *seed
   value_window: 100
   w_stn: 0.001
 block_default:
@@ -70,25 +43,29 @@ blocks:
     sm: {}
     sp:
       boostStrength: 0.0
-      localAreaDensity: 0.04
+      localAreaDensity: 0.02
       potentialPct: 1.0
     tm:
-      basal_columns: 400
+      basal_columns: 1000
   1:
     bg:
       eps: 0.02
       greedy: False
       learn_sp: False
-    bg_sp: null
+    bg_sp:
+      columnDimensions: [ 1000 ]
+      localAreaDensity: 0.02
+      boostStrength: 0.0
+      potentialPct: 1.0
     block:
       level: 1
     sm: {}
     sp:
       boostStrength: 0.0
-      localAreaDensity: 0.04
+      localAreaDensity: 0.02
       potentialPct: 1.0
     tm:
-      basal_columns: 400
+      basal_columns: 1000
 cells_per_column: 1
 environment:
   action_costs:
@@ -102,6 +79,7 @@ environment:
   - move down
   - move left
   - move up
+  - stay
   areas:
     n_types: 2
   food:
@@ -118,7 +96,7 @@ environment:
       - -4
     - - 4
       - 4
-  seed: 88
+  seed: 333
   shape_xy:
   - 4
   - 4
@@ -166,16 +144,15 @@ hierarchy:
 input_block_default:
   columns: 0
   level: 0
-muscles_size: 4
-seed: 123
+muscles_size: 12
 spatial_memory_default:
   activation_threshold: 1
-  initial_permanence: 0.55
-  overlap_threshold: 0.9
-  permanence_decrement: 0.05
-  permanence_forgetting_decrement: 0.01
+  initial_permanence: 1.0
+  overlap_threshold: 0.8
+  permanence_decrement: 0.1
+  permanence_forgetting_decrement: 0.1
   permanence_increment: 0.1
-  permanence_threshold: 0.5
+  permanence_threshold: 0.0
 spatial_pooler_default:
   boostStrength: 0.0
   columnDimensions:
@@ -186,7 +163,7 @@ spatial_pooler_default:
   minPctOverlapDutyCycle: 0.001
   numActiveColumnsPerInhArea: 0
   potentialPct: 0.5
-  seed: 123
+  seed: *seed
   spVerbosity: 0
   stimulusThreshold: 1
   synPermActiveInc: 0.1
@@ -202,4 +179,4 @@ temporal_memory_default:
   permanence_decrement: 0.02
   permanence_increment: 0.1
   predicted_segment_decrement: 0.001
-  seed: 123
+  seed: *seed
