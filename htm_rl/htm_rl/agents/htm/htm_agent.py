@@ -1,6 +1,6 @@
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.muscles import Muscles
-from htm_rl.agents.htm.basal_ganglia import BasalGanglia2, BasalGanglia
+from htm_rl.agents.htm.basal_ganglia import BasalGanglia2, BasalGanglia, BasalGanglia3
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
@@ -123,11 +123,16 @@ class HTMAgent:
         for step in range(n_steps):
             for pattern in patterns:
                 # train memory
-                self.sp_input.dense = pattern
-                learn = self.hierarchy.output_block.learn_sp
-                self.hierarchy.output_block.sp.compute(self.sp_input, learn, self.sp_output)
-                if train_memory:
-                    self.hierarchy.output_block.sm.add(self.sp_output.dense.copy())
+                if self.hierarchy.output_block.sp is not None:
+                    self.sp_input.dense = pattern
+                    learn = self.hierarchy.output_block.learn_sp
+                    self.hierarchy.output_block.sp.compute(self.sp_input, learn, self.sp_output)
+                    if train_memory:
+                        self.hierarchy.output_block.sm.add(self.sp_output.dense.copy())
+                elif train_memory:
+                    self.hierarchy.output_block.sm.add(pattern)
+                    self.sp_input.dense = pattern
+                    self.sp_output.dense = pattern
 
                 # train muscles
                 if train_muscles:
@@ -179,7 +184,7 @@ class HTMAgentRunner:
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
 
-    def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50):
+    def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50, log_patterns=False):
         history = {'steps': list(), 'reward': list()}
 
         total_reward = 0
@@ -214,46 +219,58 @@ class HTMAgentRunner:
                 total_reward = 0
 
                 if ((episode % log_every_episode) == 0) and (logger is not None):
-                    if log_q_table:
-                        q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
-                        table = list()
-                    grid_shape = self.environment.env.shape
-                    n_states = grid_shape[0] * grid_shape[1]
-                    state_encoder = IntBucketEncoder(n_states, 5)
-                    sp_state = SDR(self.agent.hierarchy.blocks[2].tm.basal_columns)
-                    sp_input = SDR(state_encoder.output_sdr_size)
-                    sp_action_input = SDR(self.agent.muscles.muscles_size)
-                    sp_action = SDR(self.agent.hierarchy.output_block.tm.basal_columns)
-                    states_patterns = np.zeros((n_states, sp_state.size))
-                    action_patterns = np.zeros((self.agent.action.n_actions-1, sp_action.size))
-                    action_sparse_patterns = list()
-                    for j in range(self.agent.action.n_actions-1):
-                        sp_action_input.dense = self.agent.action.patterns[j]
-                        self.agent.hierarchy.output_block.sp.compute(sp_action_input, False, sp_action)
-                        action_sparse_patterns.append(np.copy(sp_action.sparse))
-                        action_patterns[j, sp_action.sparse] = 1
-
-                    for i in range(n_states):
-                        state = state_encoder.encode(i)
-                        sp_input.sparse = state
-                        self.agent.hierarchy.blocks[2].sp.compute(sp_input, False, sp_state)
-                        states_patterns[i, sp_state.sparse] = 1
-                        row = [str((i // grid_shape[0], i % grid_shape[1]))]
+                    if log_patterns:
                         if log_q_table:
-                            for j, option in enumerate(action_sparse_patterns):
-                                row.append(str(round(q[option][:, sp_state.sparse].mean(), 4)))
-                            table.append(row)
-                    if log_q_table:
-                        logger.log({f'table': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])})
+                            q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
+                            table = list()
+                        grid_shape = self.environment.env.shape
+                        n_states = grid_shape[0] * grid_shape[1]
+                        state_encoder = IntBucketEncoder(n_states, 5)
+                        sp_state = SDR(self.agent.hierarchy.blocks[2].tm.basal_columns)
+                        sp_input = SDR(state_encoder.output_sdr_size)
+                        sp_action_input = SDR(self.agent.muscles.muscles_size)
+                        sp_action = SDR(self.agent.hierarchy.output_block.tm.basal_columns)
+                        states_patterns = np.zeros((n_states, sp_state.size))
+                        action_patterns = np.zeros((self.agent.action.n_actions-1, sp_action.size))
+                        action_sparse_patterns = list()
 
-                    plt.imsave(f'/tmp/states_{config["seed"]}.png', states_patterns)
-                    logger.log({'states': wandb.Image(f'/tmp/states_{config["seed"]}.png', )})
+                        for j in range(self.agent.action.n_actions-1):
+                            sp_action_input.dense = self.agent.action.patterns[j]
+                            self.agent.hierarchy.output_block.sp.compute(sp_action_input, False, sp_action)
+                            action_sparse_patterns.append(np.copy(sp_action.sparse))
+                            action_patterns[j, sp_action.sparse] = 1
 
-                    plt.imsave(f'/tmp/sm_options_{config["seed"]}.png', self.agent.hierarchy.output_block.sm.patterns)
-                    logger.log({'sm options': wandb.Image(f'/tmp/sm_options_{config["seed"]}.png', )})
+                        for i in range(n_states):
+                            state = state_encoder.encode(i)
+                            sp_input.sparse = state
+                            self.agent.hierarchy.blocks[2].sp.compute(sp_input, False, sp_state)
+                            states_patterns[i, sp_state.sparse] = 1
+                            row = [str((i // grid_shape[0], i % grid_shape[1]))]
+                            if log_q_table:
+                                for j, option in enumerate(action_sparse_patterns):
+                                    row.append(str(round(q[option][:, sp_state.sparse].mean(), 4)))
+                                table.append(row)
+                        if log_q_table:
+                            logger.log({f'table': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])})
 
-                    plt.imsave(f'/tmp/actions_{config["seed"]}.png', action_patterns)
-                    logger.log({'actions': wandb.Image(f'/tmp/actions_{config["seed"]}.png', )})
+                        plt.imsave(f'/tmp/states_{config["seed"]}.png', states_patterns)
+                        logger.log({'states': wandb.Image(f'/tmp/states_{config["seed"]}.png', )})
+
+                        plt.imsave(f'/tmp/sm_options_{config["seed"]}.png', self.agent.hierarchy.output_block.sm.patterns)
+                        logger.log({'sm options': wandb.Image(f'/tmp/sm_options_{config["seed"]}.png', )})
+
+                        plt.imsave(f'/tmp/actions_{config["seed"]}.png', action_patterns)
+                        logger.log({'actions': wandb.Image(f'/tmp/actions_{config["seed"]}.png', )})
+
+                        action_intersection = np.dot(action_patterns, action_patterns.T)
+                        state_intersection = np.dot(states_patterns, states_patterns.T)
+
+                        logger.log({
+                            'action_intersection': logger.Table(data=action_intersection,
+                                                                        columns=[str(x) for x in range(action_patterns.shape[0])]),
+                            'state_intersection': logger.Table(data=state_intersection,
+                                                                       columns=[str(x) for x in range(states_patterns.shape[0])])
+                                    })
 
                     animation = True
             else:
@@ -273,7 +290,7 @@ class HTMAgentRunner:
 if __name__ == '__main__':
     with open('../../experiments/htm_agent/best_agent_01_new_basal.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
-    wandb.init(project="HTM", config=config, group='one level new bg')
+    wandb.init(project="HTM", config=config, group='one level new bg median')
 
     # import sys
     # for arg in sys.argv[1:]:
@@ -306,7 +323,7 @@ if __name__ == '__main__':
     plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', runner.environment.callmethod('render_rgb'))
     wandb.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png',)})
 
-    history = runner.run_episodes(500, logger=wandb, log_q_table=True, log_every_episode=50)
+    history = runner.run_episodes(500, logger=wandb, log_q_table=True, log_every_episode=50, log_patterns=True)
 
     # wandb.log({'av_steps': np.array(history['steps']).mean()})
 

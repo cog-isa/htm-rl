@@ -1,4 +1,4 @@
-seed: &seed 109
+seed: &seed 867105
 agent:
   action:
     do_nothing_action: 4
@@ -21,8 +21,8 @@ agent:
     seed: *seed
   punish_reward: -0.05
 basal_ganglia_default:
-  alpha: 0.1
-  beta: 0.1
+  alpha: 0.5
+  beta: 0.5
   discount_factor: 0.95
   eps: 0.02
   gamma: 0.01
@@ -30,7 +30,7 @@ basal_ganglia_default:
   learn_sp: true
   seed: *seed
   value_window: 100
-  w_stn: 0.001
+  w_stn: 0.01
 block_default:
   gamma: 0.95
   predicted_boost: 0.0
@@ -44,7 +44,7 @@ blocks:
     sp:
       boostStrength: 0.0
       localAreaDensity: 0.02
-      potentialPct: 1.0
+      potentialPct: 0.5
     tm:
       basal_columns: 1000
   1:
@@ -53,21 +53,23 @@ blocks:
       greedy: False
       learn_sp: False
     bg_sp:
-      columnDimensions: [ 1000 ]
-      localAreaDensity: 0.02
+      columnDimensions: [1000]
       boostStrength: 0.0
-      potentialPct: 1.0
+      localAreaDensity: 0.02
+      potentialPct: 0.5
     block:
       level: 1
     sm: {}
     sp:
       boostStrength: 0.0
       localAreaDensity: 0.02
-      potentialPct: 1.0
+      potentialPct: 0.5
     tm:
       basal_columns: 1000
 cells_per_column: 1
+
 environment:
+  seed: 22017
   action_costs:
     action_cost: -0.01
     action_weight:
@@ -86,7 +88,7 @@ environment:
     n_items: 1
     reward: 1.0
   obstacles:
-    density: 0.25
+    density: 0.33
   rendering:
     bucket_size: 5
     render:
@@ -96,13 +98,13 @@ environment:
       - -4
     - - 4
       - 4
-  seed: 333
   shape_xy:
-  - 4
-  - 4
+  - 8
+  - 8
   terminate:
     early_stop: true
-    episode_max_steps: 50
+    episode_max_steps: 100
+
 hierarchy:
   block_connections:
   - apical_in: []
