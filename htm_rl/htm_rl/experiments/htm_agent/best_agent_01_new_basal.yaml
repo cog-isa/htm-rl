@@ -1,4 +1,4 @@
-seed: &seed 867106
+seed: &seed 867121
 agent:
   action:
     do_nothing_action: 4
@@ -23,7 +23,7 @@ agent:
 basal_ganglia_default:
   alpha: 0.5
   beta: 0.5
-  discount_factor: 0.8
+  discount_factor: 0.95
   eps: 0.02
   gamma: 0.01
   greedy: false
@@ -65,7 +65,7 @@ blocks:
 cells_per_column: 1
 
 environment:
-  seed: 22017
+  seed: 223243
   action_costs:
     action_cost: -0.01
     action_weight:

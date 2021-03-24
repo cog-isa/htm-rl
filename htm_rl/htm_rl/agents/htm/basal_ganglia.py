@@ -174,8 +174,8 @@ class BasalGanglia2:
                return_values=False,
                return_index=False):
         # get d1 and d2 activations
-        d1 = np.median(self.input_weights_d1[:, condition.sparse], axis=-1)
-        d2 = np.median(self.input_weights_d2[:, condition.sparse], axis=-1)
+        d1 = np.mean(self.input_weights_d1[:, condition.sparse], axis=-1)
+        d2 = np.mean(self.input_weights_d2[:, condition.sparse], axis=-1)
 
         values = d1 - d2
         gpi = - values
@@ -220,8 +220,8 @@ class BasalGanglia2:
             option_probs = softmax(weighted_active_columns)
             option_index = np.random.choice(len(options), 1, p=option_probs)[0]
 
-        self.current_condition = np.copy(condition.sparse)
-        self.current_option = np.copy(options[option_index])
+        self.current_condition = copy.deepcopy(condition.sparse)
+        self.current_option = copy.deepcopy(options[option_index])
 
         # moving average inhibition threshold
         option_value = option_values[option_index]
@@ -241,15 +241,20 @@ class BasalGanglia2:
         return answer
 
     def force_dopamine(self, reward: float):
-        if (self.current_option is not None) and (self.previous_option is not None):
-            if (self.previous_option.size > 0) and (self.current_option.size > 0):
-                prev_values = np.median((self.input_weights_d1[self.previous_option] - self.input_weights_d2[self.previous_option])[:, self.previous_condition], axis=-1)
-                next_values = np.median((self.input_weights_d1[self.current_option] - self.input_weights_d2[self.current_option])[:, self.current_condition], axis=-1)
+        if (self.previous_option is not None) and (self.previous_option.size > 0):
 
-                deltas = (reward/self.previous_option.size + self.discount_factor * np.median(next_values)) - prev_values
+            next_value = 0.0
 
-                self.input_weights_d1[self.previous_option.reshape((-1, 1)), self.previous_condition] += (self.alpha * deltas).reshape((-1, 1))
-                self.input_weights_d2[self.previous_option.reshape((-1, 1)), self.previous_condition] -= (self.beta * deltas).reshape((-1, 1))
+            prev_values = np.mean((self.input_weights_d1[self.previous_option] - self.input_weights_d2[self.previous_option])[:, self.previous_condition], axis=-1)
+
+            if (self.current_option is not None) and (self.current_option.size > 0):
+                next_values = np.mean((self.input_weights_d1[self.current_option] - self.input_weights_d2[self.current_option])[:, self.current_condition], axis=-1)
+                next_value = np.median(next_values)
+
+            deltas = (reward/self.previous_option.size + self.discount_factor * next_value) - prev_values
+
+            self.input_weights_d1[self.previous_option.reshape((-1, 1)), self.previous_condition] += (self.alpha * deltas).reshape((-1, 1))
+            self.input_weights_d2[self.previous_option.reshape((-1, 1)), self.previous_condition] -= (self.beta * deltas).reshape((-1, 1))
 
         self.previous_option = copy.deepcopy(self.current_option)
         self.previous_condition = copy.deepcopy(self.current_condition)

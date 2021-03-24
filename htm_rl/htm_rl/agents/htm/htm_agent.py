@@ -191,13 +191,19 @@ class HTMAgentRunner:
         steps = 0
         episode = -1
         animation = False
+        prev_reward = 0
         while episode < n_episodes:
             if train_patterns:
                 self.agent.train_patterns()
 
             reward, obs, is_first = self.environment.observe()
 
+            self.agent.reinforce(prev_reward)
+            prev_reward = reward
+
             if is_first:
+                self.agent.reset()
+
                 if animation:
                     animation = False
                     with imageio.get_writer(f'/tmp/steps_{episode}.gif', mode='I') as writer:
@@ -205,8 +211,6 @@ class HTMAgentRunner:
                             image = imageio.imread(f'/tmp/step_{i}.png')
                             writer.append_data(image)
                     logger.log({f'animation': logger.Video(f'/tmp/steps_{episode}.gif', fps=4, format='gif')})
-
-                self.agent.reset()
 
                 history['steps'].append(steps)
                 history['reward'].append(total_reward)
@@ -274,8 +278,6 @@ class HTMAgentRunner:
 
                     animation = True
             else:
-                self.agent.reinforce(reward)
-
                 steps += 1
                 total_reward += reward
 
@@ -290,7 +292,7 @@ class HTMAgentRunner:
 if __name__ == '__main__':
     with open('../../experiments/htm_agent/best_agent_01_new_basal.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
-    wandb.init(project="HTM", config=config, group='one level new bg median')
+    wandb.init(project="HTM", config=config, group='one level new bg mean/median')
 
     # import sys
     # for arg in sys.argv[1:]:
