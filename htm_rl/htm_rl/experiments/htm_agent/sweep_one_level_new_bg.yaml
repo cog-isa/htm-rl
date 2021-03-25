@@ -1,0 +1,22 @@
+project: basalganglia
+program: ../../agents/htm/htm_agent.py
+method: grid
+metric:
+  goal: minimize
+  name: av_steps
+parameters:
+  seed:
+    values: [12312, 3333, 105482]
+  environment.seed:
+    values: [2304, 2312, 222, 223243]
+
+  basal_ganglia_version:
+    values: [2, 3]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - best_agent_01_new_basal
+  - ${args}
+
