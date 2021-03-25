@@ -173,7 +173,14 @@ class HTMAgentRunner:
                     bg_sp = SpatialPooler(**block_conf['bg_sp'])
                 else:
                     bg_sp = None
-                bg = BasalGanglia2(sp=bg_sp, **block_conf['bg'])
+                if config['basal_ganglia_version'] == 1:
+                    bg = BasalGanglia(sp=bg_sp, **block_conf['bg'])
+                elif config['basal_ganglia_version'] == 2:
+                    bg = BasalGanglia2(sp=bg_sp, **block_conf['bg'])
+                elif config['basal_ganglia_version'] == 3:
+                    bg = BasalGanglia3(sp=bg_sp, **block_conf['bg'])
+                else:
+                    raise ValueError('There is no such version of BG')
             else:
                 bg = None
 
@@ -290,31 +297,40 @@ class HTMAgentRunner:
 
 
 if __name__ == '__main__':
-    with open('../../experiments/htm_agent/best_agent_01_new_basal.yaml', 'r') as file:
+    import sys
+    if len(sys.argv) > 1:
+        default_config_name = sys.argv[1]
+    else:
+        default_config_name = 'best_agent_01_old_basal'
+    with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
-    wandb.init(project="HTM", config=config, group='one level new bg mean/median')
 
-    # import sys
-    # for arg in sys.argv[1:]:
-    #     key, value = arg.split('=')
-    #
-    #     if value == 'True':
-    #         value = True
-    #     elif value == 'False':
-    #         value = False
-    #     else:
-    #         try:
-    #             value = int(value)
-    #         except:
-    #             try:
-    #                 value = float(value)
-    #             except:
-    #                 value = [int(value.strip('[]'))]
-    #
-    #     key = key.lstrip('-')
-    #     tokens = key.split('.')
-    #     if len(tokens) == 4:
-    #         config[tokens[0]][int(tokens[1])][tokens[2]][tokens[3]] = value
+    wandb.init(project="basalganglia", config=config)
+
+    for arg in sys.argv[2:]:
+        key, value = arg.split('=')
+
+        if value == 'True':
+            value = True
+        elif value == 'False':
+            value = False
+        else:
+            try:
+                value = int(value)
+            except:
+                try:
+                    value = float(value)
+                except:
+                    value = [int(value.strip('[]'))]
+
+        key = key.lstrip('-')
+        tokens = key.split('.')
+        if len(tokens) == 4:
+            config[tokens[0]][int(tokens[1])][tokens[2]][tokens[3]] = value
+        elif len(tokens) == 2:
+            config[tokens[0]][tokens[1]] = value
+        elif len(tokens) == 1:
+            config[tokens[0]] = value
 
     # with open('../../experiments/htm_agent/best_agent_01_new_basal.yaml', 'w') as file:
     #     yaml.dump(config, file, Dumper=yaml.Dumper)
@@ -325,7 +341,12 @@ if __name__ == '__main__':
     plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', runner.environment.callmethod('render_rgb'))
     wandb.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png',)})
 
-    history = runner.run_episodes(500, logger=wandb, log_q_table=True, log_every_episode=50, log_patterns=True)
+    if config['basal_ganglia_version'] == 1:
+        log_q_table = False
+    else:
+        log_q_table = True
 
-    # wandb.log({'av_steps': np.array(history['steps']).mean()})
+    history = runner.run_episodes(500, logger=wandb, log_q_table=log_q_table, log_every_episode=50, log_patterns=True)
+
+    wandb.log({'av_steps': np.array(history['steps']).mean()})
 

@@ -17,6 +17,11 @@ def configure(config):
     output_block = config['hierarchy']['output_block']
     connections = config['hierarchy']['block_connections'][len(input_blocks):]
 
+    config['spatial_pooler_default']['seed'] = config['seed']
+    config['temporal_memory_default']['seed'] = config['seed']
+    config['basal_ganglia_default']['seed'] = config['seed']
+    config['agent']['muscles']['seed'] = config['seed']
+
     blocks = [{'block': deepcopy(config['block_default']),
                'sm': deepcopy(config['spatial_memory_default']),
                'tm': deepcopy(config['temporal_memory_default'])} for _ in range(len(config['blocks']))]
@@ -128,4 +133,6 @@ def configure(config):
              )
     )
     new_config['seed'] = config['seed']
+    new_config['levels'] = config['levels']
+    new_config['basal_ganglia_version'] = config['basal_ganglia_version']
     return new_config
