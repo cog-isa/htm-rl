@@ -305,8 +305,8 @@ class BasalGanglia3:
                return_values=False,
                return_index=False):
         # get d1 and d2 activations
-        d1 = np.median(self.input_weights_d1[:, condition.sparse], axis=-1)
-        d2 = np.median(self.input_weights_d2[:, condition.sparse], axis=-1)
+        d1 = np.mean(self.input_weights_d1[:, condition.sparse], axis=-1)
+        d2 = np.mean(self.input_weights_d2[:, condition.sparse], axis=-1)
 
         values = d1 - d2
         gpi = - values
@@ -375,9 +375,9 @@ class BasalGanglia3:
         if (self.current_option is not None) and (self.previous_option is not None):
             if (self.previous_option.size > 0) and (self.current_option.size > 0):
                 prev_value = (self.input_weights_d1[self.previous_option] - self.input_weights_d2[self.previous_option])[:, self.previous_condition]
-                prev_value = np.median(prev_value)
+                prev_value = np.median(np.mean(prev_value, axis=-1))
                 next_value = (self.input_weights_d1[self.current_option] - self.input_weights_d2[self.current_option])[:, self.current_condition]
-                next_value = np.median(next_value)
+                next_value = np.median(np.mean(next_value, axis=-1))
 
                 delta = (reward + self.discount_factor * next_value) - prev_value
 
