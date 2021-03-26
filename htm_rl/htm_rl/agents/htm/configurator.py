@@ -37,9 +37,9 @@ def configure(config):
         feedback_in_size = 0
         active_feedback_columns = 0
         for inf in con['feedback_in']:
-            feedback_in_size += config['blocks'][str(inf - len(input_blocks))]['tm']['basal_columns']
-            active_feedback_columns += int(config['blocks'][str(inf - len(input_blocks))]['sp']['localAreaDensity'] *
-                                           config['blocks'][str(inf - len(input_blocks))]['tm']['basal_columns'])
+            feedback_in_size += config['blocks'][inf - len(input_blocks)]['tm']['basal_columns']
+            active_feedback_columns += int(config['blocks'][inf - len(input_blocks)]['sp']['localAreaDensity'] *
+                                           config['blocks'][inf - len(input_blocks)]['tm']['basal_columns'])
 
         blocks[i]['block'].update(deepcopy(block['block']))
         blocks[i]['sm'].update(deepcopy(block['sm']))
@@ -107,7 +107,7 @@ def configure(config):
         ))
 
         if block['bg'] is not None:
-            block['bg'].update({'input_size': apical_input_size, 'output_size': block['tm']['basal_columns']})
+            block['bg'].update({'input_size': apical_input_size + block['tm']['basal_columns'], 'output_size': block['tm']['basal_columns']})
 
         if block['bg_sp'] is not None:
             block['bg_sp'].update({'inputDimensions': [apical_input_size + block['tm']['basal_columns']]})
