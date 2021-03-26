@@ -56,6 +56,7 @@ def configure(config):
 
         if block['bg_sp'] is not None:
             blocks[i]['bg_sp'] = deepcopy(config['spatial_pooler_default'])
+            blocks[i]['bg_sp'].update(block['bg_sp'])
         else:
             blocks[i]['bg_sp'] = None
 
