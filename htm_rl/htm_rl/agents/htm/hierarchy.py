@@ -110,6 +110,8 @@ class Block:
                  id_=None,
                  level=None,
                  predicted_boost=0.2,
+                 min_feedback_boost=0,
+                 max_feedback_boost=1,
                  gamma=0.9):
         
         self.tm = tm
@@ -160,6 +162,8 @@ class Block:
         self.made_decision = False
 
         self.predicted_boost = predicted_boost
+        self.min_feedback_boost = min_feedback_boost
+        self.max_feedback_boost = max_feedback_boost
         self.feedback_boost = 0
 
         self.learn_tm = True
@@ -210,6 +214,9 @@ class Block:
                 if value is not None:
                     total_value += value
 
+            if len(self.feedback_in) > 1:
+                total_value /= len(self.feedback_in)
+
             if len(feedback_active_columns) > 0:
                 feedback_active_columns = np.concatenate(feedback_active_columns)
             else:
@@ -229,7 +236,7 @@ class Block:
             self.confidence = float('inf')
 
             # evaluate feedback boost
-            self.feedback_boost = total_value
+            self.feedback_boost = self.min_feedback_boost + total_value * (self.max_feedback_boost - self.min_feedback_boost)
         else:
             basal_active_columns = list()
             shift = 0
@@ -348,8 +355,16 @@ class Block:
                 else:
                     apical_active_columns = np.empty(0)
 
-                apical_input = SDR(shift)
-                apical_input.sparse = apical_active_columns
+                basal_active_columns = self.tm.get_active_columns()
+                condition = SDR(shift + self.tm.basal_columns)
+                condition.sparse = np.concatenate([apical_active_columns, basal_active_columns + shift])
+
+                if condition.sparse.size == 0:
+                    if return_value:
+                        return np.empty(0), None
+                    else:
+                        return np.empty(0)
+
                 # detect options among predictions
                 predicted_options, indices = self.sm.get_options(self.predicted_columns.dense, return_indices=True)
                 # all options
@@ -363,7 +378,7 @@ class Block:
                         # feedback boost
                         boost_predicted_options[indices] += self.feedback_boost
 
-                    option, option_value, option_values, option_index = self.bg.choose(options, apical_input, option_weights=boost_predicted_options,
+                    option, option_value, option_values, option_index = self.bg.choose(options, condition, option_weights=boost_predicted_options,
                                                                                        return_option_value=True, return_values=True, return_index=True)
                     # reinforce good patterns and punish bad ones
                     if self.learn_sm:
