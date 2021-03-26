@@ -301,7 +301,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'best_agent_01_old_basal'
+        default_config_name = 'two_levels_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
@@ -332,8 +332,8 @@ if __name__ == '__main__':
         elif len(tokens) == 1:
             config[tokens[0]] = value
 
-    # with open('../../experiments/htm_agent/best_agent_01_new_basal.yaml', 'w') as file:
-    #     yaml.dump(config, file, Dumper=yaml.Dumper)
+    with open('../../experiments/htm_agent/one_level_new_basal_default.yaml', 'w') as file:
+        yaml.dump(config, file, Dumper=yaml.Dumper)
 
     runner = HTMAgentRunner(configure(config))
     runner.agent.train_patterns()
@@ -346,7 +346,7 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    history = runner.run_episodes(500, logger=wandb, log_q_table=log_q_table, log_every_episode=50, log_patterns=True)
+    history = runner.run_episodes(151, logger=wandb, log_q_table=False, log_every_episode=50, log_patterns=False)
 
     wandb.log({'av_steps': np.array(history['steps']).mean()})
 
