@@ -10,13 +10,10 @@ parameters:
   environment.seed:
     values: [2304, 2312, 222, 223243]
 
-  basal_ganglia_version:
-    values: [2, 3]
-
 command:
   - ${env}
   - python
   - ${program}
-  - one_level_new_bg_default
+  - two_levels_default
   - ${args}
 

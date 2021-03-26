@@ -14,5 +14,5 @@ command:
   - ${env}
   - python
   - ${program}
-  - best_agent_01_old_basal
+  - one_level_old_bg_default
   - ${args}

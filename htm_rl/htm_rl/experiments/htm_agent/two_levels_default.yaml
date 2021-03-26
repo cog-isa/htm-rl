@@ -1,9 +1,9 @@
-seed: &seed 867121
-levels: 1
-basal_ganglia_version: 1
+seed: &seed 3333
+levels: 2
+basal_ganglia_version: 2
 
 environment:
-  seed: 223243
+  seed: 2304
   action_costs:
     action_cost: -0.01
     action_weight:
@@ -17,27 +17,29 @@ environment:
   - move up
   - stay
   areas:
-    n_types: 2
+    n_types: 3
   food:
     n_items: 1
     reward: 1.0
   obstacles:
-    density: 0.33
+    density: 0.25
   rendering:
-    bucket_size: 5
+    bucket_size: 1
     render:
-    - position
+    - areas
+    - obstacles
+    - food
     view_rectangle:
-    - - -4
-      - -4
-    - - 4
-      - 4
+    - - -1
+      - -1
+    - - 1
+      - 1
   shape_xy:
-  - 8
-  - 8
+  - 16
+  - 16
   terminate:
     early_stop: true
-    episode_max_steps: 100
+    episode_max_steps: 150
 
 agent:
   action:
@@ -78,12 +80,8 @@ blocks:
     bg:
       eps: 0.02
       greedy: False
-      learn_sp: True
-    bg_sp:
-      cloumnDimensions: [2000]
-      boostStrength: 0.0
-      localAreaDensity: 0.02
-      potentialPct: 0.5
+      learn_sp: False
+    bg_sp: null
     block:
       level: 1
     sm: {}
@@ -93,42 +91,93 @@ blocks:
       potentialPct: 0.5
     tm:
       basal_columns: 1000
-cells_per_column: 1
+
+  2:
+    bg: null
+    bg_sp: null
+    block:
+      level: 2
+    sm: { }
+    sp:
+      boostStrength: 0.0
+      localAreaDensity: 0.02
+      potentialPct: 0.5
+    tm:
+      basal_columns: 1000
+  3:
+    bg:
+      eps: 0.02
+      greedy: False
+      learn_sp: False
+    bg_sp: null
+    block:
+      level: 2
+    sm: { }
+    sp:
+      boostStrength: 0.0
+      localAreaDensity: 0.02
+      potentialPct: 0.5
+    tm:
+      basal_columns: 1000
+
+cells_per_column: 3
 
 hierarchy:
-  block_connections:
-  - apical_in: []
-    apical_out: []
-    basal_in: []
-    basal_out:
-    - 2
-    feedback_in: []
-    feedback_out: []
-  - apical_in: []
-    apical_out: []
-    basal_in: []
-    basal_out:
-    - 3
-    feedback_in: []
-    feedback_out: []
-  - apical_in:
-    - 3
-    apical_out:
-    - 3
-    basal_in:
-    - 0
-    basal_out: []
-    feedback_in: []
-    feedback_out: []
-  - apical_in:
-    - 2
-    apical_out:
-    - 2
-    basal_in:
-    - 1
-    basal_out: []
-    feedback_in: []
-    feedback_out: []
+  block_connections: [
+    {
+      'basal_in': [ ],
+      'apical_in': [ ],
+      'feedback_in': [ ],
+      'basal_out': [ 2 ],
+      'apical_out': [ ],
+      'feedback_out': [ ]
+    },
+
+    {
+      'basal_in': [ ],
+      'apical_in': [ ],
+      'feedback_in': [ ],
+      'basal_out': [ 3 ],
+      'apical_out': [ ],
+      'feedback_out': [ ]
+    },
+
+    {
+      'basal_in': [ 0 ],
+      'apical_in': [ 3 ],
+      'feedback_in': [ 4 ],
+      'basal_out': [ 4 ],
+      'apical_out': [ 3 ],
+      'feedback_out': [ ]
+    },
+
+    {
+      'basal_in': [ 1 ],
+      'apical_in': [ 2 ],
+      'feedback_in': [ 5 ],
+      'basal_out': [ 5 ],
+      'apical_out': [ 2 ],
+      'feedback_out': [ ]
+    },
+
+    {
+      'basal_in': [ 2 ],
+      'apical_in': [ 5 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
+      'apical_out': [ 5 ],
+      'feedback_out': [ 2 ]
+    },
+
+    {
+      'basal_in': [ 3 ],
+      'apical_in': [ 4 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
+      'apical_out': [ 4 ],
+      'feedback_out': [ 3 ]
+    }
+  ]
   input_blocks:
   - 0
   - 1
@@ -184,8 +233,10 @@ basal_ganglia_default:
   greedy: false
   learn_sp: true
   seed: *seed
-  value_window: 100
   w_stn: 0.01
+
 block_default:
   gamma: 0.95
   predicted_boost: 0.0
+  min_feedback_boost: 0.5
+  max_feedback_boost: 1.0

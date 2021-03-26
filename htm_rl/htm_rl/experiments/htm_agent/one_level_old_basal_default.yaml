@@ -1,9 +1,9 @@
-seed: &seed 867121
+seed: &seed 867129
 levels: 1
-basal_ganglia_version: 3
+basal_ganglia_version: 1
 
 environment:
-  seed: 223243
+  seed: 778
   action_costs:
     action_cost: -0.01
     action_weight:
@@ -17,21 +17,23 @@ environment:
   - move up
   - stay
   areas:
-    n_types: 2
+    n_types: 3
   food:
     n_items: 1
     reward: 1.0
   obstacles:
-    density: 0.33
+    density: 0.25
   rendering:
-    bucket_size: 5
+    bucket_size: 1
     render:
-    - position
+      - areas
+      - obstacles
+      - food
     view_rectangle:
-    - - -4
-      - -4
-    - - 4
-      - 4
+    - - -1
+      - -1
+    - - 1
+      - 1
   shape_xy:
   - 8
   - 8
@@ -78,8 +80,12 @@ blocks:
     bg:
       eps: 0.02
       greedy: False
-      learn_sp: False
-    bg_sp: null
+      learn_sp: True
+    bg_sp:
+      columnDimensions: [2000]
+      boostStrength: 0.0
+      localAreaDensity: 0.02
+      potentialPct: 1.0
     block:
       level: 1
     sm: {}
@@ -152,7 +158,7 @@ spatial_pooler_default:
   localAreaDensity: 0.04
   minPctOverlapDutyCycle: 0.001
   numActiveColumnsPerInhArea: 0
-  potentialPct: 0.5
+  potentialPct: 0.8
   seed: *seed
   spVerbosity: 0
   stimulusThreshold: 1
