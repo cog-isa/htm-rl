@@ -138,7 +138,7 @@ class BasalGanglia:
 
 
 class BasalGanglia2:
-    def __init__(self, input_size, output_size, greedy=False, eps=0.01, value_window=10, gamma=0.1, alpha=0.1, beta=0.1,
+    def __init__(self, input_size, output_size, greedy=False, eps=0.01, gamma=0.1, alpha=0.1, beta=0.1,
                  discount_factor=0.95, w_stn=0.1, sp=None, learn_sp=False, seed=None, **kwargs):
         np.random.seed(seed)
         self.input_size = input_size
@@ -152,10 +152,6 @@ class BasalGanglia2:
         self.alpha = alpha
         self.beta = beta
         self.w_stn = w_stn
-
-        self.output_values = [0]*value_window
-        self.inhib_threshold = 0
-        self.value_window = value_window
 
         self._stn = np.zeros(output_size)
         self.current_option = None
@@ -190,7 +186,7 @@ class BasalGanglia2:
         option_values = np.zeros(len(options))
         for ind, option in enumerate(options):
             option_active_columns[ind] = np.sum(bs[option])
-            option_values[ind] = values[option].mean()
+            option_values[ind] = np.median(values[option])
 
         if option_weights is not None:
             weighted_active_columns = option_active_columns * option_weights
@@ -223,19 +219,11 @@ class BasalGanglia2:
         self.current_condition = copy.deepcopy(condition.sparse)
         self.current_option = copy.deepcopy(options[option_index])
 
-        # moving average inhibition threshold
-        option_value = option_values[option_index]
-        self.inhib_threshold = self.inhib_threshold + (
-                option_value - self.output_values[0]) / self.value_window
-        self.output_values.append(option_value)
-        self.output_values.pop(0)
-
-        option_values -= self.inhib_threshold
-        option_values /= (max(self.output_values) + 1e-12)
-
+        norm_option_values = option_values - option_values.min()
+        norm_option_values /= (norm_option_values.max() + 1e-12)
         answer = [options[option_index]]
         for flag, result in zip((return_option_value, return_values, return_index),
-                                (option_values[option_index], option_values, option_index)):
+                                (norm_option_values[option_index], norm_option_values, option_index)):
             if flag:
                 answer.append(result)
         return answer
