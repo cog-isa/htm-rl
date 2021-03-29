@@ -153,7 +153,7 @@ class BasalGanglia2:
         self.beta = beta
         self.w_stn = w_stn
 
-        self._stn = np.zeros(output_size)
+        self._stn = np.zeros(input_size)
         self.current_option = None
         self.previous_option = None
         self.current_condition = None
@@ -173,11 +173,11 @@ class BasalGanglia2:
         d1 = np.mean(self.input_weights_d1[:, condition.sparse], axis=-1)
         d2 = np.mean(self.input_weights_d2[:, condition.sparse], axis=-1)
 
+        self._stn = self._stn * (1 - self.gamma) + condition.dense * self.gamma
         values = d1 - d2
         gpi = - values
         gpi = (gpi - gpi.min()) / (gpi.max() - gpi.min() + 1e-12)
         gpi = self.w_stn * self._stn.mean() + (1 - self.w_stn) * gpi
-        self._stn = self._stn * (1 - self.gamma) + gpi * self.gamma
 
         gpi = np.random.random(gpi.shape) < gpi
         bs = ~gpi
