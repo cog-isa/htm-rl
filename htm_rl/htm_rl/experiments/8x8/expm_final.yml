@@ -1,12 +1,12 @@
 seed: 8713
-n_seeds: 6
+n_seeds: 10
 
 experiment:
-  project:
-  n_episodes: 100
+  project: test_1f_repr2
+  n_episodes: 400
 
 env:
-  - pos
+#  - pos
   - dir
 #  - map
 #  - obs

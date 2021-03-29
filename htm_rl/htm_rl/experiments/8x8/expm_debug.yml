@@ -1,5 +1,5 @@
 seed: 8713
-n_seeds: 6
+n_seeds: 2
 
 experiment:
   project:
@@ -7,15 +7,10 @@ experiment:
 
 env:
   - pos
-  - dir
-#  - map
-#  - obs
 
 agent:
   - rnd
   - ucb
-  - ucb2
-  - svpn
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab

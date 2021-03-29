@@ -15,7 +15,7 @@ class RunConfig(FileConfig):
     def __init__(self, path):
         super(RunConfig, self).__init__(path)
 
-    def run(self, agent_key: str, run: bool, aggregate: bool):
+    def run(self, agent_key: str, env_key: str, run: bool, aggregate: bool):
         silent_run = self['silent']
         report_name_suffix = self['report_name']
 
@@ -41,18 +41,8 @@ class RunConfig(FileConfig):
             experiment: Experiment
 
             seeds = self.get_seeds()
-            env_configs = self.read_configs('env')
-            agent_configs = self.read_configs('agent')
-            if agent_key is not None:
-                if isinstance(agent_key, str):
-                    agent_keys = [agent_key]
-                else:
-                    agent_keys = agent_key
-                agent_configs = [
-                    agent
-                    for agent in agent_configs
-                    if agent.name in agent_keys
-                ]
+            env_configs = self.filter_by(self.read_configs('env'), env_key)
+            agent_configs = self.filter_by(self.read_configs('agent'), agent_key)
 
             store_maps = self['store_maps']
 
@@ -103,11 +93,26 @@ class RunConfig(FileConfig):
 
         return configs
 
+    @staticmethod
+    def filter_by(origin_list, names):
+        if names is None:
+            return origin_list
+
+        if isinstance(names, str):
+            names = [names]
+
+        return [
+            agent
+            for agent in origin_list
+            if agent.name in names
+        ]
+
 
 def register_arguments(parser: ArgumentParser):
     # todo: comment arguments with examples
     parser.add_argument('-c', '--config', dest='config', required=True)
     parser.add_argument('-a', '--agent', dest='agent', default=None, nargs='+')
+    parser.add_argument('-e', '--env', dest='env', default=None, nargs='+')
     parser.add_argument('-r', '--run', dest='run', action='store_true', default=False)
     parser.add_argument('-g', '--aggregate', dest='aggregate', default=None, nargs='*')
     parser.add_argument('-n', '--name', dest='report_name', default='')
@@ -149,7 +154,7 @@ def main():
         os.environ['WANDB_MODE'] = 'dryrun'
         os.environ['WANDB_SILENT'] = 'true'
 
-    config.run(args.agent, args.run, aggregate)
+    config.run(args.agent, args.env, args.run, aggregate)
 
 
 if __name__ == '__main__':
