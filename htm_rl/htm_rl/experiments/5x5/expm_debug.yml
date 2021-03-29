@@ -2,7 +2,7 @@ seed: 8713
 n_seeds: 6
 
 experiment:
-  project: test_1f_repr2
+  project:
   n_episodes: 100
 
 env:

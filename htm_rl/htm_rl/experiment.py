@@ -29,7 +29,7 @@ class Experiment:
 
     def run(
             self, seed: int, agent_config: Config, env_config: Config,
-            run_results_processor: RunResultsProcessor = None, seed_ind = None
+            run_results_processor: RunResultsProcessor = None, seed_ind=None
     ):
         env = self.materialize_environment(seed, env_config)
         agent = self.materialize_agent(seed, env, agent_config)
@@ -46,6 +46,7 @@ class Experiment:
         run = None
         if self.use_wandb:
             import wandb
+            assert self.project is not None, 'Either set up `project` to the experiment, or turn off wandb'
             run = wandb.init(
                 project=self.project, reinit=True, dir=self.base_dir
             )
