@@ -10,11 +10,11 @@ actions:
   - move up
 
 action_costs:
-  action_cost: -.05
+  action_cost: -.005
   action_weight:
-    stay: 10.
-    turn: 0.
-    move: 0.
+    stay: 1.
+    turn: 1.
+    move: 1.
 
 obstacles:
   density: .25
