@@ -176,7 +176,7 @@ class BasalGanglia2:
         values = d1 - d2
         gpi = - values
         gpi = (gpi - gpi.min()) / (gpi.max() - gpi.min() + 1e-12)
-        gpi = self.w_stn * self._stn + (1 - self.w_stn) * gpi
+        gpi = self.w_stn * self._stn.mean() + (1 - self.w_stn) * gpi
         self._stn = self._stn * (1 - self.gamma) + gpi * self.gamma
 
         gpi = np.random.random(gpi.shape) < gpi
