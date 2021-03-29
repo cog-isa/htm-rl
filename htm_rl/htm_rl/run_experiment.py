@@ -54,13 +54,20 @@ class RunConfig(FileConfig):
                     if agent.name in agent_keys
                 ]
 
+            store_maps = self['store_maps']
+
             experiment_setups = list(product(env_configs, agent_configs, seeds))
+            seed_ind = 0
             for env_config, agent_config, seed in experiment_setups:
+                rrp = run_results_processor if store_maps and seed_ind < len(seeds) else None
+
                 results = experiment.run(
-                    seed=seed, agent_config=agent_config, env_config=env_config
+                    seed=seed, agent_config=agent_config, env_config=env_config,
+                    run_results_processor=rrp, seed_ind=seed_ind
                 )
                 run_results_processor.store_result(results)
                 print('')
+                seed_ind += 1
 
         if aggregate:
             aggregate_file_masks = self['aggregate_masks']
@@ -109,6 +116,7 @@ def register_arguments(parser: ArgumentParser):
     parser.add_argument('-p', '--paper', dest='paper', action='store_true', default=False)
     parser.add_argument('-w', '--wandb', dest='wandb', action='store_true', default=False)
     parser.add_argument('-W', '--wandb-dry-silent', dest='wandb_dry_silent', action='store_true', default=False)
+    parser.add_argument('-m', '--store_maps', dest='store_maps', action='store_true', default=False)
 
 
 def main():
@@ -124,6 +132,7 @@ def main():
 
     config['silent'] = args.silent
     config['paper'] = args.paper
+    config['store_maps'] = args.store_maps
 
     dry_run = args.dry is not None
     config['dry_run'] = dry_run

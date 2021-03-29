@@ -2,18 +2,19 @@ seed: 8713
 n_seeds: 10
 
 experiment:
-  project: test_1f_repr
-  n_episodes: 200
+  project: test_1f_repr2
+  n_episodes: 400
 
 env:
-  - pos
+#  - pos
   - dir
-  - map
-  - obs
+#  - map
+#  - obs
 
 agent:
   - rnd
   - ucb
+  - ucb2
   - svpn
 
 run_results_processor: !RunResultsProcessor

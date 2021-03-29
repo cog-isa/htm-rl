@@ -30,6 +30,10 @@ class UcbAgent(Agent):
             sa_sp: Dict
     ):
         self.state_sp = SpatialPooler(input_source=env, seed=seed, **state_sp)
+        action_encoder['bucket_size'] = max(
+            int(.75 * self.state_sp.n_active_bits),
+            action_encoder.get('bucket_size', 0)
+        )
         self.action_encoder = IntBucketEncoder(n_values=env.n_actions, **action_encoder)
         self.sa_concatenator = SdrConcatenator(input_sources=[
             self.state_sp,
@@ -55,6 +59,7 @@ class UcbAgent(Agent):
             self.q_network.reset()
 
         s = self.state_sp.compute(state, learn=True)
+        # s = state
         return self._act(reward, s, first)
 
     def _act(self, reward: float, s: SparseSdr, first: bool):

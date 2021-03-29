@@ -35,7 +35,7 @@ class SparseValueNetwork:
 
         self.cell_visit_count = np.full(cells_sdr_size, 1., dtype=np.float)
         # self.cell_value = np.full(cells_sdr_size, 0., dtype=np.float)
-        self.cell_value = self._rng.uniform(-1e-2, 1e-2, size=cells_sdr_size)
+        self.cell_value = self._rng.uniform(-1e-4, 1e-4, size=cells_sdr_size)
         self.cell_eligibility_trace = np.zeros(cells_sdr_size, dtype=np.float)
         self.reward_bounds = 0., 1.
 
@@ -63,7 +63,7 @@ class SparseValueNetwork:
 
     def update(self, sa: SparseSdr, reward: float, sa_next: SparseSdr, td_lambda=True):
         self._update_cell_visit_counter(sa)
-        self._update_reward_bounds(reward)
+        # self._update_reward_bounds(reward)
         if td_lambda:
             self._update_cell_value(sa, reward, sa_next)
         else:
@@ -101,7 +101,7 @@ class SparseValueNetwork:
 
     def _update_cell_visit_counter(self, sa: SparseSdr):
         self.cell_visit_count *= self.exp_ma_decay
-        self.cell_visit_count[sa] += 1
+        self.cell_visit_count[sa] += 1.
 
     def _update_reward_bounds(self, reward: float):
         low, high = self.reward_bounds
@@ -122,7 +122,7 @@ class SparseValueNetwork:
         T = total_visits
         N = self.cell_visit_count[cells_sdr]
 
-        return np.sqrt(2 * np.log(T + 1) / N)
+        return .2 * np.sqrt(2 * np.log(T + 1) / N)
 
     def _total_visits(self, options: List[SparseSdr]) -> int:
         # option visit count: avg visit count of its cells

@@ -64,6 +64,9 @@ class Environment(Env):
         self._run_handlers('reset')
         self.generate()
 
+        # from htm_rl.common.plot_utils import plot_grid_images
+        # plot_grid_images([self.render_rgb()])
+
     def add_module(self, name, module):
         self.modules[name] = module
 

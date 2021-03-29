@@ -2,21 +2,21 @@ seed:
 env:
 
 # ^^^^^^^ Will be provided ^^^^^^^^^
-type: svpn
+type: ucb
 
 .default_spatial_pooler_params: &default_spatial_pooler_params
   synapse_permanence_deltas: [ .1, .02 ]
   connected_permanence_threshold: .5
   min_activation_threshold: 1
 
-
 agent:
   state_sp:
     <<: *default_spatial_pooler_params
-    output_dilation_ratio: 1.2
+#    output_size: 200
+    output_dilation_ratio: 1.5
     potential_synapses_ratio: .95
-    sparsity: .06
-    boost_strength: 2
+    sparsity: .05
+    boost_strength: 1.1
     boost_sliding_window: 1000
     expected_normal_overlap_frequency: .002
 
@@ -25,33 +25,15 @@ agent:
 
   sa_sp:
     <<: *default_spatial_pooler_params
-    output_dilation_ratio: 1.75
+#    output_size: 400
+    output_dilation_ratio: 2.2
     potential_synapses_ratio: .9
-    sparsity: .05
-    boost_strength: 2
+    sparsity: .04
+    boost_strength: 1.1
     boost_sliding_window: 2000
     expected_normal_overlap_frequency: .001
 
   q_network:
     trace_decay: .8
     discount_factor: .975
-    learning_rate: &lr .005
-
-  learning_rate: *lr
-  first_planning_episode: 40
-  last_planning_episode: 60
-  prediction_depth: 5
-  n_prediction_rollouts: 1
-
-  tm:
-    cells_per_column: 1
-    initial_permanence: .5
-    connected_permanence: .4
-    activation_threshold: .9
-    learning_threshold: .66
-    max_new_synapse_count: 1.
-    max_synapses_per_segment: 1.2
-    predictedSegmentDecrement: .0001
-    permanenceIncrement: .1
-    permanenceDecrement: .03
-    maxSegmentsPerCell: 6
+    learning_rate: .005

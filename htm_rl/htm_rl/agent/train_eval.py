@@ -183,21 +183,24 @@ class RunResultsProcessor:
 
     def store_environment_maps(self, maps):
         for i, (env_map, seed) in enumerate(maps):
-            n = env_map.shape[0]
+            self.store_environment_map(i, env_map, seed)
 
-            fig: plt.Figure
-            ax: plt.Axes
-            fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-            ax.set_xticks(np.arange(-.5, n, 1))
-            ax.set_yticks(np.arange(-.5, n, 1))
-            ax.set_xticklabels(np.arange(n))
-            ax.set_yticklabels(np.arange(n))
-            ax.grid(color='grey', linestyle='-', linewidth=1)
-            ax.set_title(f'{self.env_name}, seed={seed}')
+    def store_environment_map(self, ind, env_map, seed):
+        h, w = env_map.shape
 
-            ax.imshow(env_map)
-            save_path = os.path.join(self.test_dir, f'{self.env_name}_map_{i}_{seed}.svg')
-            fig.savefig(save_path, dpi=120)
+        fig: plt.Figure
+        ax: plt.Axes
+        fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+        ax.set_xticks(np.arange(-.5, w, 1))
+        ax.set_yticks(np.arange(-.5, h, 1))
+        ax.set_xticklabels(np.arange(w))
+        ax.set_yticklabels(np.arange(h))
+        ax.grid(color='grey', linestyle='-', linewidth=1)
+        ax.set_title(f'{self.env_name}, seed={seed}')
+
+        ax.imshow(env_map)
+        save_path = os.path.join(self.test_dir, f'{self.env_name}_map_{ind}_{seed}.svg')
+        fig.savefig(save_path, dpi=120)
 
 
 def plot_anomalies(anomalies):
