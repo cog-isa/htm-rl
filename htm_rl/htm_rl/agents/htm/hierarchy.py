@@ -592,11 +592,12 @@ class Hierarchy:
             tasks = zip(block.basal_out, [None]*len(block.basal_out))
             self.queue.append((block, {'learn_exec': True}))
             self.queue.extend(tasks)
-        elif (block.anomaly <= block.anomaly_threshold) and (block.confidence < block.confidence_threshold):
+        elif block.confidence < block.confidence_threshold:
             self.queue.append((block, {'add_exec': True}))
-            # end of option
-            for block in block.feedback_in:
-                block.reinforce()
+            # end of an option
+            if block.anomaly <= block.anomaly_threshold:
+                for block in block.feedback_in:
+                    block.reinforce()
         # interruption of option
         if block.anomaly > block.anomaly_threshold:
             for block in block.feedback_in:
