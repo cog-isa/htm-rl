@@ -14,9 +14,9 @@ agent:
     <<: *default_spatial_pooler_params
 #    output_size: 200
     output_dilation_ratio: 1.2
-    potential_synapses_ratio: .95
-    sparsity: .07
-    boost_strength: 1.1
+    potential_synapses_ratio: .7
+    sparsity: .02
+    boost_strength: .3
     boost_sliding_window: 1000
     expected_normal_overlap_frequency: .002
 
@@ -26,14 +26,15 @@ agent:
   sa_sp:
     <<: *default_spatial_pooler_params
 #    output_size: 400
-    output_dilation_ratio: 1.75
-    potential_synapses_ratio: .9
-    sparsity: .05
-    boost_strength: 1.1
+    output_dilation_ratio: 2.
+    potential_synapses_ratio: .7
+    sparsity: .04
+    boost_strength: .4
     boost_sliding_window: 2000
     expected_normal_overlap_frequency: .001
 
   q_network:
     trace_decay: .8
+    visit_decay: .925
     discount_factor: .975
-    learning_rate: .005
+    learning_rate: .02

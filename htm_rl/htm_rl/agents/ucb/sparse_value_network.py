@@ -15,7 +15,7 @@ class SparseValueNetwork:
     # you should not to read it literally cause it's affected by exp MA window
     cell_visit_count: np.ndarray
     cell_value: np.ndarray
-    exp_ma_decay: float
+    visit_decay: float
     reward_bounds: Tuple[float, float]
 
     cell_eligibility_trace: np.ndarray
@@ -24,14 +24,15 @@ class SparseValueNetwork:
 
     def __init__(
             self, cells_sdr_size: int, seed: int,
-            trace_decay: float, discount_factor: float, learning_rate: float,
+            trace_decay: float, visit_decay: float,
+            discount_factor: float, learning_rate: float,
     ):
         self._rng = np.random.default_rng(seed)
 
         self.trace_decay = trace_decay
+        self.visit_decay = visit_decay
         self.discount_factor = discount_factor
         self.learning_rate = learning_rate
-        self.exp_ma_decay = 1. - learning_rate
 
         self.cell_visit_count = np.full(cells_sdr_size, 1., dtype=np.float)
         # self.cell_value = np.full(cells_sdr_size, 0., dtype=np.float)
@@ -100,7 +101,7 @@ class SparseValueNetwork:
         V[sa] += lr * TD_error
 
     def _update_cell_visit_counter(self, sa: SparseSdr):
-        self.cell_visit_count *= self.exp_ma_decay
+        self.cell_visit_count *= self.visit_decay
         self.cell_visit_count[sa] += 1.
 
     def _update_reward_bounds(self, reward: float):
@@ -122,7 +123,7 @@ class SparseValueNetwork:
         T = total_visits
         N = self.cell_visit_count[cells_sdr]
 
-        return .2 * np.sqrt(2 * np.log(T + 1) / N)
+        return .1 * np.sqrt(2 * np.log(T + 1) / (N + 1))
 
     def _total_visits(self, options: List[SparseSdr]) -> int:
         # option visit count: avg visit count of its cells
