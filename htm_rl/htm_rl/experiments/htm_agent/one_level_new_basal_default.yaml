@@ -76,9 +76,9 @@ basal_ganglia_default:
 basal_ganglia_version: 2
 block_default:
   gamma: 0.95
-  max_feedback_boost: 1.0
-  min_feedback_boost: 0.5
-  predicted_boost: 0.0
+  max_feedback_boost: 0.5
+  min_feedback_boost: 0.1
+  predicted_boost: 0.1
 blocks:
   0:
     bg: null
@@ -149,7 +149,7 @@ environment:
   - move up
   - stay
   areas:
-    n_types: 3
+    n_types: 5
   food:
     n_items: 1
     reward: 1.0
@@ -162,11 +162,11 @@ environment:
     - obstacles
     - food
     view_rectangle:
-    - - -1
-      - -1
-    - - 1
-      - 1
-  seed: 223243
+    - - -2
+      - -2
+    - - 2
+      - 2
+  seed: 2312
   shape_xy:
   - 16
   - 16
@@ -240,7 +240,7 @@ input_block_default:
   level: 0
 levels: 2
 muscles_size: 12
-seed: 105482
+seed: 12312
 spatial_memory_default:
   activation_threshold: 1
   initial_permanence: 1.0

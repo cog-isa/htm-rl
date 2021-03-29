@@ -30,10 +30,10 @@ environment:
     - obstacles
     - food
     view_rectangle:
-    - - -1
-      - -1
-    - - 1
-      - 1
+    - - -2
+      - -2
+    - - 2
+      - 2
   shape_xy:
   - 16
   - 16
@@ -237,6 +237,6 @@ basal_ganglia_default:
 
 block_default:
   gamma: 0.95
-  predicted_boost: 0.0
-  min_feedback_boost: 0.5
-  max_feedback_boost: 1.0
+  predicted_boost: 0.1
+  min_feedback_boost: 0.1
+  max_feedback_boost: 0.5
