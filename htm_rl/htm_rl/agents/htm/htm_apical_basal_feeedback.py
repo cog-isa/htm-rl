@@ -37,8 +37,8 @@ class ApicalBasalFeedbackTM:
                  max_inhib_synapses_per_segment=-1,
                  max_exec_synapses_per_segment=-1,
                  max_segments_per_cell=255,
-                 anomaly_window=10,
-                 confidence_window=10,
+                 anomaly_window=1000,
+                 confidence_window=1000,
                  noise_tolerance=0.0
                  ):
         self.apical_columns = apical_columns
@@ -282,7 +282,7 @@ class ApicalBasalFeedbackTM:
         self.predicted_cells.sparse = np.unique(np.concatenate(predicted_cells)).astype('uint32')
         self.predicted_columns.sparse = np.unique(self._basal_columns_for_cells(self.predicted_cells.sparse))
 
-        confidence = len(self.predicted_cells.sparse) / self.basal_columns
+        confidence = min(len(self.predicted_cells.sparse) / self.activation_threshold, 1.0)
         self.confidence_threshold = self.confidence_threshold + (
                 confidence - self.confidence[0]) / self.confidence_window
         self.confidence.append(confidence)
