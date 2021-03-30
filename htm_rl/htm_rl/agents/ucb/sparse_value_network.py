@@ -19,6 +19,7 @@ class SparseValueNetwork:
     reward_bounds: Tuple[float, float]
 
     cell_eligibility_trace: np.ndarray
+    ucb_exploration_factor: Tuple[float, float]
 
     _rng: Generator
 
@@ -26,6 +27,7 @@ class SparseValueNetwork:
             self, cells_sdr_size: int, seed: int,
             trace_decay: float, visit_decay: float,
             discount_factor: float, learning_rate: float,
+            ucb_exploration_factor: Tuple[float, float]
     ):
         self._rng = np.random.default_rng(seed)
 
@@ -39,6 +41,7 @@ class SparseValueNetwork:
         self.cell_value = self._rng.uniform(-1e-4, 1e-4, size=cells_sdr_size)
         self.cell_eligibility_trace = np.zeros(cells_sdr_size, dtype=np.float)
         self.reward_bounds = 0., 1.
+        self.ucb_exploration_factor = ucb_exploration_factor
 
     # noinspection PyTypeChecker
     def choose(self, options: List[SparseSdr], greedy=False) -> int:
@@ -122,8 +125,9 @@ class SparseValueNetwork:
         # representative of an option
         T = total_visits
         N = self.cell_visit_count[cells_sdr]
+        cp = self.ucb_exploration_factor[0]
 
-        return .1 * np.sqrt(2 * np.log(T + 1) / (N + 1))
+        return cp * np.sqrt(2 * np.log(T + 1) / (N + 1))
 
     def _total_visits(self, options: List[SparseSdr]) -> int:
         # option visit count: avg visit count of its cells
@@ -135,3 +139,6 @@ class SparseValueNetwork:
 
     def reset(self):
         self.cell_eligibility_trace.fill(0.)
+
+        alpha, decay = self.ucb_exploration_factor
+        self.ucb_exploration_factor = alpha * decay, decay
