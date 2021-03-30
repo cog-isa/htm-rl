@@ -48,3 +48,4 @@ def store_environment_map(ind, env_map, env_name, seed, test_dir):
     ax.imshow(env_map)
     save_path = os.path.join(test_dir, f'{env_name}_map_{ind}_{seed}.svg')
     fig.savefig(save_path, dpi=120)
+    plt.close(fig)
