@@ -1,12 +1,15 @@
+#seed: [453572, 798166, 906342]
 seed: 8713
-n_seeds: 6
+n_seeds: 12
 
 experiment:
   project:
-  n_episodes: 100
+  n_episodes: 300
 
 env:
   - pos
+  - dir
+  - obs
 
 agent:
   - rnd

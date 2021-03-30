@@ -13,9 +13,6 @@ action_costs:
     turn: .8
     move: 1.
 
-areas:
-  n_types: 3
-
 obstacles:
   density: .25
 
@@ -28,9 +25,8 @@ terminate:
   early_stop: true
 
 rendering:
-  view_rectangle: [[-2, -2], [2, 2]]
   render:
-    - obstacles
-    - areas
-    - food
+    - position
+    - direction
+  bucket_size: 4
 

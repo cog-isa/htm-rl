@@ -1,0 +1,32 @@
+shape_xy: [16, 16]
+
+actions:
+#  - stay
+  - move right
+  - move down
+  - move left
+  - move up
+
+action_costs:
+  action_cost: -.001
+  action_weight:
+    stay: .5
+    turn: .8
+    move: 1.
+
+obstacles:
+  density: .25
+
+food:
+  n_items: 1
+  reward: 1.
+
+terminate:
+  episode_max_steps: 600
+  early_stop: true
+
+rendering:
+  render:
+    - position
+  bucket_size: 4
+

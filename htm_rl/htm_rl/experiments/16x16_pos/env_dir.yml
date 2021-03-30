@@ -1,4 +1,4 @@
-shape_xy: [8, 8]
+shape_xy: [16, 16]
 
 actions:
 #  - stay
@@ -7,7 +7,7 @@ actions:
   - turn left
 
 action_costs:
-  action_cost: -.004
+  action_cost: -.001
   action_weight:
     stay: .5
     turn: .8
@@ -21,7 +21,7 @@ food:
   reward: 1.
 
 terminate:
-  episode_max_steps: 400
+  episode_max_steps: 800
   early_stop: true
 
 rendering:

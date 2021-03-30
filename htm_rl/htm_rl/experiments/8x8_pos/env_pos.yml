@@ -3,7 +3,7 @@
 shape_xy: [8, 8]
 
 actions:
-#  - stay
+  - stay
   - move right
   - move down
   - move left
@@ -12,8 +12,8 @@ actions:
 action_costs:
   action_cost: -.005
   action_weight:
-    stay: 1.
-    turn: 1.
+    stay: .5
+    turn: .8
     move: 1.
 
 obstacles:
