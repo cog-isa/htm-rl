@@ -142,3 +142,4 @@ class SparseValueNetwork:
 
         alpha, decay = self.ucb_exploration_factor
         self.ucb_exploration_factor = alpha * decay, decay
+        # self.learning_rate *= self.ucb_exploration_factor[1]

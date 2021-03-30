@@ -5,7 +5,7 @@ env:
 type: ucb
 
 .default_spatial_pooler_params: &default_spatial_pooler_params
-  synapse_permanence_deltas: [ .1, .02 ]
+  synapse_permanence_deltas: [ .1, .01 ]
   connected_permanence_threshold: .5
   min_activation_threshold: 1
 
@@ -18,7 +18,7 @@ agent:
     sparsity: .04
     boost_strength: .3
     boost_sliding_window: 1000
-    expected_normal_overlap_frequency: .002
+    expected_normal_overlap_frequency: .004
 
   action_encoder:
     bucket_size: 4
@@ -29,12 +29,12 @@ agent:
     output_dilation_ratio: 2.
     potential_synapses_ratio: .7
     sparsity: .04
-    boost_strength: .4
+    boost_strength: .3
     boost_sliding_window: 2000
-    expected_normal_overlap_frequency: .001
+    expected_normal_overlap_frequency: .004
 
   q_network:
-    trace_decay: .8
+    trace_decay: .85
     visit_decay: .925
     discount_factor: .975
     learning_rate: .02
