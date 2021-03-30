@@ -9,7 +9,7 @@ actions:
 action_costs:
   action_cost: -.001
   action_weight:
-    stay: .5
+#    stay: .5
     turn: .8
     move: 1.
 

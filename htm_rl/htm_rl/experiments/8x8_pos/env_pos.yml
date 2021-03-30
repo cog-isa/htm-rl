@@ -1,9 +1,7 @@
-# Simplest environment with 1 food item and agent position as observation
-
 shape_xy: [8, 8]
 
 actions:
-  - stay
+#  - stay
   - move right
   - move down
   - move left

@@ -10,7 +10,7 @@ actions:
 action_costs:
   action_cost: -.001
   action_weight:
-    stay: .5
+#    stay: .5
     turn: .8
     move: 1.
 
@@ -22,7 +22,7 @@ food:
   reward: 1.
 
 terminate:
-  episode_max_steps: 400
+  episode_max_steps: 500
   early_stop: true
 
 rendering:
