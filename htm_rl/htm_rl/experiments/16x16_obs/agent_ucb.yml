@@ -24,15 +24,15 @@ agent:
 
   sa_sp:
     <<: *default_spatial_pooler_params
-    output_dilation_ratio: 2.
+    output_dilation_ratio: 2.5
     potential_synapses_ratio: .7
-    sparsity: .02
+    sparsity: .01
     boost_strength: .3
     boost_sliding_window: 2000
-    expected_normal_overlap_frequency: .0015
+    expected_normal_overlap_frequency: .001
 
   q_network:
-    trace_decay: .8
+    trace_decay: .7
     visit_decay: .92
     discount_factor: .95
     learning_rate: .03
