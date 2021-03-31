@@ -49,3 +49,22 @@ def store_environment_map(ind, env_map, env_name, seed, test_dir):
     save_path = os.path.join(test_dir, f'{env_name}_map_{ind}_{seed}.svg')
     fig.savefig(save_path, dpi=120)
     plt.close(fig)
+
+
+def store_heatmap(ind, env_map, name_str, test_dir):
+    h, w = env_map.shape
+
+    fig: plt.Figure
+    ax: plt.Axes
+    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
+    ax.set_xticks(np.arange(-.5, w, 1))
+    ax.set_yticks(np.arange(-.5, h, 1))
+    ax.set_xticklabels(np.arange(w))
+    ax.set_yticklabels(np.arange(h))
+    ax.grid(color='grey', linestyle='-', linewidth=1)
+    ax.set_title(name_str)
+
+    ax.imshow(env_map)
+    save_path = os.path.join(test_dir, f'heatmap_{name_str}_{ind}.svg')
+    fig.savefig(save_path, dpi=120)
+    plt.close(fig)

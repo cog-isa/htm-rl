@@ -13,6 +13,7 @@ from htm_rl.common.utils import timed
 from htm_rl.config import Config
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.envs.env import Env
+from htm_rl.envs.wrappers.recorders import HeatmapRecorder
 
 
 class Experiment:
@@ -37,9 +38,13 @@ class Experiment:
 
         print(f'AGENT: {agent.name}     SEED: {seed}')
         if run_results_processor is not None:
-            store_environment_map(
-                seed_ind, env.callmethod('render_rgb'),
-                env_config.name, seed, run_results_processor.test_dir
+            # store_environment_map(
+            #     seed_ind, env.callmethod('render_rgb'),
+            #     env_config.name, seed, run_results_processor.test_dir
+            # )
+            env = HeatmapRecorder(
+                env, 25, run_results_processor.test_dir,
+                f'{agent_config.name}_{seed}'
             )
 
         # temporal dirty flag-based solution
