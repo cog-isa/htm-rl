@@ -2,9 +2,10 @@ shape_xy: [16, 16]
 
 actions:
 #  - stay
-  - move forward
-  - turn right
-  - turn left
+  - move right
+  - move down
+  - move left
+  - move up
 
 action_costs:
   action_cost: -.001
@@ -24,7 +25,7 @@ food:
   reward: 1.
 
 terminate:
-  episode_max_steps: 1000
+  episode_max_steps: 500
   early_stop: true
 
 rendering:
