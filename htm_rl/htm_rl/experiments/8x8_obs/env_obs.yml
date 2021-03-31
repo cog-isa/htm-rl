@@ -29,7 +29,7 @@ terminate:
   early_stop: true
 
 rendering:
-  view_rectangle: [[-3, -3], [3, 3]]
+  view_rectangle: [[-2, -2], [2, 2]]
   render:
     - obstacles
     - areas
