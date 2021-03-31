@@ -18,7 +18,7 @@ agent:
     sparsity: .05
     boost_strength: 4
     boost_sliding_window: 1000
-    expected_normal_overlap_frequency: .001
+    expected_normal_overlap_frequency: .002
 
   action_encoder:
     bucket_size: 5
@@ -29,12 +29,11 @@ agent:
     output_dilation_ratio: 1.4
     potential_synapses_ratio: .8
     sparsity: .04
-    boost_strength: 4
-    boost_sliding_window: 1000
+    boost_strength: 3
+    boost_sliding_window: 2000
     expected_normal_overlap_frequency: .001
 
-  ucb_actor_critic:
-    update_cell_ratio: 1.
-    discount_factor: .975
-    learning_rate: .998
-    online: True
+  q_network:
+    trace_decay: .6
+    discount_factor: .95
+    learning_rate: .002

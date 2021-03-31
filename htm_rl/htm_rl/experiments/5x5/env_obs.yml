@@ -1,0 +1,32 @@
+shape_xy: [5, 5]
+
+actions:
+  - stay
+  - move forward
+  - turn right
+  - turn left
+
+action_costs:
+  action_cost: -.001
+  action_weight:
+    stay: 1.
+    turn: 1.
+    move: 1.
+
+obstacles:
+  density: .25
+
+food:
+  n_items: 1
+  reward: 1.
+
+terminate:
+  episode_max_steps: 150
+  early_stop: true
+
+rendering:
+  view_rectangle: [[-2, -2], [2, 2]]
+  render:
+    - obstacles
+    - food
+

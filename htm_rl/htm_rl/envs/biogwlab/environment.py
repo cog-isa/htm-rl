@@ -23,7 +23,7 @@ class Environment(Env):
     ]
     supported_entities = {'obstacles', 'areas', 'food', 'agent'}
     supported_events = [
-        'generate',
+        'reset', 'generate', 'generate_seeds',
         'move', 'turn', 'collect',
         'collected',
         'is_terminal',
@@ -60,7 +60,12 @@ class Environment(Env):
     def reset(self):
         self.episode_step = 0
         self.step_reward = 0
+
+        self._run_handlers('reset')
         self.generate()
+
+        # from htm_rl.common.plot_utils import plot_grid_images
+        # plot_grid_images([self.render_rgb()])
 
     def add_module(self, name, module):
         self.modules[name] = module
@@ -73,16 +78,24 @@ class Environment(Env):
     def get_module(self, name):
         return self.modules[name]
 
+    def _get_from_single_handler(self, key: str, **handler_kwargs):
+        for handler in self.handlers.get(key, []):
+            return handler(**handler_kwargs)
+        return None
+
+    def _run_handlers(self, key: str, **handler_kwargs):
+        for handler in self.handlers.get(key, []):
+            handler(**handler_kwargs)
+
     def add_agent(self):
         obstacles = self.get_module('obstacles')
         self.agent = Agent(env=self, obstacles=obstacles)
         self.add_module('agent', self.agent)
 
     def generate(self):
-        rng = np.random.default_rng(self.seed)
-        for handler in self.handlers['generate']:
-            seed = rng.integers(100000)
-            handler(seed)
+        seeds = self._get_from_single_handler('generate_seeds')
+        if seeds is not None:
+            self._run_handlers('generate', seeds=seeds)
 
     def observe(self):
         reward = self.step_reward
@@ -124,15 +137,11 @@ class Environment(Env):
         self.step_reward += self.action_weight['stay'] * self.action_cost
 
     def move(self, direction):
-        for handler in self.handlers['move']:
-            handler(direction)
-
+        self._run_handlers('move', direction=direction)
         self.step_reward += self.action_weight['move'] * self.action_cost
 
     def turn(self, turn_direction):
-        for handler in self.handlers['turn']:
-            handler(turn_direction)
-
+        self._run_handlers('turn', turn_direction=turn_direction)
         self.step_reward += self.action_weight['turn'] * self.action_cost
 
     def collect(self):
@@ -143,8 +152,7 @@ class Environment(Env):
                 self.collected()
 
     def collected(self):
-        for handler in self.handlers['collected']:
-            handler()
+        self._run_handlers('collected')
 
     def is_terminal(self):
         for handler in self.handlers['is_terminal']:
@@ -157,8 +165,10 @@ class Environment(Env):
         self.action_weight = action_weight
 
     def render(self):
-        for handler in self.handlers['render']:
-            return handler(self.agent.position, self.agent.view_direction)
+        return self._get_from_single_handler(
+            'render',
+            position=self.agent.position, view_direction=self.agent.view_direction
+        )
 
     @property
     def n_actions(self):

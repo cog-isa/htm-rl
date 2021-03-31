@@ -15,7 +15,7 @@ class RunConfig(FileConfig):
     def __init__(self, path):
         super(RunConfig, self).__init__(path)
 
-    def run(self, agent_key: str, run: bool, aggregate: bool):
+    def run(self, agent_key: str, env_key: str, run: bool, aggregate: bool):
         silent_run = self['silent']
         report_name_suffix = self['report_name']
 
@@ -41,16 +41,23 @@ class RunConfig(FileConfig):
             experiment: Experiment
 
             seeds = self.get_seeds()
-            env_configs = self.read_configs('env')
-            agent_configs = self.read_configs('agent')
+            env_configs = self.filter_by(self.read_configs('env'), env_key)
+            agent_configs = self.filter_by(self.read_configs('agent'), agent_key)
+
+            store_maps = self['store_maps']
 
             experiment_setups = list(product(env_configs, agent_configs, seeds))
+            seed_ind = 0
             for env_config, agent_config, seed in experiment_setups:
+                rrp = run_results_processor if store_maps and seed_ind < len(seeds) else None
+
                 results = experiment.run(
-                    seed=seed, agent_config=agent_config, env_config=env_config
+                    seed=seed, agent_config=agent_config, env_config=env_config,
+                    run_results_processor=rrp, seed_ind=seed_ind
                 )
                 run_results_processor.store_result(results)
                 print('')
+                seed_ind += 1
 
         if aggregate:
             aggregate_file_masks = self['aggregate_masks']
@@ -86,11 +93,26 @@ class RunConfig(FileConfig):
 
         return configs
 
+    @staticmethod
+    def filter_by(origin_list, names):
+        if names is None:
+            return origin_list
+
+        if isinstance(names, str):
+            names = [names]
+
+        return [
+            agent
+            for agent in origin_list
+            if agent.name in names
+        ]
+
 
 def register_arguments(parser: ArgumentParser):
     # todo: comment arguments with examples
     parser.add_argument('-c', '--config', dest='config', required=True)
     parser.add_argument('-a', '--agent', dest='agent', default=None, nargs='+')
+    parser.add_argument('-e', '--env', dest='env', default=None, nargs='+')
     parser.add_argument('-r', '--run', dest='run', action='store_true', default=False)
     parser.add_argument('-g', '--aggregate', dest='aggregate', default=None, nargs='*')
     parser.add_argument('-n', '--name', dest='report_name', default='')
@@ -99,6 +121,7 @@ def register_arguments(parser: ArgumentParser):
     parser.add_argument('-p', '--paper', dest='paper', action='store_true', default=False)
     parser.add_argument('-w', '--wandb', dest='wandb', action='store_true', default=False)
     parser.add_argument('-W', '--wandb-dry-silent', dest='wandb_dry_silent', action='store_true', default=False)
+    parser.add_argument('-m', '--store_maps', dest='store_maps', action='store_true', default=False)
 
 
 def main():
@@ -114,6 +137,7 @@ def main():
 
     config['silent'] = args.silent
     config['paper'] = args.paper
+    config['store_maps'] = args.store_maps
 
     dry_run = args.dry is not None
     config['dry_run'] = dry_run
@@ -130,7 +154,7 @@ def main():
         os.environ['WANDB_MODE'] = 'dryrun'
         os.environ['WANDB_SILENT'] = 'true'
 
-    config.run(args.agent, args.run, aggregate)
+    config.run(args.agent, args.env, args.run, aggregate)
 
 
 if __name__ == '__main__':

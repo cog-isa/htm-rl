@@ -1,0 +1,42 @@
+seed:
+  - 989886
+  - 906342
+  - 851775
+  - 190368
+  - 482614
+  - 34820
+  - 779967
+  - 472119
+  - 314870
+  - 341540
+
+# in case you need more than 10
+#  - 778060
+#  - 576675
+#  - 92165
+#  - 376199
+#  - 453572
+#  - 333937
+#  - 798166
+#  - 35400
+
+# very hardcore
+#  - 271454
+n_agent_seeds: 3
+
+experiment:
+  project: test_1f_obs_16x16
+  n_episodes: 500
+
+env:
+  - obs
+
+agent:
+  - rnd
+  - ucb
+
+run_results_processor: !RunResultsProcessor
+  env_name: biogwlab
+  moving_average: 4
+  verbosity: 1
+  test_dir: # leave empty for default behavior - output to the config's dir

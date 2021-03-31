@@ -3,10 +3,12 @@ from typing import Dict
 
 from tqdm import trange
 
-from htm_rl.agent.train_eval import RunStats
+from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.rnd.agent import RndAgent
+from htm_rl.agents.svpn.agent import SvpnAgent
 from htm_rl.agents.ucb.agent import UcbAgent
+from htm_rl.common.plot_utils import store_environment_map
 from htm_rl.common.utils import timed
 from htm_rl.config import Config
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
@@ -25,17 +27,26 @@ class Experiment:
         self.use_wandb = use_wandb
         self.project = project
 
-    def run(self, seed: int, agent_config: Config, env_config: Config):
+    def run(
+            self, seed: int, agent_config: Config, env_config: Config,
+            run_results_processor: RunResultsProcessor = None, seed_ind=None
+    ):
         env = self.materialize_environment(seed, env_config)
         agent = self.materialize_agent(seed, env, agent_config)
         train_stats = RunStats(agent.name)
 
         print(f'AGENT: {agent.name}     SEED: {seed}')
+        if run_results_processor is not None:
+            store_environment_map(
+                seed_ind, env.callmethod('render_rgb'),
+                env_config.name, seed, run_results_processor.test_dir
+            )
 
         # temporal dirty flag-based solution
         run = None
         if self.use_wandb:
             import wandb
+            assert self.project is not None, 'Either set up `project` to the experiment, or turn off wandb'
             run = wandb.init(
                 project=self.project, reinit=True, dir=self.base_dir
             )
@@ -82,6 +93,9 @@ class Experiment:
         elif agent_type == 'ucb':
             agent_config = config['agent']
             return UcbAgent(seed=seed, env=env, **agent_config)
+        elif agent_type == 'svpn':
+            agent_config = config['agent']
+            return SvpnAgent(seed=seed, env=env, **agent_config)
         else:
             raise NameError(agent_type)
 

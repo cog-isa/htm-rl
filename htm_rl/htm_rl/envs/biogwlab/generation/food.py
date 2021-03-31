@@ -47,7 +47,7 @@ class FoodGenerator:
             p=self.food_types_distribution,
             size=self.n_items
         )
-        print(f'Food: {np.unique(foods, return_counts=True)[1]}')
+        # print(f'Food: {np.unique(foods, return_counts=True)[1]}')
 
         food_mask = np.zeros(shape, dtype=np.bool)
         food_items = []

@@ -1,7 +1,9 @@
-from htm.bindings.algorithms import TemporalMemory as TM, ANMode
+from typing import Union
+
+from htm.bindings.algorithms import TemporalMemory as HtmTemporalMemory
 
 
-class TemporalMemory(TM):
+class TemporalMemory(HtmTemporalMemory):
     n_columns: int
     cells_per_column: int
     activation_threshold: int
@@ -9,10 +11,22 @@ class TemporalMemory(TM):
     connected_permanence: float
 
     def __init__(
-            self, n_columns, cells_per_column, activation_threshold,
-            learning_threshold, initial_permanence, connected_permanence,
+            self, n_columns, cells_per_column,
+            initial_permanence, connected_permanence,
+            activation_threshold: Union[int, float],
+            learning_threshold: Union[int, float],
+            max_new_synapse_count: Union[int, float],
+            max_synapses_per_segment: Union[int, float],
+            n_active_bits: int = None,
             **kwargs
     ):
+        if n_active_bits is not None:
+            activation_threshold = abs_or_relative(activation_threshold, n_active_bits)
+            learning_threshold = abs_or_relative(learning_threshold, n_active_bits)
+            max_new_synapse_count = abs_or_relative(max_new_synapse_count, n_active_bits)
+            max_synapses_per_segment = abs_or_relative(max_synapses_per_segment, n_active_bits)
+            # print(activation_threshold, learning_threshold, max_new_synapse_count, max_synapses_per_segment)
+
         super().__init__(
             columnDimensions=(n_columns, ),
             cellsPerColumn=cells_per_column,
@@ -20,6 +34,8 @@ class TemporalMemory(TM):
             minThreshold=learning_threshold,
             initialPermanence=initial_permanence,
             connectedPermanence=connected_permanence,
+            maxNewSynapseCount=max_new_synapse_count,
+            maxSynapsesPerSegment=max_synapses_per_segment,
             # anomalyMode=ANMode.DISABLED,
             **kwargs
         )
@@ -29,7 +45,6 @@ class TemporalMemory(TM):
         self.learning_threshold = learning_threshold
         self.initial_permanence = initial_permanence
         self.connected_permanence = connected_permanence
-        # TM()
 
     def __getstate__(self):
         # used to pickle object
@@ -49,4 +64,17 @@ class TemporalMemory(TM):
             self.n_columns, self.cells_per_column, self.activation_threshold,
             self.learning_threshold, self.initial_permanence, self.connected_permanence
         ) = data
+
+    @property
+    def output_sdr_size(self):
+        return self.n_columns
+
+
+def abs_or_relative(value: Union[int, float], base: int):
+    if isinstance(value, int):
+        return value
+    elif isinstance(value, float):
+        return int(base * value)
+    else:
+        ValueError(value)
 

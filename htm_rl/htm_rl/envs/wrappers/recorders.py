@@ -21,3 +21,6 @@ class EpisodeLengthRecorder(Wrapper):
         if first:
             self.episode_lengths.append(self._current_length)
             self._current_length = 0
+
+# class
+

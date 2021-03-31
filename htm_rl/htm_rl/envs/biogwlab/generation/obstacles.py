@@ -23,8 +23,8 @@ class ObstaclesGenerator:
         obstacle_mask = np.zeros(self.shape, dtype=np.bool)
         non_visited_neighbors = np.empty_like(obstacle_mask, dtype=np.float)
 
-        p_change_cell = n_cells ** -.25
-        p_move_forward = 1. - n_cells ** -.375
+        p_change_cell = n_cells ** -.3
+        p_move_forward = 1. - n_cells ** -.55
 
         position = self._centered_rand2d(height, width, rng)
         view_direction = rng.choice(4)

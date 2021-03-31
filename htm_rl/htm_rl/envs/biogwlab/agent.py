@@ -19,18 +19,17 @@ class Agent(Entity):
         super(Agent, self).__init__(**agent)
         self._obstacles = obstacles
 
-    def generate(self, seed):
-        rnd = np.random.default_rng(seed)
-        # HACK: to prevent spawning in food pos if there's just 1 food item of 1 type
-        rnd = np.random.default_rng(rnd.integers(100000))
+    def generate(self, seeds):
+        seed = seeds['agent']
+        rng = np.random.default_rng(seed)
 
         available_positions_mask = ~self._obstacles.mask
         available_positions_fl = np.flatnonzero(available_positions_mask)
-        position_fl = rnd.choice(available_positions_fl)
+        position_fl = rng.choice(available_positions_fl)
         position = self._unflatten_position(position_fl)
 
         self.position = position
-        self.view_direction = rnd.choice(4)
+        self.view_direction = rng.choice(4)
 
     def move(self, direction):
         self.position, success = MoveDynamics.try_move(

@@ -1,0 +1,24 @@
+seed:
+  - 989886
+  - 851775
+  - 788548
+  - 764427
+#seed: 8713
+#n_seeds: 40
+
+experiment:
+  project:
+  n_episodes: 200
+
+env:
+  - obs
+
+agent:
+  - rnd
+  - ucb
+
+run_results_processor: !RunResultsProcessor
+  env_name: biogwlab
+  moving_average: 4
+  verbosity: 1
+  test_dir: # leave empty for default behavior - output to the config's dir

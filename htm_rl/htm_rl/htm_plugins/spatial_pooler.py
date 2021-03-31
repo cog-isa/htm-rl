@@ -60,3 +60,8 @@ class SpatialPooler:
             output=self._cached_output_sdr
         )
         return np.array(self._cached_output_sdr.sparse, copy=True)
+
+    @property
+    def n_active_bits(self):
+        sparsity = self._spatial_pooler.getLocalAreaDensity()
+        return int(self.output_sdr_size * sparsity)
