@@ -1,0 +1,28 @@
+project: final_tests
+program: ../../agents/htm/htm_agent.py
+method: grid
+metric:
+  goal: minimize
+  name: av_steps
+parameters:
+  seed:
+    values: [12312, 3333, 105482]
+  environment.seed:
+    values:
+      - 989886
+      - 906342
+      - 851775
+      - 190368
+      - 482614
+      - 34820
+      - 779967
+      - 472119
+      - 314870
+      - 341540
+command:
+  - ${env}
+  - python
+  - ${program}
+  - one_level_16x16_obs_default
+  - ${args}
+

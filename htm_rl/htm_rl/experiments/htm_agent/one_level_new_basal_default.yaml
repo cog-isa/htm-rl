@@ -1,6 +1,6 @@
 agent:
   action:
-    do_nothing_action: 4
+    do_nothing_action: 3
     noise_tolerance: 0.4
     patterns:
     - - 1
@@ -12,9 +12,6 @@ agent:
       - 0
       - 0
       - 0
-      - 0
-      - 0
-      - 0
     - - 0
       - 0
       - 0
@@ -24,25 +21,7 @@ agent:
       - 0
       - 0
       - 0
-      - 0
-      - 0
-      - 0
     - - 0
-      - 0
-      - 0
-      - 0
-      - 0
-      - 0
-      - 1
-      - 1
-      - 1
-      - 0
-      - 0
-      - 0
-    - - 0
-      - 0
-      - 0
-      - 0
       - 0
       - 0
       - 0
@@ -56,7 +35,7 @@ agent:
     connected_permanence: 0.5
     depolarized_decrement: 0.01
     initial_permanence: 0.6
-    max_segments_per_cell: 255
+    max_segments_per_cell: 32
     noise_tolerance: 0.4
     permanence_decrement: 0.02
     permanence_increment: 0.1
@@ -137,42 +116,40 @@ blocks:
 cells_per_column: 3
 environment:
   action_costs:
-    action_cost: -0.01
+    action_cost: -0.001
     action_weight:
       move: 1.0
       stay: 2.0
-      turn: 0.0
+      turn: 1.0
   actions:
-  - move right
-  - move down
-  - move left
-  - move up
+  - move forward
+  - turn right
+  - turn left
   - stay
   areas:
-    n_types: 5
+    n_types: 3
   food:
     n_items: 1
     reward: 1.0
   obstacles:
     density: 0.25
   rendering:
-    bucket_size: 1
     render:
     - areas
     - obstacles
     - food
     view_rectangle:
-    - - -2
-      - -2
-    - - 2
-      - 2
-  seed: 2312
+    - - -3
+      - -3
+    - - 3
+      - 3
+  seed: 482614
   shape_xy:
   - 16
   - 16
   terminate:
     early_stop: true
-    episode_max_steps: 150
+    episode_max_steps: 1000
 hierarchy:
   block_connections:
   - apical_in: []
@@ -239,7 +216,7 @@ input_block_default:
   columns: 0
   level: 0
 levels: 2
-muscles_size: 12
+muscles_size: 9
 seed: 12312
 spatial_memory_default:
   activation_threshold: 1
@@ -267,10 +244,13 @@ spatial_pooler_default:
   synPermInactiveDec: 0.01
   wrapAround: true
 temporal_memory_default:
-  apical_cells_per_column: 1
-  basal_cells_per_column: 1
+  anomaly_window: 1000
+  apical_cells_per_column: 3
+  basal_cells_per_column: 3
+  confidence_window: 1000
   connected_threshold: 0.5
   initial_permanence: 0.4
+  max_segments_per_cell: 8
   noise_tolerance: 0.0
   permanence_decrement: 0.02
   permanence_increment: 0.1

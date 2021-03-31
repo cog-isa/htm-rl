@@ -3,19 +3,19 @@ levels: 2
 basal_ganglia_version: 2
 
 environment:
-  seed: 2304
+  seed: 989886
   action_costs:
-    action_cost: -0.01
+    action_cost: -0.001
     action_weight:
       move: 1.0
       stay: 2.0
-      turn: 0.0
+      turn: 1.0
   actions:
-  - move right
-  - move down
-  - move left
-  - move up
-  - stay
+    - move right
+    - move down
+    - move left
+    - move up
+    - stay
   areas:
     n_types: 3
   food:
@@ -24,7 +24,6 @@ environment:
   obstacles:
     density: 0.25
   rendering:
-    bucket_size: 1
     render:
     - areas
     - obstacles
@@ -39,7 +38,7 @@ environment:
   - 16
   terminate:
     early_stop: true
-    episode_max_steps: 150
+    episode_max_steps: 500
 
 agent:
   action:
@@ -49,13 +48,13 @@ agent:
     - [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
     - [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,]
+    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
   alpha: 1.0
   muscles:
     connected_permanence: 0.5
     depolarized_decrement: 0.01
     initial_permanence: 0.6
-    max_segments_per_cell: 255
+    max_segments_per_cell: 32
     noise_tolerance: 0.4
     permanence_decrement: 0.02
     permanence_increment: 0.1
@@ -186,6 +185,7 @@ hierarchy:
 input_block_default:
   columns: 0
   level: 0
+
 muscles_size: 12
 
 spatial_memory_default:
@@ -223,13 +223,13 @@ temporal_memory_default:
   permanence_increment: 0.1
   predicted_segment_decrement: 0.001
   seed: *seed
-  max_segments_per_cell: 8
+  max_segments_per_cell: 32
   anomaly_window: 1000
   confidence_window: 1000
 
 basal_ganglia_default:
-  alpha: 0.5
-  beta: 0.5
+  alpha: 0.1
+  beta: 0.1
   discount_factor: 0.95
   eps: 0.02
   gamma: 0.01

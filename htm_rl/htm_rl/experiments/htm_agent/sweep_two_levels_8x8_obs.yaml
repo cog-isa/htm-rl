@@ -1,0 +1,29 @@
+project: 8x8_final
+entity: htm_rl
+program: ../../agents/htm/htm_agent.py
+method: grid
+metric:
+  goal: minimize
+  name: av_steps
+parameters:
+  seed:
+    values: [12312, 3333, 105482]
+  environment.seed:
+    values:
+      - 989886
+      - 851775
+      - 788548
+      - 764427
+      - 743535
+      - 711072
+      - 472119
+      - 453572
+      - 429951
+      - 384272
+command:
+  - ${env}
+  - python
+  - ${program}
+  - two_levels_8x8_obs_default
+  - ${args}
+
