@@ -88,7 +88,7 @@ def configure(config):
                                       config['blocks'][inap - len(input_blocks)]['tm']['basal_columns'])
 
         block['tm'].update({'apical_columns': apical_input_size})
-        n_active_bits = int(block['sp']['numActiveColumnsPerInhArea'] * block['sp']['localAreaDensity'])
+        n_active_bits = int(block['tm']['basal_columns'] * block['sp']['localAreaDensity'])
         block['tm'].update(dict(
             activation_threshold=int(n_active_bits*(1 - block['tm']['noise_tolerance'])),
             learning_threshold=int(n_active_bits*(1 - block['tm']['noise_tolerance'])),
