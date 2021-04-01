@@ -231,8 +231,8 @@ class Block:
 
             # add apical predictions, if there are no feedback predictions
             # probably, need to define a threshold
-            if self.tm.exec_predictive_cells.size == 0:
-                self.should_return_apical_predictions = True
+            # if self.tm.exec_predictive_cells.size == 0:
+            #     self.should_return_apical_predictions = True
 
             self.anomaly = -float('inf')
             self.confidence = float('inf')
