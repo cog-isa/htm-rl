@@ -66,9 +66,9 @@ class SparseValueNetwork:
         return option_index
 
     def update(self, sa: SparseSdr, reward: float, sa_next: SparseSdr, td_lambda=True):
-        self._update_cell_visit_counter(sa)
         # self._update_reward_bounds(reward)
         if td_lambda:
+            self._update_cell_visit_counter(sa)
             self._update_cell_value(sa, reward, sa_next)
         else:
             self._update_cell_value_td_0(sa, reward, sa_next)

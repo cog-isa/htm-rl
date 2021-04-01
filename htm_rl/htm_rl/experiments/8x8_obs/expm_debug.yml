@@ -20,6 +20,7 @@ env:
 agent:
   - rnd
   - ucb
+  - svpn
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab
