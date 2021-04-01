@@ -20,7 +20,7 @@ def configure(config):
     config['spatial_pooler_default']['seed'] = config['seed']
     config['temporal_memory_default']['seed'] = config['seed']
     config['basal_ganglia_default']['seed'] = config['seed']
-    config['agent']['muscles']['seed'] = config['seed']
+    config['cagent']['muscles']['seed'] = config['seed']
 
     blocks = [{'block': deepcopy(config['block_default']),
                'sm': deepcopy(config['spatial_memory_default']),
@@ -113,7 +113,7 @@ def configure(config):
             block['bg_sp'].update({'inputDimensions': [apical_input_size + block['tm']['basal_columns']]})
     new_config['blocks'] = blocks
     # agent
-    new_config['agent'] = config['agent']
+    new_config['agent'] = config['cagent']
     new_config['agent']['state_size'] = environment.env.output_sdr_size
     new_config['agent']['action'].update(
         dict(
@@ -127,8 +127,8 @@ def configure(config):
         dict(
             input_size=blocks[output_block - len(input_blocks)]['tm']['basal_columns'],
             muscles_size=config['muscles_size'],
-            activation_threshold=int(n_active_bits * (1 - config['agent']['muscles']['noise_tolerance'])),
-            learning_threshold=int(n_active_bits * (1 - config['agent']['muscles']['noise_tolerance'])),
+            activation_threshold=int(n_active_bits * (1 - config['cagent']['muscles']['noise_tolerance'])),
+            learning_threshold=int(n_active_bits * (1 - config['cagent']['muscles']['noise_tolerance'])),
             max_synapses_per_segment=n_active_bits,
             sample_size=n_active_bits
              )
