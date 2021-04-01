@@ -31,6 +31,6 @@ terminate:
 rendering:
   view_rectangle: [[-2, -2], [2, 2]]
   render:
-    - obstacles
     - areas
+    - obstacles
     - food

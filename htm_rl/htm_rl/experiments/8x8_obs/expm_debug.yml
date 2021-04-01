@@ -5,6 +5,10 @@ seed:
   - 764427
 #seed: 8713
 #n_seeds: 40
+agent_seed:
+  - 42
+  - 1337
+  - 1984
 
 experiment:
   project:

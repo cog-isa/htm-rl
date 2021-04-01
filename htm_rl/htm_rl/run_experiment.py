@@ -6,7 +6,8 @@ from pathlib import Path
 
 import numpy as np
 
-from htm_rl.agent.train_eval import RunResultsProcessor
+from htm_rl.agent.train_eval import RunResultsProcessor, RunStats
+from htm_rl.common.utils import isnone
 from htm_rl.config import FileConfig
 from htm_rl.experiment import Experiment
 
@@ -43,19 +44,31 @@ class RunConfig(FileConfig):
             seeds = self.get_seeds()
             env_configs = self.filter_by(self.read_configs('env'), env_key)
             agent_configs = self.filter_by(self.read_configs('agent'), agent_key)
+            agent_seeds = self.content.get('agent_seed')
 
             store_maps = self['store_maps']
 
             experiment_setups = list(product(env_configs, agent_configs, seeds))
             seed_ind = 0
-            for env_config, agent_config, seed in experiment_setups:
+            for env_config, agent_config, env_seed in experiment_setups:
                 rrp = run_results_processor if store_maps and seed_ind < len(seeds) else None
+                agent_seeds = isnone(agent_seeds, env_seed)
+                if not isinstance(agent_seeds, list):
+                    agent_seeds = [agent_seeds]
 
-                results = experiment.run(
-                    seed=seed, agent_config=agent_config, env_config=env_config,
-                    run_results_processor=rrp, seed_ind=seed_ind
-                )
-                run_results_processor.store_result(results)
+                agent_results = []
+                for agent_seed in agent_seeds:
+                    results = experiment.run(
+                        env_seed=env_seed, agent_seed=agent_seed,
+                        agent_config=agent_config, env_config=env_config,
+                        run_results_processor=rrp, seed_ind=seed_ind,
+                    )
+                    run_results_processor.store_result(results)
+                    agent_results.append(results)
+
+                if len(agent_seeds) > 1:
+                    results = self.aggregate_stats(agent_results)
+                    run_results_processor.store_result(results)
                 print('')
                 seed_ind += 1
 
@@ -106,6 +119,13 @@ class RunConfig(FileConfig):
             for agent in origin_list
             if agent.name in names
         ]
+
+    def aggregate_stats(self, agent_results):
+        results = RunStats(agent_results[-1].name)
+        results.steps = np.mean([res.steps for res in agent_results], axis=0)
+        results.times = np.mean([res.times for res in agent_results], axis=0)
+        results.rewards = np.mean([res.rewards for res in agent_results], axis=0)
+        return results
 
 
 def register_arguments(parser: ArgumentParser):

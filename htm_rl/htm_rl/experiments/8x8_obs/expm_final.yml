@@ -18,7 +18,10 @@ seed:
 #  - 190368
 #  - 100378
 #  - 583
-n_agent_seeds: 3
+agent_seed:
+  - 42
+  - 1337
+  - 1984
 
 experiment:
   project: test_1f_obs_8x8
