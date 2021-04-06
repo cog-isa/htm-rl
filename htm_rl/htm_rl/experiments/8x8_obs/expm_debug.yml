@@ -5,6 +5,10 @@ seed:
   - 764427
 #seed: 8713
 #n_seeds: 40
+agent_seed:
+  - 42
+  - 1337
+  - 1984
 
 experiment:
   project:
@@ -16,6 +20,7 @@ env:
 agent:
   - rnd
   - ucb
+  - svpn
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab

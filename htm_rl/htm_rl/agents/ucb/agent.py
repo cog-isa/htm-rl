@@ -11,7 +11,6 @@ from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 class UcbAgent(Agent):
     _n_actions: int
     _current_sa: Optional[SparseSdr]
-    _td_lambda_learning: bool
 
     state_sp: SpatialPooler
     action_encoder: IntBucketEncoder
@@ -48,7 +47,6 @@ class UcbAgent(Agent):
         )
         self._n_actions = env.n_actions
         self._current_sa = None
-        self._td_lambda_learning = True
 
     @property
     def name(self):
@@ -59,10 +57,6 @@ class UcbAgent(Agent):
             self.q_network.reset()
 
         s = self.state_sp.compute(state, learn=True)
-        # s = state
-        return self._act(reward, s, first)
-
-    def _act(self, reward: float, s: SparseSdr, first: bool):
         actions = self._encode_actions(s)
         action = self.q_network.choose(actions)
 
@@ -76,7 +70,7 @@ class UcbAgent(Agent):
                 sa=prev_sa_sdr,
                 reward=reward,
                 sa_next=greedy_sa_sdr,
-                td_lambda=self._td_lambda_learning
+                td_lambda=True
             )
 
         self._current_sa = actions[action]

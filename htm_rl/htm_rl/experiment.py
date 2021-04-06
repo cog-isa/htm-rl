@@ -13,6 +13,7 @@ from htm_rl.common.utils import timed
 from htm_rl.config import Config
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.envs.env import Env
+from htm_rl.envs.wrappers.recorders import HeatmapRecorder
 
 
 class Experiment:
@@ -28,18 +29,23 @@ class Experiment:
         self.project = project
 
     def run(
-            self, seed: int, agent_config: Config, env_config: Config,
-            run_results_processor: RunResultsProcessor = None, seed_ind=None
+            self, env_seed: int, agent_seed: int,
+            agent_config: Config, env_config: Config,
+            run_results_processor: RunResultsProcessor = None, seed_ind=None,
     ):
-        env = self.materialize_environment(seed, env_config)
-        agent = self.materialize_agent(seed, env, agent_config)
+        env = self.materialize_environment(env_seed, env_config)
+        agent = self.materialize_agent(agent_seed, env, agent_config)
         train_stats = RunStats(agent.name)
 
-        print(f'AGENT: {agent.name}     SEED: {seed}')
+        print(f'AGENT: {agent.name}     SEED: {env_seed} {agent_seed}')
         if run_results_processor is not None:
-            store_environment_map(
-                seed_ind, env.callmethod('render_rgb'),
-                env_config.name, seed, run_results_processor.test_dir
+            # store_environment_map(
+            #     seed_ind, env.callmethod('render_rgb'),
+            #     env_config.name, seed, run_results_processor.test_dir
+            # )
+            env = HeatmapRecorder(
+                env, 25, run_results_processor.test_dir,
+                f'{agent_config.name}_{env_seed}'
             )
 
         # temporal dirty flag-based solution
@@ -52,7 +58,8 @@ class Experiment:
             )
             run.config.agent = agent_config.name
             run.config.env = env_config.name
-            run.config.seed = seed
+            run.config.environment = {'seed': env_seed}
+            run.config.seed = agent_seed
 
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode(env, agent)
