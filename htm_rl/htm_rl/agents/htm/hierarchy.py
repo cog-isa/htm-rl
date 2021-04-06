@@ -600,10 +600,6 @@ class Hierarchy:
             if block.anomaly <= block.anomaly_threshold:
                 for block in block.feedback_in:
                     block.reinforce()
-        # interruption of option
-        if block.anomaly > block.anomaly_threshold:
-            for block in block.feedback_in:
-                block.reinforce()
 
         # logging
         if self.logs_dir is not None:
