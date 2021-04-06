@@ -191,12 +191,12 @@ class HTMAgentRunner:
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
 
-    def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50, log_patterns=False):
+    def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50, log_patterns=False, log_options=False):
         history = {'steps': list(), 'reward': list()}
 
         total_reward = 0
         steps = 0
-        episode = -1
+        episode = 0
         animation = False
         prev_reward = 0
         while episode < n_episodes:
@@ -209,27 +209,21 @@ class HTMAgentRunner:
             prev_reward = reward
 
             if is_first:
-                self.agent.reset()
-
                 if animation:
                     animation = False
-                    with imageio.get_writer(f'/tmp/steps_{episode}.gif', mode='I') as writer:
+                    with imageio.get_writer(f'/tmp/{logger.run.id}_episode_{episode}.gif', mode='I') as writer:
                         for i in range(steps):
-                            image = imageio.imread(f'/tmp/step_{i}.png')
+                            image = imageio.imread(f'/tmp/{logger.run.id}_episode_{episode}_step_{i}.png')
                             writer.append_data(image)
-                    logger.log({f'animation': logger.Video(f'/tmp/steps_{episode}.gif', fps=4, format='gif')})
+                    logger.log({f'animation': logger.Video(f'/tmp/{logger.run.id}_episode_{episode}.gif', fps=4, format='gif')}, step=episode)
 
                 history['steps'].append(steps)
                 history['reward'].append(total_reward)
 
-                if (logger is not None) and (episode > -1):
-                    logger.log({'steps': steps, 'reward': total_reward, 'episode': episode})
+                if (logger is not None) and (episode > 0):
+                    logger.log({'steps': steps, 'reward': total_reward, 'episode': episode}, step=episode)
 
-                episode += 1
-                steps = 0
-                total_reward = 0
-
-                if ((episode % log_every_episode) == 0) and (logger is not None):
+                if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
                     if log_patterns:
                         if log_q_table:
                             q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
@@ -262,16 +256,16 @@ class HTMAgentRunner:
                                     row.append(str(round(q[option][:, sp_state.sparse].mean(), 4)))
                                 table.append(row)
                         if log_q_table:
-                            logger.log({f'table': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])})
+                            logger.log({f'table': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])}, step=episode)
 
-                        plt.imsave(f'/tmp/states_{config["seed"]}.png', states_patterns)
-                        logger.log({'states': wandb.Image(f'/tmp/states_{config["seed"]}.png', )})
+                        plt.imsave(f'/tmp/{logger.run.id}_states_{config["seed"]}.png', states_patterns)
+                        logger.log({'states': wandb.Image(f'/tmp/{logger.run.id}_states_{config["seed"]}.png', )}, step=episode)
 
-                        plt.imsave(f'/tmp/sm_options_{config["seed"]}.png', self.agent.hierarchy.output_block.sm.patterns)
-                        logger.log({'sm options': wandb.Image(f'/tmp/sm_options_{config["seed"]}.png', )})
+                        plt.imsave(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png', self.agent.hierarchy.output_block.sm.patterns)
+                        logger.log({'sm options': wandb.Image(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png', )}, step=episode)
 
-                        plt.imsave(f'/tmp/actions_{config["seed"]}.png', action_patterns)
-                        logger.log({'actions': wandb.Image(f'/tmp/actions_{config["seed"]}.png', )})
+                        plt.imsave(f'/tmp/{logger.run.id}_actions_{config["seed"]}.png', action_patterns)
+                        logger.log({'actions': wandb.Image(f'/tmp/{logger.run.id}_actions_{config["seed"]}.png', )}, step=episode)
 
                         action_intersection = np.dot(action_patterns, action_patterns.T)
                         state_intersection = np.dot(states_patterns, states_patterns.T)
@@ -281,15 +275,71 @@ class HTMAgentRunner:
                                                                         columns=[str(x) for x in range(action_patterns.shape[0])]),
                             'state_intersection': logger.Table(data=state_intersection,
                                                                        columns=[str(x) for x in range(states_patterns.shape[0])])
-                                    })
+                                    }, step=episode)
 
+                    if log_options:
+                        output_block = self.agent.hierarchy.output_block
+                        options_block = self.agent.hierarchy.blocks[5]
+                        options = options_block.sm.get_sparse_patterns()
+                        self.agent.hierarchy.freeze()
+                        options_actions = list()
+                        for option in options:
+                            actions = list()
+                            output_block.tm.set_active_feedback_columns(option)
+                            output_block.tm.activate_exec_dendrites()
+                            predictions = output_block.tm.get_predicted_columns(add_exec=True)
+                            while predictions.size > 0:
+                                dense_predictions = np.zeros(output_block.tm.basal_columns)
+                                dense_predictions[predictions] = 1
+                                predicted_action_patterns = output_block.sm.get_options(dense_predictions)
+                                # get muscles activations
+                                p_actions = list()
+                                for predicted_action_pattern in predicted_action_patterns:
+                                    self.agent.muscles.set_active_input(predicted_action_pattern)
+                                    self.agent.muscles.depolarize_muscles()
+                                    action_pattern = self.agent.muscles.get_depolarized_muscles()
+                                    # convert muscles activation pattern to environment action
+                                    action = self.agent.action.get_action(action_pattern)
+                                    p_actions.append(action)
+                                actions.append(p_actions)
+
+                                if len(actions) > 20:
+                                    break
+
+                                output_block.tm.set_active_columns(predictions)
+                                output_block.tm.activate_cells(learn=False)
+
+                                output_block.tm.activate_basal_dendrites()
+                                output_block.tm.activate_apical_dendrites()
+                                output_block.tm.activate_inhib_dendrites()
+
+                                output_block.tm.predict_cells()
+                                predictions = output_block.tm.get_predicted_columns()
+
+                            options_actions.append(str(actions))
+                        self.agent.hierarchy.unfreeze()
+                        logger.log({'options': logger.Table(data=np.array(options_actions).reshape((-1, 1)), columns=['actions'])}, step=episode)
+                    pic = self.environment.callmethod('render_rgb')
+
+                if ((((episode + 1) % log_every_episode) == 0) or (episode == 0)) and (logger is not None):
                     animation = True
+
+                self.agent.reset()
+
+                episode += 1
+                steps = 0
+                total_reward = 0
             else:
                 steps += 1
                 total_reward += reward
 
             if animation:
-                plt.imsave(f'/tmp/step_{steps}.png', self.environment.callmethod('render_rgb'))
+                if self.agent.hierarchy.blocks[5].made_decision:
+                    pic[pic == 24] = 30
+                    pic[self.environment.callmethod('render_rgb') == 24] = 24
+                else:
+                    pic = self.environment.callmethod('render_rgb')
+                plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic, vmax=30)
 
             action = self.agent.make_action(obs)
             self.environment.act(action)
@@ -305,7 +355,7 @@ if __name__ == '__main__':
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
-    wandb.init(config=config)
+    wandb.init(project='basal_ganglia', config=config)
 
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
@@ -346,7 +396,6 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    history = runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=50, log_patterns=False)
-
+    history = runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=10, log_patterns=False, train_patterns=True, log_options=True)
     wandb.log({'av_steps': np.array(history['steps']).mean()})
 
