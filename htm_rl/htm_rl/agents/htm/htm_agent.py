@@ -285,6 +285,7 @@ class HTMAgentRunner:
                         options_actions = list()
                         for option in options:
                             actions = list()
+                            self.agent.reset()
                             output_block.tm.set_active_feedback_columns(option)
                             output_block.tm.activate_exec_dendrites()
                             predictions = output_block.tm.get_predicted_columns(add_exec=True)
