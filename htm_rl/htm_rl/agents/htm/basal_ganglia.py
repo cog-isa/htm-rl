@@ -158,8 +158,6 @@ class BasalGanglia2:
         self.previous_option = None
         self.current_condition = None
         self.previous_condition = None
-        self.previous_values = 0
-        self.current_values = 0
 
         self.sp = sp
         self.learn_sp = learn_sp
@@ -220,7 +218,6 @@ class BasalGanglia2:
 
         self.current_condition = copy.deepcopy(condition.sparse)
         self.current_option = copy.deepcopy(options[option_index])
-        self.current_values = values[options[option_index]]
 
         norm_option_values = option_values - option_values.min()
         norm_option_values /= (norm_option_values.max() + 1e-12)
@@ -234,19 +231,21 @@ class BasalGanglia2:
     def force_dopamine(self, reward: float):
         if (self.previous_option is not None) and (self.previous_option.size > 0):
 
-            current_value = 0.0
+            next_value = 0.0
+
+            prev_values = np.mean((self.input_weights_d1[self.previous_option] - self.input_weights_d2[self.previous_option])[:, self.previous_condition], axis=-1)
 
             if (self.current_option is not None) and (self.current_option.size > 0):
-                current_value = np.median(self.current_values)
+                next_values = np.mean((self.input_weights_d1[self.current_option] - self.input_weights_d2[self.current_option])[:, self.current_condition], axis=-1)
+                next_value = np.median(next_values)
 
-            deltas = (reward/self.previous_option.size + self.discount_factor * current_value) - self.previous_values
+            deltas = (reward/self.previous_option.size + self.discount_factor * next_value) - prev_values
 
             self.input_weights_d1[self.previous_option.reshape((-1, 1)), self.previous_condition] += (self.alpha * deltas).reshape((-1, 1))
             self.input_weights_d2[self.previous_option.reshape((-1, 1)), self.previous_condition] -= (self.beta * deltas).reshape((-1, 1))
 
         self.previous_option = copy.deepcopy(self.current_option)
         self.previous_condition = copy.deepcopy(self.current_condition)
-        self.previous_values = copy.deepcopy(self.current_values)
         self.current_option = None
         self.current_condition = None
 
