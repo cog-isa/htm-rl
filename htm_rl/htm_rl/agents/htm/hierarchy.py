@@ -357,15 +357,8 @@ class Block:
                 else:
                     apical_active_columns = np.empty(0)
 
-                basal_active_columns = self.tm.get_active_columns()
-                condition = SDR(shift + self.tm.basal_columns)
-                condition.sparse = np.concatenate([apical_active_columns, basal_active_columns + shift])
-
-                if condition.sparse.size == 0:
-                    if return_value:
-                        return np.empty(0), None
-                    else:
-                        return np.empty(0)
+                condition = SDR(shift)
+                condition.sparse = apical_active_columns
 
                 # detect options among predictions
                 predicted_options, indices = self.sm.get_options(self.predicted_columns.dense, return_indices=True)

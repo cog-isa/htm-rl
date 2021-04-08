@@ -169,12 +169,16 @@ class BasalGanglia2:
                option_weights=None,
                return_values=False,
                return_index=False):
-        # get d1 and d2 activations
-        d1 = np.mean(self.input_weights_d1[:, condition.sparse], axis=-1)
-        d2 = np.mean(self.input_weights_d2[:, condition.sparse], axis=-1)
+
+        if condition.sparse.size == 0:
+            values = np.zeros(self.input_weights_d1.shape[0])
+        else:
+            # get d1 and d2 activations
+            d1 = np.mean(self.input_weights_d1[:, condition.sparse], axis=-1)
+            d2 = np.mean(self.input_weights_d2[:, condition.sparse], axis=-1)
+            values = d1 - d2
 
         self._stn = self._stn * (1 - self.gamma) + condition.dense * self.gamma
-        values = d1 - d2
         gpi = - values
         gpi = (gpi - gpi.min()) / (gpi.max() - gpi.min() + 1e-12)
         gpi = self.w_stn * self._stn.mean() + (1 - self.w_stn) * gpi
@@ -229,13 +233,13 @@ class BasalGanglia2:
         return answer
 
     def force_dopamine(self, reward: float):
-        if (self.previous_option is not None) and (self.previous_option.size > 0):
+        if (self.previous_option is not None) and (self.previous_option.size > 0) and (self.previous_condition.size > 0):
 
             next_value = 0.0
 
             prev_values = np.mean((self.input_weights_d1[self.previous_option] - self.input_weights_d2[self.previous_option])[:, self.previous_condition], axis=-1)
 
-            if (self.current_option is not None) and (self.current_option.size > 0):
+            if (self.current_option is not None) and (self.current_option.size > 0) and (self.current_condition.size > 0):
                 next_values = np.mean((self.input_weights_d1[self.current_option] - self.input_weights_d2[self.current_option])[:, self.current_condition], axis=-1)
                 next_value = np.median(next_values)
 
