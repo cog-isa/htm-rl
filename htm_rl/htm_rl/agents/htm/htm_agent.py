@@ -191,7 +191,8 @@ class HTMAgentRunner:
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
 
-    def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50, log_patterns=False, log_options=False):
+    def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50, log_patterns=False, log_options=False,
+                     log_segments=True):
         history = {'steps': list(), 'reward': list()}
 
         total_reward = 0
@@ -222,6 +223,12 @@ class HTMAgentRunner:
 
                 if (logger is not None) and (episode > 0):
                     logger.log({'steps': steps, 'reward': total_reward, 'episode': episode}, step=episode)
+                    if log_segments:
+                        logger.log({'basal_segments': self.agent.hierarchy.output_block.tm.basal_connections.numSegments(),
+                                    'apical_segments': self.agent.hierarchy.output_block.tm.apical_connections.numSegments(),
+                                    'exec_segments': self.agent.hierarchy.output_block.tm.exec_feedback_connections.numSegments(),
+                                    'inhib_segments': self.agent.hierarchy.output_block.tm.inhib_connections.numSegments()},
+                                   step=episode)
 
                 if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
                     if log_patterns:
