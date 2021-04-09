@@ -195,6 +195,7 @@ class Block:
                     feedback_active_columns = np.empty(0)
 
                 self.tm.set_active_feedback_columns(feedback_active_columns)
+                self.tm.activate_exec_dendrites()
                 self.tm.learn_exec_feedback_segments()
 
                 self.feedback_in_pattern = feedback_active_columns
