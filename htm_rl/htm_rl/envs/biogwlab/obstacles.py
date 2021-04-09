@@ -23,5 +23,5 @@ class Obstacles(Entity):
         mask = self._generator.generate(seed)
         self.set(
             mask=mask,
-            map=None
+            map_=None
         )

@@ -18,8 +18,8 @@ class FoodGenerator:
     n_items: int
 
     def __init__(self, shape, n_types, n_items):
+        assert n_types <= 4, 'Up to 4 types of food are supported rn'
         self.shape = shape
-
         self.n_types = n_types
 
         n_cells = shape[0] * shape[1]
@@ -41,6 +41,7 @@ class FoodGenerator:
         rng = np.random.default_rng(seed=seed)
         shape = areas_map.shape
         n_cells = shape[0] * shape[1]
+        areas_modulo = self.food_distribution.shape[1]
 
         foods = rng.choice(
             self.n_types,
@@ -58,7 +59,10 @@ class FoodGenerator:
             for pos in product(range(shape[0]), range(shape[1])):
                 if obstacle_mask[pos] or food_mask[pos]:
                     continue
-                food_probs[pos] = self.food_distribution[food_item, areas_map[pos]]
+                food_probs[pos] = self.food_distribution[
+                    food_item,
+                    areas_map[pos] % areas_modulo
+                ]
 
             food_probs /= food_probs.sum()
             ind = rng.choice(n_cells, p=food_probs.flatten())

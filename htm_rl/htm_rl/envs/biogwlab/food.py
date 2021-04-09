@@ -64,7 +64,7 @@ class Food(Entity):
             seed=seed
         )
 
-        self.set(mask=food_mask, map=food_map)
+        self.set(mask=food_mask, map_=food_map)
         self._initial_mask = food_mask.copy()
         self._last_seed = seed
 

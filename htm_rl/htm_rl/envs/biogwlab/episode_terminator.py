@@ -34,8 +34,9 @@ class EpisodeTerminator:
 
     def collected(self):
         food = self._food
-        # WARN: ugly workaround
-        self.terminated = not np.any(food._rewards[food.map[food.mask]])
+        if self.early_stop:
+            # WARN: ugly workaround
+            self.terminated = not np.any(food._rewards[food.map[food.mask]])
 
     def is_terminal(self, episode_step):
         if episode_step >= self.max_steps:

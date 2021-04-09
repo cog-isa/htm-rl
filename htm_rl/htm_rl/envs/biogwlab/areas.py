@@ -25,7 +25,7 @@ class Areas(Entity):
 
         self.set(
             mask=None,
-            map=self._generator.generate(seed)
+            map_=self._generator.generate(seed)
         )
 
 

@@ -18,6 +18,6 @@ class Entity:
         self.mask = None
         self.map = None
 
-    def set(self, mask: np.ndarray = None, map: np.ndarray = None):
+    def set(self, mask: np.ndarray = None, map_: np.ndarray = None):
         self.mask = mask
-        self.map = map
+        self.map = map_
