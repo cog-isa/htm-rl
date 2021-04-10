@@ -67,7 +67,7 @@ class Renderer:
                 agent = entity
                 encoded_data = encoder.encode(agent.view_direction)
             else:
-                encoded_data = self.render_entity(entity, encoder, view_clip)
+                encoded_data = self.render_entity(entity, encoder, view_clip, data_name)
 
             observation.append(encoded_data)
 
@@ -91,7 +91,7 @@ class Renderer:
         i, j = position
         return i * self.shape[1] + j
 
-    def render_entity(self, entity, encoder, view_clip):
+    def render_entity(self, entity, encoder, view_clip, data_name):
         if view_clip is None:
             return encoder.encode(entity.map, entity.mask)
 
@@ -99,7 +99,10 @@ class Renderer:
 
         clipped_mask = None
         if entity.mask is not None:
-            clipped_mask = np.ones(self.view_shape, dtype=np.bool).flatten()
+            if data_name == 'obstacles':
+                clipped_mask = np.ones(self.view_shape, dtype=np.bool).flatten()
+            else:
+                clipped_mask = np.zeros(self.view_shape, dtype=np.bool).flatten()
             clipped_mask[view_indices] = entity.mask.flatten()[abs_indices]
 
         clipped_map = None

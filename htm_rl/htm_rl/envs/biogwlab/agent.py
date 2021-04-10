@@ -2,7 +2,7 @@ from typing import Tuple, Optional
 
 import numpy as np
 
-from htm_rl.envs.biogwlab.entity import Entity
+from htm_rl.envs.biogwlab.module import Entity
 from htm_rl.envs.biogwlab.move_dynamics import MoveDynamics
 
 

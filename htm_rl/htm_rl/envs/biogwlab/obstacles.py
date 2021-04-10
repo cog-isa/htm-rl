@@ -1,6 +1,6 @@
 from typing import Optional
 
-from htm_rl.envs.biogwlab.entity import Entity
+from htm_rl.envs.biogwlab.module import Entity
 from htm_rl.envs.biogwlab.generation.obstacles import ObstaclesGenerator
 
 

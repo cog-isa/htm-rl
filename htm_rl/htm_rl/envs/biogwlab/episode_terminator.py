@@ -3,7 +3,7 @@ from typing import Union
 import numpy as np
 
 from htm_rl.common.utils import isnone
-from htm_rl.envs.biogwlab.entity import Entity
+from htm_rl.envs.biogwlab.module import Entity
 from htm_rl.envs.biogwlab.environment import Environment
 
 

@@ -3,7 +3,7 @@ from typing import Tuple, Optional
 import numpy as np
 
 from htm_rl.common.sdr_encoders import IntArrayEncoder
-from htm_rl.envs.biogwlab.entity import Entity
+from htm_rl.envs.biogwlab.module import Entity
 from htm_rl.envs.biogwlab.generation.areas import AreasGenerator
 
 
