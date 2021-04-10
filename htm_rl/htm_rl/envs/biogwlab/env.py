@@ -1,6 +1,6 @@
 from typing import Tuple, Dict
 
-from htm_rl.envs.biogwlab.areas import Areas
+from htm_rl.envs.biogwlab.area import Area
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.episode_terminator import EpisodeTerminator
 from htm_rl.envs.biogwlab.food import add_food
@@ -10,7 +10,7 @@ from htm_rl.envs.biogwlab.renderer import Renderer
 from htm_rl.envs.wrapper import Wrapper
 
 registry = {
-    'areas': Areas,
+    'areas': Area,
     'obstacles': Obstacles,
     'food': add_food,
     'rendering': Renderer,

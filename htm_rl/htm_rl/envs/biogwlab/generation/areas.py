@@ -2,10 +2,9 @@ from itertools import product
 from typing import Tuple
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 
-class AreasGenerator:
+class MultiAreaGenerator:
     shape: Tuple[int, int]
     n_types: int
 
@@ -52,7 +51,9 @@ class AreasGenerator:
         area_types = rng.integers(self.n_types, size=n_areas)
         return area_centers, area_types
 
-    def _plot_area_centers(self, area_centers, area_types):
+    def _debug_plot_area_centers(self, area_centers, area_types):
+        from matplotlib import pyplot as plt
+
         size = self.shape
         area = np.zeros((size, size), dtype=np.int8)
         for i, t in enumerate(area_types):

@@ -4,6 +4,8 @@ import numpy as np
 
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.agent import Agent
+from htm_rl.envs.biogwlab.flags import CachedEntityAggregation
+from htm_rl.envs.biogwlab.module import Module, Entity, EntityType
 from htm_rl.envs.biogwlab.move_dynamics import (
     MOVE_DIRECTIONS, DIRECTIONS_ORDER, TURN_DIRECTIONS,
 )
@@ -21,7 +23,7 @@ class Environment(Env):
         'move left', 'move up', 'move right', 'move down',
         'move forward', 'turn left', 'turn right'
     ]
-    supported_entities = {'obstacles', 'areas', 'food', 'agent'}
+    supported_entities = {'obstacle', 'area', 'food', 'agent'}
     supported_events = [
         'reset', 'generate', 'generate_seeds',
         'move', 'turn', 'collect',
@@ -33,7 +35,10 @@ class Environment(Env):
     seed: int
     shape: Tuple[int, int]
 
-    modules: Dict[str, Any]
+    modules: Dict[str, Module]
+    entities: Dict[str, Entity]
+    aggregated_map: CachedEntityAggregation[EntityType, np.ndarray]
+
     handlers: Dict[str, List[Any]]
 
     agent: Agent
@@ -67,8 +72,10 @@ class Environment(Env):
         # from htm_rl.common.plot_utils import plot_grid_images
         # plot_grid_images([self.render_rgb()])
 
-    def add_module(self, name, module):
-        self.modules[name] = module
+    def add_module(self, module: Module):
+        # TODO: remove module first if exist. DO NOT FORGET HANDLERS
+
+        self.modules[module.name] = module
 
         for event in self.supported_events:
             if hasattr(module, event):
