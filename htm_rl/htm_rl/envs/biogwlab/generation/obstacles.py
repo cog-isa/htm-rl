@@ -5,7 +5,7 @@ import numpy as np
 from htm_rl.envs.biogwlab.move_dynamics import MOVE_DIRECTIONS, DIRECTIONS_ORDER, MoveDynamics
 
 
-class ObstaclesGenerator:
+class ObstacleMaskGenerator:
     density: float
     shape: Tuple[int, int]
 
@@ -48,7 +48,8 @@ class ObstaclesGenerator:
                 position, view_direction = self._choose_rnd_cell(obstacle_mask, non_visited_neighbors, rng)
         return ~obstacle_mask
 
-    def _centered_rand2d(self, high_i, high_j, rng):
+    @staticmethod
+    def _centered_rand2d(high_i, high_j, rng):
         def centered_random(high):
             return int(high/4 + rng.random() * high/2)
 
@@ -56,7 +57,8 @@ class ObstaclesGenerator:
         j = centered_random(high_j)
         return i, j
 
-    def _get_random_turn(self, rng):
+    @staticmethod
+    def _get_random_turn(rng):
         return int(np.sign(.5 - rng.random()))
 
     def _choose_rnd_cell(self, gridworld: np.ndarray, non_visited_neighbors: np.ndarray, rng):

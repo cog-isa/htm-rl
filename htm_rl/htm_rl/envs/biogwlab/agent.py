@@ -22,10 +22,10 @@ class Agent(Entity):
 
     def generate(self, seeds):
         rng = np.random.default_rng(seeds['agent'])
-        obstacles = self.env.aggregated_map[EntityType.Obstacle]
+        empty_positions_mask = ~self.env.aggregated_map[EntityType.NonEmpty]
 
-        available_positions_fl = np.flatnonzero(~obstacles)
-        position_fl = rng.choice(available_positions_fl)
+        empty_positions_fl = np.flatnonzero(empty_positions_mask)
+        position_fl = rng.choice(empty_positions_fl)
 
         self.position = self._unflatten_position(position_fl)
         self.view_direction = rng.choice(len(DIRECTIONS_ORDER))

@@ -4,14 +4,14 @@ from htm_rl.envs.biogwlab.area import Area
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.episode_terminator import EpisodeTerminator
 from htm_rl.envs.biogwlab.food import add_food
-from htm_rl.envs.biogwlab.obstacles import Obstacles
+from htm_rl.envs.biogwlab.obstacle import Obstacle
 from htm_rl.envs.biogwlab.regenerator import Regenerator
 from htm_rl.envs.biogwlab.renderer import Renderer
 from htm_rl.envs.wrapper import Wrapper
 
 registry = {
     'areas': Area,
-    'obstacles': Obstacles,
+    'obstacles': Obstacle,
     'food': add_food,
     'rendering': Renderer,
     'terminate': EpisodeTerminator,

@@ -1,12 +1,42 @@
 from itertools import product
-from typing import Tuple
+from typing import Tuple, List, Optional
 
 import numpy as np
 
 from htm_rl.common.utils import isnone
 
 
-class FoodGenerator:
+class FoodPositionsGenerator:
+    shape: Tuple[int, int]
+    n_items: int
+    area_weights: Optional[np.ndarray]
+
+    def __init__(self, shape: Tuple[int, int], n_items, area_weights=None):
+        self.shape = shape
+        self.n_items = n_items
+
+        self.area_weights = None
+        if area_weights:
+            self.area_weights = np.array(area_weights).reshape((-1, 1))
+
+    def generate(self, empty_mask: np.ndarray, area_masks: List[np.ndarray], seed):
+        rng = np.random.default_rng(seed)
+        n_cells = self.shape[0] * self.shape[1]
+
+        if self.area_weights is not None:
+            area_weights_masks = self.area_weights * area_masks
+            p = np.mean(area_weights_masks, axis=0)
+            p[~empty_mask] = 0
+            p /= p.sum()
+            indices_fl = rng.choice(n_cells, size=self.n_items, p=p, replace=False)
+        else:
+            indices_fl = rng.choice(n_cells, size=self.n_items, replace=False)
+
+        indices = list(zip(*np.divmod(indices_fl, self.shape[1])))
+        return indices
+
+
+class LegacyFoodGenerator:
     BEANS_DISTRIBUTION = [.3, .1, .25, .15, .1]
     RANCID_BEANS_DISTRIBUTION = [.25, .15, .1, .35, .15]
     FRUIT_DISTRIBUTION = [.15, .35, .2, .1, .2]

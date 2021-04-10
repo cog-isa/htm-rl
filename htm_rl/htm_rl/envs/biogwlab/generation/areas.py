@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 
 
-class MultiAreaGenerator:
+class MultiAreaMapGenerator:
     shape: Tuple[int, int]
     n_types: int
 

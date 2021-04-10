@@ -4,7 +4,7 @@ import numpy as np
 
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.agent import Agent
-from htm_rl.envs.biogwlab.flags import CachedEntityAggregation
+from htm_rl.envs.biogwlab.flags import CachedEntityAggregation, CachedFlagDict
 from htm_rl.envs.biogwlab.module import Module, Entity, EntityType
 from htm_rl.envs.biogwlab.move_dynamics import (
     MOVE_DIRECTIONS, DIRECTIONS_ORDER, TURN_DIRECTIONS,
@@ -37,6 +37,8 @@ class Environment(Env):
 
     modules: Dict[str, Module]
     entities: Dict[str, Entity]
+
+    entity_slices: CachedFlagDict[EntityType, List[Entity]]
     aggregated_map: CachedEntityAggregation[EntityType, np.ndarray]
 
     handlers: Dict[str, List[Any]]

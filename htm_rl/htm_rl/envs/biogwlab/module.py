@@ -21,6 +21,7 @@ class EntityType(Flag):
     Obstacle = auto()
     Consumable = auto()
     Agent = auto()
+    NonEmpty = Obstacle | Consumable | Agent
 
 
 class Entity(Module):

@@ -4,7 +4,7 @@ import numpy as np
 
 from htm_rl.common.sdr_encoders import IntArrayEncoder
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.envs.biogwlab.generation.areas import MultiAreaGenerator as MultiAreaGenerator_
+from htm_rl.envs.biogwlab.generation.areas import MultiAreaMapGenerator
 from htm_rl.envs.biogwlab.module import Entity, EntityType, Module
 
 
@@ -27,14 +27,14 @@ class Area(Entity):
 
 class MultiAreaGenerator(Module):
     env: Environment
-    generator: MultiAreaGenerator_
+    generator: MultiAreaMapGenerator
     last_seed: Optional[int]
 
     def __init__(self, n_types: int, env: Environment, **entity):
         super(MultiAreaGenerator, self).__init__(**entity)
 
         self.env = env
-        self.generator = MultiAreaGenerator_(shape=env.shape, n_types=n_types)
+        self.generator = MultiAreaMapGenerator(shape=env.shape, n_types=n_types)
         self.last_seed = None
 
     def generate(self, seeds):
