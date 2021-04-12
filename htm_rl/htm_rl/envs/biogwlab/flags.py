@@ -33,7 +33,7 @@ class CachedEntityAggregation(dict):
     _flag_dict: Dict[EntityType, List[Entity]]
 
     def __init__(
-            self, flag_dict: CachedFlagDict[EntityType, List[Entity]],
+            self, flag_dict: Dict[EntityType, List[Entity]],
             shape: Tuple[int, int]
     ):
         super().__init__()

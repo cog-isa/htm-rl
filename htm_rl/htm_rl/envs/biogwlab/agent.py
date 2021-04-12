@@ -2,7 +2,6 @@ from typing import Tuple, Optional
 
 import numpy as np
 
-from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.module import Entity, EntityType
 from htm_rl.envs.biogwlab.move_dynamics import MoveDynamics, DIRECTIONS_ORDER
 
@@ -14,9 +13,9 @@ class Agent(Entity):
     position: Tuple[int, int]
     view_direction: Optional[int]
 
-    env: Environment
+    env: 'Environment'
 
-    def __init__(self, env: Environment, **entity):
+    def __init__(self, env: 'Environment', **entity):
         super(Agent, self).__init__(**entity)
         self.env = env
 

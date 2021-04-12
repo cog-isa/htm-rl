@@ -3,9 +3,10 @@ from typing import Dict
 import numpy as np
 
 from htm_rl.envs.biogwlab.environment import Environment
+from htm_rl.envs.biogwlab.module import Module
 
 
-class Regenerator:
+class Regenerator(Module):
     base_rates = {
         'map': None, 'food': None, 'agent': None
     }
@@ -16,10 +17,13 @@ class Regenerator:
     rates: Dict[str, int]
     episode: int
 
-    def __init__(self, env: Environment, **rates):
+    def __init__(self, env: Environment, name: str, **rates):
+        super().__init__(name=name)
+
         self.seed = env.seed
         self.rates = {**self.base_rates, **rates}
         self.episode = -1
+
         rng = np.random.default_rng(self.seed)
         self.seeds = {key: rng.integers(self.base_modulo) for key in self.rates}
 

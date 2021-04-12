@@ -4,7 +4,6 @@ import numpy as np
 
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.agent import Agent
-from htm_rl.envs.biogwlab.flags import CachedEntityAggregation, CachedFlagDict
 from htm_rl.envs.biogwlab.module import Module, Entity, EntityType
 from htm_rl.envs.biogwlab.move_dynamics import (
     MOVE_DIRECTIONS, DIRECTIONS_ORDER, TURN_DIRECTIONS,
@@ -38,12 +37,11 @@ class Environment(Env):
     modules: Dict[str, Module]
     entities: Dict[str, Entity]
 
-    entity_slices: CachedFlagDict[EntityType, List[Entity]]
-    aggregated_map: CachedEntityAggregation[EntityType, np.ndarray]
+    entity_slices: Dict[EntityType, List[Entity]]
+    aggregated_map: Dict[EntityType, np.ndarray]
 
     handlers: Dict[str, List[Any]]
 
-    agent: Agent
     episode_step: int
     step_reward: float
 
@@ -52,15 +50,18 @@ class Environment(Env):
 
     actions: List[str]
 
-    def __init__(self, shape_xy: Tuple[int, int], seed: int):
+    def __init__(self, shape_xy: Tuple[int, int], seed: int, actions: List[str]):
         # convert from x,y to i,j
         width, height = shape_xy
         self.shape = (height, width)
+        self.seed = seed
+
+        self.actions = isnone(actions, self.supported_actions.copy())
+        ensure_all_actions_supported(self.actions, self.supported_actions)
 
         self.modules = dict()
         self.handlers = dict()
 
-        self.seed = seed
         self.episode_step = 0
         self.step_reward = 0
 
@@ -96,11 +97,6 @@ class Environment(Env):
         for handler in self.handlers.get(key, []):
             handler(**handler_kwargs)
 
-    def add_agent(self):
-        obstacles = self.get_module('obstacles')
-        self.agent = Agent(env=self, obstacles=obstacles)
-        self.add_module('agent', self.agent)
-
     def generate(self):
         seeds = self._get_from_single_handler('generate_seeds')
         if seeds is not None:
@@ -133,8 +129,10 @@ class Environment(Env):
         else:   # "move X"
             direction = action[5:]  # cut "move "
             if direction == 'forward':
+                # noinspection PyTypeChecker
                 # move direction is view direction
-                direction = DIRECTIONS_ORDER[self.agent.view_direction]
+                agent: Agent = self.entities['agent']
+                direction = DIRECTIONS_ORDER[agent.view_direction]
 
             direction = MOVE_DIRECTIONS[direction]
             self.move(direction)
@@ -143,19 +141,20 @@ class Environment(Env):
         self.episode_step += 1
 
     def stay(self):
-        self.step_reward += self.action_weight['stay'] * self.action_cost
+        self._run_handlers('stay')
 
-    def move(self, direction):
+    def move(self, direction: int):
         self._run_handlers('move', direction=direction)
-        self.step_reward += self.action_weight['move'] * self.action_cost
 
-    def turn(self, turn_direction):
+    def turn(self, turn_direction: int):
         self._run_handlers('turn', turn_direction=turn_direction)
-        self.step_reward += self.action_weight['turn'] * self.action_cost
 
     def collect(self):
+        # noinspection PyTypeChecker
+        agent: Agent = self.entities['agent']
+
         for handler in self.handlers['collect']:
-            reward, success = handler(self.agent.position, self.agent.view_direction)
+            reward, success = handler(agent.position, agent.view_direction)
             if success:
                 self.step_reward += reward
                 self.collected()
@@ -168,10 +167,6 @@ class Environment(Env):
             if handler(self.episode_step):
                 return True
         return False
-
-    def set_action_costs(self, action_cost: float, action_weight: Dict[str, float]):
-        self.action_cost = action_cost
-        self.action_weight = action_weight
 
     def render(self):
         return self._get_from_single_handler(
@@ -206,15 +201,11 @@ class Environment(Env):
         img[self.agent.position] = 24
         return img
 
-    @classmethod
-    def ensure_all_actions_supported(cls, actions):
-        non_supported_actions = [
-            action for action in actions
-            if action not in Environment.supported_actions
-        ]
-        assert not non_supported_actions, \
-            f'{non_supported_actions} actions are not supported'
 
-    def set_actions(self, actions):
-        self.actions = isnone(actions, self.supported_actions.copy())
-        self.ensure_all_actions_supported(self.actions)
+def ensure_all_actions_supported(actions, supported_actions):
+    non_supported_actions = [
+        action for action in actions
+        if action not in supported_actions
+    ]
+    assert not non_supported_actions, \
+        f'{non_supported_actions} actions are not supported'

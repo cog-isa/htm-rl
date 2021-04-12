@@ -1,10 +1,6 @@
-from enum import Enum, Flag, auto
-from typing import Tuple, Optional
+from enum import Flag, auto
 
 import numpy as np
-
-from htm_rl.common.utils import isnone
-from htm_rl.envs.biogwlab.environment import Environment
 
 
 class Module:
