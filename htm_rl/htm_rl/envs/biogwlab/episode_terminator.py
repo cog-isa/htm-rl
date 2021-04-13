@@ -26,6 +26,7 @@ class EpisodeTerminator(Module):
             h, w = env.shape
             episode_max_steps = 2 * h * w
 
+        self.env = env
         self.max_steps = episode_max_steps
         self.early_stop = early_stop
         self.terminated = False
@@ -36,7 +37,7 @@ class EpisodeTerminator(Module):
     def collected(self):
         if self.early_stop:
             # WARN: ugly workaround
-            food = self.env.aggregated_map[EntityType.Consumable]
+            food = self.env.aggregated_mask[EntityType.Consumable]
             self.terminated = not np.any(food)
 
     def is_terminal(self, episode_step):

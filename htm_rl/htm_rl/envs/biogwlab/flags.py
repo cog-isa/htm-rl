@@ -18,7 +18,7 @@ class CachedFlagDict(dict):
     def __getitem__(self, flag: EntityType):
         if True or flag not in self:
             self[flag] = self._find_items(flag)
-        return self[flag]
+        return super(CachedFlagDict, self).__getitem__(flag)
 
     def _find_items(self, flag: EntityType):
         return [
@@ -47,12 +47,13 @@ class CachedEntityAggregation(dict):
     def __getitem__(self, flag: EntityType):
         if True or flag not in self:
             self[flag] = self._aggregate_entities(flag)
-        return self[flag]
+        return super(CachedEntityAggregation, self).__getitem__(flag)
 
     def _aggregate_entities(self, flag: EntityType):
-        mask = np.zeros(self._shape, dtype=np.uint8)
+        mask = np.zeros(self._shape, dtype=np.bool)
         for entity in self._flag_dict[flag]:
-            entity.append_mask(mask)
+            if entity.initialized:
+                entity.append_mask(mask)
         return mask
 
 

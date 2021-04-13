@@ -29,15 +29,15 @@ class BioGwLabEnvironment(Wrapper):
     output_sdr_size: int
 
     def __init__(
-            self, shape_xy: Tuple[int, int], seed: int, actions=None,
+            self, shape_xy: Tuple[int, int], seed: int, rendering: Dict = None, actions=None,
             **modules
     ):
         env = Environment(
-            shape_xy=shape_xy, seed=seed, actions=actions
+            shape_xy=shape_xy, seed=seed, actions=actions, rendering=rendering
         )
 
         default_modules = [
-            Agent.family, BorderObstacle.family, 'regenerate'
+            Agent.family, BorderObstacle.family, 'regenerate', 'terminate'
         ]
         for module_name in default_modules:
             append_module(module_name, modules)
@@ -45,16 +45,12 @@ class BioGwLabEnvironment(Wrapper):
         for module_name, module_config in modules.items():
             add_module(env, module_name, module_config)
 
-        # add_module(env, modules, 'terminate')
-
         env.reset()
-        # add_module(env, modules, 'rendering')
-
         super(BioGwLabEnvironment, self).__init__(env)
 
 
 def append_module(name: str, modules: Dict[str, Any]):
-    if name not in modules:
+    if name not in modules or modules[name] is None:
         modules[name] = {}
 
 
@@ -66,5 +62,6 @@ def add_module(env, name: str, config: Dict):
         module_type = config['_type_']
         config.pop('_type_')
 
+    assert config is not None, f'Config for "{name}" is None'
     module = registry[module_type](env=env, name=name, **config)
     env.add_module(module)

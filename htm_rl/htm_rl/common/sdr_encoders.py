@@ -128,7 +128,10 @@ class SdrConcatenator:
     _shifts: Sequence[int]
 
     def __init__(self, input_sources: List[Any]):
-        input_sizes = [source.output_sdr_size for source in input_sources]
+        if input_sources and isinstance(input_sources[0], int):
+            input_sizes = input_sources
+        else:
+            input_sizes = [source.output_sdr_size for source in input_sources]
         cumulative_sizes = np.cumsum(input_sizes)
 
         # NB: note that zero shift at the beginning is omitted
@@ -141,13 +144,15 @@ class SdrConcatenator:
         result = np.empty(size, dtype=np.int)
 
         # to speed up things do not apply zero shift to the first sdr
-        l, r = 0, len(sparse_sdrs[0])
-        result[l:r] = sparse_sdrs[0]
+        first = sparse_sdrs[0]
+        l, r = 0, len(first)
+        result[l:r] = first
 
         # apply corresponding shifts to the rest inputs
         for i in range(1, len(sparse_sdrs)):
+            sdr = sparse_sdrs[i]
             l = r
-            r = r + len(sparse_sdrs[i])
-            result[l:r] = sparse_sdrs[i]
+            r = r + len(sdr)
+            result[l:r] = sdr
             result[l:r] += self._shifts[i - 1]
         return result

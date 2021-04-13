@@ -3,6 +3,7 @@ from typing import Tuple, List, Optional
 
 import numpy as np
 
+from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.common.utils import isnone
 
 
@@ -16,7 +17,7 @@ class FoodPositionsGenerator:
         self.n_items = n_items
 
         self.area_weights = None
-        if area_weights:
+        if area_weights is not None:
             self.area_weights = np.array(area_weights).reshape((-1, 1))
 
     def generate(self, empty_mask: np.ndarray, area_masks: List[np.ndarray], seed):
@@ -30,10 +31,11 @@ class FoodPositionsGenerator:
             p /= p.sum()
             indices_fl = rng.choice(n_cells, size=self.n_items, p=p, replace=False)
         else:
-            indices_fl = rng.choice(n_cells, size=self.n_items, replace=False)
+            empty_indices_fl = np.flatnonzero(empty_mask)
+            indices_fl = rng.choice(empty_indices_fl, size=self.n_items, replace=False)
 
-        indices = list(zip(*np.divmod(indices_fl, self.shape[1])))
-        return indices
+        # indices = list(zip(*np.divmod(indices_fl, self.shape[1])))
+        return indices_fl
 
 
 class LegacyFoodGenerator:

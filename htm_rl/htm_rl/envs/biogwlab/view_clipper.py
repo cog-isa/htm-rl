@@ -8,6 +8,12 @@ from htm_rl.common.utils import clip
 from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
 
 
+class ViewClip:
+    shape: Tuple[int, int]
+    abs_indices: np.ndarray
+    view_indices: np.ndarray
+
+
 class ViewClipper:
     i_transformation = [1, -1, -1, 1, ]
     j_transformation = [1, 1, -1, -1, ]
