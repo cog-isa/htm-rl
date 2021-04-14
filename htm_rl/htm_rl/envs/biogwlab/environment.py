@@ -83,12 +83,13 @@ class Environment(Env):
 
         self._run_handlers('reset')
         self.generate()
-        self.observe()
         # noinspection PyTypeChecker
         self.agent = self.entities['agent']
 
+        self.observe()
+
         # from htm_rl.common.plot_utils import plot_grid_images
-        # plot_grid_images([self.render_rgb()])
+        # plot_grid_images(self.render_rgb())
 
     def add_module(self, module: Module):
         self.remove_module(module)
@@ -132,9 +133,6 @@ class Environment(Env):
         reward = self.step_reward
         obs = self.render()
         is_first = self.episode_step == 0
-
-        # from htm_rl.common.plot_utils import plot_grid_images
-        # plot_grid_images([self.render_rgb()])
         return reward, obs, is_first
 
     def act(self, action: int):
@@ -192,8 +190,7 @@ class Environment(Env):
         return False
 
     def render(self):
-        # noinspection PyTypeChecker
-        agent: Agent = self.entities['agent']
+        agent = self.agent
 
         return self.renderer.render(
             position=agent.position, view_direction=agent.view_direction,
@@ -209,22 +206,11 @@ class Environment(Env):
         return self.renderer.output_sdr_size
 
     def render_rgb(self):
-        img = np.zeros(self.shape, dtype=np.int8)
-
-        # areas = self.get_module('areas')
-        # img[:] = areas.map
-        #
-        # obstacles = self.get_module('obstacles')
-        # img[obstacles.mask] = 8
-        #
-        # food = self.get_module('food')
-        # norm_rewards = 5 * food._rewards[food.map[food.mask]] / np.abs(food._rewards).max()
-        # norm_rewards[norm_rewards > 0] = norm_rewards[norm_rewards > 0].astype(np.int8) + 12
-        # norm_rewards[norm_rewards < 0] = norm_rewards[norm_rewards < 0].astype(np.int8) - 4
-        # img[food.mask] = norm_rewards
-        #
-        # img[self.agent.position] = 24
-        return img
+        agent = self.agent
+        return self.renderer.render_rgb(
+            position=agent.position, view_direction=agent.view_direction,
+            entities=self.entity_slices
+        )
 
 
 def ensure_all_actions_supported(actions, supported_actions):

@@ -81,13 +81,12 @@ class Food(Entity):
         if view_clip is None:
             return np.array(list(self.positions_fl)), self.env.shape[0] * self.env.shape[1]
 
-        view_shape, abs_indices, view_indices = view_clip
         indices = []
-        for abs_ind, view_ind in zip(abs_indices, view_indices):
+        for abs_ind, view_ind in zip(view_clip.abs_indices, view_clip.view_indices):
             if abs_ind in self.positions_fl:
                 indices.append(view_ind)
 
-        return np.array(indices), view_shape[0] * view_shape[1]
+        return np.array(indices), view_clip.shape[0] * view_clip.shape[1]
 
     def append_mask(self, mask: np.ndarray):
         for position_fl in self.positions_fl:

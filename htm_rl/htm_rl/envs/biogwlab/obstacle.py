@@ -60,10 +60,8 @@ class BorderObstacle(Entity):
             # won't be included because of zero size
             return None, 0
 
-        view_shape, abs_indices, view_indices = view_clip
-
-        clipped_mask = np.ones(view_shape, dtype=np.bool).flatten()
-        clipped_mask[view_indices] = 0
+        clipped_mask = np.ones(view_clip.shape, dtype=np.bool).flatten()
+        clipped_mask[view_clip.view_indices] = 0
         return np.flatnonzero(clipped_mask), clipped_mask.size
 
     def append_mask(self, mask: np.ndarray):

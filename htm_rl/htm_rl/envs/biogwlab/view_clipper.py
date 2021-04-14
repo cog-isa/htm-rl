@@ -1,3 +1,5 @@
+import dataclasses
+from dataclasses import dataclass
 from typing import Tuple
 
 import numpy as np
@@ -8,10 +10,14 @@ from htm_rl.common.utils import clip
 from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
 
 
+@dataclass
 class ViewClip:
     shape: Tuple[int, int]
     abs_indices: np.ndarray
     view_indices: np.ndarray
+
+    def __iter__(self):
+        yield from dataclasses.astuple(self)
 
 
 class ViewClipper:
