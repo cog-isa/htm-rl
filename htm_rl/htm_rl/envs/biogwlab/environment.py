@@ -88,9 +88,6 @@ class Environment(Env):
 
         self.observe()
 
-        # from htm_rl.common.plot_utils import plot_grid_images
-        # plot_grid_images(self.render_rgb())
-
     def add_module(self, module: Module):
         self.remove_module(module)
 

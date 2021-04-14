@@ -51,7 +51,7 @@ class Food(Entity):
 
     def generate(self, seeds):
         seed = seeds['food']
-        empty_mask = ~self.env.aggregated_mask[EntityType.NonEmpty]
+        empty_mask = ~self.env.aggregated_mask[EntityType.Obstacle]
         areas = self.env.entity_slices[EntityType.Area]
 
         area_masks = []
