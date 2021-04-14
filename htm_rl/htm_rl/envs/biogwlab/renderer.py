@@ -45,25 +45,30 @@ class Renderer:
         return observation
 
     def render_rgb(self, position, view_direction, entities: Dict[EntityType, List[Entity]]):
+        # fill with magenta to catch non-colored cells
         default_filler = np.array([255, 3, 209])
 
         img_map = np.empty(self.shape + (3, ), dtype=np.int)
         img_map[:] = default_filler
 
         areas = entities[EntityType.Area]
+        # areas: light blue
         area_color, area_dc = [117, 198, 230], [-12, -15, -6]
         self._draw_entities(img_map, areas, area_color, area_dc)
 
         obstacles = entities[EntityType.Obstacle]
+        # obstacles: dark blue
         obstacle_color, obstacle_dc = [70, 40, 100], [-7, -4, -10]
         self._draw_entities(img_map, obstacles, obstacle_color, obstacle_dc)
 
         # TODO: reward based coloring
         food = entities[EntityType.Consumable]
+        # consumables: salad green
         food_color, food_dc = [112, 212, 17], [-4, -10, 4]
         self._draw_entities(img_map, food, food_color, food_dc)
 
         agent = entities[EntityType.Agent]
+        # agent: yellow
         agent_color, agent_dc = [255, 255, 0], [0, 0, 0]
         self._draw_entities(img_map, agent, agent_color, agent_dc)
 
@@ -75,8 +80,12 @@ class Renderer:
         abs_indices = np.divmod(view_clip.abs_indices, img_map.shape[1])
         view_indices = np.divmod(view_clip.view_indices, img_obs.shape[1])
 
+        # fill with `out-of-map` obstacles: black
         img_obs[:] = np.array([0, 0, 0])
         img_obs[view_indices] = img_map[abs_indices].copy()
+        img_obs = np.flip(img_obs, axis=[0, 1])     # from ij to xy
+
+        # `grey`-out view area
         img_map[abs_indices] += (.5 * (255 - img_map[abs_indices])).astype(np.int)
 
         return [img_map, img_obs]
@@ -88,14 +97,7 @@ class Renderer:
     def make_view_clip(self, position, view_direction):
         if self.view_clipper is None:
             return None
-        abs_indices, view_indices = self.view_clipper.clip(position, view_direction)
-        abs_indices = abs_indices.flatten()
-        view_indices = view_indices.flatten()
-        return ViewClip(
-            shape=self.view_clipper.view_shape,
-            abs_indices=abs_indices,
-            view_indices=view_indices
-        )
+        return self.view_clipper.clip(position, view_direction)
 
     @staticmethod
     def _draw_entities(img: np.ndarray, entities: List[Entity], color: List[int], dc: List[int]):
