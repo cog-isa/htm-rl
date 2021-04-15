@@ -4,8 +4,9 @@ import numpy as np
 
 from htm_rl.common.plot_utils import store_heatmap
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.env import Env
-from htm_rl.envs.wrapper import Wrapper
+from htm_rl.envs.wrapper import Wrapper, unwrap
 
 
 class EpisodeLengthRecorder(Wrapper):
@@ -37,9 +38,11 @@ class HeatmapRecorder(Wrapper):
     name_str: str
     acted: bool
 
-    def __init__(self, env: Wrapper, n_episodes, test_dir, name_str):
-        super(HeatmapRecorder, self).__init__(env.env)
-        self.heatmap = np.zeros(env.env.shape, dtype=np.float)
+    def __init__(self, env: Env, n_episodes, test_dir, name_str):
+        super(HeatmapRecorder, self).__init__(unwrap(env))
+
+        env: Environment = self.env
+        self.heatmap = np.zeros(env.shape, dtype=np.float)
         self.heatmap_ind = 0
         self.current_episode = 0
         self.n_episodes = n_episodes

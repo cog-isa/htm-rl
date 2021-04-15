@@ -1,12 +1,44 @@
 from itertools import product
-from typing import Tuple
+from typing import Tuple, List, Optional
 
 import numpy as np
 
+from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.common.utils import isnone
 
 
-class FoodGenerator:
+class FoodPositionsGenerator:
+    shape: Tuple[int, int]
+    n_items: int
+    area_weights: Optional[np.ndarray]
+
+    def __init__(self, shape: Tuple[int, int], n_items, area_weights=None):
+        self.shape = shape
+        self.n_items = n_items
+
+        self.area_weights = None
+        if area_weights is not None:
+            self.area_weights = np.array(area_weights).reshape((-1, 1))
+
+    def generate(self, empty_mask: np.ndarray, area_masks: List[np.ndarray], seed):
+        rng = np.random.default_rng(seed)
+        n_cells = self.shape[0] * self.shape[1]
+
+        if self.area_weights is not None:
+            area_weights_masks = self.area_weights * area_masks
+            p = np.mean(area_weights_masks, axis=0)
+            p[~empty_mask] = 0
+            p /= p.sum()
+            indices_fl = rng.choice(n_cells, size=self.n_items, p=p, replace=False)
+        else:
+            empty_indices_fl = np.flatnonzero(empty_mask)
+            indices_fl = rng.choice(empty_indices_fl, size=self.n_items, replace=False)
+
+        # indices = list(zip(*np.divmod(indices_fl, self.shape[1])))
+        return indices_fl
+
+
+class LegacyFoodGenerator:
     BEANS_DISTRIBUTION = [.3, .1, .25, .15, .1]
     RANCID_BEANS_DISTRIBUTION = [.25, .15, .1, .35, .15]
     FRUIT_DISTRIBUTION = [.15, .35, .2, .1, .2]
@@ -18,8 +50,8 @@ class FoodGenerator:
     n_items: int
 
     def __init__(self, shape, n_types, n_items):
+        assert n_types <= 4, 'Up to 4 types of food are supported rn'
         self.shape = shape
-
         self.n_types = n_types
 
         n_cells = shape[0] * shape[1]
@@ -41,6 +73,7 @@ class FoodGenerator:
         rng = np.random.default_rng(seed=seed)
         shape = areas_map.shape
         n_cells = shape[0] * shape[1]
+        areas_modulo = self.food_distribution.shape[1]
 
         foods = rng.choice(
             self.n_types,
@@ -58,7 +91,10 @@ class FoodGenerator:
             for pos in product(range(shape[0]), range(shape[1])):
                 if obstacle_mask[pos] or food_mask[pos]:
                     continue
-                food_probs[pos] = self.food_distribution[food_item, areas_map[pos]]
+                food_probs[pos] = self.food_distribution[
+                    food_item,
+                    areas_map[pos] % areas_modulo
+                ]
 
             food_probs /= food_probs.sum()
             ind = rng.choice(n_cells, p=food_probs.flatten())

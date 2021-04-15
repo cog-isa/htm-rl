@@ -1,19 +1,30 @@
+import dataclasses
+from dataclasses import dataclass
 from typing import Tuple
 
 import numpy as np
 
-from htm_rl.common.plot_utils import plot_grid_images
-from htm_rl.common.sdr import dense_to_sparse
-from htm_rl.common.utils import clip
-from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
+from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER, MoveDynamics
+
+
+@dataclass
+class ViewClip:
+    shape: Tuple[int, int]
+    abs_indices: np.ndarray
+    view_indices: np.ndarray
+
+    def __iter__(self):
+        yield from dataclasses.astuple(self)
 
 
 class ViewClipper:
-    i_transformation = [1, -1, -1, 1, ]
-    j_transformation = [1, 1, -1, -1, ]
-
     base_shape: Tuple[int, int]
     view_rectangle: Tuple[Tuple[int, int], Tuple[int, int]]
+
+    natural_direction: int
+
+    _map_abs_indices_cache: np.ndarray
+    _view_indices_cache: np.ndarray
 
     def __init__(
             self,
@@ -21,7 +32,14 @@ class ViewClipper:
             view_rectangle_xy: Tuple[Tuple[int, int], Tuple[int, int]],
     ):
         self.base_shape = base_shape
-        self.view_rectangle = self.xy_to_ij(view_rectangle_xy)
+        # view direction with natural indices traversal
+        self.natural_direction = DIRECTIONS_ORDER.index('down')
+        self.view_rectangle = _xy_to_ij(view_rectangle_xy)
+
+        h, w = self.base_shape
+        self._map_abs_indices_cache = np.arange(h*w).reshape(self.base_shape)
+        h, w = self.view_shape
+        self._view_indices_cache = np.arange(h*w).reshape(self.view_shape)
 
     # noinspection PyRedundantParentheses
     @property
@@ -30,97 +48,121 @@ class ViewClipper:
         return (ui-bi+1, rj-lj+1)
 
     def clip(self, position, view_direction):
-        # position = 1, 5
-        # view_direction = 3
-        i, j = position
-        i_high, j_high = self.base_shape
+        # get relative direction
+        view_direction = self.natural_direction - view_direction
 
-        # print(i, j, forward_dir, i_high, j_high)
-        # print(obs_rect)
+        # abs rectangle from view rectangle
+        abs_rect = self._get_abs_rectangle(self.view_rectangle, position, view_direction)
+        abs_indices = self._get_abs_indices(abs_rect, view_direction)
 
-        (bi, lj), (ui, rj) = self.view_rectangle
-        absolute_indices = np.arange(i_high * j_high).reshape(self.base_shape)
+        # [possibly clipped] view rectangle from abs rectangle
+        view_rect = self._get_view_rect(abs_rect, position, view_direction)
+        view_indices = self._get_view_indices(view_rect)
 
-        # print(absolute_indices)
-        # print(position, DIRECTIONS_ORDER[view_direction])
+        return ViewClip(
+            shape=self.view_shape,
+            abs_indices=abs_indices.flatten(),
+            view_indices=view_indices.flatten()
+        )
 
-        # print('orig', bi, ui, lj, rj)
-        # print('====')
-        # for i in range(5):
-        #     _bi, _ui, _lj, _rj = self._rotate(bi, ui, lj, rj, i)
-        #     print('rot', _bi, _ui, _lj, _rj)
-        # print('====')
+    def _get_abs_rectangle(self, view_rect, position, view_direction):
+        #  1. rotate view rectangle; 2. get abs position; 3. clip it
+        abs_rect_vector = _rotate_rect(view_rect, view_direction)
+        abs_rect = _ground_rectangle(abs_rect_vector, position)
+        abs_rect = _clip_rectangle(abs_rect, self.base_shape)
+        return abs_rect
 
-        _bi, _ui, _lj, _rj = self._rotate(bi, ui, lj, rj, view_direction)
-        # print('rot', _bi, _ui, _lj, _rj)
+    def _get_abs_indices(self, abs_rect, view_direction):
+        # 1. get indices rect; 2. rotate to view
+        abs_indices = _get_slice(self._map_abs_indices_cache, abs_rect)
 
-        _bi = clip(i + _bi, i_high)
-        _ui = clip(_ui + i, i_high) + 1
-        _lj = clip(j + _lj, j_high)
-        _rj = clip(_rj + j, j_high) + 1
-        # print('repr', _bi, _ui, _lj, _rj)
-        repr = absolute_indices[_bi:_ui, _lj:_rj].copy()
-        img = np.zeros(self.base_shape, dtype=np.int8)
-        img[_bi:_ui, _lj:_rj] = 1
-        img[position] = 2
-        # plot_grid_images(img)
+        # traverse order is for the natural view direction ==>
+        # correct traverse order for the current view direction
+        abs_indices = _rotate_matrix(abs_indices, view_direction)
+        return abs_indices
 
-        _bi, _ui = _bi - i, _ui - i - 1
-        _lj, _rj = _lj - j, _rj - j - 1
+    def _get_view_rect(self, abs_rect, position, view_direction):
+        # 1. get relative rect from abs; 2. get abs in view rect 2. rotate it back
+        abs_rect_vector = _ground_rectangle(abs_rect, position, inverse=True)
+        view_rect_vector = _rotate_rect(abs_rect_vector, -view_direction)
 
-        # print('cli', _bi, _ui, _lj, _rj)
-        _bi, _ui, _lj, _rj = self._rotate(_bi, _ui, _lj, _rj, -view_direction)
-        # print('clip', _bi, _ui, _lj, _rj)
+        # ground view rect relative to agent view position at point == -bot
+        view_rect = _ground_rectangle(view_rect_vector, self.view_rectangle[0], inverse=True)
+        return view_rect
 
-        # lj, rj = -rj, -lj
-        # print('orig', bi, ui, lj, rj)
+    def _get_view_indices(self, clipped_view_rect):
+        view_indices = _get_slice(self._view_indices_cache, clipped_view_rect)
+        return view_indices
 
-        bi, ui = -bi + _bi, -bi + _ui + 1
-        lj, rj = -lj + _lj, -lj + _rj + 1
-        # print('res', bi, ui, lj, rj)
 
-        if DIRECTIONS_ORDER[view_direction] == 'up':
-            repr = repr
-        elif DIRECTIONS_ORDER[view_direction] == 'right':
-            repr = np.swapaxes(repr, 0, 1)
-            repr = np.flip(repr, 0)
-        elif DIRECTIONS_ORDER[view_direction] == 'down':
-            repr = np.flip(repr, (0, 1))
-        elif DIRECTIONS_ORDER[view_direction] == 'left':
-            repr = np.swapaxes(repr, 0, 1)
-            repr = np.flip(repr, 1)
+def _get_slice(mat, rect_slice):
+    (bi, bj), (ti, tj) = rect_slice
+    return mat[bi:ti+1, bj:tj+1]
 
-        # print('obs shape', obs.shape)
-        # print(obs[__bi:__ui, __lj:__rj].shape)
-        view_shape = self.view_shape
-        view_indices = np.arange(view_shape[0] * view_shape[1]).reshape(view_shape)
 
-        # print(np.flip(view_indices, (0, 1)))
-        # print(bi, ui, lj, rj)
-        # view_indices = np.flip(view_indices, (0, 1))
-        view_indices = view_indices[bi:ui, lj:rj]
-        # print(view_indices)
-        # print(repr)
-        # assert False
+def _rotate_matrix(mat: np.ndarray, direction: int):
+    def rotate_90(m: np.ndarray):
+        return np.flip(m.T, axis=1)
 
-        # view_indices = vis_observation.ravel()
-        # view_indices = dense_to_sparse(view_indices)
-        return repr, view_indices
+    if direction < 0:
+        direction += 4
 
-    def _rotate(self, bi, ui, lj, rj, direction):
-        bi *= self.i_transformation[direction - 1]
-        ui *= self.i_transformation[direction - 1]
-        lj *= self.j_transformation[direction - 1]
-        rj *= self.j_transformation[direction - 1]
-        if direction % 2 == 0:
-            bi, lj = lj, bi
-            ui, rj = rj, ui
-        if bi > ui:
-            bi, ui = ui, bi
-        if lj > rj:
-            lj, rj = rj, lj
-        return bi, ui, lj, rj
+    for _ in range(direction):
+        mat = rotate_90(mat)
+    return mat
 
-    def xy_to_ij(self, rect):
-        (lj, bi), (rj, ui) = rect
-        return (bi, -rj), (ui, -lj)
+
+def _clip_rectangle(rect, shape):
+    bot, top = rect
+    bot = MoveDynamics.clip2d(bot, shape)
+    top = MoveDynamics.clip2d(top, shape)
+    return bot, top
+
+
+def _ground_rectangle(rect, position, inverse=False):
+    # if inverse, it's opposite - get relative rectangle
+    k = 1 if not inverse else -1
+
+    def ground_point(v, p):
+        return v[0] + k * p[0], v[1] + k * p[1]
+
+    bot = ground_point(rect[0], position)
+    top = ground_point(rect[1], position)
+    return bot, top
+
+
+def _rotate_rect(rect, direction):
+    bot, top = rect
+    bot = _rotate_point(bot, direction)
+    top = _rotate_point(top, direction)
+    bot, top = _make_canonical(bot, top)
+    return bot, top
+
+
+def _make_canonical(p1, p2):
+    i1, j1 = p1
+    i2, j2 = p2
+    if i1 > i2:
+        i1, i2 = i2, i1
+    if j1 > j2:
+        j1, j2 = j2, j1
+    return (i1, j1), (i2, j2)
+
+
+def _rotate_point(p, direction):
+    def rotate_90(p):
+        i, j = p
+        return -j, i
+
+    if direction < 0:
+        direction += 4
+    for _ in range(direction):
+        p = rotate_90(p)
+    return p
+
+
+def _xy_to_ij(rect_xy):
+    (lx, by), (rx, ty) = rect_xy
+    # flip x-axis, because left and right are swapped on upside-down image
+    rect_ij = (by, -rx), (ty, -lx)
+    return rect_ij

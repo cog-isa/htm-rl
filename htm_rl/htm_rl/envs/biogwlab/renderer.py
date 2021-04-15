@@ -1,109 +1,119 @@
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Optional, Iterable, Dict
 
 import numpy as np
 
-from htm_rl.common.sdr_encoders import SdrConcatenator, IntBucketEncoder, IntArrayEncoder
-from htm_rl.envs.biogwlab.move_dynamics import MOVE_DIRECTIONS
-from htm_rl.envs.biogwlab.view_clipper import ViewClipper
+from htm_rl.common.sdr_encoders import SdrConcatenator
+from htm_rl.envs.biogwlab.module import Entity, EntityType
+from htm_rl.envs.biogwlab.view_clipper import ViewClipper, ViewClip
 
 
 class Renderer:
     output_sdr_size: int
 
     shape: Tuple[int, int]
-    view_shape: Tuple[int, int]
     render: List[str]
-    sdr_concatenator: SdrConcatenator
+    sdr_concatenator: Optional[SdrConcatenator]
     view_clipper: Optional[ViewClipper]
 
-    def __init__(self, env, render: List[str], view_rectangle=None, **renderer):
-        self.encoders = dict()
-        self._cached_renderings = dict()
-
+    def __init__(self, env, view_rectangle=None):
         self.shape = env.shape
-        self.view_shape = env.shape
         self.view_clipper = None
         if view_rectangle is not None:
             self.view_clipper = ViewClipper(env.shape, view_rectangle)
-            self.view_shape = self.view_clipper.view_shape
+        self.sdr_concatenator = None
 
-        for data_name in render:
-            if data_name == 'position':
-                n_cells = env.shape[0] * env.shape[1]
-                encoder = self.get_agent_position_renderer(env.agent, n_cells, **renderer)
-            elif data_name == 'direction':
-                encoder = self.get_agent_direction_renderer(env.agent, **renderer)
-            else:
-                encoder = self.get_renderer(env.get_module(data_name))
+    def render(self, position, view_direction, entities: Iterable[Entity]):
+        view_clip = self.make_view_clip(position, view_direction)
 
-            if encoder is not None:
-                self.encoders[data_name] = encoder
+        layers_with_size = []
+        for entity in entities:
+            if not entity.rendering:
+                continue
+            layer = entity.render(view_clip)
+            if isinstance(layer, list):
+                layers_with_size.extend(layer)
+            elif layer[1]:
+                layers_with_size.append(layer)
 
-        self.output_sdr_size = 0
-        if len(self.encoders) == 1:
-            _, encoder = list(self.encoders.values())[0]
-            self.output_sdr_size = encoder.output_sdr_size
-        else:
-            encoders = [encoder for _, encoder in self.encoders.values()]
-            self._encoding_sdr_concatenator = SdrConcatenator(encoders)
-            self.output_sdr_size = self._encoding_sdr_concatenator.output_sdr_size
+        assert layers_with_size, 'Rendering output is empty'
+        layers, sizes = zip(*layers_with_size)
 
-    def render(self, position, view_direction):
-        observation = []
+        if self.sdr_concatenator is None:
+            self.sdr_concatenator = SdrConcatenator(list(sizes))
 
-        view_clip = None
-        if self.view_clipper is not None:
-            abs_indices, view_indices = self.view_clipper.clip(position, view_direction)
-            abs_indices = abs_indices.flatten()
-            view_indices = view_indices.flatten()
-            view_clip = view_indices, abs_indices
+        observation = self.sdr_concatenator.concatenate(*layers)
+        return observation
 
-        for data_name, (entity, encoder) in self.encoders.items():
-            if data_name == 'position':
-                agent = entity
-                position_fl = self._flatten_position(agent.position)
-                encoded_data = encoder.encode(position_fl)
-            elif data_name == 'direction':
-                agent = entity
-                encoded_data = encoder.encode(agent.view_direction)
-            else:
-                encoded_data = self.render_entity(entity, encoder, view_clip)
+    def render_rgb(self, position, view_direction, entities: Dict[EntityType, List[Entity]]):
+        # fill with magenta to catch non-colored cells
+        default_filler = np.array([255, 3, 209])
 
-            observation.append(encoded_data)
+        img_map = np.empty(self.shape + (3, ), dtype=np.int)
+        img_map[:] = default_filler
 
-        if len(observation) == 1:
-            return observation[0]
-        else:
-            return self._encoding_sdr_concatenator.concatenate(*observation)
+        areas = entities[EntityType.Area]
+        # areas: light blue
+        area_color, area_dc = [117, 198, 230], [-12, -15, -6]
+        self._draw_entities(img_map, areas, area_color, area_dc)
 
-    def get_agent_position_renderer(self, agent, n_cells, **renderer):
-        return agent, IntBucketEncoder(n_values=n_cells, **renderer)
+        obstacles = entities[EntityType.Obstacle]
+        # obstacles: dark blue
+        obstacle_color, obstacle_dc = [70, 40, 100], [-7, -4, -10]
+        self._draw_entities(img_map, obstacles, obstacle_color, obstacle_dc)
 
-    def get_agent_direction_renderer(self, agent, **renderer):
-        return agent, IntBucketEncoder(n_values=len(MOVE_DIRECTIONS), **renderer)
+        # TODO: reward based coloring
+        food = entities[EntityType.Consumable]
+        # consumables: salad green
+        food_color, food_dc = [112, 212, 17], [-4, -10, 4]
+        self._draw_entities(img_map, food, food_color, food_dc)
 
-    def get_renderer(self, entity):
-        if entity.n_types == 1 and entity.mask is None:
-            return None
-        return entity, IntArrayEncoder(shape=self.view_shape, n_types=entity.n_types)
+        agent = entities[EntityType.Agent]
+        # agent: yellow
+        agent_color, agent_dc = [255, 255, 0], [0, 0, 0]
+        self._draw_entities(img_map, agent, agent_color, agent_dc)
 
-    def _flatten_position(self, position):
-        i, j = position
-        return i * self.shape[1] + j
-
-    def render_entity(self, entity, encoder, view_clip):
+        view_clip = self.make_view_clip(position, view_direction)
         if view_clip is None:
-            return encoder.encode(entity.map, entity.mask)
+            return img_map
 
-        view_indices, abs_indices = view_clip
+        img_obs = np.empty(self.view_clipper.view_shape + (3, ), dtype=np.int)
+        abs_indices = np.divmod(view_clip.abs_indices, img_map.shape[1])
+        view_indices = np.divmod(view_clip.view_indices, img_obs.shape[1])
 
-        clipped_mask = None
-        if entity.mask is not None:
-            clipped_mask = np.ones(self.view_shape, dtype=np.bool).flatten()
-            clipped_mask[view_indices] = entity.mask.flatten()[abs_indices]
+        # fill with `out-of-map` obstacles: black
+        img_obs[:] = np.array([0, 0, 0])
+        img_obs[view_indices] = img_map[abs_indices].copy()
+        img_obs = np.flip(img_obs, axis=[0, 1])     # from ij to xy
 
-        clipped_map = None
-        if entity.map is not None:
-            clipped_map = np.zeros(self.view_shape, dtype=np.int).flatten()
-            clipped_map[view_indices] = entity.map.flatten()[abs_indices]
-        return encoder.encode(clipped_map, clipped_mask)
+        # `grey`-out view area
+        img_map[abs_indices] += (.5 * (255 - img_map[abs_indices])).astype(np.int)
+
+        return [img_map, img_obs]
+
+    @property
+    def output_sdr_size(self):
+        return self.sdr_concatenator.output_sdr_size
+
+    def make_view_clip(self, position, view_direction):
+        if self.view_clipper is None:
+            return None
+        return self.view_clipper.clip(position, view_direction)
+
+    @staticmethod
+    def _draw_entities(img: np.ndarray, entities: List[Entity], color: List[int], dc: List[int]):
+        mask = np.empty(img.shape[:2], dtype=np.bool)
+        color, dc = np.array(color), np.array(dc)
+        for entity in entities:
+            mask.fill(0)
+            entity.append_mask(mask)
+            img[mask] = color
+            color += dc
+
+
+def render_mask(mask: np.ndarray, view_clip: ViewClip = None):
+    if view_clip is None:
+        return np.flatnonzero(mask), mask.size
+
+    clipped_mask = np.zeros(view_clip.shape, dtype=np.int).flatten()
+    clipped_mask[view_clip.view_indices] = mask.flatten()[view_clip.abs_indices]
+    return np.flatnonzero(clipped_mask), clipped_mask.size
