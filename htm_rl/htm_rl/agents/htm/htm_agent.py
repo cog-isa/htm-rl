@@ -201,6 +201,7 @@ class HTMAgentRunner:
         episode = 0
         animation = False
         prev_reward = 0
+        agent_pos = list()
         while episode < n_episodes:
             if train_patterns:
                 self.agent.train_patterns()
@@ -235,7 +236,7 @@ class HTMAgentRunner:
                              },
                             step=episode)
 
-                if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
+                if (((episode + 1) % log_every_episode) == 0) and (logger is not None) and (episode > 0):
                     if log_patterns:
                         if log_q_table:
                             q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
@@ -342,7 +343,6 @@ class HTMAgentRunner:
                         self.agent.hierarchy.unfreeze()
                         logger.log({'options': logger.Table(data=np.array(options_actions).reshape((-1, 1)),
                                                             columns=['actions'])}, step=episode)
-                    pic = self.environment.callmethod('render_rgb')
 
                 if ((((episode + 1) % log_every_episode) == 0) or (episode == 0)) and (logger is not None):
                     animation = True
@@ -357,12 +357,18 @@ class HTMAgentRunner:
                 total_reward += reward
 
             if animation:
-                if self.agent.hierarchy.blocks[5].made_decision:
-                    pic[pic == 24] = 30
-                    pic[self.environment.callmethod('render_rgb') == 24] = 24
+                pic = self.environment.callmethod('render_rgb')[0]
+                if self.agent.hierarchy.blocks[5].made_decision and log_options:
+                    agent_pos.append(self.environment.env.agent.position)
+                    if len(agent_pos) > 1:
+                        pic[tuple(zip(*agent_pos))] = [[255, 255, 150]]*len(agent_pos)
+                    else:
+                        pic[agent_pos[0]] = [255, 255, 255]
                 else:
-                    pic = self.environment.callmethod('render_rgb')
-                plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic, vmax=30)
+                    if len(agent_pos) > 0:
+                        agent_pos.clear()
+
+                plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic.astype('uint8'), vmax=30)
 
             action = self.agent.make_action(obs)
             self.environment.act(action)
@@ -374,7 +380,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'two_levels_16x16_obs_default'
+        default_config_name = 'two_levels_8x8_obs_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
@@ -405,13 +411,13 @@ if __name__ == '__main__':
         elif len(tokens) == 1:
             config[tokens[0]] = value
 
-    with open('../../experiments/htm_agent/htm_config_unpacked.yaml', 'w') as file:
-        yaml.dump(configure(config), file, Dumper=yaml.Dumper)
+    # with open('../../experiments/htm_agent/htm_config_unpacked.yaml', 'w') as file:
+    #     yaml.dump(configure(config), file, Dumper=yaml.Dumper)
 
     runner = HTMAgentRunner(configure(config))
     runner.agent.train_patterns()
 
-    plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', runner.environment.callmethod('render_rgb'))
+    plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', runner.environment.callmethod('render_rgb')[0].astype('uint8'))
     wandb.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png', )})
 
     if config['basal_ganglia_version'] == 1:
@@ -419,5 +425,5 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    runner.run_episodes(100, logger=wandb, log_q_table=False, log_every_episode=10, log_patterns=False,
-                        train_patterns=True, log_options=False)
+    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=10, log_patterns=False,
+                        train_patterns=True, log_options=True, log_segments=False)
