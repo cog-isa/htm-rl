@@ -1,0 +1,40 @@
+seed:
+env:
+
+# ^^^^^^^ Will be provided ^^^^^^^^^
+type: ucb
+
+.default_spatial_pooler_params: &default_spatial_pooler_params
+  synapse_permanence_deltas: [ .1, .01 ]
+  connected_permanence_threshold: .5
+  min_activation_threshold: 1
+
+agent:
+  state_sp:
+    <<: *default_spatial_pooler_params
+#    output_size: 200
+    output_dilation_ratio: 1.2
+    potential_synapses_ratio: .7
+    sparsity: .02
+    boost_strength: .3
+    boost_sliding_window: 1000
+    expected_normal_overlap_frequency: .004
+
+  action_encoder:
+    bucket_size: 4
+
+  sa_sp:
+    <<: *default_spatial_pooler_params
+    output_dilation_ratio: 2.
+    potential_synapses_ratio: .7
+    sparsity: .02
+    boost_strength: .3
+    boost_sliding_window: 2000
+    expected_normal_overlap_frequency: .004
+
+  q_network:
+    trace_decay: .8
+    visit_decay: .92
+    discount_factor: .95
+    learning_rate: [.04, .995]
+    ucb_exploration_factor: [.3, .997]
