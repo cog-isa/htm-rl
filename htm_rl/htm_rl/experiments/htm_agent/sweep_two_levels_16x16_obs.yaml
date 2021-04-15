@@ -1,4 +1,5 @@
-project: final_tests
+project: 16x16_final
+entity: htm_rl
 program: ../../agents/htm/htm_agent.py
 method: grid
 metric:

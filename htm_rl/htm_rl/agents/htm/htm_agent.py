@@ -13,12 +13,14 @@ import random
 import yaml
 import matplotlib.pyplot as plt
 import wandb
+#from memory_profiler import profile
 
 
 class BioGwLabAction:
     """
     Muscles adapter to BioGwLabEnvironment.
     """
+
     def __init__(self, muscles_size, n_actions, patterns, noise_tolerance=0.1, do_nothing_action='random'):
         self.muscles_size = muscles_size
         self.n_actions = n_actions
@@ -52,7 +54,7 @@ class HTMAgent:
 
         self.muscles = Muscles(**config['muscles'])
 
-        self.total_patterns = 2**self.action.muscles_size
+        self.total_patterns = 2 ** self.action.muscles_size
         # there is no first action
         self.action_pattern = np.empty(0)
         self.state_pattern = SDR(config['state_size'])
@@ -114,7 +116,7 @@ class HTMAgent:
         n_patterns_to_gen = np.clip(self.alpha * (self.total_patterns - len(self.hierarchy.output_block.sm)),
                                     a_min=0, a_max=self.total_patterns)
         if n_patterns_to_gen > 0:
-            return np.random.choice([0, 1], size=(int(n_patterns_to_gen), self.muscles.muscles_size//2))
+            return np.random.choice([0, 1], size=(int(n_patterns_to_gen), self.muscles.muscles_size // 2))
         else:
             return np.empty(0)
 
@@ -191,10 +193,9 @@ class HTMAgentRunner:
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
 
-    def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50, log_patterns=False, log_options=False,
+    def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50,
+                     log_patterns=False, log_options=False,
                      log_segments=True):
-        history = {'steps': list(), 'reward': list()}
-
         total_reward = 0
         steps = 0
         episode = 0
@@ -216,19 +217,23 @@ class HTMAgentRunner:
                         for i in range(steps):
                             image = imageio.imread(f'/tmp/{logger.run.id}_episode_{episode}_step_{i}.png')
                             writer.append_data(image)
-                    logger.log({f'animation': logger.Video(f'/tmp/{logger.run.id}_episode_{episode}.gif', fps=4, format='gif')}, step=episode)
-
-                history['steps'].append(steps)
-                history['reward'].append(total_reward)
+                    logger.log({f'animation': logger.Video(f'/tmp/{logger.run.id}_episode_{episode}.gif', fps=4,
+                                                           format='gif')}, step=episode)
 
                 if (logger is not None) and (episode > 0):
                     logger.log({'steps': steps, 'reward': total_reward, 'episode': episode}, step=episode)
                     if log_segments:
-                        logger.log({'basal_segments': self.agent.hierarchy.output_block.tm.basal_connections.numSegments(),
-                                    'apical_segments': self.agent.hierarchy.output_block.tm.apical_connections.numSegments(),
-                                    'exec_segments': self.agent.hierarchy.output_block.tm.exec_feedback_connections.numSegments(),
-                                    'inhib_segments': self.agent.hierarchy.output_block.tm.inhib_connections.numSegments()},
-                                   step=episode)
+                        logger.log(
+                            {'basal_segments': self.agent.hierarchy.output_block.tm.basal_connections.numSegments(),
+                             'apical_segments': self.agent.hierarchy.output_block.tm.apical_connections.numSegments(),
+                             'exec_segments': self.agent.hierarchy.output_block.tm.exec_feedback_connections.numSegments(),
+                             'inhib_segments': self.agent.hierarchy.output_block.tm.inhib_connections.numSegments(),
+                             'basal_syn': self.agent.hierarchy.output_block.tm.basal_connections.numSynapses(),
+                             'apical_syn': self.agent.hierarchy.output_block.tm.apical_connections.numSynapses(),
+                             'exec_syn': self.agent.hierarchy.output_block.tm.exec_feedback_connections.numSynapses(),
+                             'inhib_syn': self.agent.hierarchy.output_block.tm.inhib_connections.numSynapses()
+                             },
+                            step=episode)
 
                 if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
                     if log_patterns:
@@ -243,10 +248,10 @@ class HTMAgentRunner:
                         sp_action_input = SDR(self.agent.muscles.muscles_size)
                         sp_action = SDR(self.agent.hierarchy.output_block.tm.basal_columns)
                         states_patterns = np.zeros((n_states, sp_state.size))
-                        action_patterns = np.zeros((self.agent.action.n_actions-1, sp_action.size))
+                        action_patterns = np.zeros((self.agent.action.n_actions - 1, sp_action.size))
                         action_sparse_patterns = list()
 
-                        for j in range(self.agent.action.n_actions-1):
+                        for j in range(self.agent.action.n_actions - 1):
                             sp_action_input.dense = self.agent.action.patterns[j]
                             self.agent.hierarchy.output_block.sp.compute(sp_action_input, False, sp_action)
                             action_sparse_patterns.append(np.copy(sp_action.sparse))
@@ -263,26 +268,35 @@ class HTMAgentRunner:
                                     row.append(str(round(q[option][:, sp_state.sparse].mean(), 4)))
                                 table.append(row)
                         if log_q_table:
-                            logger.log({f'table': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])}, step=episode)
+                            logger.log(
+                                {f'table': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])},
+                                step=episode)
 
                         plt.imsave(f'/tmp/{logger.run.id}_states_{config["seed"]}.png', states_patterns)
-                        logger.log({'states': wandb.Image(f'/tmp/{logger.run.id}_states_{config["seed"]}.png', )}, step=episode)
+                        logger.log({'states': wandb.Image(f'/tmp/{logger.run.id}_states_{config["seed"]}.png', )},
+                                   step=episode)
 
-                        plt.imsave(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png', self.agent.hierarchy.output_block.sm.patterns)
-                        logger.log({'sm options': wandb.Image(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png', )}, step=episode)
+                        plt.imsave(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png',
+                                   self.agent.hierarchy.output_block.sm.patterns)
+                        logger.log(
+                            {'sm options': wandb.Image(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png', )},
+                            step=episode)
 
                         plt.imsave(f'/tmp/{logger.run.id}_actions_{config["seed"]}.png', action_patterns)
-                        logger.log({'actions': wandb.Image(f'/tmp/{logger.run.id}_actions_{config["seed"]}.png', )}, step=episode)
+                        logger.log({'actions': wandb.Image(f'/tmp/{logger.run.id}_actions_{config["seed"]}.png', )},
+                                   step=episode)
 
                         action_intersection = np.dot(action_patterns, action_patterns.T)
                         state_intersection = np.dot(states_patterns, states_patterns.T)
 
                         logger.log({
                             'action_intersection': logger.Table(data=action_intersection,
-                                                                        columns=[str(x) for x in range(action_patterns.shape[0])]),
+                                                                columns=[str(x) for x in
+                                                                         range(action_patterns.shape[0])]),
                             'state_intersection': logger.Table(data=state_intersection,
-                                                                       columns=[str(x) for x in range(states_patterns.shape[0])])
-                                    }, step=episode)
+                                                               columns=[str(x) for x in
+                                                                        range(states_patterns.shape[0])])
+                        }, step=episode)
 
                     if log_options:
                         output_block = self.agent.hierarchy.output_block
@@ -326,7 +340,8 @@ class HTMAgentRunner:
 
                             options_actions.append(str(actions))
                         self.agent.hierarchy.unfreeze()
-                        logger.log({'options': logger.Table(data=np.array(options_actions).reshape((-1, 1)), columns=['actions'])}, step=episode)
+                        logger.log({'options': logger.Table(data=np.array(options_actions).reshape((-1, 1)),
+                                                            columns=['actions'])}, step=episode)
                     pic = self.environment.callmethod('render_rgb')
 
                 if ((((episode + 1) % log_every_episode) == 0) or (episode == 0)) and (logger is not None):
@@ -351,11 +366,11 @@ class HTMAgentRunner:
 
             action = self.agent.make_action(obs)
             self.environment.act(action)
-        return history
 
 
 if __name__ == '__main__':
     import sys
+
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
@@ -390,20 +405,19 @@ if __name__ == '__main__':
         elif len(tokens) == 1:
             config[tokens[0]] = value
 
-    # with open('../../experiments/htm_agent/htm_config_unpacked.yaml', 'w') as file:
-    #     yaml.dump(configure(config), file, Dumper=yaml.Dumper)
+    with open('../../experiments/htm_agent/htm_config_unpacked.yaml', 'w') as file:
+        yaml.dump(configure(config), file, Dumper=yaml.Dumper)
 
     runner = HTMAgentRunner(configure(config))
     runner.agent.train_patterns()
 
     plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', runner.environment.callmethod('render_rgb'))
-    wandb.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png',)})
+    wandb.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png', )})
 
     if config['basal_ganglia_version'] == 1:
         log_q_table = False
     else:
         log_q_table = True
 
-    history = runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=10, log_patterns=False, train_patterns=True, log_options=True)
-    wandb.log({'av_steps': np.array(history['steps']).mean()})
-
+    runner.run_episodes(100, logger=wandb, log_q_table=False, log_every_episode=10, log_patterns=False,
+                        train_patterns=True, log_options=False)

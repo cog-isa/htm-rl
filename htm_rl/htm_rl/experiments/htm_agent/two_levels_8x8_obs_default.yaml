@@ -1,6 +1,7 @@
 seed: &seed 3333
 levels: 2
 basal_ganglia_version: 2
+agent: htm
 
 environment:
   seed: 989886
@@ -40,7 +41,7 @@ environment:
     early_stop: true
     episode_max_steps: 500
 
-agent:
+cagent:
   action:
     do_nothing_action: 4
     noise_tolerance: 0.4
@@ -191,9 +192,9 @@ muscles_size: 12
 spatial_memory_default:
   activation_threshold: 1
   initial_permanence: 1.0
-  overlap_threshold: 0.8
-  permanence_decrement: 0.1
-  permanence_forgetting_decrement: 0.1
+  overlap_threshold: 0.95
+  permanence_decrement: 0.01
+  permanence_forgetting_decrement: 0.01
   permanence_increment: 0.1
   permanence_threshold: 0.0
 spatial_pooler_default:

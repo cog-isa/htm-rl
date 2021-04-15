@@ -1,6 +1,7 @@
-seed: &seed 3333
+seed: &seed 1210
 levels: 2
 basal_ganglia_version: 2
+agent: htm
 
 environment:
   seed: 989886
@@ -38,12 +39,12 @@ environment:
   - 16
   terminate:
     early_stop: true
-    episode_max_steps: 500
+    episode_max_steps: 100
 
-agent:
+cagent:
   action:
     do_nothing_action: 4
-    noise_tolerance: 0.4
+    noise_tolerance: 0.05
     patterns:
     - [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
@@ -55,7 +56,7 @@ agent:
     depolarized_decrement: 0.01
     initial_permanence: 0.6
     max_segments_per_cell: 32
-    noise_tolerance: 0.4
+    noise_tolerance: 0.05
     permanence_decrement: 0.02
     permanence_increment: 0.1
     sample_size: 1.0
@@ -77,6 +78,8 @@ blocks:
       basal_columns: 1000
   1:
     bg:
+      alpha: 0.01
+      beta: 0.01
       eps: 0.02
       greedy: False
       learn_sp: False
@@ -105,13 +108,18 @@ blocks:
       basal_columns: 1000
   3:
     bg:
+      alpha: 0.1
+      beta: 0.1
       eps: 0.02
       greedy: False
       learn_sp: False
     bg_sp: null
     block:
       level: 2
-    sm: { }
+    sm:
+      permanence_decrement: 0.0
+      permanence_forgetting_decrement: 0.01
+      permanence_increment: 0.1
     sp:
       boostStrength: 0.0
       localAreaDensity: 0.02
@@ -119,7 +127,7 @@ blocks:
     tm:
       basal_columns: 1000
 
-cells_per_column: &cells_per_column 3
+cells_per_column: &cells_per_column 10
 
 hierarchy:
   block_connections: [
@@ -191,10 +199,10 @@ muscles_size: 12
 spatial_memory_default:
   activation_threshold: 1
   initial_permanence: 1.0
-  overlap_threshold: 0.8
-  permanence_decrement: 0.1
-  permanence_forgetting_decrement: 0.1
-  permanence_increment: 0.1
+  overlap_threshold: 0.95
+  permanence_decrement: 0.0
+  permanence_forgetting_decrement: 0.01
+  permanence_increment: 0.01
   permanence_threshold: 0.0
 spatial_pooler_default:
   boostStrength: 0.0
@@ -217,19 +225,19 @@ temporal_memory_default:
   apical_cells_per_column: *cells_per_column
   basal_cells_per_column: *cells_per_column
   connected_threshold: 0.5
-  initial_permanence: 0.4
-  noise_tolerance: 0.0
-  permanence_decrement: 0.02
+  initial_permanence: 0.25
+  noise_tolerance: 0.05
+  permanence_decrement: 0.01
   permanence_increment: 0.1
   predicted_segment_decrement: 0.001
   seed: *seed
-  max_segments_per_cell: 32
-  anomaly_window: 1000
-  confidence_window: 1000
+  max_segments_per_cell: 1
+  anomaly_window: 500
+  confidence_window: 500
 
 basal_ganglia_default:
-  alpha: 0.1
-  beta: 0.1
+  alpha: 0.01
+  beta: 0.01
   discount_factor: 0.95
   eps: 0.02
   gamma: 0.01
@@ -240,6 +248,6 @@ basal_ganglia_default:
 
 block_default:
   gamma: 0.95
-  predicted_boost: 0.1
-  min_feedback_boost: 0.1
-  max_feedback_boost: 0.5
+  predicted_boost: 0.0
+  min_feedback_boost: 0.05
+  max_feedback_boost: 0.1
