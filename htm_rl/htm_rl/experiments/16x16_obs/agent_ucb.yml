@@ -35,5 +35,5 @@ agent:
     trace_decay: .7
     visit_decay: .92
     discount_factor: .95
-    learning_rate: .03
+    learning_rate: [.03, 1.]
     ucb_exploration_factor: [.1, 1.]

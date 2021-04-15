@@ -1,23 +1,24 @@
 shape_xy: [16, 16]
 
 actions:
-#  - stay
   - move right
   - move down
   - move left
   - move up
 
-action_costs:
-  action_cost: -.001
-  action_weight:
-#    stay: .5
+actions_cost:
+  base_cost: -.001
+  weights:
     turn: 1.
     move: 1.
+
+rendering:
+  view_rectangle: [[-2, -2], [2, 2]]
 
 areas:
   n_types: 3
 
-obstacles:
+obstacle:
   density: .25
 
 food:
@@ -27,10 +28,3 @@ food:
 terminate:
   episode_max_steps: 500
   early_stop: true
-
-rendering:
-  view_rectangle: [[-2, -2], [2, 2]]
-  render:
-    - areas
-    - obstacles
-    - food
