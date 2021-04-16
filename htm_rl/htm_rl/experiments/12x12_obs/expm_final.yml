@@ -23,7 +23,7 @@ agent_seed:
   - 1984
 
 experiment:
-  project: test_1f_obs_8x8
+  project: test_1f_obs_12x12
   n_episodes: 500
 
 env:
@@ -32,7 +32,6 @@ env:
 agent:
   - rnd
   - ucb
-  - svpn
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab

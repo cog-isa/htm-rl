@@ -1,20 +1,21 @@
-#seed:
-#  - 851775
+seed:
+#  - 711072
+#  - 482614
 #  - 743535
-#  - 288985
 #  - 190368
-#  - 885213
-#  - 768840
-seed: 8713
-n_seeds: 40
+  - 583
+  - 885213
+  - 666373
+#seed: 8713
+#n_seeds: 40
 agent_seed:
   - 42
-#  - 1337
-#  - 1984
+  - 1337
+  - 1984
 
 experiment:
   project:
-  n_episodes: 1
+  n_episodes: 300
 
 env:
   - obs
