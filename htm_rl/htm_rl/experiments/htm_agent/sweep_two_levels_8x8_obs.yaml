@@ -1,5 +1,5 @@
-project: 8x8_final
-entity: htm_rl
+project: 8x8_new_env
+entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
 #metric:
@@ -10,16 +10,16 @@ parameters:
     values: [12312, 3333, 105482]
   environment.seed:
     values:
-      - 989886
-      - 851775
-      - 788548
-      - 764427
-      - 743535
-      - 711072
-      - 472119
+      - 333937
       - 453572
+      - 271454
+      - 989886
+      - 92165
+      - 201807
+      - 341540
       - 429951
-      - 384272
+      - 711072
+      - 482614
 command:
   - ${env}
   - python

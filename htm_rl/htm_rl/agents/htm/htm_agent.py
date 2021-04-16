@@ -218,7 +218,7 @@ class HTMAgentRunner:
                         for i in range(steps):
                             image = imageio.imread(f'/tmp/{logger.run.id}_episode_{episode}_step_{i}.png')
                             writer.append_data(image)
-                    logger.log({f'animation': logger.Video(f'/tmp/{logger.run.id}_episode_{episode}.gif', fps=4,
+                    logger.log({f'animation': logger.Video(f'/tmp/{logger.run.id}_episode_{episode}.gif', fps=2,
                                                            format='gif')}, step=episode)
 
                 if (logger is not None) and (episode > 0):
@@ -236,7 +236,7 @@ class HTMAgentRunner:
                              },
                             step=episode)
 
-                if (((episode + 1) % log_every_episode) == 0) and (logger is not None) and (episode > 0):
+                if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
                     if log_patterns:
                         if log_q_table:
                             q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2

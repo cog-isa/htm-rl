@@ -424,7 +424,12 @@ class ApicalBasalFeedbackTM:
         self.active_basal_cells.sparse = np.unique(new_active_cells.astype('uint32'))
         self.winner_basal_cells.sparse = np.unique(new_winner_cells)
 
-        anomaly = len(bursting_columns) / self.basal_columns
+        n_active_columns = self.active_columns.sparse.size
+        if n_active_columns != 0:
+            anomaly = len(bursting_columns) / n_active_columns
+        else:
+            anomaly = 1.0
+
         self.anomaly_threshold = self.anomaly_threshold + (anomaly - self.anomaly[0]) / self.anomaly_window
         self.anomaly.append(anomaly)
         self.anomaly.pop(0)

@@ -77,7 +77,7 @@ class SpatialMemory:
             overlaps = np.dot(dense_pattern, self.patterns.T)
             pattern_sizes = self.patterns.sum(axis=1)
             overlaps = overlaps / pattern_sizes
-            indices = np.flatnonzero(overlaps > self.overlap_threshold)
+            indices = np.flatnonzero(overlaps >= self.overlap_threshold)
             options = self.patterns[indices]
             # convert to list of sparse representations
             if return_indices:
