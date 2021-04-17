@@ -13,7 +13,6 @@ import random
 import yaml
 import matplotlib.pyplot as plt
 import wandb
-#from memory_profiler import profile
 
 
 class BioGwLabAction:
@@ -48,6 +47,8 @@ class BioGwLabAction:
 
 class HTMAgent:
     def __init__(self, config, hierarchy: Hierarchy):
+        self.use_intrinsic_reward = config['intrinsic_reward']
+        self.theta = config['theta']
         self.punish_reward = config['punish_reward']
         self.hierarchy = hierarchy
         self.action = BioGwLabAction(**config['action'])
@@ -85,6 +86,15 @@ class HTMAgent:
         action = self.action.get_action(action_pattern)
         return action
 
+    def get_intrinsic_reward(self):
+        confidence = self.hierarchy.blocks[2].tm.confidence[-1]
+        conf_threshold = self.hierarchy.blocks[2].confidence_threshold
+        if confidence < conf_threshold:
+            reward = conf_threshold - confidence
+        else:
+            reward = 0
+        return reward
+
     def reinforce(self, reward, pseudo_rewards=None):
         """
         Reinforce BasalGanglia.
@@ -95,6 +105,8 @@ class HTMAgent:
         List should be length of number of blocks in hierarchy.
         :return:
         """
+        if self.use_intrinsic_reward:
+            reward += (self.theta * self.get_intrinsic_reward())
         self.hierarchy.output_block.add_reward(reward)
         self.hierarchy.output_block.reinforce()
 

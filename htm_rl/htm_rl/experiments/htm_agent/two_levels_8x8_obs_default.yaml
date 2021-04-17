@@ -1,10 +1,10 @@
-seed: &seed 3333
+seed: &seed 3336
 levels: 2
 basal_ganglia_version: 2
 agent: htm
 
 environment:
-  seed: 2223
+  seed: 222
   shape_xy: [8, 8]
 
   actions_cost:
@@ -27,7 +27,7 @@ environment:
     n_types: 3
 
   obstacle:
-    density: 0.0
+    density: 0.25
 
   food:
     n_items: 1
@@ -45,6 +45,8 @@ environment:
     early_stop: true
 
 cagent:
+  intrinsic_reward: true
+  theta: 0.01
   action:
     do_nothing_action: 4
     noise_tolerance: 0.1
@@ -130,7 +132,7 @@ blocks:
     tm:
       basal_columns: 1000
 
-cells_per_column: &cells_per_column 3
+cells_per_column: &cells_per_column 1
 
 hierarchy:
   block_connections: [
