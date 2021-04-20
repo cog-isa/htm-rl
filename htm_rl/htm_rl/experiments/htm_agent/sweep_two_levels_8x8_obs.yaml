@@ -6,6 +6,9 @@ method: grid
 #  goal: minimize
 #  name: av_steps
 parameters:
+  cagent.intrinsic_reward:
+    - true
+    - false
   seed:
     values: [12312, 3333, 105482]
   environment.seed:

@@ -214,6 +214,8 @@ class HTMAgentRunner:
         animation = False
         prev_reward = 0
         agent_pos = list()
+        c_pos = None
+        p_pos = None
         while episode < n_episodes:
             if train_patterns:
                 self.agent.train_patterns()
@@ -224,9 +226,12 @@ class HTMAgentRunner:
             prev_reward = reward
 
             if is_first:
+                if episode == 89 or episode == 359:
+                    pass
+
                 if animation:
                     animation = False
-                    with imageio.get_writer(f'/tmp/{logger.run.id}_episode_{episode}.gif', mode='I') as writer:
+                    with imageio.get_writer(f'/tmp/{logger.run.id}_episode_{episode}.gif', mode='I', fps=2) as writer:
                         for i in range(steps):
                             image = imageio.imread(f'/tmp/{logger.run.id}_episode_{episode}_step_{i}.png')
                             writer.append_data(image)
@@ -368,10 +373,13 @@ class HTMAgentRunner:
                 steps += 1
                 total_reward += reward
 
+            action = self.agent.make_action(obs)
+
             if animation:
                 pic = self.environment.callmethod('render_rgb')[0]
+                c_pos = self.environment.env.agent.position
                 if self.agent.hierarchy.blocks[5].made_decision and log_options:
-                    agent_pos.append(self.environment.env.agent.position)
+                    agent_pos.append(c_pos)
                     if len(agent_pos) > 1:
                         pic[tuple(zip(*agent_pos))] = [[255, 255, 150]]*len(agent_pos)
                     else:
@@ -380,9 +388,24 @@ class HTMAgentRunner:
                     if len(agent_pos) > 0:
                         agent_pos.clear()
 
-                plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic.astype('uint8'), vmax=30)
+                draw_options = np.zeros((pic.shape[0], 3, 3))
+                c_option = self.agent.hierarchy.blocks[5].current_option
+                f_option = self.agent.hierarchy.blocks[5].failed_option
+                comp_option = self.agent.hierarchy.blocks[5].completed_option
+                self.agent.hierarchy.blocks[5].failed_option = None
+                self.agent.hierarchy.blocks[5].completed_option = None
 
-            action = self.agent.make_action(obs)
+                if c_option is not None:
+                    draw_options[c_option, 0] = [255, 255, 255]
+                if f_option is not None:
+                    draw_options[f_option, 1] = [200, 0, 0]
+                if comp_option is not None:
+                    draw_options[comp_option, 2] = [0, 0, 200]
+
+                pic = np.concatenate([pic, draw_options], axis=1)
+
+                plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic.astype('uint8'))
+
             self.environment.act(action)
 
 

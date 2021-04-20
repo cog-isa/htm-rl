@@ -162,6 +162,9 @@ class Block:
         self.k = 0
         self.gamma = gamma
         self.made_decision = False
+        self.current_option = None
+        self.failed_option = None
+        self.completed_option = None
 
         self.predicted_boost = predicted_boost
         self.min_feedback_boost = min_feedback_boost
@@ -201,6 +204,8 @@ class Block:
                 self.feedback_in_pattern = feedback_active_columns
                 self.apical_in_pattern = np.empty(0)
                 self.basal_in_pattern = np.empty(0)
+
+                self.tm.inactivate_exec_dendrites()
 
             self.anomaly = -float('inf')
             self.confidence = float('inf')
@@ -381,10 +386,13 @@ class Block:
                         self.sm.reinforce(option_values)
 
                     self.made_decision = True
+                    self.current_option = option_index
+                    self.failed_option = None
                     # jumped off a high level option
                     if not np.isin(option_index, indices):
                         self.feedback_boost = 0
                         for block in self.feedback_in:
+                            block.failed_option = block.current_option
                             block.reinforce()
 
                     if return_value:
@@ -422,6 +430,7 @@ class Block:
             self.reward = 0
 
         self.made_decision = False
+        self.current_option = None
 
     def reset(self):
         self.tm.reset()
@@ -432,6 +441,8 @@ class Block:
         self.reward = 0
         self.k = 0
         self.made_decision = False
+        self.current_option = None
+        self.failed_option = None
 
         self.should_return_exec_predictions = False
         self.should_return_apical_predictions = False
@@ -593,6 +604,7 @@ class Hierarchy:
             # end of an option
             if block.anomaly <= block.anomaly_threshold:
                 for block in block.feedback_in:
+                    block.completed_option = block.current_option
                     block.reinforce()
 
         # logging
