@@ -2,7 +2,7 @@ import numpy as np
 from htm.bindings.sdr import SDR
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm.bindings.algorithms import SpatialPooler
-from htm_rl.agents.htm.basal_ganglia import BasalGanglia
+from htm_rl.agents.htm.basal_ganglia import BasalGanglia2
 import os
 import pickle
 
@@ -101,7 +101,7 @@ class Block:
     """
     tm: ApicalBasalFeedbackTM
     sp: SpatialPooler
-    bg: BasalGanglia
+    bg: BasalGanglia2
     sm: SpatialMemory
 
     def __init__(self,
@@ -393,10 +393,16 @@ class Block:
                         self.feedback_boost = 0
                         for block in self.feedback_in:
                             block.failed_option = block.current_option
-                            block.reinforce()
+                            k = block.k
+                            if k == 0:
+                                block.bg.current_option = None
+                                block.bg.current_condition = None
+                            else:
+                                block.reinforce()
+                            block.reinforce(external_value=option_value[1])
 
                     if return_value:
-                        return option, option_value
+                        return option, option_value[0]
                     else:
                         return option
                 else:
@@ -423,11 +429,13 @@ class Block:
             self.reward += (self.gamma ** self.k) * reward
             self.k += 1
 
-    def reinforce(self):
+    def reinforce(self, external_value=None):
         if (self.k != 0) and self.made_decision and (self.bg is not None):
-            self.bg.force_dopamine(self.reward)
+            self.bg.force_dopamine(self.reward, k=self.k)
             self.k = 0
             self.reward = 0
+        elif (external_value is not None) and (self.bg is not None):
+            self.bg.force_dopamine(self.reward, next_external_value=external_value)
 
         self.made_decision = False
         self.current_option = None

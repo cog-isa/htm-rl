@@ -154,6 +154,8 @@ class BasalGanglia2:
         self.w_stn = w_stn
 
         self._stn = np.zeros(input_size)
+        self.previous_reward = 0
+        self.previous_k = 1
         self.current_option = None
         self.previous_option = None
         self.current_condition = None
@@ -227,15 +229,15 @@ class BasalGanglia2:
         norm_option_values /= (norm_option_values.max() + 1e-12)
         answer = [options[option_index]]
         for flag, result in zip((return_option_value, return_values, return_index),
-                                (norm_option_values[option_index], norm_option_values, option_index)):
+                                ((norm_option_values[option_index], option_values[option_index]), norm_option_values, option_index)):
             if flag:
                 answer.append(result)
         return answer
 
-    def force_dopamine(self, reward: float):
+    def force_dopamine(self, reward: float, k=1, next_external_value=0):
         if (self.previous_option is not None) and (self.previous_option.size > 0) and (self.previous_condition.size > 0):
 
-            next_value = 0.0
+            next_value = next_external_value
 
             prev_values = np.mean((self.input_weights_d1[self.previous_option] - self.input_weights_d2[self.previous_option])[:, self.previous_condition], axis=-1)
 
@@ -243,13 +245,15 @@ class BasalGanglia2:
                 next_values = np.mean((self.input_weights_d1[self.current_option] - self.input_weights_d2[self.current_option])[:, self.current_condition], axis=-1)
                 next_value = np.median(next_values)
 
-            deltas = (reward/self.previous_option.size + self.discount_factor * next_value) - prev_values
+            deltas = (self.previous_reward/self.previous_option.size + (self.discount_factor**self.previous_k) * next_value) - prev_values
 
             self.input_weights_d1[self.previous_option.reshape((-1, 1)), self.previous_condition] += (self.alpha * deltas).reshape((-1, 1))
             self.input_weights_d2[self.previous_option.reshape((-1, 1)), self.previous_condition] -= (self.beta * deltas).reshape((-1, 1))
 
         self.previous_option = copy.deepcopy(self.current_option)
         self.previous_condition = copy.deepcopy(self.current_condition)
+        self.previous_reward = reward
+        self.previous_k = k
         self.current_option = None
         self.current_condition = None
 
@@ -258,6 +262,8 @@ class BasalGanglia2:
         self.previous_option = None
         self.current_condition = None
         self.previous_condition = None
+        self.previous_k = 1
+        self.previous_reward = 0
 
 
 class BasalGanglia3:

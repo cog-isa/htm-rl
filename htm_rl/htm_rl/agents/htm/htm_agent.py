@@ -212,23 +212,16 @@ class HTMAgentRunner:
         steps = 0
         episode = 0
         animation = False
-        prev_reward = 0
         agent_pos = list()
-        c_pos = None
-        p_pos = None
         while episode < n_episodes:
             if train_patterns:
                 self.agent.train_patterns()
 
             reward, obs, is_first = self.environment.observe()
 
-            self.agent.reinforce(prev_reward)
-            prev_reward = reward
+            self.agent.reinforce(reward)
 
             if is_first:
-                if episode == 89 or episode == 359:
-                    pass
-
                 if animation:
                     animation = False
                     with imageio.get_writer(f'/tmp/{logger.run.id}_episode_{episode}.gif', mode='I', fps=2) as writer:
