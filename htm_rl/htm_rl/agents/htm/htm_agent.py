@@ -15,6 +15,9 @@ import matplotlib.pyplot as plt
 import wandb
 
 
+actions_disp = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
+
 class BioGwLabAction:
     """
     Muscles adapter to BioGwLabEnvironment.
@@ -373,32 +376,46 @@ class HTMAgentRunner:
 
             if animation:
                 pic = self.environment.callmethod('render_rgb')[0]
-                c_pos = self.environment.env.agent.position
-                if self.agent.hierarchy.blocks[5].made_decision and draw_options:
-                    agent_pos.append(c_pos)
-                    if len(agent_pos) > 1:
-                        pic[tuple(zip(*agent_pos))] = [[255, 255, 150]]*len(agent_pos)
+                if draw_options:
+                    c_pos = self.environment.env.agent.position
+                    if self.agent.hierarchy.blocks[5].made_decision:
+                        agent_pos.append(c_pos)
+                        if len(agent_pos) > 1:
+                            pic[tuple(zip(*agent_pos))] = [[255, 255, 150]]*len(agent_pos)
+                        else:
+                            pic[agent_pos[0]] = [255, 255, 255]
                     else:
-                        pic[agent_pos[0]] = [255, 255, 255]
-                else:
-                    if len(agent_pos) > 0:
-                        agent_pos.clear()
+                        if len(agent_pos) > 0:
+                            agent_pos.clear()
 
-                term_draw_options = np.zeros((pic.shape[0], 3, 3))
-                c_option = self.agent.hierarchy.blocks[5].current_option
-                f_option = self.agent.hierarchy.blocks[5].failed_option
-                comp_option = self.agent.hierarchy.blocks[5].completed_option
-                self.agent.hierarchy.blocks[5].failed_option = None
-                self.agent.hierarchy.blocks[5].completed_option = None
+                    term_draw_options = np.zeros((pic.shape[0], 3, 3))
+                    c_option = self.agent.hierarchy.blocks[5].current_option
+                    f_option = self.agent.hierarchy.blocks[5].failed_option
+                    comp_option = self.agent.hierarchy.blocks[5].completed_option
+                    self.agent.hierarchy.blocks[5].failed_option = None
+                    self.agent.hierarchy.blocks[5].completed_option = None
 
-                if c_option is not None:
-                    term_draw_options[c_option, 0] = [255, 255, 255]
-                if f_option is not None:
-                    term_draw_options[f_option, 1] = [200, 0, 0]
-                if comp_option is not None:
-                    term_draw_options[comp_option, 2] = [0, 0, 200]
+                    if c_option is not None:
+                        term_draw_options[c_option, 0] = [255, 255, 255]
+                    if f_option is not None:
+                        term_draw_options[f_option, 1] = [200, 0, 0]
+                    if comp_option is not None:
+                        term_draw_options[comp_option, 2] = [0, 0, 200]
 
-                pic = np.concatenate([pic, term_draw_options], axis=1)
+                    if self.agent.hierarchy.output_block.predicted_options is not None:
+                        for o in self.agent.hierarchy.output_block.predicted_options:
+                            predicted_action_pattern = np.flatnonzero(self.agent.hierarchy.output_block.sm.patterns[o])
+                            self.agent.muscles.set_active_input(predicted_action_pattern)
+                            self.agent.muscles.depolarize_muscles()
+                            action_pattern = self.agent.muscles.get_depolarized_muscles()
+                            # convert muscles activation pattern to environment action
+                            a = self.agent.action.get_action(action_pattern)
+                            disp = actions_disp[a]
+                            new_row = c_pos[0] + disp[0]
+                            new_col = c_pos[1] + disp[1]
+                            if (new_row < pic.shape[0]) and (new_col < pic.shape[1]):
+                                pic[new_row, new_col] = [255, 200, 120]
+                    pic = np.concatenate([pic, term_draw_options], axis=1)
 
                 plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic.astype('uint8'))
 
@@ -459,5 +476,5 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=100, log_patterns=False,
+    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=10, log_patterns=False,
                         train_patterns=True, log_options=False, log_segments=False, draw_options=True)

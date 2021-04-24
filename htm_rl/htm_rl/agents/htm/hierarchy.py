@@ -165,6 +165,7 @@ class Block:
         self.current_option = None
         self.failed_option = None
         self.completed_option = None
+        self.predicted_options = None
 
         self.predicted_boost = predicted_boost
         self.min_feedback_boost = min_feedback_boost
@@ -388,6 +389,7 @@ class Block:
                     self.made_decision = True
                     self.current_option = option_index
                     self.failed_option = None
+                    self.predicted_options = indices
                     # jumped off a high level option
                     if not np.isin(option_index, indices):
                         self.feedback_boost = 0
