@@ -87,10 +87,12 @@ class HTMAgent:
         return action
 
     def get_intrinsic_reward(self):
-        confidence = self.hierarchy.blocks[2].tm.confidence[-1]
+        confidence = self.hierarchy.blocks[2].tm.confidence[-2]
         conf_threshold = self.hierarchy.blocks[2].confidence_threshold
-        if confidence < conf_threshold:
-            reward = conf_threshold - confidence
+        anomaly = self.hierarchy.blocks[2].tm.anomaly[-1]
+        anomaly_threshold = self.hierarchy.blocks[2].tm.anomaly_threshold
+        if (anomaly > anomaly_threshold) and (confidence > conf_threshold):
+            reward = anomaly - anomaly_threshold
         else:
             reward = 0
         return reward
@@ -207,7 +209,7 @@ class HTMAgentRunner:
 
     def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50,
                      log_patterns=False, log_options=False,
-                     log_segments=True):
+                     log_segments=False, draw_options=False):
         total_reward = 0
         steps = 0
         episode = 0
@@ -356,6 +358,7 @@ class HTMAgentRunner:
 
                 if ((((episode + 1) % log_every_episode) == 0) or (episode == 0)) and (logger is not None):
                     animation = True
+                    agent_pos.clear()
 
                 self.agent.reset()
 
@@ -371,7 +374,7 @@ class HTMAgentRunner:
             if animation:
                 pic = self.environment.callmethod('render_rgb')[0]
                 c_pos = self.environment.env.agent.position
-                if self.agent.hierarchy.blocks[5].made_decision and log_options:
+                if self.agent.hierarchy.blocks[5].made_decision and draw_options:
                     agent_pos.append(c_pos)
                     if len(agent_pos) > 1:
                         pic[tuple(zip(*agent_pos))] = [[255, 255, 150]]*len(agent_pos)
@@ -381,7 +384,7 @@ class HTMAgentRunner:
                     if len(agent_pos) > 0:
                         agent_pos.clear()
 
-                draw_options = np.zeros((pic.shape[0], 3, 3))
+                term_draw_options = np.zeros((pic.shape[0], 3, 3))
                 c_option = self.agent.hierarchy.blocks[5].current_option
                 f_option = self.agent.hierarchy.blocks[5].failed_option
                 comp_option = self.agent.hierarchy.blocks[5].completed_option
@@ -389,13 +392,13 @@ class HTMAgentRunner:
                 self.agent.hierarchy.blocks[5].completed_option = None
 
                 if c_option is not None:
-                    draw_options[c_option, 0] = [255, 255, 255]
+                    term_draw_options[c_option, 0] = [255, 255, 255]
                 if f_option is not None:
-                    draw_options[f_option, 1] = [200, 0, 0]
+                    term_draw_options[f_option, 1] = [200, 0, 0]
                 if comp_option is not None:
-                    draw_options[comp_option, 2] = [0, 0, 200]
+                    term_draw_options[comp_option, 2] = [0, 0, 200]
 
-                pic = np.concatenate([pic, draw_options], axis=1)
+                pic = np.concatenate([pic, term_draw_options], axis=1)
 
                 plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic.astype('uint8'))
 
@@ -412,7 +415,10 @@ if __name__ == '__main__':
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
-    wandb.init(project='basal_ganglia', config=config)
+    if len(sys.argv) > 1:
+        wandb.init(config=config)
+    else:
+        wandb.init(project='basal_ganglia', config=config)
 
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
@@ -453,5 +459,5 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=10, log_patterns=False,
-                        train_patterns=True, log_options=True, log_segments=False)
+    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=100, log_patterns=False,
+                        train_patterns=True, log_options=False, log_segments=False, draw_options=True)

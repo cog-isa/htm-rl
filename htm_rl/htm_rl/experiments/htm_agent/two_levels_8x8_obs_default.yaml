@@ -4,7 +4,7 @@ basal_ganglia_version: 2
 agent: htm
 
 environment:
-  seed: 2223
+  seed: 222
   shape_xy: [8, 8]
 
   actions_cost:
@@ -27,7 +27,7 @@ environment:
     n_types: 3
 
   obstacle:
-    density: 0.05
+    density: 0.25
 
   food:
     n_items: 1
@@ -46,7 +46,7 @@ environment:
 
 cagent:
   intrinsic_reward: false
-  theta: 0.001
+  theta: 0.05
   action:
     do_nothing_action: 4
     noise_tolerance: 0.1

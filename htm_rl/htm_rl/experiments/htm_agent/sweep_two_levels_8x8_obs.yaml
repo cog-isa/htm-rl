@@ -1,4 +1,4 @@
-project: 8x8_new_env
+project: 8x8_intrinsic
 entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
@@ -6,11 +6,8 @@ method: grid
 #  goal: minimize
 #  name: av_steps
 parameters:
-  cagent.intrinsic_reward:
-    - true
-    - false
   seed:
-    values: [12312, 3333, 105482]
+    values: [12312, 3333, 33241]
   environment.seed:
     values:
       - 333937
