@@ -476,5 +476,5 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=10, log_patterns=False,
+    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=100, log_patterns=False,
                         train_patterns=True, log_options=False, log_segments=False, draw_options=True)

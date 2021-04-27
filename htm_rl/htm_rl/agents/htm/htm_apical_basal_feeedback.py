@@ -1,4 +1,4 @@
-from htm.advanced.algorithms.connections import Connections
+from htm_rl.agents.htm.connections import Connections
 from htm.bindings.sdr import SDR
 from htm.advanced.support.numpy_helpers import setCompare, argmaxMulti, getAllCellsInColumns
 import numpy as np
