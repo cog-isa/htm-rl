@@ -58,7 +58,8 @@ class SvpnAgent(UcbAgent):
     def act(self, reward: float, state: SparseSdr, first: bool):
         s = self.state_sp.compute(state, learn=True)
 
-        if not first:
+        # 2nd condition - to prevent inevitable useless planning in the end
+        if not first or reward <= 0:
             self._update_reward_model(s, reward)
             if self.first_planning_episode <= self.episode < self.last_planning_episode:
                 for i in range(self.n_prediction_rollouts):
