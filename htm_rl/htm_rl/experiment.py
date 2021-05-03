@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict
 
 from tqdm import trange
+import numpy as np
 
 from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
 from htm_rl.agents.agent import Agent
@@ -94,6 +95,8 @@ class Experiment:
             step += 1
             total_reward += reward
 
+        # print(np.mean(agent.mean_visited_count))
+        agent.mean_visited_count.clear()
         return step, total_reward
 
     @staticmethod

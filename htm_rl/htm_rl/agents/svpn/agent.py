@@ -15,7 +15,7 @@ class SvpnAgent(UcbAgent):
     sa_transition_model: TransitionModel
     reward_model: np.ndarray
 
-    learning_rate: float
+    r_learning_rate: float
     first_planning_episode: int
     last_planning_episode: Optional[int]
     prediction_depth: int
@@ -30,7 +30,7 @@ class SvpnAgent(UcbAgent):
             n_prediction_rollouts: int,
             first_planning_episode: int,
             last_planning_episode: int = None,
-            learning_rate: float = None,
+            r_learning_rate: float = None,
             **ucb_agent_kwargs
     ):
         super().__init__(env, seed, **ucb_agent_kwargs)
@@ -44,10 +44,11 @@ class SvpnAgent(UcbAgent):
         self.n_prediction_rollouts = n_prediction_rollouts
         self.first_planning_episode = first_planning_episode
         self.last_planning_episode = isnone(last_planning_episode, 999999)
-        self.learning_rate = isnone(learning_rate, self.q_network.learning_rate)
+        self.r_learning_rate = r_learning_rate
         self.episode = 0
         self.cnt = 0
         self.rng = np.random.default_rng(seed)
+        self.mean_visited_count = []
 
     @property
     def name(self):
@@ -84,6 +85,7 @@ class SvpnAgent(UcbAgent):
 
         self._current_sa = actions[action]
         self._update_transition_model(s, action, learn_tm=True)
+        # self.mean_visited_count.append(self.q_network.cell_visit_count[state].mean())
         return action
 
     def dream(self, reward: float, state: SparseSdr, depth: int):
@@ -95,14 +97,17 @@ class SvpnAgent(UcbAgent):
                 break
 
             visit_count = self.q_network.cell_visit_count[state].mean()
-            if i == 0 and not 0.7 / (i+1)**.4 < visit_count <= 1.8:
+            if i == 0 and visit_count > 4.:
                 break
 
             if i == 0:
                 self.cnt += 1
                 self.sa_transition_model.save_tm_state()
                 backup_sa = self._current_sa
-                self.q_network.learning_rate /= lr_factor
+                self.q_network.learning_rate = (
+                    self.q_network.learning_rate[0]/lr_factor,
+                    self.q_network.learning_rate[1]
+                )
                 dreaming = True
 
             reward = self.reward_model[state].mean()
@@ -113,13 +118,17 @@ class SvpnAgent(UcbAgent):
             state = self._extract_state_from_s_a(s_a_next_superposition)
 
         if dreaming:
-            self.q_network.learning_rate *= lr_factor
+            self.q_network.learning_rate = (
+                self.q_network.learning_rate[0]*lr_factor,
+                self.q_network.learning_rate[1]
+            )
             self._current_sa = backup_sa
             self.sa_transition_model.restore_tm_state()
+            # print(i)
 
     def _act_in_dream(self, reward, s: SparseSdr):
         actions = self._encode_actions(s)
-        if self.rng.random() < .3:
+        if self.rng.random() < .1:
             action = self.rng.choice(len(actions))
         else:
             action = self.q_network.choose(actions)
@@ -149,7 +158,8 @@ class SvpnAgent(UcbAgent):
         return self.sa_transition_model.process(s_a, learn=learn_tm)
 
     def _update_reward_model(self, s: SparseSdr, reward: float):
-        self.reward_model *= 1 - self.learning_rate
+        r_learning_rate = isnone(self.r_learning_rate, self.q_network.learning_rate[0])
+        self.reward_model *= 1 - r_learning_rate
         self.reward_model[s] += reward
 
     def _extract_state_from_s_a(self, s_a: SparseSdr):
