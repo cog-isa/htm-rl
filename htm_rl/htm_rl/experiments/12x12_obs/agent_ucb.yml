@@ -31,7 +31,7 @@ agent:
     boost_sliding_window: 4000
     expected_normal_overlap_frequency: .001
 
-  q_network:
+  sqvn:
     trace_decay: .75
     visit_decay: .994
     discount_factor: .96

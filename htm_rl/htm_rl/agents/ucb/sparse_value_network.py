@@ -95,10 +95,10 @@ class SparseValueNetwork:
     def _update_eligibility_trace(self, sa: SparseSdr):
         E = self.cell_eligibility_trace
         lambda_, gamma = self.trace_decay, self.discount_factor
-        exp_avg_update_slice(E, sa, lambda_ * gamma, 1.)
+        exp_sum_update_slice(E, sa, lambda_ * gamma, 1.)
 
     def _update_cell_visit_counter(self, sa: SparseSdr):
-        exp_avg_update_slice(self.cell_visit_count, sa, self.visit_decay, 1.)
+        exp_sum_update_slice(self.cell_visit_count, sa, self.visit_decay, 1.)
 
     # noinspection PyPep8Naming
     def _ucb_upper_bound_term(self, cells_sdr, total_visits):
@@ -125,12 +125,12 @@ class SparseValueNetwork:
         self.learning_rate = exp_decay(self.learning_rate)
 
 
-def exp_avg_update(a, decay, x):
+def exp_sum_update(a, decay, x):
     a *= decay
     a += x
 
 
-def exp_avg_update_slice(arr, ind, decay, x):
+def exp_sum_update_slice(arr, ind, decay, x):
     arr *= decay
     arr[ind] += x
 
