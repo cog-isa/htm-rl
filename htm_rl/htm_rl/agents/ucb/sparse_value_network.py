@@ -4,7 +4,6 @@ import numpy as np
 from numpy.random._generator import Generator
 
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import trace
 
 
 class SparseValueNetwork:
@@ -17,7 +16,6 @@ class SparseValueNetwork:
     cell_visit_count: np.ndarray
     cell_value: np.ndarray
     visit_decay: float
-    reward_bounds: Tuple[float, float]
 
     cell_eligibility_trace: np.ndarray
 
@@ -42,16 +40,11 @@ class SparseValueNetwork:
         # self.cell_value = np.full(cells_sdr_size, 0., dtype=np.float)
         self.cell_value = self._rng.uniform(-1e-4, 1e-4, size=cells_sdr_size)
         self.cell_eligibility_trace = np.zeros(cells_sdr_size, dtype=np.float)
-        self.reward_bounds = 0., 1.
         self.TD_error = 0.
 
     # noinspection PyTypeChecker
     def choose(self, options: List[SparseSdr], greedy=False) -> int:
-        total_visits, reward_range = None, None
-        if not greedy:
-            total_visits = self._total_visits(options)
-            reward_range = self.reward_bounds[1] - self.reward_bounds[0]
-
+        total_visits = None
         option_values = []
         for option in options:
             if len(option) == 0:
@@ -60,7 +53,9 @@ class SparseValueNetwork:
 
             value = self.cell_value[option]
             if not greedy:
-                value += self._ucb_upper_bound_term(option, total_visits) * reward_range
+                if total_visits is None:
+                    total_visits = self._total_visits(options)
+                value += self._ucb_upper_bound_term(option, total_visits)
 
             option_values.append(value.mean())
 
@@ -86,8 +81,7 @@ class SparseValueNetwork:
         V_sa = V[sa].mean()
         V_sa_next = V[sa_next].mean()
 
-        E *= lambda_ * gamma
-        E[sa] += 1.
+        exp_avg_update_slice(E, sa, lambda_ * gamma, 1.)
 
         TD_error = R + gamma * V_sa_next - V_sa
         self.TD_error = TD_error
@@ -108,8 +102,7 @@ class SparseValueNetwork:
         V[sa] += lr * TD_error
 
     def _update_cell_visit_counter(self, sa: SparseSdr):
-        self.cell_visit_count *= self.visit_decay
-        self.cell_visit_count[sa] += 1.
+        exp_avg_update_slice(self.cell_visit_count, sa, self.visit_decay, 1.)
 
     def _update_reward_bounds(self, reward: float):
         low, high = self.reward_bounds
@@ -143,8 +136,20 @@ class SparseValueNetwork:
 
     def reset(self):
         self.cell_eligibility_trace.fill(0.)
+        self.ucb_exploration_factor = exp_decay(self.ucb_exploration_factor)
+        self.learning_rate = exp_decay(self.learning_rate)
 
-        alpha, decay = self.ucb_exploration_factor
-        self.ucb_exploration_factor = alpha * decay, decay
-        alpha, decay = self.learning_rate
-        self.learning_rate = alpha * decay, decay
+
+def exp_avg_update(a, decay, x):
+    a *= decay
+    a += x
+
+
+def exp_avg_update_slice(arr, ind, decay, x):
+    arr *= decay
+    arr[ind] += x
+
+
+def exp_decay(t_alpha_decay):
+    alpha, decay = t_alpha_decay
+    return alpha * decay, decay
