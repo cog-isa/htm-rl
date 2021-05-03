@@ -43,6 +43,7 @@ class SparseValueNetwork:
         self.cell_value = self._rng.uniform(-1e-4, 1e-4, size=cells_sdr_size)
         self.cell_eligibility_trace = np.zeros(cells_sdr_size, dtype=np.float)
         self.reward_bounds = 0., 1.
+        self.TD_error = 0.
 
     # noinspection PyTypeChecker
     def choose(self, options: List[SparseSdr], greedy=False) -> int:
@@ -89,6 +90,7 @@ class SparseValueNetwork:
         E[sa] += 1.
 
         TD_error = R + gamma * V_sa_next - V_sa
+        self.TD_error = TD_error
         V += lr * TD_error * E
 
     # noinspection PyPep8Naming
@@ -102,6 +104,7 @@ class SparseValueNetwork:
         V_sa_next = V[sa_next].mean()
 
         TD_error = R + gamma * V_sa_next - V_sa
+        self.TD_error = TD_error
         V[sa] += lr * TD_error
 
     def _update_cell_visit_counter(self, sa: SparseSdr):

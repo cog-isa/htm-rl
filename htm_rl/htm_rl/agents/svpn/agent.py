@@ -1,11 +1,12 @@
 from typing import Dict, Tuple, Optional
 
 import numpy as np
+from numpy.random import Generator
 
 from htm_rl.agents.svpn.model import TransitionModel
 from htm_rl.agents.ucb.agent import UcbAgent
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import isnone
+from htm_rl.common.utils import isnone, clip
 from htm_rl.envs.env import Env
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
@@ -21,6 +22,7 @@ class SvpnAgent(UcbAgent):
     prediction_depth: int
     n_prediction_rollouts: int
 
+    rng: Generator
     _episode: int
 
     def __init__(
@@ -48,7 +50,6 @@ class SvpnAgent(UcbAgent):
         self.episode = 0
         self.cnt = 0
         self.rng = np.random.default_rng(seed)
-        self.mean_visited_count = []
 
     @property
     def name(self):
@@ -85,7 +86,6 @@ class SvpnAgent(UcbAgent):
 
         self._current_sa = actions[action]
         self._update_transition_model(s, action, learn_tm=True)
-        # self.mean_visited_count.append(self.q_network.cell_visit_count[state].mean())
         return action
 
     def dream(self, reward: float, state: SparseSdr, depth: int):
@@ -96,11 +96,12 @@ class SvpnAgent(UcbAgent):
             if len(state) < .7 * init_len:
                 break
 
-            visit_count = self.q_network.cell_visit_count[state].mean()
-            if i == 0 and visit_count > 4.:
-                break
-
             if i == 0:
+                td_error = self.q_network.TD_error
+                planning_prob = clip(abs(td_error) / 2., 1.)
+                if not self.rng.random() < planning_prob:
+                    break
+
                 self.cnt += 1
                 self.sa_transition_model.save_tm_state()
                 backup_sa = self._current_sa

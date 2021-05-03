@@ -33,16 +33,16 @@ agent:
 
   q_network:
     trace_decay: .75
-    visit_decay: .997
+    visit_decay: .994
     discount_factor: .96
-    learning_rate: [.03, .995]
+    learning_rate: [.04, .995]
     ucb_exploration_factor: [.5, .994]
 
 #  r_learning_rate: .04
-  first_planning_episode: 10
+  first_planning_episode: 0
   last_planning_episode: 2000
   prediction_depth: 8
-  n_prediction_rollouts: 2
+  n_prediction_rollouts: 1
 
   tm:
     cells_per_column: 1

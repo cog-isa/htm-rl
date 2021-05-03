@@ -95,8 +95,6 @@ class Experiment:
             step += 1
             total_reward += reward
 
-        # print(np.mean(agent.mean_visited_count))
-        agent.mean_visited_count.clear()
         return step, total_reward
 
     @staticmethod
