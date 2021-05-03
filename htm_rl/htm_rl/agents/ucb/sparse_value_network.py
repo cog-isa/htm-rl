@@ -62,58 +62,43 @@ class SparseValueNetwork:
         option_index: int = np.argmax(option_values)
         return option_index
 
+    # noinspection PyPep8Naming
     def update(self, sa: SparseSdr, reward: float, sa_next: SparseSdr, td_lambda=True):
-        # self._update_reward_bounds(reward)
+        # TODO: better turn it off for dreaming
         if td_lambda:
             self._update_cell_visit_counter(sa)
-            self._update_cell_value(sa, reward, sa_next)
+
+        lr, _ = self.learning_rate
+        Q = self.cell_value
+        TD_error = self._td_error(sa, reward, sa_next)
+
+        if td_lambda:
+            self._update_eligibility_trace(sa)
+            E = self.cell_eligibility_trace
+            Q += lr * TD_error * E
         else:
-            self._update_cell_value_td_0(sa, reward, sa_next)
+            Q[sa] += lr * TD_error
 
     # noinspection PyPep8Naming
-    def _update_cell_value(self, sa: SparseSdr, reward: float, sa_next: SparseSdr):
-        lr, _ = self.learning_rate
-        lambda_, gamma = self.trace_decay, self.discount_factor
-        R = reward
-        V = self.cell_value
-        E = self.cell_eligibility_trace
-
-        V_sa = V[sa].mean()
-        V_sa_next = V[sa_next].mean()
-
-        exp_avg_update_slice(E, sa, lambda_ * gamma, 1.)
-
-        TD_error = R + gamma * V_sa_next - V_sa
-        self.TD_error = TD_error
-        V += lr * TD_error * E
-
-    # noinspection PyPep8Naming
-    def _update_cell_value_td_0(self, sa: SparseSdr, reward: float, sa_next: SparseSdr):
-        lr, _ = self.learning_rate
+    def _td_error(self, sa: SparseSdr, reward: float, sa_next: SparseSdr):
         gamma = self.discount_factor
         R = reward
-        V = self.cell_value
+        Q = self.cell_value
 
-        V_sa = V[sa].mean()
-        V_sa_next = V[sa_next].mean()
+        Q_sa = Q[sa].mean()
+        Q_sa_next = Q[sa_next].mean()
 
-        TD_error = R + gamma * V_sa_next - V_sa
-        self.TD_error = TD_error
-        V[sa] += lr * TD_error
+        TD_error = R + gamma * Q_sa_next - Q_sa
+        return TD_error
+
+    # noinspection PyPep8Naming
+    def _update_eligibility_trace(self, sa: SparseSdr):
+        E = self.cell_eligibility_trace
+        lambda_, gamma = self.trace_decay, self.discount_factor
+        exp_avg_update_slice(E, sa, lambda_ * gamma, 1.)
 
     def _update_cell_visit_counter(self, sa: SparseSdr):
         exp_avg_update_slice(self.cell_visit_count, sa, self.visit_decay, 1.)
-
-    def _update_reward_bounds(self, reward: float):
-        low, high = self.reward_bounds
-        if low <= reward <= high:
-            return
-
-        if reward < low:
-            low = reward
-        else:
-            high = reward
-        self.reward_bounds = low, high
 
     # noinspection PyPep8Naming
     def _ucb_upper_bound_term(self, cells_sdr, total_visits):

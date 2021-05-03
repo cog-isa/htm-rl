@@ -4,6 +4,7 @@ import numpy as np
 from numpy.random import Generator
 
 from htm_rl.agents.svpn.model import TransitionModel
+from htm_rl.agents.svpn.sparse_value_network import SparseValueNetwork
 from htm_rl.agents.ucb.agent import UcbAgent
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import isnone, clip
@@ -13,6 +14,8 @@ from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 class SvpnAgent(UcbAgent):
     """Sparse Value Prediction Network Agent"""
+    SparseValueNetwork = SparseValueNetwork
+
     sa_transition_model: TransitionModel
     reward_model: np.ndarray
 
@@ -66,19 +69,19 @@ class SvpnAgent(UcbAgent):
                     self.dream(reward, s, depth=self.prediction_depth)
         else:
             self.episode += 1
-            self.q_network.reset()
+            self.sqvn.reset()
             self.cnt = 0
 
         actions = self._encode_actions(s)
-        action = self.q_network.choose(actions)
+        action = self.sqvn.choose(actions)
 
         if not first:
             # process feedback
             prev_sa_sdr = self._current_sa
-            greedy_action = self.q_network.choose(actions, greedy=True)
+            greedy_action = self.sqvn.choose(actions, greedy=True)
             greedy_sa_sdr = actions[greedy_action]
 
-            self.q_network.update(
+            self.sqvn.update(
                 sa=prev_sa_sdr,
                 reward=reward,
                 sa_next=greedy_sa_sdr,
@@ -98,7 +101,7 @@ class SvpnAgent(UcbAgent):
                 break
 
             if i == 0:
-                td_error = self.q_network.TD_error
+                td_error = self.sqvn.TD_error
                 planning_prob = clip(abs(td_error) / 2., 1.)
                 if not self.rng.random() < planning_prob:
                     break
@@ -106,9 +109,9 @@ class SvpnAgent(UcbAgent):
                 self.cnt += 1
                 self.sa_transition_model.save_tm_state()
                 backup_sa = self._current_sa
-                self.q_network.learning_rate = (
-                    self.q_network.learning_rate[0]/lr_factor,
-                    self.q_network.learning_rate[1]
+                self.sqvn.learning_rate = (
+                    self.sqvn.learning_rate[0] / lr_factor,
+                    self.sqvn.learning_rate[1]
                 )
                 dreaming = True
 
@@ -120,9 +123,9 @@ class SvpnAgent(UcbAgent):
             state = self._extract_state_from_s_a(s_a_next_superposition)
 
         if dreaming:
-            self.q_network.learning_rate = (
-                self.q_network.learning_rate[0]*lr_factor,
-                self.q_network.learning_rate[1]
+            self.sqvn.learning_rate = (
+                self.sqvn.learning_rate[0] * lr_factor,
+                self.sqvn.learning_rate[1]
             )
             self._current_sa = backup_sa
             self.sa_transition_model.restore_tm_state()
@@ -133,14 +136,14 @@ class SvpnAgent(UcbAgent):
         if self.rng.random() < .1:
             action = self.rng.choice(len(actions))
         else:
-            action = self.q_network.choose(actions)
+            action = self.sqvn.choose(actions)
 
         # process feedback
         prev_sa_sdr = self._current_sa
-        greedy_action = self.q_network.choose(actions, greedy=True)
+        greedy_action = self.sqvn.choose(actions, greedy=True)
         greedy_sa_sdr = actions[greedy_action]
 
-        self.q_network.update(
+        self.sqvn.update(
             sa=prev_sa_sdr,
             reward=reward,
             sa_next=greedy_sa_sdr,
@@ -160,7 +163,7 @@ class SvpnAgent(UcbAgent):
         return self.sa_transition_model.process(s_a, learn=learn_tm)
 
     def _update_reward_model(self, s: SparseSdr, reward: float):
-        r_learning_rate = isnone(self.r_learning_rate, self.q_network.learning_rate[0])
+        r_learning_rate = isnone(self.r_learning_rate, self.sqvn.learning_rate[0])
         self.reward_model *= 1 - r_learning_rate
         self.reward_model[s] += reward
 

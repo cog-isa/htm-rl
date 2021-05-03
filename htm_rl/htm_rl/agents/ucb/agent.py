@@ -9,6 +9,8 @@ from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
 class UcbAgent(Agent):
+    SparseValueNetwork = SparseValueNetwork
+
     _n_actions: int
     _current_sa: Optional[SparseSdr]
 
@@ -17,13 +19,13 @@ class UcbAgent(Agent):
     sa_concatenator: SdrConcatenator
     sa_sp: SpatialPooler
 
-    q_network: SparseValueNetwork
+    sqvn: SparseValueNetwork
 
     def __init__(
             self,
             env: Env,
             seed: int,
-            q_network: Dict,
+            sqvn: Dict,
             state_sp: Dict,
             action_encoder: Dict,
             sa_sp: Dict
@@ -40,10 +42,10 @@ class UcbAgent(Agent):
         ])
         self.sa_sp = SpatialPooler(input_source=self.sa_concatenator, seed=seed, **sa_sp)
 
-        self.q_network = SparseValueNetwork(
+        self.sqvn = self.SparseValueNetwork(
             cells_sdr_size=self.sa_sp.output_sdr_size,
             seed=seed,
-            **q_network
+            **sqvn
         )
         self._n_actions = env.n_actions
         self._current_sa = None
@@ -54,19 +56,19 @@ class UcbAgent(Agent):
 
     def act(self, reward: float, state: SparseSdr, first: bool):
         if first:
-            self.q_network.reset()
+            self.sqvn.reset()
 
         s = self.state_sp.compute(state, learn=True)
         actions = self._encode_actions(s)
-        action = self.q_network.choose(actions)
+        action = self.sqvn.choose(actions)
 
         if not first:
             # process feedback
             prev_sa_sdr = self._current_sa
-            greedy_action = self.q_network.choose(actions, greedy=True)
+            greedy_action = self.sqvn.choose(actions, greedy=True)
             greedy_sa_sdr = actions[greedy_action]
 
-            self.q_network.update(
+            self.sqvn.update(
                 sa=prev_sa_sdr,
                 reward=reward,
                 sa_next=greedy_sa_sdr,
