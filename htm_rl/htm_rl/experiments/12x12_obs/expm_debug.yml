@@ -1,8 +1,8 @@
 seed:
 #  - 711072
-#  - 482614
-#  - 743535
-#  - 190368
+  - 482614
+  - 743535
+  - 190368
   - 583
   - 885213
   - 666373
@@ -23,6 +23,7 @@ env:
 agent:
   - rnd
   - ucb
+  - svpn
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab
