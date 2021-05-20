@@ -12,7 +12,7 @@ class UcbAgent(Agent):
     SparseValueNetwork = SparseValueNetwork
 
     _n_actions: int
-    _current_sa: Optional[SparseSdr]
+    _current_sa_sdr: Optional[SparseSdr]
 
     state_sp: SpatialPooler
     action_encoder: IntBucketEncoder
@@ -48,7 +48,7 @@ class UcbAgent(Agent):
             **sqvn
         )
         self._n_actions = env.n_actions
-        self._current_sa = None
+        self._current_sa_sdr = None
 
     @property
     def name(self):
@@ -56,27 +56,41 @@ class UcbAgent(Agent):
 
     def act(self, reward: float, state: SparseSdr, first: bool):
         if first:
-            self.sqvn.reset()
+            self._on_new_episode()
 
         s = self.state_sp.compute(state, learn=True)
-        actions = self._encode_actions(s)
-        action = self.sqvn.choose(actions)
+        actions_sa_sdr = self._encode_actions(s)
+        action = self.sqvn.choose(actions_sa_sdr)
 
         if not first:
             # process feedback
-            prev_sa_sdr = self._current_sa
-            greedy_action = self.sqvn.choose(actions, greedy=True)
-            greedy_sa_sdr = actions[greedy_action]
-
-            self.sqvn.update(
-                sa=prev_sa_sdr,
+            self._learn_step(
+                prev_sa_sdr= self._current_sa_sdr,
                 reward=reward,
-                sa_next=greedy_sa_sdr,
-                td_lambda=True
+                actions_sa_sdr=actions_sa_sdr
             )
 
-        self._current_sa = actions[action]
+        self._current_sa_sdr = actions_sa_sdr[action]
         return action
+
+    def _learn_step(
+            self, prev_sa_sdr, reward, actions_sa_sdr, td_lambda: bool = True,
+            update_visit_count=True
+    ):
+        greedy_action = self.sqvn.choose(actions_sa_sdr, greedy=True)
+        greedy_sa_sdr = actions_sa_sdr[greedy_action]
+
+        self.sqvn.update(
+            sa=prev_sa_sdr,
+            reward=reward,
+            sa_next=greedy_sa_sdr,
+            td_lambda=td_lambda,
+            update_visit_count=update_visit_count
+        )
+
+    def _on_new_episode(self):
+        self.sqvn.reset()
+        self.sqvn.decay_learning_factors()
 
     def _encode_actions(self, s: SparseSdr) -> List[SparseSdr]:
         actions = []

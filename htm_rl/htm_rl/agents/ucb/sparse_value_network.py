@@ -8,6 +8,7 @@ from htm_rl.common.sdr import SparseSdr
 
 class SparseValueNetwork:
     trace_decay: float
+    visit_decay: float
     discount_factor: float
     learning_rate: Tuple[float, float]
     ucb_exploration_factor: Tuple[float, float]
@@ -15,7 +16,6 @@ class SparseValueNetwork:
     # you should not to read it literally cause it's affected by exp MA window
     cell_visit_count: np.ndarray
     cell_value: np.ndarray
-    visit_decay: float
 
     cell_eligibility_trace: np.ndarray
 
@@ -40,7 +40,6 @@ class SparseValueNetwork:
         # self.cell_value = np.full(cells_sdr_size, 0., dtype=np.float)
         self.cell_value = self._rng.uniform(-1e-4, 1e-4, size=cells_sdr_size)
         self.cell_eligibility_trace = np.zeros(cells_sdr_size, dtype=np.float)
-        self.TD_error = 0.
 
     # noinspection PyTypeChecker
     def choose(self, options: List[SparseSdr], greedy=False) -> int:
@@ -63,9 +62,11 @@ class SparseValueNetwork:
         return option_index
 
     # noinspection PyPep8Naming
-    def update(self, sa: SparseSdr, reward: float, sa_next: SparseSdr, td_lambda=True):
-        # TODO: better turn it off for dreaming
-        if td_lambda:
+    def update(
+            self, sa: SparseSdr, reward: float, sa_next: SparseSdr, td_lambda=True,
+            update_visit_count=True
+    ):
+        if update_visit_count:
             self._update_cell_visit_counter(sa)
 
         lr, _ = self.learning_rate
@@ -121,6 +122,8 @@ class SparseValueNetwork:
 
     def reset(self):
         self.cell_eligibility_trace.fill(0.)
+
+    def decay_learning_factors(self):
         self.ucb_exploration_factor = exp_decay(self.ucb_exploration_factor)
         self.learning_rate = exp_decay(self.learning_rate)
 
@@ -128,6 +131,7 @@ class SparseValueNetwork:
 def exp_sum_update(a, decay, x):
     a *= decay
     a += x
+    return a
 
 
 def exp_sum_update_slice(arr, ind, decay, x):

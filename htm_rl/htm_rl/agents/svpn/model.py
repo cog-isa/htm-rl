@@ -1,11 +1,28 @@
 import pickle
 from typing import Tuple
 
+import numpy as np
 from htm.bindings.sdr import SDR
 
+from htm_rl.agents.ucb.sparse_value_network import exp_sum_update, exp_decay
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import isnone
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
+
+
+class RewardModel:
+    rewards: np.ndarray
+    learning_rate: Tuple[float, float]
+
+    def __init__(self, shape, learning_rate: Tuple[float, float]):
+        self.learning_rate = learning_rate
+        self.rewards = np.zeros(shape, dtype=np.float)
+
+    def update(self, s: SparseSdr, reward: float):
+        exp_sum_update(self.rewards[s], 1 - self.learning_rate[0], reward)
+
+    def decay_learning_factors(self):
+        self.learning_rate = exp_decay(self.learning_rate)
 
 
 class TransitionModel:
