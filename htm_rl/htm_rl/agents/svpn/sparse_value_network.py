@@ -17,3 +17,7 @@ class SparseValueNetwork(SVN):
         TD_error = super(SparseValueNetwork, self)._td_error(sa, reward, sa_next)
         self.TD_error = exp_sum_update(self.TD_error, self.TD_error_decay, TD_error)
         return TD_error
+
+    def reset(self):
+        super(SparseValueNetwork, self).reset()
+        self.TD_error = 0.

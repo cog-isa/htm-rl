@@ -43,7 +43,7 @@ class SparseValueNetwork:
 
     # noinspection PyTypeChecker
     def choose(self, options: List[SparseSdr], greedy=False) -> int:
-        total_visits = self._total_visits(options) if greedy else None
+        total_visits = self._total_visits(options) if not greedy else None
         option_values = []
         for option in options:
             option_values.append(

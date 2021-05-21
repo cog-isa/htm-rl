@@ -17,6 +17,7 @@ class Dreamer:
     svn: SparseValueNetwork
 
     learning_rate: Tuple[float, float]
+    td_lambda: bool
     trace_decay: float
     cell_eligibility_trace: Optional[np.ndarray]
     starting_sa_sdr: Optional[SparseSdr]
@@ -33,6 +34,8 @@ class Dreamer:
 
         if trace_decay is None:
             trace_decay = svn.trace_decay
+
+        self.td_lambda = trace_decay > .0
         self.trace_decay = trace_decay
 
         self.svn = svn
@@ -45,20 +48,23 @@ class Dreamer:
         wake_svn.trace_decay, self.trace_decay = self.trace_decay, wake_svn.trace_decay
 
         self.cell_eligibility_trace = wake_svn.cell_eligibility_trace.copy()
+        wake_svn.cell_eligibility_trace.fill(.0)
+
         self.starting_sa_sdr = starting_sa_sdr.copy()
         self.TD_error = wake_svn.TD_error
 
     def reset_dreaming(self):
         dreaming_svn = self.svn
         dreaming_svn.cell_eligibility_trace = self.cell_eligibility_trace.copy()
+        dreaming_svn.cell_eligibility_trace.fill(.0)
         return self.starting_sa_sdr.copy()
 
     def wake(self):
         dreaming_svn = self.svn
-
         dreaming_svn.learning_rate, self.learning_rate = self.learning_rate, dreaming_svn.learning_rate
         dreaming_svn.trace_decay, self.trace_decay = self.trace_decay, dreaming_svn.trace_decay
         dreaming_svn.TD_error = self.TD_error
+        dreaming_svn.cell_eligibility_trace = self.cell_eligibility_trace.copy()
 
     def decay_learning_factors(self):
         self.learning_rate = exp_decay(self.learning_rate)
@@ -152,7 +158,7 @@ class SvpnAgent(UcbAgent):
             for i in range(self.prediction_depth):
                 if len(state) == 0:
                     break
-                state = self._move_in_dream(state)
+                state = self._move_in_dream(state, td_lambda=self.dreamer.td_lambda)
 
             self._reset_dreaming()
             # print(i)
@@ -171,7 +177,7 @@ class SvpnAgent(UcbAgent):
     def _wake(self):
         self.dreamer.wake()
 
-    def _move_in_dream(self, state: SparseSdr):
+    def _move_in_dream(self, state: SparseSdr, td_lambda: bool):
         reward = self.reward_model.rewards[state].mean()
         actions_sa_sdr = self._encode_actions(state, learn=False)
 
@@ -185,7 +191,7 @@ class SvpnAgent(UcbAgent):
             prev_sa_sdr=self._current_sa_sdr,
             reward=reward,
             actions_sa_sdr=actions_sa_sdr,
-            td_lambda=False,
+            td_lambda=td_lambda,
             update_visit_count=False
         )
 
@@ -206,7 +212,7 @@ class SvpnAgent(UcbAgent):
         planning_prob = clip(abs(td_error) / 2 - .05, 1.)
         # increase prob
         if planning_prob > .0:
-            planning_prob = 1 - (1 - planning_prob) / 1.01
+            planning_prob = 1 - (1 - planning_prob) / 1.08
         return self.rng.random() < planning_prob
 
     def _process_transition(self, s, action, learn_tm: bool) -> Tuple[SparseSdr, SparseSdr]:
