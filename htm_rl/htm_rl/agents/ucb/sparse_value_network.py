@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 import numpy as np
 from numpy.random._generator import Generator
@@ -43,20 +43,12 @@ class SparseValueNetwork:
 
     # noinspection PyTypeChecker
     def choose(self, options: List[SparseSdr], greedy=False) -> int:
-        total_visits = None
+        total_visits = self._total_visits(options) if greedy else None
         option_values = []
         for option in options:
-            if len(option) == 0:
-                option_values.append(np.infty)
-                continue
-
-            value = self.cell_value[option]
-            if not greedy:
-                if total_visits is None:
-                    total_visits = self._total_visits(options)
-                value += self._ucb_upper_bound_term(option, total_visits)
-
-            option_values.append(value.mean())
+            option_values.append(
+                self._value_option(option, greedy, total_visits)
+            )
 
         option_index: int = np.argmax(option_values)
         return option_index
@@ -100,6 +92,15 @@ class SparseValueNetwork:
 
     def _update_cell_visit_counter(self, sa: SparseSdr):
         exp_sum_update_slice(self.cell_visit_count, sa, self.visit_decay, 1.)
+
+    def _value_option(self, option, greedy: bool, total_visits: Optional[float] = None) -> float:
+        if len(option) == 0:
+            return np.infty
+
+        value = self.cell_value[option]
+        if not greedy:
+            value += self._ucb_upper_bound_term(option, total_visits)
+        return value.mean()
 
     # noinspection PyPep8Naming
     def _ucb_upper_bound_term(self, cells_sdr, total_visits):

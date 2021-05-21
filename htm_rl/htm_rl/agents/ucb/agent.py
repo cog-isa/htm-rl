@@ -11,15 +11,14 @@ from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 class UcbAgent(Agent):
     SparseValueNetwork = SparseValueNetwork
 
-    _n_actions: int
-    _current_sa_sdr: Optional[SparseSdr]
-
+    n_actions: int
     state_sp: SpatialPooler
     action_encoder: IntBucketEncoder
     sa_concatenator: SdrConcatenator
     sa_sp: SpatialPooler
-
     sqvn: SparseValueNetwork
+
+    _current_sa_sdr: Optional[SparseSdr]
 
     def __init__(
             self,
@@ -47,7 +46,7 @@ class UcbAgent(Agent):
             seed=seed,
             **sqvn
         )
-        self._n_actions = env.n_actions
+        self.n_actions = env.n_actions
         self._current_sa_sdr = None
 
     @property
@@ -59,9 +58,7 @@ class UcbAgent(Agent):
             self._on_new_episode()
 
         s = self.state_sp.compute(state, learn=True)
-        actions_sa_sdr = self._encode_actions(s)
-        action = self.sqvn.choose(actions_sa_sdr)
-
+        actions_sa_sdr = self._encode_actions(s, learn=True)
         if not first:
             # process feedback
             self._learn_step(
@@ -70,6 +67,7 @@ class UcbAgent(Agent):
                 actions_sa_sdr=actions_sa_sdr
             )
 
+        action = self.sqvn.choose(actions_sa_sdr)
         self._current_sa_sdr = actions_sa_sdr[action]
         return action
 
@@ -92,10 +90,10 @@ class UcbAgent(Agent):
         self.sqvn.reset()
         self.sqvn.decay_learning_factors()
 
-    def _encode_actions(self, s: SparseSdr) -> List[SparseSdr]:
+    def _encode_actions(self, s: SparseSdr, learn: bool) -> List[SparseSdr]:
         actions = []
-        for action in range(self._n_actions):
-            sa_sdr = self._encode_sa(s, action, learn=True)
+        for action in range(self.n_actions):
+            sa_sdr = self._encode_sa(s, action, learn=learn)
             actions.append(sa_sdr)
 
         return actions
