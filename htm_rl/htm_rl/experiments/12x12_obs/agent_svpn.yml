@@ -37,16 +37,17 @@ agent:
     discount_factor: .96
     learning_rate: [.04, .995]
     ucb_exploration_factor: [.5, .994]
-    td_error_decay: .1
+    td_error_decay: .0
 
   dreamer:
     learning_rate: .0
+    trace_decay:
 
-  r_learning_rate: [.05, .994]
+  r_learning_rate: [.05, .995]
   first_planning_episode: 0
   last_planning_episode: 2000
-  prediction_depth: 8
-  n_prediction_rollouts: 1
+  prediction_depth: 5
+  n_prediction_rollouts: 2
 
   tm:
     cells_per_column: 1

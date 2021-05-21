@@ -62,7 +62,7 @@ class UcbAgent(Agent):
         if not first:
             # process feedback
             self._learn_step(
-                prev_sa_sdr= self._current_sa_sdr,
+                prev_sa_sdr=self._current_sa_sdr,
                 reward=reward,
                 actions_sa_sdr=actions_sa_sdr
             )
