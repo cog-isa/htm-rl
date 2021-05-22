@@ -1,4 +1,4 @@
-seed: &seed 3432
+seed: &seed 34385
 levels: 2
 basal_ganglia_version: 2
 agent: htm
@@ -231,6 +231,9 @@ temporal_memory_default:
   basal_cells_per_column: *cells_per_column
   noise_tolerance: 0.1
   max_segments_per_cell: 32
+  max_segments_per_cell_apical: 8
+  max_segments_per_cell_exec: 32
+  max_segments_per_cell_inhib: 8
   anomaly_window: 500
   confidence_window: 500
   initial_permanence: 0.25
@@ -253,6 +256,15 @@ temporal_memory_default:
   permanence_decrement_inhib: 0.1
   permanence_increment_inhib: 0.01
   predicted_segment_decrement_inhib: 0.1
+  enable_pruning_basal: True
+  enable_pruning_apical: True
+  enable_pruning_exec: True
+  enable_pruning_inhib: True
+  pruning_period_basal: 3000
+  pruning_period_apical: 2000
+  pruning_period_exec: 5000
+  pruning_period_inhib: 2000
+  prune_zero_synapses: True
   seed: *seed
 
 basal_ganglia_default:

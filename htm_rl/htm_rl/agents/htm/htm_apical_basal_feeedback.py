@@ -54,7 +54,21 @@ class ApicalBasalFeedbackTM:
                  initial_permanence_inhib=0.4,
                  permanence_decrement_inhib=0.01,
                  permanence_increment_inhib=0.1,
-                 connected_threshold_inhib=0.5):
+                 connected_threshold_inhib=0.5,
+                 enable_pruning_basal=True,
+                 enable_pruning_apical=True,
+                 enable_pruning_exec=True,
+                 enable_pruning_inhib=True,
+                 pruning_period_basal=1000,
+                 pruning_period_apical=1000,
+                 pruning_period_exec=1000,
+                 pruning_period_inhib=1000,
+                 prune_zero_synapses=True,
+                 max_segments_per_cell_apical=255,
+                 max_segments_per_cell_exec=255,
+                 max_segments_per_cell_inhib=255):
+        self.step = 0
+
         self.apical_columns = apical_columns
         self.apical_cells_per_column = apical_cells_per_column
         self.apical_total_cells = apical_columns * apical_cells_per_column
@@ -114,6 +128,9 @@ class ApicalBasalFeedbackTM:
         self.max_exec_synapses_per_segment = max_exec_synapses_per_segment
         self.max_apical_synapses_per_segment = max_apical_synapses_per_segment
         self.max_segments_per_cell = max_segments_per_cell
+        self.max_segments_per_cell_apical = max_segments_per_cell_apical
+        self.max_segments_per_cell_exec = max_segments_per_cell_exec
+        self.max_segments_per_cell_inhib = max_segments_per_cell_inhib
 
         self.total_cells = (self.apical_total_cells +
                             self.basal_total_cells +
@@ -180,6 +197,23 @@ class ApicalBasalFeedbackTM:
         self.confidence_threshold = 0
 
         self.noise_tolerance = noise_tolerance
+
+        self.enable_pruning_basal = enable_pruning_basal
+        self.enable_pruning_apical = enable_pruning_apical
+        self.enable_pruning_exec = enable_pruning_exec
+        self.enable_pruning_inhib = enable_pruning_inhib
+
+        self.pruning_period_basal = pruning_period_basal
+        self.pruning_period_apical = pruning_period_apical
+        self.pruning_period_exec = pruning_period_exec
+        self.pruning_period_inhib = pruning_period_inhib
+
+        self.segments_activity_basal = np.empty(0)
+        self.segments_activity_apical = np.empty(0)
+        self.segments_activity_exec = np.empty(0)
+        self.segments_activity_inhib = np.empty(0)
+
+        self.prune_zero_synapses = prune_zero_synapses
 
         if seed:
             self.rng = Random(seed)
@@ -342,11 +376,12 @@ class ApicalBasalFeedbackTM:
                     self.max_exec_synapses_per_segment,
                     self.initial_permanence_exec,
                     self.permanence_increment_exec,
-                    self.permanence_decrement_exec)
+                    self.permanence_decrement_exec,
+                    self.learning_exec_threshold)
         # punish segments
         for segment in self.matching_exec_segments[~mask1]:
             self.exec_feedback_connections.adaptSegment(segment, self.active_feedback_columns,
-                                                        -self.predicted_segment_decrement_exec, 0.0, False)
+                                                        -self.predicted_segment_decrement_exec, 0.0, self.prune_zero_synapses)
         # grow new segments
         mask2 = np.in1d(self.winner_basal_cells.sparse,
                         self.exec_feedback_connections.mapSegmentsToCells(self.matching_exec_segments),
@@ -357,7 +392,8 @@ class ApicalBasalFeedbackTM:
                                     self.active_feedback_columns.sparse,
                                     self.sample_exec_size,
                                     self.max_exec_synapses_per_segment,
-                                    self.initial_permanence_exec
+                                    self.initial_permanence_exec,
+                                    self.max_segments_per_cell_exec
                                     )
 
     def activate_cells(self, learn: bool):
@@ -396,7 +432,7 @@ class ApicalBasalFeedbackTM:
                 self._learn(self.basal_connections, learning_segments, self.active_basal_cells,
                             self.winner_basal_cells.sparse,
                             self.num_basal_potential, self.sample_size, self.max_synapses_per_segment,
-                            self.initial_permanence, self.permanence_increment, self.permanence_decrement)
+                            self.initial_permanence, self.permanence_increment, self.permanence_decrement, self.learning_threshold)
             if self.active_feedback_columns.sparse.size > 0 and self.active_basal_cells.sparse.size > 0:
                 self.inhib_presynaptic_cells.sparse = np.concatenate((self.active_basal_cells.sparse,
                                                                       self.active_feedback_columns.sparse))
@@ -426,7 +462,8 @@ class ApicalBasalFeedbackTM:
                                 self.max_inhib_synapses_per_segment,
                                 self.initial_permanence_inhib,
                                 self.permanence_increment_inhib,
-                                self.permanence_decrement_inhib
+                                self.permanence_decrement_inhib,
+                                self.learning_inhib_feedback_threshold + self.learning_inhib_basal_threshold
                                 )
 
             self._learn(self.apical_connections, learning_matching_apical_segments, self.active_apical_cells,
@@ -435,20 +472,21 @@ class ApicalBasalFeedbackTM:
                         self.sample_apical_size, self.max_apical_synapses_per_segment,
                         self.initial_permanence_apical,
                         self.permanence_increment_apical,
-                        self.permanence_decrement_apical)
+                        self.permanence_decrement_apical,
+                        self.learning_apical_threshold)
 
             # Punish incorrect predictions
             if self.predicted_segment_decrement != 0.0:
                 for segment in basal_segments_to_punish:
                     self.basal_connections.adaptSegment(segment, self.active_basal_cells,
-                                                        -self.predicted_segment_decrement, 0.0, False)
+                                                        -self.predicted_segment_decrement, 0.0, self.prune_zero_synapses, self.learning_threshold)
                 for segment in apical_segments_to_punish:
                     self.apical_connections.adaptSegment(segment, self.active_apical_cells,
-                                                         -self.predicted_segment_decrement_apical, 0.0, False)
+                                                         -self.predicted_segment_decrement_apical, 0.0, self.prune_zero_synapses, self.learning_apical_threshold)
                 if self.active_feedback_columns.sparse.size > 0:
                     for segment in inhibit_segments_to_punish:
                         self.inhib_connections.adaptSegment(segment, self.inhib_presynaptic_cells,
-                                                            -self.predicted_segment_decrement_inhib, 0.0, False)
+                                                            -self.predicted_segment_decrement_inhib, 0.0, self.prune_zero_synapses, self.learning_inhib_feedback_threshold + self.learning_inhib_basal_threshold)
 
             # Grow new segments
             if len(self.winner_basal_cells.sparse) > 0:
@@ -457,14 +495,16 @@ class ApicalBasalFeedbackTM:
                                                             cells_to_grow_apical_and_basal_segments)),
                                             self.winner_basal_cells.sparse,
                                             self.sample_size, self.max_synapses_per_segment,
-                                            self.initial_permanence)
+                                            self.initial_permanence,
+                                            self.max_segments_per_cell)
             if len(self.winner_apical_cells.sparse) > 0:
                 self._learn_on_new_segments(self.apical_connections,
                                             np.concatenate((cells_to_grow_apical_segments,
                                                             cells_to_grow_apical_and_basal_segments)),
                                             self.winner_apical_cells.sparse,
                                             self.sample_apical_size, self.max_apical_synapses_per_segment,
-                                            self.initial_permanence_apical)
+                                            self.initial_permanence_apical,
+                                            self.max_segments_per_cell_apical)
             # the problem may be that we don't specify sample size for feedback and basal separately
             if len(self.active_feedback_columns.sparse) > 0:
                 self._learn_on_new_segments(self.inhib_connections,
@@ -472,7 +512,8 @@ class ApicalBasalFeedbackTM:
                                             self.inhib_receptive_field.sparse,
                                             self.sample_inhib_basal_size + self.sample_inhib_feedback_size,
                                             self.max_inhib_synapses_per_segment,
-                                            self.initial_permanence_inhib)
+                                            self.initial_permanence_inhib,
+                                            self.max_segments_per_cell_inhib)
 
         self.active_basal_cells.sparse = np.unique(new_active_cells.astype('uint32'))
         self.winner_basal_cells.sparse = np.unique(new_winner_cells)
@@ -486,10 +527,24 @@ class ApicalBasalFeedbackTM:
         self.anomaly_threshold = self.anomaly_threshold + (anomaly - self.anomaly[0]) / self.anomaly_window
         self.anomaly.append(anomaly)
         self.anomaly.pop(0)
+        # pruning
+        if learn:
+            self.step += 1
+            if self.enable_pruning_basal:
+                self.segments_activity_basal = self.prune_segments(self.basal_connections, self.segments_activity_basal, self.active_basal_segments.astype('uint32'), self.pruning_period_basal)
+            
+            if self.enable_pruning_apical:
+                self.segments_activity_apical = self.prune_segments(self.apical_connections, self.segments_activity_apical, self.active_apical_segments.astype('uint32'), self.pruning_period_apical)
+
+            if self.enable_pruning_exec:
+                self.segments_activity_exec = self.prune_segments(self.exec_feedback_connections, self.segments_activity_exec, self.active_exec_segments.astype('uint32'), self.pruning_period_exec)
+
+            if self.enable_pruning_inhib:
+                self.segments_activity_inhib = self.prune_segments(self.inhib_connections, self.segments_activity_inhib, self.active_inhib_segments.astype('uint32'), self.pruning_period_inhib)
 
     def _learn(self, connections, learning_segments, active_cells, winner_cells, num_potential, sample_size,
                max_synapses_per_segment, 
-               initial_permanence, permanence_increment, permanence_decrement):
+               initial_permanence, permanence_increment, permanence_decrement, segmentThreshold):
         """
         Learn on specified segments
         :param connections: exemplar of Connections class
@@ -500,7 +555,7 @@ class ApicalBasalFeedbackTM:
         :return:
         """
         for segment in learning_segments:
-            connections.adaptSegment(segment, active_cells, permanence_increment, permanence_decrement, False)
+            connections.adaptSegment(segment, active_cells, permanence_increment, permanence_decrement, self.prune_zero_synapses, segmentThreshold)
 
             if sample_size == -1:
                 max_new = len(winner_cells)
@@ -516,7 +571,7 @@ class ApicalBasalFeedbackTM:
 
     def _learn_on_new_segments(self, connections: Connections, new_segment_cells, growth_candidates, sample_size,
                                max_synapses_per_segment,
-                               initial_permanence):
+                               initial_permanence, max_segments_per_cell):
         """
         Grows new segments and learn on them
         :param connections:
@@ -533,7 +588,7 @@ class ApicalBasalFeedbackTM:
             num_new_synapses = min(num_new_synapses, max_synapses_per_segment)
 
         for cell in new_segment_cells:
-            new_segment = connections.createSegment(cell, self.max_segments_per_cell)
+            new_segment = connections.createSegment(cell, max_segments_per_cell)
             connections.growSynapses(new_segment, growth_candidates, initial_permanence, self.rng,
                                      maxNew=num_new_synapses)
 
@@ -849,6 +904,31 @@ class ApicalBasalFeedbackTM:
         """
         columns_for_cells = self._basal_columns_for_cells(cells)
         return cells[np.in1d(columns_for_cells, columns, invert=invert)]
+
+    def prune_segments(self, connections, segments_activity, active_segments, pruning_period):
+        """
+        Destroy segments that haven't been active for a period of time.
+
+        :param pruning_period:
+        :param active_segments:
+        :param segments_activity:
+        :param connections:
+        :return:
+        """
+        if connections.segmentFlatListLength() > segments_activity.size:
+            new_segments_activity = np.zeros(connections.segmentFlatListLength())
+            new_segments_activity[:segments_activity.size] = segments_activity
+            segments_activity = new_segments_activity
+        segments_activity[active_segments] += 1
+
+        if (self.step % pruning_period) == 0:
+            to_prune = segments_activity == 0
+            for segment in np.flatnonzero(to_prune):
+                connections.destroySegment(segment)
+            segments_activity[:] = 0
+            segments_activity[to_prune] = -1
+
+        return segments_activity
 
 
 if __name__ == '__main__':

@@ -435,7 +435,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         wandb.init(config=config)
     else:
-        wandb.init(project='basal_ganglia', config=config)
+        wandb.init(project='hima_pruning_tests', config=config)
 
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
@@ -477,4 +477,4 @@ if __name__ == '__main__':
         log_q_table = True
 
     runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=100, log_patterns=False,
-                        train_patterns=True, log_options=False, log_segments=False, draw_options=True)
+                        train_patterns=True, log_options=False, log_segments=True, draw_options=True)

@@ -1,6 +1,7 @@
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from copy import deepcopy
 
+
 def configure(config):
     new_config = dict()
     new_config['environment'] = config['environment']
