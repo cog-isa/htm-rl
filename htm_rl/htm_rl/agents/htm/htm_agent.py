@@ -209,15 +209,17 @@ class HTMAgentRunner:
 
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
+        self.terminal_positions = [tuple(x) for x in config['environment']['food']['positions']]
 
     def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50,
                      log_patterns=False, log_options=False,
-                     log_segments=False, draw_options=False):
+                     log_segments=False, draw_options=False, log_terminal_stat=False):
         total_reward = 0
         steps = 0
         episode = 0
         animation = False
         agent_pos = list()
+        terminal_pos_stat = dict(zip(self.terminal_positions, [0]*len(self.terminal_positions)))
         while episode < n_episodes:
             if train_patterns:
                 self.agent.train_patterns()
@@ -252,6 +254,8 @@ class HTMAgentRunner:
                             step=episode)
 
                 if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
+                    if log_terminal_stat:
+                        logger.log(dict([(str(x[0]), x[1]) for x in terminal_pos_stat.items()]), step=episode)
                     if log_patterns:
                         if log_q_table:
                             q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
@@ -330,6 +334,8 @@ class HTMAgentRunner:
                                 dense_predictions = np.zeros(output_block.tm.basal_columns)
                                 dense_predictions[predictions] = 1
                                 predicted_action_patterns = output_block.sm.get_options(dense_predictions)
+                                if len(predicted_action_patterns) == 0:
+                                    break
                                 # get muscles activations
                                 p_actions = list()
                                 for predicted_action_pattern in predicted_action_patterns:
@@ -421,6 +427,11 @@ class HTMAgentRunner:
 
             self.environment.act(action)
 
+            if self.environment.callmethod('is_terminal'):
+                pos = self.environment.env.agent.position
+                if pos in terminal_pos_stat:
+                    terminal_pos_stat[pos] += 1
+
 
 if __name__ == '__main__':
     import sys
@@ -428,14 +439,14 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'two_levels_8x8_obs_default'
+        default_config_name = 'multigoal_8x8_obs_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
     if len(sys.argv) > 1:
         wandb.init(config=config)
     else:
-        wandb.init(project='hima_pruning_tests', config=config)
+        wandb.init(project='hima_multigoal_tests', config=config)
 
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
@@ -476,5 +487,5 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=100, log_patterns=False,
-                        train_patterns=True, log_options=False, log_segments=True, draw_options=True)
+    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=20, log_patterns=False,
+                        train_patterns=True, log_options=True, log_segments=True, draw_options=True, log_terminal_stat=True)
