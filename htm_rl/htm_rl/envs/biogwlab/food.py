@@ -4,7 +4,7 @@ import numpy as np
 
 from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.envs.biogwlab.generation.food import FoodPositionsGenerator
+from htm_rl.envs.biogwlab.generation.food import FoodPositionsGenerator, FoodPositions, FoodPositionsManual
 from htm_rl.envs.biogwlab.module import Entity, EntityType
 from htm_rl.envs.biogwlab.view_clipper import ViewClip
 
@@ -33,20 +33,24 @@ class Food(Entity):
     reward: float
     positions_fl: Set[int]
 
-    generator: FoodPositionsGenerator
+    generator: FoodPositions
     env: Environment
 
     def __init__(
             self, env: Environment, reward: float, n_items: int = 1,
-            area_weights: List[float] = None,
+            area_weights: List[float] = None, positions=None,
             **entity
     ):
         super(Food, self).__init__(**entity)
 
         self.reward = reward
-        self.generator = FoodPositionsGenerator(
-            shape=env.shape, n_items=n_items, area_weights=area_weights
-        )
+        self.manual_positions = positions
+        if positions is not None:
+            self.generator = FoodPositionsManual(shape=env.shape, positions=positions)
+        else:
+            self.generator = FoodPositionsGenerator(
+                shape=env.shape, n_items=n_items, area_weights=area_weights
+            )
         self.env = env
 
     def generate(self, seeds):
