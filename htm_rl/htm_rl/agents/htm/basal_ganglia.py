@@ -139,7 +139,7 @@ class BasalGanglia:
 
 class BasalGanglia2:
     def __init__(self, input_size, output_size, greedy=False, eps=0.01, gamma=0.1, alpha=0.1, beta=0.1,
-                 discount_factor=0.95, w_stn=0.1, sp=None, learn_sp=False, seed=None, **kwargs):
+                 discount_factor=0.95, w_stn=0.1, sp=None, learn_sp=False, seed=None, noise=0, **kwargs):
         np.random.seed(seed)
         self.input_size = input_size
         self.output_size = output_size
@@ -163,6 +163,7 @@ class BasalGanglia2:
 
         self.sp = sp
         self.learn_sp = learn_sp
+        self.noise = noise
 
     def choose(self, options, condition: SDR,
                greedy=None,
@@ -195,7 +196,7 @@ class BasalGanglia2:
             option_values[ind] = np.median(values[option])
 
         if option_weights is not None:
-            weighted_active_columns = option_active_columns * option_weights
+            weighted_active_columns = option_active_columns + option_weights * option_active_columns.max()
         else:
             weighted_active_columns = option_active_columns
 
@@ -220,6 +221,8 @@ class BasalGanglia2:
                 option_index = np.random.choice(max_indices, 1)[0]
         else:
             option_probs = softmax(weighted_active_columns)
+            option_probs += self.noise
+            option_probs /= option_probs.sum()
             option_index = np.random.choice(len(options), 1, p=option_probs)[0]
 
         self.current_condition = copy.deepcopy(condition.sparse)
@@ -229,7 +232,7 @@ class BasalGanglia2:
         norm_option_values /= (norm_option_values.max() + 1e-12)
         answer = [options[option_index]]
         for flag, result in zip((return_option_value, return_values, return_index),
-                                ((norm_option_values[option_index], option_values[option_index]), norm_option_values, option_index)):
+                                ((norm_option_values[option_index], option_values[option_index]), (norm_option_values, option_values), option_index)):
             if flag:
                 answer.append(result)
         return answer
