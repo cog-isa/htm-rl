@@ -1,11 +1,11 @@
-seed: &seed 5648
+seed: &seed 56321
 levels: 2
 basal_ganglia_version: 2
 agent: htm
 
 environment:
   seed: 2151
-  shape_xy: [8, 8]
+  shape_xy: [11, 11]
 
   actions_cost:
     base_cost: -0.002
@@ -24,16 +24,18 @@ environment:
     view_rectangle: [[-2, -2], [2, 2]]
 
   areas:
-    n_types: 3
+    n_types: 4
 
-  obstacle:
-    density: 0.2
+#  obstacle:
+#    density: 0.1
 
   food:
-    n_items: 1
+    n_items: 4
     reward: 1.
+    positions: [[0, 0], [10, 10], [0, 10], [10, 0]]
 
   agent:
+    position: [5, 5]
   #  rendering:
   #    what:
   #      - position
@@ -43,9 +45,10 @@ environment:
   terminate:
     episode_max_steps: 200
     early_stop: true
+    n_items_to_collect: 1
 
 cagent:
-  intrinsic_reward: true
+  intrinsic_reward: false
   theta: 0.005
   action:
     do_nothing_action: 4
@@ -88,6 +91,7 @@ blocks:
       eps: 0.02
       greedy: False
       learn_sp: False
+      noise: 0.02
     bg_sp: null
     block:
       level: 1
@@ -118,6 +122,7 @@ blocks:
       eps: 0.02
       greedy: False
       learn_sp: False
+      noise: 0.01
     bg_sp: null
     block:
       level: 2
@@ -277,6 +282,7 @@ basal_ganglia_default:
   learn_sp: true
   seed: *seed
   w_stn: 0.01
+  noise: 0.05
 
 block_default:
   gamma: 0.95
