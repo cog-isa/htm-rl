@@ -373,7 +373,7 @@ class Block:
                 options = self.sm.get_sparse_patterns()
 
                 if len(options) > 0:
-                    boost_predicted_options = np.ones(len(self.sm))
+                    boost_predicted_options = np.zeros(len(self.sm))
                     if indices.size > 0:
                         # boost predicted options
                         boost_predicted_options[indices] += self.predicted_boost
@@ -384,7 +384,7 @@ class Block:
                                                                                        return_option_value=True, return_values=True, return_index=True)
                     # reinforce good patterns and punish bad ones
                     if self.learn_sm:
-                        self.sm.reinforce(option_values)
+                        self.sm.reinforce(option_values[0])
 
                     self.made_decision = True
                     self.current_option = option_index
