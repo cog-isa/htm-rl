@@ -52,7 +52,7 @@ class Agent(Entity):
     renderer: AgentRenderer
     env: Environment
 
-    def __init__(self, env: Environment, rendering=False, **entity):
+    def __init__(self, env: Environment, rendering=False, position=None, **entity):
         super(Agent, self).__init__(rendering=rendering, **entity)
         self.env = env
 
@@ -60,14 +60,19 @@ class Agent(Entity):
             assert isinstance(rendering, dict)
             self.renderer = AgentRenderer(env_shape=env.shape, **rendering)
 
+        self.init_position = tuple(position)
+
     def generate(self, seeds):
         rng = np.random.default_rng(seeds['agent'])
-        empty_positions_mask = ~self.env.aggregated_mask[EntityType.NonEmpty]
+        if self.init_position is not None:
+            self.position = self.init_position
+        else:
+            empty_positions_mask = ~self.env.aggregated_mask[EntityType.NonEmpty]
 
-        empty_positions_fl = np.flatnonzero(empty_positions_mask)
-        position_fl = rng.choice(empty_positions_fl)
+            empty_positions_fl = np.flatnonzero(empty_positions_mask)
+            position_fl = rng.choice(empty_positions_fl)
 
-        self.position = self._unflatten_position(position_fl)
+            self.position = self._unflatten_position(position_fl)
         self.view_direction = rng.choice(len(DIRECTIONS_ORDER))
         self.initialized = True
 
