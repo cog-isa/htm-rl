@@ -5,7 +5,12 @@ import numpy as np
 from htm_rl.envs.biogwlab.move_dynamics import MOVE_DIRECTIONS, DIRECTIONS_ORDER, MoveDynamics
 
 
-class ObstacleMaskGenerator:
+class ObstacleMask:
+    def generate(self, *args, **kwargs):
+        pass
+
+
+class ObstacleMaskGenerator(ObstacleMask):
     density: float
     shape: Tuple[int, int]
 
@@ -80,6 +85,25 @@ class ObstacleMaskGenerator:
         # choose direction
         view_direction = rng.choice(4)
         return (i, j), view_direction
+
+
+class ObstacleMaskManual(ObstacleMask):
+    shape: Tuple[int, int]
+    map_: np.array
+
+    def __init__(self, shape: Tuple[int, int], map_name: str):
+        self.shape = shape
+        with open(map_name) as file:
+            lines = file.readlines()
+        map_ = list()
+        for line in lines:
+            map_.append([bool(int(x)) for x in line.split()])
+        self.map_ = np.array(map_, dtype=np.bool_)
+
+        assert self.map_.shape == self.shape
+
+    def generate(self, seed):
+        return self.map_
 
 
 class WallColorGenerator:

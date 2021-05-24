@@ -26,16 +26,17 @@ environment:
   areas:
     n_types: 4
 
-#  obstacle:
-#    density: 0.1
+  obstacle:
+    density: 0.1
+    map_name: '../../experiments/htm_agent/maps/two_doors_11x11.map'
 
   food:
     n_items: 4
     reward: 1.
-    positions: [[0, 0], [10, 10], [0, 10], [10, 0]]
+    positions: [[0, 5]]
 
   agent:
-    position: [5, 5]
+    position: [10, 5]
   #  rendering:
   #    what:
   #      - position
