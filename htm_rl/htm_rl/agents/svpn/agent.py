@@ -16,6 +16,7 @@ from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 class Dreamer:
     svn: SparseValueNetwork
 
+    planning_prob_alpha: Tuple[float, float]
     learning_rate: Tuple[float, float]
     td_lambda: bool
     trace_decay: float
@@ -25,6 +26,7 @@ class Dreamer:
 
     def __init__(
             self, svn: SparseValueNetwork,
+            planning_prob_alpha: Tuple[float, float],
             learning_rate: Tuple[float, float], trace_decay: Optional[float]
     ):
         if isinstance(learning_rate, float):
@@ -35,6 +37,7 @@ class Dreamer:
         if trace_decay is None:
             trace_decay = svn.trace_decay
 
+        self.planning_prob_alpha = planning_prob_alpha
         self.td_lambda = trace_decay > .0
         self.trace_decay = trace_decay
 
@@ -151,6 +154,7 @@ class SvpnAgent(UcbAgent):
             return
 
         # print(self.sqvn.TD_error)
+        self.dreamer.planning_prob_alpha = exp_decay(self.dreamer.planning_prob_alpha)
         self._put_into_dream()
 
         for _ in range(self.n_prediction_rollouts):
@@ -212,7 +216,8 @@ class SvpnAgent(UcbAgent):
         planning_prob = clip(abs(td_error) / 2 - .05, 1.)
         # increase prob
         if planning_prob > .0:
-            planning_prob = 1 - (1 - planning_prob) / 1.08
+            prob_boost = self.dreamer.planning_prob_alpha[0]
+            planning_prob = 1 - (1 - planning_prob) / prob_boost
         return self.rng.random() < planning_prob
 
     def _process_transition(self, s, action, learn_tm: bool) -> Tuple[SparseSdr, SparseSdr]:
