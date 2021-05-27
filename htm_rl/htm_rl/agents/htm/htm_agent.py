@@ -267,7 +267,7 @@ class HTMAgentRunner:
 
                 if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
                     if draw_options_stats:
-                        self.option_stat.draw_options(logger, episode)
+                        self.option_stat.draw_options(logger, episode, obstacle_mask=self.environment.env.entities['obstacle'].mask)
                         self.option_stat.clear_stats()
                     if log_terminal_stat:
                         logger.log(dict([(str(x[0]), x[1]) for x in self.terminal_pos_stat.items()]), step=episode)

@@ -44,19 +44,24 @@ class OptionVis:
     def is_in_bounds(self, position):
         return (max(position) < self.size) and (min(position) >= 0)
 
-    def draw_options(self, logger, episode, threshold=0):
+    def draw_options(self, logger, episode, threshold=0, obstacle_mask=None):
         if len(self.options) == 0:
             return
 
         max_n_uses = max([value['n_uses'] for value in self.options.values()])
         height = max(self.size, self.map_size[0])
-        width = self.size + 2*self.map_size[1]
+        width = self.size + 2*self.map_size[1] + 2
         for key, value in self.options.items():
             if value['n_uses'] > threshold:
-                image = np.zeros((height, width))
+                image = np.zeros((height, width)) - 1
                 image[:self.size, :self.size] = value['policy']
-                image[:self.map_size[0], self.size:self.size+self.map_size[1]] = value['init']
-                image[:self.map_size[0], self.size+self.map_size[1]:] = value['term']
+                init_map = value['init']
+                term_map = value['term']
+                if obstacle_mask is not None:
+                    init_map[obstacle_mask] = -2
+                    term_map[obstacle_mask] = -2
+                image[:self.map_size[0], self.size+1:self.size+1+self.map_size[1]] = value['init']
+                image[:self.map_size[0], self.size+2+self.map_size[1]:] = value['term']
                 plt.imsave(f'/tmp/option_{logger.run.id}_{episode}_{key}.png', image/max_n_uses, vmax=1)
                 logger.log({f'option {key}': logger.Image(f'/tmp/option_{logger.run.id}_{episode}_{key}.png')}, step=episode)
 
