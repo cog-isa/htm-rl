@@ -6,6 +6,7 @@ from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm_rl.common.sdr_encoders import IntBucketEncoder
+from htm_rl.agents.htm.utils import OptionVis
 from htm.bindings.sdr import SDR
 import imageio
 import numpy as np
@@ -211,15 +212,25 @@ class HTMAgentRunner:
         self.environment = BioGwLabEnvironment(**config['environment'])
         self.terminal_positions = [tuple(x) for x in config['environment']['food']['positions']]
 
+        self.option_actions = list()
+        self.option_predicted_actions = list()
+        self.current_option_id = None
+        self.current_action = None
+
+        self.option_stat = OptionVis(self.environment.env.shape)
+        self.terminal_pos_stat = dict(zip(self.terminal_positions, [0] * len(self.terminal_positions)))
+        self.option_start_pos = None
+        self.option_end_pos = None
+
     def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50,
                      log_patterns=False, log_options=False,
-                     log_segments=False, draw_options=False, log_terminal_stat=False):
+                     log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False):
         total_reward = 0
         steps = 0
         episode = 0
         animation = False
         agent_pos = list()
-        terminal_pos_stat = dict(zip(self.terminal_positions, [0]*len(self.terminal_positions)))
+
         while episode < n_episodes:
             if train_patterns:
                 self.agent.train_patterns()
@@ -230,6 +241,7 @@ class HTMAgentRunner:
 
             if is_first:
                 if animation:
+                    # log all saved frames for this episode
                     animation = False
                     with imageio.get_writer(f'/tmp/{logger.run.id}_episode_{episode}.gif', mode='I', fps=2) as writer:
                         for i in range(steps):
@@ -254,116 +266,16 @@ class HTMAgentRunner:
                             step=episode)
 
                 if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
+                    if draw_options_stats:
+                        self.option_stat.draw_options(logger, episode)
+                        self.option_stat.clear_stats()
                     if log_terminal_stat:
-                        logger.log(dict([(str(x[0]), x[1]) for x in terminal_pos_stat.items()]), step=episode)
+                        logger.log(dict([(str(x[0]), x[1]) for x in self.terminal_pos_stat.items()]), step=episode)
                     if log_patterns:
-                        if log_q_table:
-                            q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
-                            table = list()
-                        grid_shape = self.environment.env.shape
-                        n_states = grid_shape[0] * grid_shape[1]
-                        state_encoder = IntBucketEncoder(n_states, 5)
-                        sp_state = SDR(self.agent.hierarchy.blocks[2].tm.basal_columns)
-                        sp_input = SDR(state_encoder.output_sdr_size)
-                        sp_action_input = SDR(self.agent.muscles.muscles_size)
-                        sp_action = SDR(self.agent.hierarchy.output_block.tm.basal_columns)
-                        states_patterns = np.zeros((n_states, sp_state.size))
-                        action_patterns = np.zeros((self.agent.action.n_actions - 1, sp_action.size))
-                        action_sparse_patterns = list()
-
-                        for j in range(self.agent.action.n_actions - 1):
-                            sp_action_input.dense = self.agent.action.patterns[j]
-                            self.agent.hierarchy.output_block.sp.compute(sp_action_input, False, sp_action)
-                            action_sparse_patterns.append(np.copy(sp_action.sparse))
-                            action_patterns[j, sp_action.sparse] = 1
-
-                        for i in range(n_states):
-                            state = state_encoder.encode(i)
-                            sp_input.sparse = state
-                            self.agent.hierarchy.blocks[2].sp.compute(sp_input, False, sp_state)
-                            states_patterns[i, sp_state.sparse] = 1
-                            row = [str((i // grid_shape[0], i % grid_shape[1]))]
-                            if log_q_table:
-                                for j, option in enumerate(action_sparse_patterns):
-                                    row.append(str(round(q[option][:, sp_state.sparse].mean(), 4)))
-                                table.append(row)
-                        if log_q_table:
-                            logger.log(
-                                {f'table': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])},
-                                step=episode)
-
-                        plt.imsave(f'/tmp/{logger.run.id}_states_{config["seed"]}.png', states_patterns)
-                        logger.log({'states': wandb.Image(f'/tmp/{logger.run.id}_states_{config["seed"]}.png', )},
-                                   step=episode)
-
-                        plt.imsave(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png',
-                                   self.agent.hierarchy.output_block.sm.patterns)
-                        logger.log(
-                            {'sm options': wandb.Image(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png', )},
-                            step=episode)
-
-                        plt.imsave(f'/tmp/{logger.run.id}_actions_{config["seed"]}.png', action_patterns)
-                        logger.log({'actions': wandb.Image(f'/tmp/{logger.run.id}_actions_{config["seed"]}.png', )},
-                                   step=episode)
-
-                        action_intersection = np.dot(action_patterns, action_patterns.T)
-                        state_intersection = np.dot(states_patterns, states_patterns.T)
-
-                        logger.log({
-                            'action_intersection': logger.Table(data=action_intersection,
-                                                                columns=[str(x) for x in
-                                                                         range(action_patterns.shape[0])]),
-                            'state_intersection': logger.Table(data=state_intersection,
-                                                               columns=[str(x) for x in
-                                                                        range(states_patterns.shape[0])])
-                        }, step=episode)
-
+                        self.log_patterns(logger, episode, log_q_table)
                     if log_options:
-                        output_block = self.agent.hierarchy.output_block
-                        options_block = self.agent.hierarchy.blocks[5]
-                        options = options_block.sm.get_sparse_patterns()
-                        self.agent.hierarchy.freeze()
-                        options_actions = list()
-                        for option in options:
-                            actions = list()
-                            self.agent.reset()
-                            output_block.tm.set_active_feedback_columns(option)
-                            output_block.tm.activate_exec_dendrites()
-                            predictions = output_block.tm.get_predicted_columns(add_exec=True)
-                            while predictions.size > 0:
-                                dense_predictions = np.zeros(output_block.tm.basal_columns)
-                                dense_predictions[predictions] = 1
-                                predicted_action_patterns = output_block.sm.get_options(dense_predictions)
-                                if len(predicted_action_patterns) == 0:
-                                    break
-                                # get muscles activations
-                                p_actions = list()
-                                for predicted_action_pattern in predicted_action_patterns:
-                                    self.agent.muscles.set_active_input(predicted_action_pattern)
-                                    self.agent.muscles.depolarize_muscles()
-                                    action_pattern = self.agent.muscles.get_depolarized_muscles()
-                                    # convert muscles activation pattern to environment action
-                                    action = self.agent.action.get_action(action_pattern)
-                                    p_actions.append(action)
-                                actions.append(p_actions)
-
-                                if len(actions) > 20:
-                                    break
-
-                                output_block.tm.set_active_columns(predictions)
-                                output_block.tm.activate_cells(learn=False)
-
-                                output_block.tm.activate_basal_dendrites()
-                                output_block.tm.activate_apical_dendrites()
-                                output_block.tm.activate_inhib_dendrites()
-
-                                output_block.tm.predict_cells()
-                                predictions = output_block.tm.get_predicted_columns()
-
-                            options_actions.append(str(actions))
-                        self.agent.hierarchy.unfreeze()
-                        logger.log({'options': logger.Table(data=np.array(options_actions).reshape((-1, 1)),
-                                                            columns=['actions'])}, step=episode)
+                        # old way to retrieve options
+                        self.log_options(logger, episode)
 
                 if ((((episode + 1) % log_every_episode) == 0) or (episode == 0)) and (logger is not None):
                     animation = True
@@ -379,58 +291,226 @@ class HTMAgentRunner:
                 total_reward += reward
 
             action = self.agent.make_action(obs)
+            self.current_action = action
+
+            if draw_options_stats:
+                self.update_option_stats()
 
             if animation:
-                pic = self.environment.callmethod('render_rgb')[0]
-                if draw_options:
-                    c_pos = self.environment.env.agent.position
-                    if self.agent.hierarchy.blocks[5].made_decision:
-                        agent_pos.append(c_pos)
-                        if len(agent_pos) > 1:
-                            pic[tuple(zip(*agent_pos))] = [[255, 255, 150]]*len(agent_pos)
-                        else:
-                            pic[agent_pos[0]] = [255, 255, 255]
-                    else:
-                        if len(agent_pos) > 0:
-                            agent_pos.clear()
-
-                    term_draw_options = np.zeros((pic.shape[0], 3, 3))
-                    c_option = self.agent.hierarchy.blocks[5].current_option
-                    f_option = self.agent.hierarchy.blocks[5].failed_option
-                    comp_option = self.agent.hierarchy.blocks[5].completed_option
-                    self.agent.hierarchy.blocks[5].failed_option = None
-                    self.agent.hierarchy.blocks[5].completed_option = None
-
-                    if c_option is not None:
-                        term_draw_options[c_option, 0] = [255, 255, 255]
-                    if f_option is not None:
-                        term_draw_options[f_option, 1] = [200, 0, 0]
-                    if comp_option is not None:
-                        term_draw_options[comp_option, 2] = [0, 0, 200]
-
-                    if self.agent.hierarchy.output_block.predicted_options is not None:
-                        for o in self.agent.hierarchy.output_block.predicted_options:
-                            predicted_action_pattern = np.flatnonzero(self.agent.hierarchy.output_block.sm.patterns[o])
-                            self.agent.muscles.set_active_input(predicted_action_pattern)
-                            self.agent.muscles.depolarize_muscles()
-                            action_pattern = self.agent.muscles.get_depolarized_muscles()
-                            # convert muscles activation pattern to environment action
-                            a = self.agent.action.get_action(action_pattern)
-                            disp = actions_disp[a]
-                            new_row = c_pos[0] + disp[0]
-                            new_col = c_pos[1] + disp[1]
-                            if (new_row < pic.shape[0]) and (new_col < pic.shape[1]):
-                                pic[new_row, new_col] = [255, 200, 120]
-                    pic = np.concatenate([pic, term_draw_options], axis=1)
-
-                plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic.astype('uint8'))
+                self.draw_animation_frame(logger, draw_options, agent_pos, episode, steps)
 
             self.environment.act(action)
 
             if self.environment.callmethod('is_terminal'):
                 pos = self.environment.env.agent.position
-                if pos in terminal_pos_stat:
-                    terminal_pos_stat[pos] += 1
+                if pos in self.terminal_pos_stat:
+                    self.terminal_pos_stat[pos] += 1
+
+    def log_patterns(self, logger, episode, log_q_table=False):
+        if log_q_table:
+            q = self.agent.hierarchy.output_block.bg.input_weights_d1 - self.agent.hierarchy.output_block.bg.input_weights_d2
+            table = list()
+        grid_shape = self.environment.env.shape
+        n_states = grid_shape[0] * grid_shape[1]
+        state_encoder = IntBucketEncoder(n_states, 5)
+        sp_state = SDR(self.agent.hierarchy.blocks[2].tm.basal_columns)
+        sp_input = SDR(state_encoder.output_sdr_size)
+        sp_action_input = SDR(self.agent.muscles.muscles_size)
+        sp_action = SDR(self.agent.hierarchy.output_block.tm.basal_columns)
+        states_patterns = np.zeros((n_states, sp_state.size))
+        action_patterns = np.zeros((self.agent.action.n_actions - 1, sp_action.size))
+        action_sparse_patterns = list()
+
+        for j in range(self.agent.action.n_actions - 1):
+            sp_action_input.dense = self.agent.action.patterns[j]
+            self.agent.hierarchy.output_block.sp.compute(sp_action_input, False, sp_action)
+            action_sparse_patterns.append(np.copy(sp_action.sparse))
+            action_patterns[j, sp_action.sparse] = 1
+
+        for i in range(n_states):
+            state = state_encoder.encode(i)
+            sp_input.sparse = state
+            self.agent.hierarchy.blocks[2].sp.compute(sp_input, False, sp_state)
+            states_patterns[i, sp_state.sparse] = 1
+            row = [str((i // grid_shape[0], i % grid_shape[1]))]
+            if log_q_table:
+                for j, option in enumerate(action_sparse_patterns):
+                    row.append(str(round(q[option][:, sp_state.sparse].mean(), 4)))
+                table.append(row)
+        if log_q_table:
+            logger.log(
+                {f'table': logger.Table(data=table, columns=['state', 'right', 'down', 'left', 'up'])},
+                step=episode)
+
+        plt.imsave(f'/tmp/{logger.run.id}_states_{config["seed"]}.png', states_patterns)
+        logger.log({'states': wandb.Image(f'/tmp/{logger.run.id}_states_{config["seed"]}.png', )},
+                   step=episode)
+
+        plt.imsave(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png',
+                   self.agent.hierarchy.output_block.sm.patterns)
+        logger.log(
+            {'sm options': wandb.Image(f'/tmp/{logger.run.id}_sm_options_{config["seed"]}.png', )},
+            step=episode)
+
+        plt.imsave(f'/tmp/{logger.run.id}_actions_{config["seed"]}.png', action_patterns)
+        logger.log({'actions': wandb.Image(f'/tmp/{logger.run.id}_actions_{config["seed"]}.png', )},
+                   step=episode)
+
+        action_intersection = np.dot(action_patterns, action_patterns.T)
+        state_intersection = np.dot(states_patterns, states_patterns.T)
+
+        logger.log({
+            'action_intersection': logger.Table(data=action_intersection,
+                                                columns=[str(x) for x in
+                                                         range(action_patterns.shape[0])]),
+            'state_intersection': logger.Table(data=state_intersection,
+                                               columns=[str(x) for x in
+                                                        range(states_patterns.shape[0])])
+        }, step=episode)
+
+    def log_options(self, logger, episode):
+        output_block = self.agent.hierarchy.output_block
+        options_block = self.agent.hierarchy.blocks[5]
+        options = options_block.sm.get_sparse_patterns()
+        self.agent.hierarchy.freeze()
+        options_actions = list()
+        for option in options:
+            actions = list()
+            self.agent.reset()
+            output_block.tm.set_active_feedback_columns(option)
+            output_block.tm.activate_exec_dendrites()
+            predictions = output_block.tm.get_predicted_columns(add_exec=True)
+            while predictions.size > 0:
+                dense_predictions = np.zeros(output_block.tm.basal_columns)
+                dense_predictions[predictions] = 1
+                predicted_action_patterns = output_block.sm.get_options(dense_predictions)
+                if len(predicted_action_patterns) == 0:
+                    break
+                # get muscles activations
+                p_actions = list()
+                for predicted_action_pattern in predicted_action_patterns:
+                    self.agent.muscles.set_active_input(predicted_action_pattern)
+                    self.agent.muscles.depolarize_muscles()
+                    action_pattern = self.agent.muscles.get_depolarized_muscles()
+                    # convert muscles activation pattern to environment action
+                    action = self.agent.action.get_action(action_pattern)
+                    p_actions.append(action)
+                actions.append(p_actions)
+
+                if len(actions) > 20:
+                    break
+
+                output_block.tm.set_active_columns(predictions)
+                output_block.tm.activate_cells(learn=False)
+
+                output_block.tm.activate_basal_dendrites()
+                output_block.tm.activate_apical_dendrites()
+                output_block.tm.activate_inhib_dendrites()
+
+                output_block.tm.predict_cells()
+                predictions = output_block.tm.get_predicted_columns()
+
+            options_actions.append(str(actions))
+        self.agent.hierarchy.unfreeze()
+        logger.log({'options': logger.Table(data=np.array(options_actions).reshape((-1, 1)),
+                                            columns=['actions'])}, step=episode)
+
+    def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
+        pic = self.environment.callmethod('render_rgb')[0]
+        if draw_options:
+            c_pos = self.environment.env.agent.position
+            if self.agent.hierarchy.blocks[5].made_decision:
+                agent_pos.append(c_pos)
+                if len(agent_pos) > 1:
+                    pic[tuple(zip(*agent_pos))] = [[255, 255, 150]] * len(agent_pos)
+                else:
+                    pic[agent_pos[0]] = [255, 255, 255]
+            else:
+                if len(agent_pos) > 0:
+                    agent_pos.clear()
+
+            term_draw_options = np.zeros((pic.shape[0], 3, 3))
+            c_option = self.agent.hierarchy.blocks[5].current_option
+            f_option = self.agent.hierarchy.blocks[5].failed_option
+            comp_option = self.agent.hierarchy.blocks[5].completed_option
+            self.agent.hierarchy.blocks[5].failed_option = None
+            self.agent.hierarchy.blocks[5].completed_option = None
+
+            if c_option is not None:
+                term_draw_options[c_option, 0] = [255, 255, 255]
+            if f_option is not None:
+                term_draw_options[f_option, 1] = [200, 0, 0]
+            if comp_option is not None:
+                term_draw_options[comp_option, 2] = [0, 0, 200]
+
+            if self.agent.hierarchy.output_block.predicted_options is not None:
+                for o in self.agent.hierarchy.output_block.predicted_options:
+                    predicted_action_pattern = np.flatnonzero(self.agent.hierarchy.output_block.sm.patterns[o])
+                    self.agent.muscles.set_active_input(predicted_action_pattern)
+                    self.agent.muscles.depolarize_muscles()
+                    action_pattern = self.agent.muscles.get_depolarized_muscles()
+                    # convert muscles activation pattern to environment action
+                    a = self.agent.action.get_action(action_pattern)
+                    disp = actions_disp[a]
+                    new_row = c_pos[0] + disp[0]
+                    new_col = c_pos[1] + disp[1]
+                    if (new_row < pic.shape[0]) and (new_col < pic.shape[1]):
+                        pic[new_row, new_col] = [255, 200, 120]
+            pic = np.concatenate([pic, term_draw_options], axis=1)
+
+        plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic.astype('uint8'))
+
+    def update_option_stats(self):
+        option_block = self.agent.hierarchy.blocks[5]
+
+        if self.agent.hierarchy.blocks[5].made_decision:
+            if len(self.option_actions) == 0:
+                self.option_start_pos = self.environment.env.agent.position
+            current_option = option_block.current_option
+            current_option_id = option_block.sm.unique_id[current_option]
+            if (self.current_option_id != current_option_id) and (len(self.option_actions) != 0):
+                # update stats
+                self.option_end_pos = self.environment.env.agent.position
+                self.option_stat.update(self.current_option_id,
+                                        self.option_start_pos,
+                                        self.option_end_pos,
+                                        self.option_actions,
+                                        self.option_predicted_actions)
+                self.option_actions.clear()
+                self.option_predicted_actions = list()
+            if self.agent.hierarchy.blocks[5].made_decision:
+                predicted_actions = list()
+                if self.agent.hierarchy.output_block.predicted_options is not None:
+                    for o in self.agent.hierarchy.output_block.predicted_options:
+                        predicted_action_pattern = np.flatnonzero(self.agent.hierarchy.output_block.sm.patterns[o])
+                        self.agent.muscles.set_active_input(predicted_action_pattern)
+                        self.agent.muscles.depolarize_muscles()
+                        action_pattern = self.agent.muscles.get_depolarized_muscles()
+                        # convert muscles activation pattern to environment action
+                        a = self.agent.action.get_action(action_pattern)
+                        predicted_actions.append(a)
+
+                self.option_actions.append(self.current_action)
+                self.option_predicted_actions.append(predicted_actions)
+                self.current_option_id = current_option_id
+        else:
+            if len(self.option_actions) > 0:
+                if option_block.failed_option is not None:
+                    last_option = option_block.failed_option
+                elif option_block.completed_option is not None:
+                    last_option = option_block.completed_option
+                else:
+                    raise ValueError('Something went wrong!')
+
+                last_option_id = option_block.sm.unique_id[last_option]
+                self.option_end_pos = self.environment.env.agent.position
+                self.option_stat.update(last_option_id,
+                                        self.option_start_pos,
+                                        self.option_end_pos,
+                                        self.option_actions,
+                                        self.option_predicted_actions)
+                self.option_actions.clear()
+                self.option_predicted_actions = list()
 
 
 if __name__ == '__main__':
@@ -487,5 +567,6 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=20, log_patterns=False,
-                        train_patterns=True, log_options=True, log_segments=True, draw_options=True, log_terminal_stat=True)
+    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=50, log_patterns=False,
+                        train_patterns=True, log_options=True, log_segments=False, draw_options=True, log_terminal_stat=True,
+                        draw_options_stats=True)

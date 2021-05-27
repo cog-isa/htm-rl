@@ -23,8 +23,11 @@ class SpatialMemory:
         self.initial_permanence = initial_permanence
         self.patterns = np.empty(0)
         self.permanence = np.empty(0)
+        self.unique_id = np.empty(0)
         self.overlap_threshold = overlap_threshold
         self.activation_threshold = activation_threshold
+
+        self.id_counter = 0
 
     def __len__(self):
         return self.patterns.shape[0]
@@ -34,6 +37,8 @@ class SpatialMemory:
             if self.patterns.size == 0:
                 self.patterns = dense_pattern.reshape((1, -1))
                 self.permanence = np.array([self.initial_permanence])
+                self.unique_id = np.array([self.id_counter])
+                self.id_counter += 1
             else:
                 pattern_sizes = self.patterns.sum(axis=1)
                 overlaps = 1 - np.sum(np.abs(self.patterns - dense_pattern), axis=1) / (pattern_sizes + 1e-15)
@@ -45,6 +50,8 @@ class SpatialMemory:
                 else:
                     self.patterns = np.vstack([self.patterns, dense_pattern.reshape(1, -1)])
                     self.permanence = np.append(self.permanence, self.initial_permanence)
+                    self.unique_id = np.append(self.unique_id, self.id_counter)
+                    self.id_counter += 1
 
     def reinforce(self, values: np.array):
         """
@@ -59,13 +66,17 @@ class SpatialMemory:
         values[~positive] *= self.permanence_decrement
 
         self.permanence += values
-        self.patterns = self.patterns[self.permanence > self.permanence_threshold]
-        self.permanence = self.permanence[self.permanence > self.permanence_threshold]
+        patterns_alive = self.permanence > self.permanence_threshold
+        self.patterns = self.patterns[patterns_alive]
+        self.permanence = self.permanence[patterns_alive]
+        self.unique_id = self.unique_id[patterns_alive]
 
     def forget(self):
         self.permanence -= self.permanence_forgetting_decrement
-        self.patterns = self.patterns[self.permanence > self.permanence_threshold]
-        self.permanence = self.permanence[self.permanence > self.permanence_threshold]
+        patterns_alive = self.permanence > self.permanence_threshold
+        self.patterns = self.patterns[patterns_alive]
+        self.permanence = self.permanence[patterns_alive]
+        self.unique_id = self.unique_id[patterns_alive]
 
     def get_options(self, dense_pattern, return_indices=False):
         if self.patterns.size == 0:
@@ -389,6 +400,7 @@ class Block:
                     self.made_decision = True
                     self.current_option = option_index
                     self.failed_option = None
+                    self.completed_option = None
                     self.predicted_options = indices
                     # jumped off a high level option
                     if not np.isin(option_index, indices):
@@ -453,6 +465,7 @@ class Block:
         self.made_decision = False
         self.current_option = None
         self.failed_option = None
+        self.completed_option = None
 
         self.should_return_exec_predictions = False
         self.should_return_apical_predictions = False
