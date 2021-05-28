@@ -2,7 +2,7 @@ import pickle
 from typing import Tuple
 
 import numpy as np
-from htm.bindings.sdr import SDR
+from htm import SDR
 
 from htm_rl.agents.ucb.sparse_value_network import exp_sum_update, exp_decay
 from htm_rl.common.sdr import SparseSdr

@@ -1,6 +1,6 @@
 from typing import Union
 
-from htm.bindings.algorithms import TemporalMemory as HtmTemporalMemory
+from htm.algorithms import TemporalMemory as HtmTemporalMemory
 
 
 class TemporalMemory(HtmTemporalMemory):

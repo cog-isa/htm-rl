@@ -1,14 +1,19 @@
+# >>>>>>>>> conda requirements
+python>=3.8
 numpy
 matplotlib
 jupyterlab
+ruamel.yaml
+tqdm
+# remove on removing train_eval.py
+pandas
 
-hexy
+# htm.core dependencies
 mock
 prettytable
 pytest==4.6.5
-htm.core==2.0.18
 
-gym==0.17.2
-gym-minigrid==1.0.1
-
-ruamel.yaml==0.16.10
+# >>>>>>>>> pip requirements
+hexy
+# better install htm.core from sources, but remember to fix boost url manually
+htm.core
