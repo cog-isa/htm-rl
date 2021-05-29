@@ -5,15 +5,20 @@ matplotlib
 jupyterlab
 ruamel.yaml
 tqdm
-# remove on removing train_eval.py
+#   remove on removing train_eval.py
 pandas
 
-# htm.core dependencies
+#   htm.core dependencies
 mock
 prettytable
 pytest==4.6.5
 
+
+
 # >>>>>>>>> pip requirements
+wandb
+
+#   htm.core dependencies
 hexy
-# better install htm.core from sources, but remember to fix boost url manually
+#       better install htm.core from sources, but remember to fix boost url manually
 htm.core
