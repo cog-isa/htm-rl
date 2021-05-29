@@ -4,7 +4,7 @@ from typing import Dict
 from tqdm import trange
 import numpy as np
 
-from htm_rl.agent.train_eval import RunStats, RunResultsProcessor
+from htm_rl.agent.train_eval import RunStats
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.rnd.agent import RndAgent
 from htm_rl.agents.svpn.agent import SvpnAgent
@@ -33,22 +33,22 @@ class Experiment:
     def run(
             self, env_seed: int, agent_seed: int,
             agent_config: Config, env_config: Config,
-            run_results_processor: RunResultsProcessor = None, seed_ind=None,
+            seed_ind=None,
     ):
         env = self.materialize_environment(env_seed, env_config)
         agent = self.materialize_agent(agent_seed, env, agent_config)
         train_stats = RunStats(agent.name)
 
         print(f'AGENT: {agent.name}     SEED: {env_seed} {agent_seed}')
-        if run_results_processor is not None:
-            store_environment_map(
-                seed_ind, env.callmethod('render_rgb'),
-                env_config.name, env_seed, run_results_processor.test_dir
-            )
-            # env = HeatmapRecorder(
-            #     env, 25, run_results_processor.test_dir,
-            #     f'{agent_config.name}_{env_seed}'
+        if False:
+            # store_environment_map(
+            #     seed_ind, env.callmethod('render_rgb'),
+            #     env_config.name, env_seed, run_results_processor.test_dir
             # )
+            env = HeatmapRecorder(
+                env, 1, self.base_dir,
+                f'{agent_config.name}_{env_seed}'
+            )
 
         # temporal dirty flag-based solution
         run = None

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from htm_rl.agent.train_eval import RunResultsProcessor, RunStats
+from htm_rl.agent.train_eval import RunStats
 from htm_rl.common.utils import isnone
 from htm_rl.config import FileConfig
 from htm_rl.experiment import Experiment
@@ -20,10 +20,6 @@ class RunConfig(FileConfig):
         silent_run = self['silent']
         report_name_suffix = self['report_name']
 
-        run_results_processor: RunResultsProcessor = self['run_results_processor']
-        if run_results_processor.test_dir is None:
-            run_results_processor.test_dir = self['test_dir']
-
         experiment = Experiment(
             base_dir=self.path.parent, use_wandb=self['wandb'],
             **self['experiment']
@@ -31,10 +27,6 @@ class RunConfig(FileConfig):
 
         dry_run = self['dry_run']
         if experiment is not None and dry_run:
-            # doesn't work at the moment
-            n_envs_to_render = self['n_environments_to_render']
-            maps = experiment.get_environment_maps(n_envs_to_render)
-            run_results_processor.store_environment_maps(maps)
             return
 
         # by default, if nothing specified then at least `run`
@@ -46,12 +38,9 @@ class RunConfig(FileConfig):
             agent_configs = self.filter_by(self.read_configs('agent'), agent_key)
             agent_seeds = self.content.get('agent_seed')
 
-            store_maps = self['store_maps']
-
             experiment_setups = list(product(env_configs, agent_configs, seeds))
             seed_ind = 0
             for env_config, agent_config, env_seed in experiment_setups:
-                rrp = run_results_processor if store_maps and seed_ind < len(seeds) else None
                 agent_seeds = isnone(agent_seeds, env_seed)
                 if not isinstance(agent_seeds, list):
                     agent_seeds = [agent_seeds]
@@ -61,23 +50,16 @@ class RunConfig(FileConfig):
                     results = experiment.run(
                         env_seed=env_seed, agent_seed=agent_seed,
                         agent_config=agent_config, env_config=env_config,
-                        run_results_processor=rrp, seed_ind=seed_ind,
+                        seed_ind=seed_ind,
                     )
-                    run_results_processor.store_result(results)
+                    results.print_results()
                     agent_results.append(results)
 
                 if len(agent_seeds) > 1:
                     results = self.aggregate_stats(agent_results)
-                    run_results_processor.store_result(results)
+                    results.print_results()
                 print('')
                 seed_ind += 1
-
-        if aggregate:
-            aggregate_file_masks = self['aggregate_masks']
-            for_paper = self['paper']
-            run_results_processor.aggregate_results(
-                aggregate_file_masks, report_name_suffix, silent_run, for_paper
-            )
 
     def get_seeds(self):
         seeds = self['seed']

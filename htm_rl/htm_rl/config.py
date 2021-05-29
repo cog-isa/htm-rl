@@ -5,7 +5,6 @@ from typing import Dict
 
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
-from htm_rl.agent.train_eval import RunResultsProcessor
 from htm_rl.common.utils import isnone
 
 
@@ -20,7 +19,6 @@ def read_config(file_path: Path, verbose=False):
 
 def register_classes(yaml: YAML):
     classes = [
-        RunResultsProcessor,
     ]
 
     constructor: SafeConstructor = yaml.constructor
