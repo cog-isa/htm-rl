@@ -61,6 +61,35 @@ class Config(dict):
     def name(self) -> str:
         raise NotImplementedError
 
+    def __getitem__(self, item):
+        if not isinstance(item, str):
+            return super(Config, self).__getitem__(item)
+
+        keys = item.split('.')
+        if len(keys) == 1:
+            return super(Config, self).__getitem__(item)
+        res = self
+        for key in keys:
+            res = res[key]
+        return res
+
+    def __setitem__(self, key, value):
+        if not isinstance(key, str):
+            super(Config, self).__setitem__(key, value)
+            return
+
+        keys = key.split('.')
+        if len(keys) == 1:
+            super(Config, self).__setitem__(key, value)
+            return
+
+        res = self
+        for k in keys[:-1]:
+            if k not in res:
+                res[k] = dict()
+            res = res[k]
+        res[keys[-1]] = value
+
 
 class FileConfig(Config):
     path: Path
