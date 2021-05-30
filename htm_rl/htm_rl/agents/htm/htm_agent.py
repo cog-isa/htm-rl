@@ -224,7 +224,8 @@ class HTMAgentRunner:
 
     def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_q_table=False, log_every_episode=50,
                      log_patterns=False, log_options=False,
-                     log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False):
+                     log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
+                     opt_threshold=0):
         total_reward = 0
         steps = 0
         episode = 0
@@ -267,7 +268,8 @@ class HTMAgentRunner:
 
                 if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
                     if draw_options_stats:
-                        self.option_stat.draw_options(logger, episode, obstacle_mask=self.environment.env.entities['obstacle'].mask)
+                        self.option_stat.draw_options(logger, episode, threshold=opt_threshold,
+                                                      obstacle_mask=self.environment.env.entities['obstacle'].mask)
                         self.option_stat.clear_stats()
                     if log_terminal_stat:
                         logger.log(dict([(str(x[0]), x[1]) for x in self.terminal_pos_stat.items()]), step=episode)
@@ -519,7 +521,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'multigoal_8x8_obs_default'
+        default_config_name = 'cross_11x11_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
@@ -567,6 +569,6 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    runner.run_episodes(500, logger=wandb, log_q_table=False, log_every_episode=50, log_patterns=False,
+    runner.run_episodes(1000, logger=wandb, log_q_table=False, log_every_episode=25, log_patterns=False,
                         train_patterns=True, log_options=True, log_segments=False, draw_options=True, log_terminal_stat=True,
-                        draw_options_stats=True)
+                        draw_options_stats=True, opt_threshold=4)

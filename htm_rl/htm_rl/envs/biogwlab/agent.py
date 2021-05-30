@@ -52,7 +52,7 @@ class Agent(Entity):
     renderer: AgentRenderer
     env: Environment
 
-    def __init__(self, env: Environment, rendering=False, position=None, **entity):
+    def __init__(self, env: Environment, rendering=False, positions=None, change_position=False, **entity):
         super(Agent, self).__init__(rendering=rendering, **entity)
         self.env = env
 
@@ -60,12 +60,25 @@ class Agent(Entity):
             assert isinstance(rendering, dict)
             self.renderer = AgentRenderer(env_shape=env.shape, **rendering)
 
-        self.init_position = tuple(position)
+        if positions is not None:
+            self.positions = [tuple(x) for x in positions]
+        else:
+            self.positions = positions
+        self.change_position = change_position
+        self.rng = None
 
     def generate(self, seeds):
-        rng = np.random.default_rng(seeds['agent'])
-        if self.init_position is not None:
-            self.position = self.init_position
+        if not (self.initialized and self.change_position):
+            rng = np.random.default_rng(seeds['agent'])
+            self.rng = rng
+        else:
+            rng = self.rng
+
+        if self.positions is not None:
+            if (len(self.positions) > 1) and self.change_position:
+                self.position = self.positions[rng.integers(0, len(self.positions))]
+            else:
+                self.position = self.positions[0]
         else:
             empty_positions_mask = ~self.env.aggregated_mask[EntityType.NonEmpty]
 
