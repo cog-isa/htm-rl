@@ -1,63 +1,60 @@
-seed:
-env:
-
 # ^^^^^^^ Will be provided ^^^^^^^^^
-type: svpn
+_type_: svpn
 
 .default_spatial_pooler_params: &default_spatial_pooler_params
   synapse_permanence_deltas: [ .1, .01 ]
   connected_permanence_threshold: .5
   min_activation_threshold: 1
 
-agent:
-  state_sp:
-    <<: *default_spatial_pooler_params
-    output_dilation_ratio: 2.
-    potential_synapses_ratio: .5
-    sparsity: .015
-    boost_strength: .2
-    boost_sliding_window: 2000
-    expected_normal_overlap_frequency: .001
+state_sp:
+  <<: *default_spatial_pooler_params
+  output_dilation_ratio: 2.
+  potential_synapses_ratio: .5
+  sparsity: .015
+  boost_strength: .2
+  boost_sliding_window: 2000
+  expected_normal_overlap_frequency: .001
 
-  action_encoder:
-    bucket_size: 4
+action_encoder:
+  bucket_size: 4
 
-  sa_sp:
-    <<: *default_spatial_pooler_params
-    output_dilation_ratio: 3.
-    potential_synapses_ratio: .6
-    sparsity: .015
-    boost_strength: .2
-    boost_sliding_window: 4000
-    expected_normal_overlap_frequency: .001
+sa_sp:
+  <<: *default_spatial_pooler_params
+  output_dilation_ratio: 3.
+  potential_synapses_ratio: .6
+  sparsity: .015
+  boost_strength: .2
+  boost_sliding_window: 4000
+  expected_normal_overlap_frequency: .001
 
-  sqvn:
-    trace_decay: .75
-    visit_decay: .994
-    discount_factor: .96
-    learning_rate: [.04, .995]
-    ucb_exploration_factor: [.5, .994]
-    td_error_decay: .0
+sqvn:
+  trace_decay: .75
+  visit_decay: .994
+  discount_factor: .96
+  learning_rate: [.04, .995]
+  ucb_exploration_factor: [.5, .994]
+  td_error_decay: .0
 
-  dreamer:
-    learning_rate: .0
-    trace_decay:
+dreamer:
+  planning_prob_alpha: [1.3, .985]
+  learning_rate: .5
+  trace_decay: .0
 
-  r_learning_rate: [.05, .995]
-  first_planning_episode: 0
-  last_planning_episode: 2000
-  prediction_depth: 5
-  n_prediction_rollouts: 2
+r_learning_rate: [.05, .995]
+first_planning_episode: 0
+last_planning_episode: 2000
+prediction_depth: 5
+n_prediction_rollouts: 2
 
-  tm:
-    cells_per_column: 1
-    initial_permanence: .5
-    connected_permanence: .4
-    activation_threshold: .9
-    learning_threshold: .66
-    max_new_synapse_count: 1.
-    max_synapses_per_segment: 1.2
-    predictedSegmentDecrement: .0001
-    permanenceIncrement: .1
-    permanenceDecrement: .03
-    maxSegmentsPerCell: 4
+tm:
+  cells_per_column: 1
+  initial_permanence: .5
+  connected_permanence: .4
+  activation_threshold: .9
+  learning_threshold: .66
+  max_new_synapse_count: 1.
+  max_synapses_per_segment: 1.2
+  predictedSegmentDecrement: .0001
+  permanenceIncrement: .1
+  permanenceDecrement: .03
+  maxSegmentsPerCell: 4
