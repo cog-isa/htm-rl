@@ -26,8 +26,6 @@ registry = {
 
 
 class BioGwLabEnvironment(Wrapper):
-    output_sdr_size: int
-
     def __init__(
             self, shape_xy: Tuple[int, int], seed: int, rendering: Dict = None, actions=None,
             **modules

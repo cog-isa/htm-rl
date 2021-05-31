@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import numpy as np
 from tqdm import trange
 
@@ -7,44 +5,50 @@ from htm_rl.agents.agent import Agent
 from htm_rl.agents.rnd.agent import RndAgent
 from htm_rl.agents.svpn.agent import SvpnAgent
 from htm_rl.agents.ucb.agent import UcbAgent
+from htm_rl.common.plot_utils import store_heatmap, store_environment_map
 from htm_rl.common.utils import timed
 from htm_rl.config import FileConfig
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
+from htm_rl.envs.biogwlab.wrappers.recorders import AgentPositionRecorder
 from htm_rl.envs.env import Env
-from htm_rl.envs.wrappers.recorders import HeatmapRecorder
+from htm_rl.envs.wrapper import unwrap
 
 
 class Experiment:
     n_episodes: int
     print: dict
     wandb: dict
-    base_dir: Path
 
-    def __init__(self, n_episodes: int, print: dict, wandb: dict, base_dir: Path, **_):
+    def __init__(self, n_episodes: int, print: dict, wandb: dict, **_):
         self.n_episodes = n_episodes
         self.print = print
         self.wandb = wandb
-        self.base_dir = base_dir
 
     def run(self, config: FileConfig):
         env = self.materialize_environment(config)
         agent = self.materialize_agent(config, env)
-        # if self.print['maps']:
-        #     store_environment_map(
-        #         seed_ind, env.callmethod('render_rgb'),
-        #         env_config.name, env_seed, run_results_processor.test_dir
-        #     )
-        if self.print['heatmaps']:
-            env = HeatmapRecorder(
-                env, 1, self.base_dir,
-                f'{config["agent"]}_{config["env_seed"]}'
+        env_shape = unwrap(env).shape
+
+        if self.print['maps'] is not None:
+            store_environment_map(
+                0, env.callmethod('render_rgb'),
+                config['env'], config['env_seed'], config['results_dir']
             )
+        handlers = []
+        if self.print['heatmaps'] is not None:
+            env = AgentPositionRecorder(env)
+            heatmap_recorders = [
+                HeatmapRecorder(freq, config, env_shape)
+                for freq in self.print['heatmaps']
+            ]
+            handlers.extend(heatmap_recorders)
 
         train_stats = RunStats()
         wandb_run = self.init_wandb_run(agent, config) if self.wandb['enabled'] else None
 
-        for _ in trange(self.n_episodes):
-            (steps, reward), elapsed_time = self.run_episode(env, agent)
+        for episode in trange(self.n_episodes):
+            (steps, reward), elapsed_time = self.run_episode(env, agent, handlers)
+            self.handle_episode(env, agent, episode, handlers)
             train_stats.append_stats(steps, reward, elapsed_time)
             if self.wandb['enabled']:
                 wandb_run.log({
@@ -56,7 +60,7 @@ class Experiment:
         return train_stats
 
     @timed
-    def run_episode(self, env, agent):
+    def run_episode(self, env: Env, agent: Agent, handlers: list):
         step = 0
         total_reward = 0.
 
@@ -70,6 +74,7 @@ class Experiment:
                 break
 
             action = agent.act(reward, obs, first)
+            self.handle_step(env, agent, step, handlers)
             env.act(action)
 
             step += 1
@@ -111,10 +116,46 @@ class Experiment:
         import wandb
         project = self.wandb['project']
         assert project is not None, 'Either set up `project` to the experiment, or turn off wandb'
-        run = wandb.init(project=project, reinit=True, dir=self.base_dir)
+        run = wandb.init(project=project, reinit=True, dir=config['base_dir'])
         run.config.agent = {'name': config['agent'], 'type': agent.name, 'seed': config['agent_seed']}
         run.config.environment = {'name': config['env'], 'seed': config['env_seed']}
         return run
+
+    def handle_episode(self, env: Env, agent: Agent, episode: int, handlers: list):
+        for handler in handlers:
+            handler.handle_episode(env, agent, episode, )
+
+    def handle_step(self, env: Env, agent: Agent, step: int, handlers: list):
+        for handler in handlers:
+            handler.handle_step(env, agent, step, )
+
+
+class HeatmapRecorder:
+    config: FileConfig
+    heatmap: np.ndarray
+    frequency: int
+    name_str: str
+
+    def __init__(self, frequency: int, config: FileConfig, shape):
+        self.config = config
+        self.frequency = frequency
+        self.name_str = f'{config["agent"]}_{config["env_seed"]}_{frequency}'
+        self.heatmap = np.zeros(shape, dtype=np.float)
+
+    def handle_step(self, env: Env, agent: Agent, step: int):
+        position: tuple[int, int] = env.get_info()['agent_position']
+        self.heatmap[position] += 1.
+
+    def handle_episode(self, env: Env, agent: Agent, episode: int):
+        if (episode + 1) % self.frequency == 0:
+            self._flush_heatmap(episode + 1)
+
+    def _flush_heatmap(self, episode):
+        store_heatmap(
+            episode, self.heatmap,
+            self.name_str, self.config['results_dir']
+        )
+        self.heatmap.fill(0.)
 
 
 class RunStats:

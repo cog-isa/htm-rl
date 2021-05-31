@@ -1,4 +1,4 @@
-from typing import Tuple, Any, Dict
+from typing import Any
 
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.envs.env import Env
@@ -6,14 +6,16 @@ from htm_rl.envs.env import Env
 
 class Wrapper(Env):
     env: Env
+    root_env: Env
 
     def __init__(self, env):
         self.env = env
+        self.root_env = unwrap(env)
 
-    def observe(self) -> Tuple[float, SparseSdr, bool]:
+    def observe(self) -> tuple[float, SparseSdr, bool]:
         return self.env.observe()
 
-    def get_info(self) -> Dict:
+    def get_info(self) -> dict:
         return self.env.get_info()
 
     def act(self, action: Any) -> None:

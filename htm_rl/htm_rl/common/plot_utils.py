@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import List, Optional, Union
 
 import matplotlib.pyplot as plt
@@ -20,7 +21,7 @@ def plot_grid_images(images: List[np.ndarray]):
 
 def store_environment_map(
         ind: int, env_map: Union[np.ndarray, List[np.ndarray]],
-        env_name: str, seed: int, test_dir: str
+        env_name: str, seed: int, test_dir: Path
 ):
     fig: plt.Figure
     ax: plt.Axes
@@ -43,19 +44,19 @@ def store_environment_map(
         _plot_grid_image(ax, observation)
         ax.set_title('agent observation')
 
-    save_path = os.path.join(test_dir, f'{env_name}_map_{ind}_{seed}.svg')
+    save_path = test_dir.joinpath(f'{env_name}_map_{ind}_{seed}.svg')
     fig.savefig(save_path, dpi=120)
     plt.close(fig)
 
 
-def store_heatmap(ind, heatmap, name_str, test_dir):
+def store_heatmap(ind, heatmap, name_str, test_dir: Path):
     fig: plt.Figure
     ax: plt.Axes
     fig, ax = plt.subplots(1, 1, figsize=(6, 6))
     _plot_grid_image(ax, heatmap)
 
     ax.set_title(name_str)
-    save_path = os.path.join(test_dir, f'heatmap_{name_str}_{ind}.svg')
+    save_path = test_dir.joinpath(f'heatmap_{name_str}_{ind}.svg')
     fig.savefig(save_path, dpi=120)
     plt.close(fig)
 
@@ -64,8 +65,8 @@ def _plot_grid_image(ax, img: np.ndarray):
     h, w = img.shape[:2]
     ax.set_xticks(np.arange(-.5, w, 1))
     ax.set_yticks(np.arange(-.5, h, 1))
-    ax.set_xticklabels(np.arange(w))
-    ax.set_yticklabels(np.arange(h))
+    ax.set_xticklabels(np.arange(w+1))
+    ax.set_yticklabels(np.arange(h+1))
     ax.xaxis.tick_top()
     ax.grid(color='grey', linestyle='-', linewidth=.5)
     ax.imshow(img)

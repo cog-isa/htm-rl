@@ -92,7 +92,7 @@ def register_arguments(parser: ArgumentParser):
     parser.add_argument('-a', '--agent', dest='agent', default=None, nargs='+')
     parser.add_argument('-e', '--env', dest='env', default=None, nargs='+')
     parser.add_argument('-m', '--print_maps', dest='print_maps', default=None, type=int)
-    parser.add_argument('-t', '--print_heatmaps', dest='print_heatmaps', action='store_true', default=False)
+    parser.add_argument('-t', '--print_heatmaps', dest='print_heatmaps', default=None, nargs='+', type=int)
     parser.add_argument('-w', '--wandb_enabled', dest='wandb_enabled', action='store_true', default=False)
 
 
@@ -104,7 +104,12 @@ def main():
     config_path = Path(args.config)
     config = RunConfig(config_path)
 
-    config['base_dir'] = config.path.parent
+    base_dir: Path = config.path.parent
+    results_dir: Path = base_dir.joinpath('results')
+    results_dir.mkdir(exist_ok=True)
+
+    config['base_dir'] = base_dir
+    config['results_dir'] = results_dir
 
     config['print.maps'] = args.print_maps
     config['print.heatmaps'] = args.print_heatmaps
