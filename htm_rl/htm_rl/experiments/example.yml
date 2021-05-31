@@ -20,9 +20,9 @@ envs:
 
 # Declares agents for the run. Format - same as `envs`.
 agents:
-  - rnd
-  - ucb
-  - svpn
+  - rnd: rnd
+  - ucb: ucb
+  - svpn: svpn
 
 # Declares a list of the environment seeds. See `X_seeds` for another way to declare.
 env_seeds:

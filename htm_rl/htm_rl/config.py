@@ -3,9 +3,18 @@ from pathlib import Path
 from pprint import pprint
 from typing import Dict
 
+import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
 from htm_rl.common.utils import isnone
+
+
+class TagMethods:
+
+    @staticmethod
+    def generate_seeds(base: int, n_seeds: int):
+        seeds = np.random.default_rng(base).integers(0, 1_000_000, size=n_seeds)
+        return seeds
 
 
 def read_config(file_path: Path, verbose=False):

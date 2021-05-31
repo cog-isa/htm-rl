@@ -5,105 +5,81 @@ from itertools import product
 from pathlib import Path
 
 import numpy as np
+import tqdm
+from tqdm import trange
 
-from htm_rl.agent.train_eval import RunStats
-from htm_rl.common.utils import isnone
 from htm_rl.config import FileConfig
-from htm_rl.experiment import Experiment
+from htm_rl.experiment import Experiment, RunStats
 
 
 class RunConfig(FileConfig):
     def __init__(self, path):
         super(RunConfig, self).__init__(path)
 
-    def run(self, agent_key: str, env_key: str, run: bool, aggregate: bool):
-        silent_run = self['silent']
-        report_name_suffix = self['report_name']
+    def run(self, agents_filter: list[str], envs_filter: list[str]):
+        experiment = Experiment(**self)
+        env_seeds = self['env_seeds']
+        agent_seeds = self['agent_seeds']
+        env_names = self.filter_by(self.read_subconfigs('envs', prefix='env'), envs_filter)
+        agent_names = self.filter_by(self.read_subconfigs('agents', prefix='agent'), agents_filter)
 
-        experiment = Experiment(
-            base_dir=self.path.parent, use_wandb=self['wandb'],
-            **self['experiment']
-        )
+        experiment_setups = list(product(env_names, agent_names, env_seeds))
+        for env_name, agent_name, env_seed in experiment_setups:
+            self['env'] = env_name
+            self['env_seed'] = env_seed
+            self['agent'] = agent_name
+            agent_results = []
+            for agent_seed in agent_seeds:
+                self['agent_seed'] = agent_seed
+                print(f'AGENT: {agent_name}     SEED: {env_seed} {agent_seed}')
+                results: RunStats = experiment.run(self)
+                results.print_results()
+                agent_results.append(results)
 
-        dry_run = self['dry_run']
-        if experiment is not None and dry_run:
-            return
+            if len(agent_seeds) > 1:
+                results = self.aggregate_stats(agent_results)
+                results.print_results()
+            print('')
 
-        # by default, if nothing specified then at least `run`
-        if not dry_run and (run or not aggregate):
-            experiment: Experiment
+    def read_subconfigs(self, key, prefix):
+        if not isinstance(self[key], dict):
+            # has to be the name/names
+            if not isinstance(self[key], list):
+                self[key] = [self[key]]
+            d = dict()
+            for name in self[key]:
+                d[name] = name
+            self[key] = d
 
-            seeds = self.get_seeds()
-            env_configs = self.filter_by(self.read_configs('env'), env_key)
-            agent_configs = self.filter_by(self.read_configs('agent'), agent_key)
-            agent_seeds = self.content.get('agent_seed')
-
-            experiment_setups = list(product(env_configs, agent_configs, seeds))
-            seed_ind = 0
-            for env_config, agent_config, env_seed in experiment_setups:
-                agent_seeds = isnone(agent_seeds, env_seed)
-                if not isinstance(agent_seeds, list):
-                    agent_seeds = [agent_seeds]
-
-                agent_results = []
-                for agent_seed in agent_seeds:
-                    results = experiment.run(
-                        env_seed=env_seed, agent_seed=agent_seed,
-                        agent_config=agent_config, env_config=env_config,
-                        seed_ind=seed_ind,
-                    )
-                    results.print_results()
-                    agent_results.append(results)
-
-                if len(agent_seeds) > 1:
-                    results = self.aggregate_stats(agent_results)
-                    results.print_results()
-                print('')
-                seed_ind += 1
-
-    def get_seeds(self):
-        seeds = self['seed']
-        if isinstance(seeds, list):
-            ...
-        elif 'n_seeds' in self:
-            seed = seeds
-            n_seeds = self['n_seeds']
-            rng = np.random.default_rng(seed)
-            seeds = rng.integers(1_000_000, size=n_seeds).tolist()
-        else:
-            seeds = [seeds]
-        return seeds
-
-    def read_configs(self, key):
-        names = self[key]
-
-        if not isinstance(names, list):
-            names = [names]
-
-        configs = []
-        for name in names:
-            config_path = self.path.with_name(f'{key}_{name}.yml')
+        configs = dict()
+        for name, val in self[key].items():
+            if isinstance(val, dict):
+                continue
+            config_path = self.path.with_name(f'{prefix}_{name}.yml')
             config = FileConfig(config_path, name=name)
-            configs.append(config)
+            configs[name] = config
 
-        return configs
+        self[key] = configs
+        return self[key].keys()
 
     @staticmethod
-    def filter_by(origin_list, names):
-        if names is None:
-            return origin_list
+    def filter_by(names, names_filter):
+        if names_filter is None:
+            return names
 
-        if isinstance(names, str):
-            names = [names]
+        if isinstance(names_filter, str):
+            names_filter = [names_filter]
 
+        names_filter = set(names_filter)
         return [
-            agent
-            for agent in origin_list
-            if agent.name in names
+            name
+            for name in names
+            if name in names_filter
         ]
 
-    def aggregate_stats(self, agent_results):
-        results = RunStats(agent_results[-1].name)
+    @staticmethod
+    def aggregate_stats(agent_results):
+        results = RunStats()
         results.steps = np.mean([res.steps for res in agent_results], axis=0)
         results.times = np.mean([res.times for res in agent_results], axis=0)
         results.rewards = np.mean([res.rewards for res in agent_results], axis=0)
@@ -115,15 +91,9 @@ def register_arguments(parser: ArgumentParser):
     parser.add_argument('-c', '--config', dest='config', required=True)
     parser.add_argument('-a', '--agent', dest='agent', default=None, nargs='+')
     parser.add_argument('-e', '--env', dest='env', default=None, nargs='+')
-    parser.add_argument('-r', '--run', dest='run', action='store_true', default=False)
-    parser.add_argument('-g', '--aggregate', dest='aggregate', default=None, nargs='*')
-    parser.add_argument('-n', '--name', dest='report_name', default='')
-    parser.add_argument('-d', '--dry', dest='dry', default=None, type=int)
-    parser.add_argument('-s', '--silent', dest='silent', action='store_true', default=False)
-    parser.add_argument('-p', '--paper', dest='paper', action='store_true', default=False)
-    parser.add_argument('-w', '--wandb', dest='wandb', action='store_true', default=False)
-    parser.add_argument('-W', '--wandb-dry-silent', dest='wandb_dry_silent', action='store_true', default=False)
-    parser.add_argument('-m', '--store_maps', dest='store_maps', action='store_true', default=False)
+    parser.add_argument('-m', '--print_maps', dest='print_maps', default=None, type=int)
+    parser.add_argument('-t', '--print_heatmaps', dest='print_heatmaps', action='store_true', default=False)
+    parser.add_argument('-w', '--wandb_enabled', dest='wandb_enabled', action='store_true', default=False)
 
 
 def main():
@@ -134,29 +104,17 @@ def main():
     config_path = Path(args.config)
     config = RunConfig(config_path)
 
-    test_dir = os.path.dirname(config_path)
-    config['test_dir'] = test_dir
+    config['base_dir'] = config.path.parent
 
-    config['silent'] = args.silent
-    config['paper'] = args.paper
-    config['store_maps'] = args.store_maps
+    config['print.maps'] = args.print_maps
+    config['print.heatmaps'] = args.print_heatmaps
 
-    dry_run = args.dry is not None
-    config['dry_run'] = dry_run
-    if dry_run:
-        config['n_environments_to_render'] = args.dry
-    config['report_name'] = args.report_name
-
-    aggregate = args.aggregate is not None
-    if aggregate:
-        config['aggregate_masks'] = args.aggregate
-
-    config['wandb'] = args.wandb
-    if args.wandb_dry_silent:
+    config['wandb.enabled'] = args.wandb_enabled
+    if False:
         os.environ['WANDB_MODE'] = 'dryrun'
-        os.environ['WANDB_SILENT'] = 'true'
+        # os.environ['WANDB_SILENT'] = 'true'
 
-    config.run(args.agent, args.env, args.run, aggregate)
+    config.run(args.agent, args.env)
 
 
 if __name__ == '__main__':
