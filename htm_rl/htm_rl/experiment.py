@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 from tqdm import trange
 
@@ -5,7 +7,7 @@ from htm_rl.agents.agent import Agent
 from htm_rl.agents.rnd.agent import RndAgent
 from htm_rl.agents.svpn.agent import SvpnAgent
 from htm_rl.agents.ucb.agent import UcbAgent
-from htm_rl.common.plot_utils import store_heatmap, store_environment_map
+from htm_rl.common.plot_utils import store_environment_map, plot_grid_images
 from htm_rl.common.utils import timed
 from htm_rl.config import FileConfig
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
@@ -66,10 +68,6 @@ class Experiment:
 
         while True:
             reward, obs, first = env.observe()
-
-            # from htm_rl.common.plot_utils import plot_grid_images
-            # plot_grid_images(unwrap(env).render_rgb())
-
             if first and step > 0:
                 break
 
@@ -135,11 +133,13 @@ class HeatmapRecorder:
     heatmap: np.ndarray
     frequency: int
     name_str: str
+    save_dir: Path
 
     def __init__(self, frequency: int, config: FileConfig, shape):
         self.config = config
         self.frequency = frequency
-        self.name_str = f'{config["agent"]}_{config["env_seed"]}_{frequency}'
+        self.name_str = f'{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}_{frequency}'
+        self.save_dir = self.config['results_dir']
         self.heatmap = np.zeros(shape, dtype=np.float)
 
     def handle_step(self, env: Env, agent: Agent, step: int):
@@ -151,10 +151,13 @@ class HeatmapRecorder:
             self._flush_heatmap(episode + 1)
 
     def _flush_heatmap(self, episode):
-        store_heatmap(
-            episode, self.heatmap,
-            self.name_str, self.config['results_dir']
+        plot_title = f'{self.name_str}_{episode}'
+        save_path = self.save_dir.joinpath(f'heatmap_{plot_title}.svg')
+        plot_grid_images(
+            images=self.heatmap, titles=plot_title,
+            show=False, save_path=save_path
         )
+        # clear heatmap
         self.heatmap.fill(0.)
 
 

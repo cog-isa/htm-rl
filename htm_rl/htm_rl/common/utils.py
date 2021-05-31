@@ -1,6 +1,6 @@
 from functools import wraps
 from timeit import default_timer as timer
-from typing import Sequence, Any, Iterable
+from typing import Sequence, Any, Iterable, Union, Optional
 
 
 def isnone(x, default):
@@ -31,6 +31,18 @@ def clip(x, high):
     if x < 0:
         return 0
     return x
+
+
+def ensure_list(arr: Optional[Union[Any, list[Any]]]) -> Optional[list[Any]]:
+    if arr is not None and not isinstance(arr, list):
+        arr = [arr]
+    return arr
+
+
+def safe_ith(arr: Optional[list], ind: int, default: Any = None) -> Optional[Any]:
+    if arr is not None:
+        return arr[ind]
+    return default
 
 
 def timed(f):
