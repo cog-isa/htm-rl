@@ -2,7 +2,7 @@ import numpy as np
 
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.module import EntityType
-from htm_rl.envs.wrapper import Wrapper
+from htm_rl.envs.env import Wrapper
 
 
 class AgentPositionRecorder(Wrapper):

@@ -12,8 +12,7 @@ from htm_rl.common.utils import timed
 from htm_rl.config import FileConfig
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.envs.biogwlab.wrappers.recorders import AgentPositionRecorder
-from htm_rl.envs.env import Env
-from htm_rl.envs.wrapper import unwrap
+from htm_rl.envs.env import Env, unwrap
 
 
 class Experiment:

@@ -9,7 +9,7 @@ from htm_rl.envs.biogwlab.modules.actions_cost import ActionsCost
 from htm_rl.envs.biogwlab.obstacle import Obstacle, BorderObstacle
 from htm_rl.envs.biogwlab.regenerator import Regenerator
 from htm_rl.envs.biogwlab.renderer import Renderer
-from htm_rl.envs.wrapper import Wrapper
+from htm_rl.envs.env import Wrapper
 
 registry = {
     'areas': MultiAreaGenerator,
