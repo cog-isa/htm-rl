@@ -3,6 +3,7 @@ from typing import Dict, Tuple, Optional
 import numpy as np
 from numpy.random import Generator
 
+from htm_rl.agents.agent import Wrapper
 from htm_rl.agents.svpn.model import TransitionModel, RewardModel
 from htm_rl.agents.svpn.sparse_value_network import SparseValueNetwork
 from htm_rl.agents.ucb.agent import UcbAgent
@@ -44,6 +45,7 @@ class Dreamer:
         self.svn = svn
         self.cell_eligibility_trace = None
         self.starting_sa_sdr = None
+        self.TD_error = None
 
     def put_into_dream(self, starting_sa_sdr):
         wake_svn = self.svn
@@ -86,6 +88,7 @@ class SvpnAgent(UcbAgent):
     last_planning_episode: Optional[int]
     prediction_depth: int
     n_prediction_rollouts: int
+    dream_length: Optional[int]
 
     rng: Generator
     _episode: int
@@ -116,6 +119,7 @@ class SvpnAgent(UcbAgent):
         self.n_prediction_rollouts = n_prediction_rollouts
         self.first_planning_episode = first_planning_episode
         self.last_planning_episode = isnone(last_planning_episode, 999999)
+        self.dream_length = None
         self.episode = 0
         self.rng = np.random.default_rng(seed)
 
@@ -163,6 +167,7 @@ class SvpnAgent(UcbAgent):
                 if len(state) == 0:
                     break
                 state = self._move_in_dream(state, td_lambda=self.dreamer.td_lambda)
+                self.dream_length += 1
 
             self._reset_dreaming()
             # print(i)
@@ -173,6 +178,7 @@ class SvpnAgent(UcbAgent):
         self.sa_transition_model.save_tm_state()
         self.dreamer.put_into_dream(starting_sa_sdr=self._current_sa_sdr)
         self._reset_dreaming()
+        self.dream_length = 0
 
     def _reset_dreaming(self):
         self._current_sa_sdr = self.dreamer.reset_dreaming()
@@ -209,7 +215,10 @@ class SvpnAgent(UcbAgent):
         return self.rng.choice(len(actions))
 
     def _decide_to_dream(self):
+        self.dream_length = None
         if not self.first_planning_episode <= self.episode < self.last_planning_episode:
+            return False
+        if self.dreamer.learning_rate[0] < 1e-5:
             return False
 
         td_error = self.sqvn.TD_error
@@ -247,3 +256,42 @@ class SvpnAgent(UcbAgent):
             **tm_config
         )
         return TransitionModel(tm, collect_anomalies=True)
+
+
+class ValueRecorder(Wrapper):
+    root_agent: SvpnAgent
+
+    def get_info(self) -> dict:
+        res = self.agent.get_info()
+
+        sa_sdr = self.root_agent._current_sa_sdr
+        if sa_sdr is not None:
+            res['value'] = self.root_agent.sqvn._value_option(sa_sdr, greedy=True)
+        return res
+
+
+class TDErrorRecorder(Wrapper):
+    root_agent: SvpnAgent
+
+    def get_info(self) -> dict:
+        res = self.agent.get_info()
+        res['td_error'] = self.root_agent.dreamer.TD_error
+        return res
+
+
+class AnomalyRecorder(Wrapper):
+    root_agent: SvpnAgent
+
+    def get_info(self) -> dict:
+        res = self.agent.get_info()
+        res['anomaly'] = self.root_agent.sa_transition_model.tm.anomaly
+        return res
+
+
+class DreamingRecorder(Wrapper):
+    root_agent: SvpnAgent
+
+    def get_info(self) -> dict:
+        res = self.agent.get_info()
+        res['dream_length'] = self.root_agent.dream_length
+        return res
