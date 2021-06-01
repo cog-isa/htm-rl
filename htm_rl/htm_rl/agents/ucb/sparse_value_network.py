@@ -51,7 +51,7 @@ class SparseValueNetwork:
             )
 
         option_index: int = np.argmax(option_values)
-        return option_index
+        return option_index #, option_values
 
     # noinspection PyPep8Naming
     def update(
@@ -88,10 +88,10 @@ class SparseValueNetwork:
     def _update_eligibility_trace(self, sa: SparseSdr):
         E = self.cell_eligibility_trace
         lambda_, gamma = self.trace_decay, self.discount_factor
-        exp_sum_update_slice(E, sa, lambda_ * gamma, 1.)
+        update_exp_trace(E, sa, lambda_ * gamma)
 
     def _update_cell_visit_counter(self, sa: SparseSdr):
-        exp_sum_update_slice(self.cell_visit_count, sa, self.visit_decay, 1.)
+        update_exp_trace(self.cell_visit_count, sa, self.visit_decay)
 
     def _value_option(self, option, greedy: bool, total_visits: Optional[float] = None) -> float:
         if len(option) == 0:
@@ -129,17 +129,29 @@ class SparseValueNetwork:
         self.learning_rate = exp_decay(self.learning_rate)
 
 
-def exp_sum_update(a, decay, x):
-    a *= decay
-    a += x
-    return a
+def exp_sum(s, decay, val):
+    return s * decay + val
 
 
-def exp_sum_update_slice(arr, ind, decay, x):
-    arr *= decay
-    arr[ind] += x
+def lin_sum(s, lr, val):
+    return s + lr * (val - s)
 
 
-def exp_decay(t_alpha_decay):
-    alpha, decay = t_alpha_decay
-    return alpha * decay, decay
+def update_slice_exp_sum(s, ind, decay, val):
+    s[ind] *= decay
+    s[ind] += val
+
+
+def update_slice_lin_sum(s, ind, lr, val):
+    s[ind] *= (1 - lr)
+    s[ind] += lr * val
+
+
+def update_exp_trace(traces, tr, decay, val=1.):
+    traces *= decay
+    traces[tr] += val
+
+
+def exp_decay(factor_decay_tuple):
+    factor, decay = factor_decay_tuple
+    return factor * decay, decay

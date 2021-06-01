@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 from htm import SDR
 
-from htm_rl.agents.ucb.sparse_value_network import exp_sum_update, exp_decay
+from htm_rl.agents.ucb.sparse_value_network import exp_decay, update_slice_lin_sum
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import isnone
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
@@ -19,7 +19,7 @@ class RewardModel:
         self.rewards = np.zeros(shape, dtype=np.float)
 
     def update(self, s: SparseSdr, reward: float):
-        exp_sum_update(self.rewards[s], 1 - self.learning_rate[0], reward)
+        update_slice_lin_sum(self.rewards, s, self.learning_rate[0], reward)
 
     def decay_learning_factors(self):
         self.learning_rate = exp_decay(self.learning_rate)
