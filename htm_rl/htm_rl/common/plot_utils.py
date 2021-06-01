@@ -46,28 +46,13 @@ def store_environment_map(
         map_ind: int, env_map: Union[np.ndarray, list[np.ndarray]],
         env_name: str, env_seed: int, test_dir: Path
 ):
-    fig: plt.Figure
-    ax: plt.Axes
-
-    if isinstance(env_map, list):
-        env_map, observation = env_map
-        fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-    else:
-        observation = None
-        fig, axes = plt.subplots(1, 1, figsize=(6, 6))
-        axes = [axes]
-
-    # plot env map
-    ax = axes[0]
-    _plot_grid_image(ax, env_map, title=f'{env_name}, seed={env_seed}')
-
-    if observation is not None:
-        ax = axes[1]
-        _plot_grid_image(ax, observation, title='agent observation')
+    env_map = ensure_list(env_map)
+    titles = [f'{env_name}, seed={env_seed}']
+    if len(env_map) > 1:
+        titles.append('agent observation')
 
     save_path = test_dir.joinpath(f'map_{env_name}_{map_ind}_{env_seed}.svg')
-    fig.savefig(save_path, dpi=120)
-    plt.close(fig)
+    plot_grid_images(env_map, titles, show=False, save_path=save_path)
 
 
 def _plot_grid_image(ax, img: np.ndarray, title: Optional[str] = None):
