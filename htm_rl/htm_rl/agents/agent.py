@@ -1,3 +1,5 @@
+from typing import Any
+
 from htm_rl.common.sdr import SparseSdr
 
 
@@ -7,7 +9,7 @@ class Agent:
     def name(self):
         raise NotImplementedError
 
-    def act(self, reward: float, state: SparseSdr, first: bool):
+    def act(self, reward: float, state: SparseSdr, first: bool) -> Any:
         raise NotImplementedError
 
     def get_info(self) -> dict:
@@ -26,8 +28,8 @@ class Wrapper(Agent):
     def name(self):
         return self.agent.name
 
-    def act(self, reward: float, state: SparseSdr, first: bool):
-        self.agent.act(reward, state, first)
+    def act(self, reward: float, state: SparseSdr, first: bool) -> Any:
+        return self.agent.act(reward, state, first)
 
     def get_info(self) -> dict:
         return self.agent.get_info()
