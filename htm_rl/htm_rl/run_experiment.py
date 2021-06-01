@@ -93,6 +93,7 @@ def register_arguments(parser: ArgumentParser):
     parser.add_argument('-e', '--env', dest='env', default=None, nargs='+')
     parser.add_argument('-m', '--print_maps', dest='print_maps', default=None, type=int)
     parser.add_argument('-t', '--print_heatmaps', dest='print_heatmaps', default=None, nargs='+', type=int)
+    parser.add_argument('-d', '--print_debug', dest='print_debug', default=None, nargs='+', type=int)
     parser.add_argument('-w', '--wandb_enabled', dest='wandb_enabled', action='store_true', default=False)
 
 
@@ -113,6 +114,7 @@ def main():
 
     config['print.maps'] = args.print_maps
     config['print.heatmaps'] = args.print_heatmaps
+    config['print.debug'] = args.print_debug
 
     config['wandb.enabled'] = args.wandb_enabled
     if False:
