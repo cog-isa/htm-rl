@@ -135,18 +135,18 @@ class SvpnAgent(UcbAgent):
         actions_sa_sdr = self._encode_actions(s, learn=True)
 
         if not first:
-            self.reward_model.update(s, reward)
-            # condition is to prevent inevitable useless planning in the end
-            if reward <= 0:
-                self._dream(s)
-
-        if not first:
             # process feedback
             self._learn_step(
                 prev_sa_sdr=self._current_sa_sdr,
                 reward=reward,
                 actions_sa_sdr=actions_sa_sdr
             )
+
+        if not first:
+            self.reward_model.update(s, reward)
+            # condition prevents inevitable useless planning in the end
+            if reward <= 0.:
+                self._dream(s)
 
         action = self.sqvn.choose(actions_sa_sdr)
         self._current_sa_sdr = actions_sa_sdr[action]
