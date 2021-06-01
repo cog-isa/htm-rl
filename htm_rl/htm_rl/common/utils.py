@@ -45,6 +45,12 @@ def safe_ith(arr: Optional[list], ind: int, default: Any = None) -> Optional[Any
     return default
 
 
+def wrap(obj, *wrappers):
+    for wrapper in wrappers:
+        obj = wrapper(obj)
+    return obj
+
+
 def timed(f):
     @wraps(f)
     def wrap(*args, **kw):

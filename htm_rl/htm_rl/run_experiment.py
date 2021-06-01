@@ -8,6 +8,7 @@ import numpy as np
 import tqdm
 from tqdm import trange
 
+from htm_rl.common.utils import ensure_list
 from htm_rl.config import FileConfig
 from htm_rl.experiment import Experiment, RunStats
 
@@ -44,8 +45,7 @@ class RunConfig(FileConfig):
     def read_subconfigs(self, key, prefix):
         if not isinstance(self[key], dict):
             # has to be the name/names
-            if not isinstance(self[key], list):
-                self[key] = [self[key]]
+            self[key] = ensure_list(self[key])
             d = dict()
             for name in self[key]:
                 d[name] = name
@@ -55,7 +55,7 @@ class RunConfig(FileConfig):
         for name, val in self[key].items():
             if isinstance(val, dict):
                 continue
-            config_path = self.path.with_name(f'{prefix}_{name}.yml')
+            config_path = self.path.with_name(f'{prefix}_{val}.yml')
             config = FileConfig(config_path, name=name)
             configs[name] = config
 
@@ -67,10 +67,7 @@ class RunConfig(FileConfig):
         if names_filter is None:
             return names
 
-        if isinstance(names_filter, str):
-            names_filter = [names_filter]
-
-        names_filter = set(names_filter)
+        names_filter = set(ensure_list(names_filter))
         return [
             name
             for name in names

@@ -17,7 +17,7 @@ def plot_grid_images(
     titles = ensure_list(titles)
     n_images = len(images)
 
-    max_cols = 4
+    max_cols = 5
     n_rows = (n_images - 1) // max_cols + 1
     n_cols = min(n_images, max_cols)
 

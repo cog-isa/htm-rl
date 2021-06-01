@@ -12,7 +12,10 @@ from htm_rl.common.utils import isnone
 class TagMethods:
 
     @staticmethod
-    def generate_seeds(base: int, n_seeds: int):
+    def generate_seeds(loader: BaseLoader, node):
+        seed_gen_dict = loader.construct_mapping(node)
+        base = seed_gen_dict['base']
+        n_seeds = seed_gen_dict['n_seeds']
         seeds = np.random.default_rng(base).integers(0, 1_000_000, size=n_seeds)
         return seeds
 
@@ -20,6 +23,8 @@ class TagMethods:
 def read_config(file_path: Path, verbose=False):
     yaml: YAML = YAML(typ='safe')
     register_classes(yaml)
+    register_static_methods_as_tags(TagMethods, yaml)
+
     config = yaml.load(file_path)
     if verbose:
         pprint(config)
