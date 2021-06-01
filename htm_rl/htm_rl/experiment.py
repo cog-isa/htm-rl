@@ -3,15 +3,17 @@ from tqdm import trange
 
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.rnd.agent import RndAgent
-from htm_rl.agents.svpn.agent import SvpnAgent, ValueRecorder, TDErrorRecorder, AnomalyRecorder
+from htm_rl.agents.svpn.agent import SvpnAgent, ValueRecorder, TDErrorRecorder, AnomalyRecorder, DreamingRecorder
 from htm_rl.agents.ucb.agent import UcbAgent
-from htm_rl.common.plot_utils import store_environment_map
-from htm_rl.common.utils import timed
+from htm_rl.common.utils import timed, wrap
 from htm_rl.config import FileConfig
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.envs.biogwlab.wrappers.recorders import AgentPositionRecorder
 from htm_rl.envs.env import Env, unwrap
-from htm_rl.recorders import AggregateRecorder, HeatmapRecorder, ValueMapRecorder, MapRecorder
+from htm_rl.recorders import (
+    AggregateRecorder, HeatmapRecorder, ValueMapRecorder, MapRecorder, DreamRecorder,
+    BaseRecorder,
+)
 
 
 class Experiment:
@@ -29,31 +31,30 @@ class Experiment:
         agent = self.materialize_agent(config, env)
         env_shape = unwrap(env).shape
 
-        if self.print['maps'] is not None:
-            store_environment_map(
-                0, env.callmethod('render_rgb'),
-                config['env'], config['env_seed'], config['results_dir']
-            )
         handlers = []
+        if self.print['maps'] is not None:
+            handlers.append(MapRecorder(config, self.n_episodes))
+
         if self.print['heatmaps'] is not None:
             env = AgentPositionRecorder(env)
-            heatmap_recorders = [
+            handlers.extend([
                 HeatmapRecorder(config, freq, env_shape)
                 for freq in self.print['heatmaps']
-            ]
-            handlers.extend(heatmap_recorders)
+            ])
 
         if self.print['debug'] is not None:
             env = AgentPositionRecorder(env)
-            agent = ValueRecorder(agent)
-            agent = TDErrorRecorder(agent)
-            agent = AnomalyRecorder(agent)
+            agent = wrap(
+                agent, ValueRecorder, TDErrorRecorder,
+                AnomalyRecorder, DreamingRecorder
+            )
             for freq in self.print['debug']:
                 aggregator = AggregateRecorder(config, freq)
                 handlers.extend([
                     MapRecorder(config, freq, aggregator),
                     HeatmapRecorder(config, freq, env_shape, aggregator),
                     ValueMapRecorder(config, freq, env_shape, aggregator),
+                    DreamRecorder(config, freq, env_shape, aggregator),
                     aggregator
                 ])
 
@@ -131,13 +132,25 @@ class Experiment:
         run.config.environment = {'name': config['env'], 'seed': config['env_seed']}
         return run
 
-    def handle_episode(self, env: Env, agent: Agent, episode: int, handlers: list):
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int, handlers: list[BaseRecorder]
+    ):
+        env_info = env.get_info()
+        agent_info = agent.get_info()
         for handler in handlers:
-            handler.handle_episode(env, agent, episode, )
+            handler.handle_episode(
+                env, agent, episode, env_info=env_info, agent_info=agent_info
+            )
 
-    def handle_step(self, env: Env, agent: Agent, step: int, handlers: list):
+    def handle_step(
+            self, env: Env, agent: Agent, step: int, handlers: list[BaseRecorder]
+    ):
+        env_info = env.get_info()
+        agent_info = agent.get_info()
         for handler in handlers:
-            handler.handle_step(env, agent, step, )
+            handler.handle_step(
+                env, agent, step, env_info=env_info, agent_info=agent_info
+            )
 
 
 class RunStats:

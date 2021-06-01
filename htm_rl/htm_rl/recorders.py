@@ -20,11 +20,29 @@ class BaseRecorder:
         self.save_dir = self.config['results_dir']
         self.aggregator = aggregator
 
-    def handle_step(self, env: Env, agent: Agent, step: int):
+    def handle_step(
+            self, env: Env, agent: Agent, step: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
         raise NotImplementedError
 
-    def handle_episode(self, env: Env, agent: Agent, episode: int):
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
         raise NotImplementedError
+
+    @staticmethod
+    def env_info(env_info: dict, env: Env) -> dict:
+        if env_info is None:
+            return env.get_info()
+        return env_info
+
+    @staticmethod
+    def agent_info(agent_info: dict, agent: Agent) -> dict:
+        if agent_info is None:
+            return agent.get_info()
+        return agent_info
 
 
 class AggregateRecorder(BaseRecorder):
@@ -39,10 +57,16 @@ class AggregateRecorder(BaseRecorder):
         self.images = []
         self.titles = []
 
-    def handle_step(self, env: Env, agent: Agent, step: int):
+    def handle_step(
+            self, env: Env, agent: Agent, step: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
         self._flush_images(step + 1)
 
-    def handle_episode(self, env: Env, agent: Agent, episode: int):
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
         self._flush_images(episode + 1)
 
     def handle_img(self, image: np.ndarray, title: str = None):
@@ -73,11 +97,18 @@ class HeatmapRecorder(BaseRecorder):
         self.name_str = f'heatmap_{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}_{frequency}'
         self.heatmap = np.zeros(shape, dtype=np.float)
 
-    def handle_step(self, env: Env, agent: Agent, step: int):
-        position: tuple[int, int] = env.get_info()['agent_position']
+    def handle_step(
+            self, env: Env, agent: Agent, step: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        env_info = self.env_info(env_info, env)
+        position: tuple[int, int] = env_info['agent_position']
         self.heatmap[position] += 1.
 
-    def handle_episode(self, env: Env, agent: Agent, episode: int):
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
         if (episode + 1) % self.frequency == 0:
             self._flush_heatmap(episode + 1)
 
@@ -95,6 +126,50 @@ class HeatmapRecorder(BaseRecorder):
         self.heatmap.fill(0.)
 
 
+class DreamRecorder(BaseRecorder):
+    dream_heatmap: np.ndarray
+    frequency: int
+    name_str: str
+
+    def __init__(self, config: FileConfig, frequency: int, shape, aggregator=None):
+        super().__init__(config, aggregator)
+        self.frequency = frequency
+        self.name_str = f'dream_{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}_{frequency}'
+        self.dream_heatmap = np.zeros(shape, dtype=np.float)
+
+    def handle_step(
+            self, env: Env, agent: Agent, step: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        env_info = self.env_info(env_info, env)
+        agent_info = self.agent_info(agent_info, agent)
+
+        position: tuple[int, int] = env_info['agent_position']
+        dream_length: Optional[int] = agent_info['dream_length']
+        if dream_length is not None:
+            self.dream_heatmap[position] += dream_length
+
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        if (episode + 1) % self.frequency == 0:
+            self._flush_heatmap(episode + 1)
+
+    def _flush_heatmap(self, episode):
+        plot_title = f'{self.name_str}_{episode}'
+        if self.aggregator is not None:
+            self.aggregator.handle_img(self.dream_heatmap, plot_title)
+        else:
+            save_path = self.save_dir.joinpath(f'{plot_title}.svg')
+            plot_grid_images(
+                images=self.dream_heatmap, titles=plot_title,
+                show=False, save_path=save_path
+            )
+        # clear heatmap
+        self.dream_heatmap.fill(0.)
+
+
 class ValueMapRecorder(BaseRecorder):
     fill_value: float = -1.
 
@@ -110,14 +185,23 @@ class ValueMapRecorder(BaseRecorder):
         self.value_map = np.full(shape, self.fill_value, dtype=np.float)
         self.last_value = None
 
-    def handle_step(self, env: Env, agent: Agent, step: int):
-        position: tuple[int, int] = env.get_info()['agent_position']
+    def handle_step(
+            self, env: Env, agent: Agent, step: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        env_info = self.env_info(env_info, env)
+        agent_info = self.agent_info(agent_info, agent)
+
+        position: tuple[int, int] = env_info['agent_position']
         if self.last_value is not None:
             self.value_map[position] = self.last_value
 
-        self.last_value = agent.get_info()['value']
+        self.last_value = agent_info['value']
 
-    def handle_episode(self, env: Env, agent: Agent, episode: int):
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
         if (episode + 1) % self.frequency == 0:
             self._flush_map(episode + 1)
 
@@ -151,11 +235,17 @@ class MapRecorder(BaseRecorder):
         ]
         self.env_map = None
 
-    def handle_step(self, env: Env, agent: Agent, step: int):
+    def handle_step(
+            self, env: Env, agent: Agent, step: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
         if self.env_map is None:
             self.env_map = ensure_list(env.callmethod('render_rgb'))
 
-    def handle_episode(self, env: Env, agent: Agent, episode: int):
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
         if (episode + 1) % self.frequency == 0:
             self._flush_map()
 
