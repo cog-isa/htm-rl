@@ -30,17 +30,17 @@ sa_sp:
 sqvn:
   trace_decay: .75
   visit_decay: .994
-  discount_factor: .96
-  learning_rate: [.04, .995]
+  discount_factor: .97
+  learning_rate: [.1, .995]
   ucb_exploration_factor: [.5, .994]
-  td_error_decay: .0
+  td_error_decay: .7
 
 dreamer:
-  planning_prob_alpha: [1.3, .985]
+  planning_prob_alpha: [1.5, .985]
   learning_rate: .5
   trace_decay: .0
 
-r_learning_rate: [.05, .995]
+r_learning_rate: [.2, .995]
 first_planning_episode: 0
 last_planning_episode: 2000
 prediction_depth: 5
