@@ -50,7 +50,7 @@ tm:
   initial_permanence: .5
   connected_permanence: .4
   activation_threshold: .9
-  learning_threshold: .66
+  learning_threshold: .75
   max_new_synapse_count: 1.
   max_synapses_per_segment: 1.1
   predictedSegmentDecrement: .0001

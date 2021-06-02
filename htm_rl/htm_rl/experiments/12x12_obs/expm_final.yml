@@ -28,10 +28,10 @@ envs:
   - obs
 
 agents:
-  - rnd
-  - ucb
-  - svpn
-  - svpn_no_dream
+  rnd: rnd
+  ucb: ucb
+  svpn: svpn
+  svpn_no_dream: svpn_no_dream
 
 wandb:
   project: test_1f_obs_12x12_svpn
