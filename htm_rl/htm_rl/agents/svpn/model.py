@@ -27,6 +27,7 @@ class RewardModel:
 
 class TransitionModel:
     tm: TemporalMemory
+    anomaly: float
 
     _proximal_input_sdr: SDR    # cached SDR
     _tm_dump: bytes
@@ -35,7 +36,7 @@ class TransitionModel:
             self, tm: TemporalMemory, collect_anomalies: bool = False
     ):
         self.tm = tm
-        self.anomalies = [] if collect_anomalies else None
+        self.anomaly = 1.
         self._proximal_input_sdr = SDR(self.tm.n_columns)
 
     def reset_tracking(self):
@@ -66,11 +67,7 @@ class TransitionModel:
         """
         self._proximal_input_sdr.sparse = proximal_input
         self.tm.compute(self._proximal_input_sdr, learn=learn)
-
-        # if anomalies tracking enabled, append results from this step
-        if self.anomalies is not None:
-            self.anomalies.append(self.tm.anomaly)
-
+        self.anomaly = self.tm.anomaly
         return self.tm.getActiveCells().sparse
 
     def depolarize_cells(self, learn: bool) -> SparseSdr:

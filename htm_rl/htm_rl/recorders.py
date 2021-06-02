@@ -165,7 +165,7 @@ class AnomalyMapRecorder(BaseRecorder):
                 show=False, save_path=save_path
             )
 
-        self.anomaly_map.fill(1.)
+        # self.anomaly_map.fill(1.)
 
 
 class DreamRecorder(BaseRecorder):
@@ -218,13 +218,15 @@ class ValueMapRecorder(BaseRecorder):
     value_map: np.ndarray
     frequency: int
     name_str: str
+    value_key: str
     last_value: Optional[float]
 
-    def __init__(self, config: FileConfig, frequency: int, shape, aggregator=None):
+    def __init__(self, config: FileConfig, frequency: int, shape, key='value', aggregator=None):
         super().__init__(config, aggregator)
         self.frequency = frequency
         self.name_str = f'valuemap_{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}_{frequency}'
         self.value_map = np.full(shape, self.fill_value, dtype=np.float)
+        self.value_key = key
         self.last_value = None
 
     def handle_step(
@@ -238,7 +240,7 @@ class ValueMapRecorder(BaseRecorder):
         if self.last_value is not None:
             self.value_map[position] = self.last_value
 
-        self.last_value = agent_info['value']
+        self.last_value = agent_info[self.value_key]
 
     def handle_episode(
             self, env: Env, agent: Agent, episode: int,
@@ -257,8 +259,54 @@ class ValueMapRecorder(BaseRecorder):
                 images=self.value_map, titles=plot_title,
                 show=False, save_path=save_path
             )
-        # clear heatmap
-        self.value_map.fill(self.fill_value)
+
+
+class TDErrorMapRecorder(BaseRecorder):
+    fill_value: float = 0.
+
+    td_error_map: np.ndarray
+    frequency: int
+    name_str: str
+    value_key: str
+    last_td_error: Optional[float]
+
+    def __init__(self, config: FileConfig, frequency: int, shape, aggregator=None):
+        super().__init__(config, aggregator)
+        self.frequency = frequency
+        self.name_str = f'tderrormap_{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}_{frequency}'
+        self.td_error_map = np.full(shape, self.fill_value, dtype=np.float)
+        self.last_td_error = None
+
+    def handle_step(
+            self, env: Env, agent: Agent, step: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        env_info = self.env_info(env_info, env)
+        agent_info = self.agent_info(agent_info, agent)
+
+        position: tuple[int, int] = env_info['agent_position']
+        if self.last_td_error is not None:
+            self.td_error_map[position] = self.last_td_error
+
+        self.last_td_error = agent_info[self.value_key]
+
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        if (episode + 1) % self.frequency == 0:
+            self._flush_map(episode + 1)
+
+    def _flush_map(self, episode):
+        plot_title = f'{self.name_str}_{episode}'
+        if self.aggregator is not None:
+            self.aggregator.handle_img(self.td_error_map, plot_title)
+        else:
+            save_path = self.save_dir.joinpath(f'{plot_title}.svg')
+            plot_grid_images(
+                images=self.td_error_map, titles=plot_title,
+                show=False, save_path=save_path
+            )
 
 
 class MapRecorder(BaseRecorder):
@@ -266,8 +314,12 @@ class MapRecorder(BaseRecorder):
     frequency: int
     name_str: str
     titles: list[str]
+    include_observation: bool
 
-    def __init__(self, config: FileConfig, frequency: int, aggregator=None):
+    def __init__(
+            self, config: FileConfig, frequency: int, include_observation=False,
+            aggregator=None
+    ):
         super().__init__(config, aggregator)
         self.frequency = frequency
         self.name_str = f'map_{config["env"]}_{config["env_seed"]}'
@@ -275,6 +327,7 @@ class MapRecorder(BaseRecorder):
             f'{config["env"]}, seed={config["env_seed"]}',
             'agent observation'
         ]
+        self.include_observation = False
         self.env_map = None
 
     def handle_step(
@@ -283,6 +336,8 @@ class MapRecorder(BaseRecorder):
     ):
         if self.env_map is None:
             self.env_map = ensure_list(env.callmethod('render_rgb'))
+            if len(self.env_map) > 1 and not self.include_observation:
+                self.env_map = self.env_map[:1]
 
     def handle_episode(
             self, env: Env, agent: Agent, episode: int,

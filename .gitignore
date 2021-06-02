@@ -19,6 +19,7 @@ notebooks/**/_*.ipynb
 /htm_rl/**/*.pkl
 /htm_rl/**/*.png
 /htm_rl/**/*.svg
+/htm_rl/**/*.gif
 /htm_rl/**/*.csv.tar.gz
 
 # LaTeX
