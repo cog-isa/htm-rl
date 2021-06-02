@@ -258,7 +258,7 @@ class SvpnAgent(UcbAgent):
         return TransitionModel(tm, collect_anomalies=True)
 
 
-class ValueRecorder(Wrapper):
+class ValueProvider(Wrapper):
     root_agent: SvpnAgent
 
     def get_info(self) -> dict:
@@ -270,7 +270,7 @@ class ValueRecorder(Wrapper):
         return res
 
 
-class TDErrorRecorder(Wrapper):
+class TDErrorProvider(Wrapper):
     root_agent: SvpnAgent
 
     def get_info(self) -> dict:
@@ -279,7 +279,7 @@ class TDErrorRecorder(Wrapper):
         return res
 
 
-class AnomalyRecorder(Wrapper):
+class AnomalyProvider(Wrapper):
     root_agent: SvpnAgent
 
     def get_info(self) -> dict:
@@ -288,7 +288,7 @@ class AnomalyRecorder(Wrapper):
         return res
 
 
-class DreamingRecorder(Wrapper):
+class DreamingLengthProvider(Wrapper):
     root_agent: SvpnAgent
 
     def get_info(self) -> dict:

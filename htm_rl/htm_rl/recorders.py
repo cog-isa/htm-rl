@@ -126,6 +126,48 @@ class HeatmapRecorder(BaseRecorder):
         self.heatmap.fill(0.)
 
 
+class AnomalyMapRecorder(BaseRecorder):
+    anomaly_map: np.ndarray
+    frequency: int
+    name_str: str
+
+    def __init__(self, config: FileConfig, frequency: int, shape, aggregator=None):
+        super().__init__(config, aggregator)
+        self.frequency = frequency
+        self.name_str = f'anomaly_{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}_{frequency}'
+        self.anomaly_map = np.ones(shape, dtype=np.float)
+
+    def handle_step(
+            self, env: Env, agent: Agent, step: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        env_info = self.env_info(env_info, env)
+        agent_info = self.agent_info(agent_info, agent)
+
+        position: tuple[int, int] = env_info['agent_position']
+        self.anomaly_map[position] = agent_info['anomaly']
+
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        if (episode + 1) % self.frequency == 0:
+            self._flush_map(episode + 1)
+
+    def _flush_map(self, episode):
+        plot_title = f'{self.name_str}_{episode}'
+        if self.aggregator is not None:
+            self.aggregator.handle_img(self.anomaly_map, plot_title)
+        else:
+            save_path = self.save_dir.joinpath(f'{plot_title}.svg')
+            plot_grid_images(
+                images=self.anomaly_map, titles=plot_title,
+                show=False, save_path=save_path
+            )
+
+        self.anomaly_map.fill(1.)
+
+
 class DreamRecorder(BaseRecorder):
     dream_heatmap: np.ndarray
     frequency: int

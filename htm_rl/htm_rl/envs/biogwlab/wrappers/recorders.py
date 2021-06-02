@@ -5,11 +5,11 @@ from htm_rl.envs.biogwlab.module import EntityType
 from htm_rl.envs.env import Wrapper
 
 
-class AgentPositionRecorder(Wrapper):
+class AgentPositionProvider(Wrapper):
     root_env: Environment
 
     def get_info(self) -> dict:
-        info = super(AgentPositionRecorder, self).get_info()
+        info = super(AgentPositionProvider, self).get_info()
         info['agent_position'] = self.root_env.agent.position
         return info
 

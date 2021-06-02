@@ -3,16 +3,16 @@ from tqdm import trange
 
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.rnd.agent import RndAgent
-from htm_rl.agents.svpn.agent import SvpnAgent, ValueRecorder, TDErrorRecorder, AnomalyRecorder, DreamingRecorder
+from htm_rl.agents.svpn.agent import SvpnAgent, ValueProvider, TDErrorProvider, AnomalyProvider, DreamingLengthProvider
 from htm_rl.agents.ucb.agent import UcbAgent
 from htm_rl.common.utils import timed, wrap
 from htm_rl.config import FileConfig
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
-from htm_rl.envs.biogwlab.wrappers.recorders import AgentPositionRecorder
+from htm_rl.envs.biogwlab.wrappers.recorders import AgentPositionProvider
 from htm_rl.envs.env import Env, unwrap
 from htm_rl.recorders import (
     AggregateRecorder, HeatmapRecorder, ValueMapRecorder, MapRecorder, DreamRecorder,
-    BaseRecorder,
+    BaseRecorder, AnomalyMapRecorder,
 )
 
 
@@ -36,17 +36,17 @@ class Experiment:
             handlers.append(MapRecorder(config, self.n_episodes))
 
         if self.print['heatmaps'] is not None:
-            env = AgentPositionRecorder(env)
+            env = AgentPositionProvider(env)
             handlers.extend([
                 HeatmapRecorder(config, freq, env_shape)
                 for freq in self.print['heatmaps']
             ])
 
         if self.print['debug'] is not None:
-            env = AgentPositionRecorder(env)
+            env = AgentPositionProvider(env)
             agent = wrap(
-                agent, ValueRecorder, TDErrorRecorder,
-                AnomalyRecorder, DreamingRecorder
+                agent, ValueProvider, TDErrorProvider,
+                AnomalyProvider, DreamingLengthProvider
             )
             for freq in self.print['debug']:
                 aggregator = AggregateRecorder(config, freq)
@@ -55,6 +55,7 @@ class Experiment:
                     HeatmapRecorder(config, freq, env_shape, aggregator),
                     ValueMapRecorder(config, freq, env_shape, aggregator),
                     DreamRecorder(config, freq, env_shape, aggregator),
+                    AnomalyMapRecorder(config, freq, env_shape, aggregator),
                     aggregator
                 ])
 
