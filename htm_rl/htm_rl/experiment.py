@@ -51,9 +51,10 @@ class Experiment:
             for freq in self.print['debug']:
                 aggregator = AggregateRecorder(config, freq)
                 handlers.extend([
-                    MapRecorder(config, freq, aggregator),
+                    MapRecorder(config, freq, False, aggregator),
                     HeatmapRecorder(config, freq, env_shape, aggregator),
-                    ValueMapRecorder(config, freq, env_shape, aggregator),
+                    ValueMapRecorder(config, freq, env_shape, 'value', aggregator),
+                    # ValueMapRecorder(config, freq, env_shape, 'value_exp', aggregator),
                     DreamRecorder(config, freq, env_shape, aggregator),
                     AnomalyMapRecorder(config, freq, env_shape, aggregator),
                     aggregator
