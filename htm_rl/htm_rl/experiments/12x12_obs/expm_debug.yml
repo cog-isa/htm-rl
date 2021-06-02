@@ -1,26 +1,25 @@
 env_seeds:
-  - 711072
+#  - 711072
   - 482614
-  - 743535
-  - 190368
+#  - 743535
+#  - 190368
 #  - 583
 #  - 885213
 #  - 666373
 
-agent_seeds:
-  - 42
-  - 1337
-#  - 1984
+agent_seeds: !generate_seeds
+  base: 42
+  n_seeds: 1
 
-n_episodes: 200
+n_episodes: 100
 
 envs:
   - obs
 
 agents:
-  - rnd
-  - ucb
-  - svpn
+#  rnd: rnd
+  ucb: ucb
+  svpn: svpn
 
 wandb:
   project: test
