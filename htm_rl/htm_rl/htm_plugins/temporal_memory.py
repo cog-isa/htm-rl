@@ -37,7 +37,7 @@ class TemporalMemory(HtmTemporalMemory):
             connectedPermanence=connected_permanence,
             maxNewSynapseCount=max_new_synapse_count,
             maxSynapsesPerSegment=max_synapses_per_segment,
-            anomalyMode=ANMode.RAW,
+            anomalyMode=ANMode.DISABLED,
             **kwargs
         )
         self.n_columns = n_columns
