@@ -163,8 +163,9 @@ class SvpnAgent(UcbAgent):
 
         for _ in range(self.n_prediction_rollouts):
             state = starting_state
+            starting_state_len = len(starting_state)
             for i in range(self.prediction_depth):
-                if len(state) == 0:
+                if len(state) < .6 * starting_state_len:
                     break
                 state = self._move_in_dream(state, td_lambda=self.dreamer.td_lambda)
                 self.dream_length += 1
@@ -243,6 +244,7 @@ class SvpnAgent(UcbAgent):
     def _on_new_episode(self):
         super(SvpnAgent, self)._on_new_episode()
         self.reward_model.decay_learning_factors()
+        self.sa_transition_model.reset()
         self.dreamer.decay_learning_factors()
         self.episode += 1
 
@@ -250,6 +252,8 @@ class SvpnAgent(UcbAgent):
     def _make_sa_transition_model(state_encoder, action_encoder, tm_config):
         a_active_bits = action_encoder.output_sdr_size / action_encoder.n_values
         sa_active_bits = state_encoder.n_active_bits + a_active_bits
+
+        # print(state_encoder.output_sdr_size, state_encoder.n_active_bits, action_encoder.output_sdr_size, a_active_bits)
         tm = TemporalMemory(
             n_columns=action_encoder.output_sdr_size + state_encoder.output_sdr_size,
             n_active_bits=sa_active_bits,
