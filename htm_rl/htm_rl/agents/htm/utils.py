@@ -49,20 +49,26 @@ class OptionVis:
             return
 
         max_n_uses = max([value['n_uses'] for value in self.options.values()])
-        height = max(self.size, self.map_size[0])
-        width = self.size + 2*self.map_size[1] + 2
+        height = max(self.size + 2, self.map_size[0])
+        width = self.size + 2*self.map_size[1] + 3
         for key, value in self.options.items():
             if value['n_uses'] > threshold:
-                image = np.zeros((height, width)) - 1
-                image[:self.size, :self.size] = value['policy']
+                color_shift = max_n_uses * 0.1
+                image = np.zeros((height, width)) - color_shift
+                # center marks
+                image[0, self.size//2 + 1] = max_n_uses*0.5
+                image[-1, self.size//2 + 1] = max_n_uses*0.5
+                image[self.size//2 + 1, 0] = max_n_uses*0.5
+                image[self.size//2 + 1, self.size+1] = max_n_uses*0.5
+                image[1:self.size+1, 1:self.size+1] = value['policy']
                 init_map = value['init']
                 term_map = value['term']
                 if obstacle_mask is not None:
-                    init_map[obstacle_mask] = -2
-                    term_map[obstacle_mask] = -2
-                image[:self.map_size[0], self.size+1:self.size+1+self.map_size[1]] = value['init']
-                image[:self.map_size[0], self.size+2+self.map_size[1]:] = value['term']
-                plt.imsave(f'/tmp/option_{logger.run.id}_{episode}_{key}.png', image/max_n_uses, vmax=1)
+                    init_map[obstacle_mask] = -color_shift
+                    term_map[obstacle_mask] = -color_shift
+                image[:self.map_size[0], self.size+2:self.size+2+self.map_size[1]] = value['init']
+                image[:self.map_size[0], self.size+3+self.map_size[1]:] = value['term']
+                plt.imsave(f'/tmp/option_{logger.run.id}_{episode}_{key}.png', image/max_n_uses, vmax=1, cmap='inferno')
                 logger.log({f'option {key}': logger.Image(f'/tmp/option_{logger.run.id}_{episode}_{key}.png')}, step=episode)
 
     def clear_stats(self):
