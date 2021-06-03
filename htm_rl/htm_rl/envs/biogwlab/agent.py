@@ -52,7 +52,7 @@ class Agent(Entity):
     renderer: AgentRenderer
     env: Environment
 
-    def __init__(self, env: Environment, rendering=False, positions=None, change_position=False, **entity):
+    def __init__(self, env: Environment, rendering=False, positions=None, change_position=False, direction=None, **entity):
         super(Agent, self).__init__(rendering=rendering, **entity)
         self.env = env
 
@@ -64,6 +64,8 @@ class Agent(Entity):
             self.positions = [tuple(x) for x in positions]
         else:
             self.positions = positions
+
+        self.init_direction = DIRECTIONS_ORDER.index(direction)
         self.change_position = change_position
         self.rng = None
 
@@ -86,7 +88,11 @@ class Agent(Entity):
             position_fl = rng.choice(empty_positions_fl)
 
             self.position = self._unflatten_position(position_fl)
-        self.view_direction = rng.choice(len(DIRECTIONS_ORDER))
+
+        if self.init_direction is not None:
+            self.view_direction = self.init_direction
+        else:
+            self.view_direction = rng.choice(len(DIRECTIONS_ORDER))
         self.initialized = True
 
     def move(self, direction):

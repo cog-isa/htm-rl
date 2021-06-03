@@ -521,7 +521,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'cross_11x11_default'
+        default_config_name = 'four_room_9x9_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 

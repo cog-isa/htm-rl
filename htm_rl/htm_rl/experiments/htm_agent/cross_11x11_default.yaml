@@ -38,6 +38,7 @@ environment:
   agent:
     positions: [[5, 0], [0, 5], [5, 10], [10, 5]]
     change_position: true
+    direction: up
   #  rendering:
   #    what:
   #      - position
