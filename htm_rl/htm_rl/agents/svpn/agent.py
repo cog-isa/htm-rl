@@ -198,7 +198,7 @@ class SvpnAgent(UcbAgent):
             for action, sa_sdr in enumerate(actions_sa_sdr)
             if action in known_options
         ]
-        if self.rng.random() < .5:
+        if self.rng.random() < .15:
             action_ind = self.rng.choice(len(known_actions_sa_sdr))
         else:
             action_ind = self.sqvn.choose(known_actions_sa_sdr, greedy=True)
@@ -230,7 +230,7 @@ class SvpnAgent(UcbAgent):
             return False
 
         td_error = self.sqvn.TD_error
-        planning_prob = clip(abs(td_error) / 2 - .05, 1.)
+        planning_prob = clip(abs(td_error) / 2 - .045, 1.)
         # increase prob
         if planning_prob > .0:
             prob_boost = self.dreamer.planning_prob_alpha[0]
