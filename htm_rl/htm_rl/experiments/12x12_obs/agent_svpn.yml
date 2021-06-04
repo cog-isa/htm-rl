@@ -32,18 +32,18 @@ sqvn:
   discount_factor: .97
   learning_rate: [.1, .995]
   ucb_exploration_factor: [.5, .994]
-  td_error_decay: .7
+  td_error_decay: .6
 
 dreamer:
-  planning_prob_alpha: [1.5, .985]
-  learning_rate: .5
-  trace_decay: .0
+  planning_prob_alpha: [1.3, .992]
+  learning_rate: 2.
+  trace_decay:
 
 r_learning_rate: [.2, .995]
 first_planning_episode: 0
 last_planning_episode: 2000
-prediction_depth: 5
-n_prediction_rollouts: 2
+prediction_depth: 20
+n_prediction_rollouts: 1
 
 tm:
   cells_per_column: 1

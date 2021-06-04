@@ -23,7 +23,7 @@ class Dreamer:
     trace_decay: float
     cell_eligibility_trace: Optional[np.ndarray]
     starting_sa_sdr: Optional[SparseSdr]
-    TD_error: float
+    TD_error: Optional[float]
 
     def __init__(
             self, svn: SparseValueNetwork,
@@ -53,7 +53,7 @@ class Dreamer:
         wake_svn.trace_decay, self.trace_decay = self.trace_decay, wake_svn.trace_decay
 
         self.cell_eligibility_trace = wake_svn.cell_eligibility_trace.copy()
-        wake_svn.cell_eligibility_trace.fill(.0)
+        # wake_svn.cell_eligibility_trace.fill(.0)
 
         self.starting_sa_sdr = starting_sa_sdr.copy()
         self.TD_error = wake_svn.TD_error
@@ -61,7 +61,7 @@ class Dreamer:
     def reset_dreaming(self):
         dreaming_svn = self.svn
         dreaming_svn.cell_eligibility_trace = self.cell_eligibility_trace.copy()
-        dreaming_svn.cell_eligibility_trace.fill(.0)
+        # dreaming_svn.cell_eligibility_trace.fill(.0)
         return self.starting_sa_sdr.copy()
 
     def wake(self):
@@ -161,13 +161,14 @@ class SvpnAgent(UcbAgent):
         self.dreamer.planning_prob_alpha = exp_decay(self.dreamer.planning_prob_alpha)
         self._put_into_dream()
 
+        known_options = list(range(self.n_actions))
         for _ in range(self.n_prediction_rollouts):
             state = starting_state
             starting_state_len = len(starting_state)
             for i in range(self.prediction_depth):
-                if len(state) < .6 * starting_state_len:
+                if len(state) < .6 * starting_state_len or not known_options:
                     break
-                state = self._move_in_dream(state, td_lambda=self.dreamer.td_lambda)
+                state, known_options = self._move_in_dream(state, known_options, td_lambda=self.dreamer.td_lambda)
                 self.dream_length += 1
 
             self._reset_dreaming()
@@ -188,14 +189,20 @@ class SvpnAgent(UcbAgent):
     def _wake(self):
         self.dreamer.wake()
 
-    def _move_in_dream(self, state: SparseSdr, td_lambda: bool):
+    def _move_in_dream(self, state: SparseSdr, known_options: list[int], td_lambda: bool):
         reward = self.reward_model.rewards[state].mean()
         actions_sa_sdr = self._encode_actions(state, learn=False)
 
+        known_actions_sa_sdr = [
+            sa_sdr
+            for action, sa_sdr in enumerate(actions_sa_sdr)
+            if action in known_options
+        ]
         if self.rng.random() < .5:
-            action = self.rng.choice(len(actions_sa_sdr))
+            action_ind = self.rng.choice(len(known_actions_sa_sdr))
         else:
-            action = self.sqvn.choose(actions_sa_sdr)
+            action_ind = self.sqvn.choose(known_actions_sa_sdr, greedy=True)
+        action = known_options[action_ind]
 
         # process feedback
         self._learn_step(
@@ -209,8 +216,8 @@ class SvpnAgent(UcbAgent):
         self._current_sa_sdr = actions_sa_sdr[action]
         _, s_a_next_superposition = self._process_transition(state, action, learn_tm=False)
         s_a_next_superposition = self.sa_transition_model.columns_from_cells(s_a_next_superposition)
-        next_state = self._extract_state_from_s_a(s_a_next_superposition)
-        return next_state
+        next_state, known_options = self._split_s_a(s_a_next_superposition)
+        return next_state, known_options
 
     def _choose_action(self, actions):
         return self.rng.choice(len(actions))
@@ -236,10 +243,19 @@ class SvpnAgent(UcbAgent):
 
         return self.sa_transition_model.process(s_a, learn=learn_tm)
 
-    def _extract_state_from_s_a(self, s_a: SparseSdr):
+    def _split_s_a(self, s_a: SparseSdr):
         size = self.state_sp.output_sdr_size
         state = np.array([x for x in s_a if x < size])
-        return state
+        actions_activation = [0 for _ in range(self.n_actions)]
+        for x in [x - size for x in s_a if x >= size]:
+            actions_activation[self.action_encoder.decode_bit(x)] += 1
+
+        actions = []
+        for action, activation in enumerate(actions_activation):
+            if self.action_encoder.activation_fraction(activation) > .5:
+                actions.append(action)
+
+        return state, actions
 
     def _on_new_episode(self):
         super(SvpnAgent, self)._on_new_episode()

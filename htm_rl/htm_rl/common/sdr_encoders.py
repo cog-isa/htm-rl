@@ -54,6 +54,15 @@ class IntBucketEncoder:
         right = left + self._bucket_size
         return np.arange(left, right, dtype=np.int)
 
+    def decode_bit(self, bit_int: int):
+        bucket_ind = bit_int // self._buckets_step
+        if bucket_ind >= self.n_values:
+            bucket_ind = self.n_values - 1
+        return bucket_ind
+
+    def activation_fraction(self, activation):
+        return activation / self._bucket_size
+
     def _bucket_starting_pos(self, i):
         return i * self._buckets_step
 
