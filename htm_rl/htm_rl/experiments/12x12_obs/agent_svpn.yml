@@ -30,12 +30,12 @@ sqvn:
   trace_decay: .75
   visit_decay: .994
   discount_factor: .97
-  learning_rate: [.1, .995]
+  learning_rate: [.075, .995]
   ucb_exploration_factor: [.5, .994]
-  td_error_decay: .6
+  td_error_decay: .7
 
 dreamer:
-  planning_prob_alpha: [1.3, .992]
+  planning_prob_alpha: [1.5, .992]
   learning_rate: 2.
   trace_decay:
 
