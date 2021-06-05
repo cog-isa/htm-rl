@@ -1,30 +1,48 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from math import cos, sin, pi
 
 
 class OptionVis:
-    def __init__(self, map_size, size=21, max_options=50, action_displace=None):
+    def __init__(self, map_size, size=21, max_options=50, action_displace=None, action_rotation=None):
         if action_displace is None:
             action_displace = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        if action_rotation is None:
+            action_rotation = [0]*len(action_displace)
 
         self.map_size = map_size
         self.size = size
         self.options = dict()
         self.initial_pos = (size//2, size//2)
         self.action_displace = np.array(action_displace, dtype=np.int32)
+        self.action_rotation = np.array(action_rotation, dtype=np.int32)
         self.max_options = max_options
 
     def update(self, id_, start_pos, end_pos, actions, predicted_actions):
         id_ = int(id_)
         pos = self.initial_pos
+        direction = 0  # North
         policy = np.zeros((self.size, self.size))
 
         for i, action in enumerate(actions):
             for p_action in predicted_actions[i]:
-                p_pos = (pos[0] + self.action_displace[p_action][0], pos[1] + self.action_displace[p_action][1])
+                p_direction = direction + self.action_rotation[p_action]
+                if p_direction < 0:
+                    p_direction = 4 - p_direction
+                else:
+                    p_direction %= 4
+                p_displacement = self.transform_displacement(self.action_displace[p_action], p_direction)
+                p_pos = (pos[0] + p_displacement[0], pos[1] + p_displacement[1])
                 if self.is_in_bounds(p_pos):
                     policy[p_pos] += 1
-            pos = (pos[0] + self.action_displace[action][0], pos[1] + self.action_displace[action][1])
+
+            direction = direction + self.action_rotation[action]
+            if direction < 0:
+                direction = 4 - direction
+            else:
+                direction %= 4
+            displacement = self.transform_displacement(self.action_displace[action], direction)
+            pos = (pos[0] + displacement[0], pos[1] + displacement[1])
 
             if not self.is_in_bounds(pos):
                 break
@@ -73,6 +91,20 @@ class OptionVis:
 
     def clear_stats(self):
         self.options = dict()
+
+    @staticmethod
+    def transform_displacement(disp_xy, direction):
+        """
+        :param disp_xy:
+        :param direction: 0 -- North, 1 -- West, 2 -- South, 3 -- East
+        :return: tuple
+        """
+
+        def R(k):
+            return [[cos(pi * k / 2), -sin(pi * k / 2)],
+                    [sin(pi * k / 2), cos(pi * k / 2)]]
+
+        return np.dot(disp_xy, R(direction)).astype('int32')
 
 
 

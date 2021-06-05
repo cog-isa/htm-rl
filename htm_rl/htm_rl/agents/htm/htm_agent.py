@@ -2,6 +2,7 @@ from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMem
 from htm_rl.agents.htm.muscles import Muscles
 from htm_rl.agents.htm.basal_ganglia import BasalGanglia2, BasalGanglia, BasalGanglia3
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
+from htm_rl.envs.biogwlab.move_dynamics import MOVE_DIRECTIONS, TURN_DIRECTIONS
 from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
@@ -14,9 +15,6 @@ import random
 import yaml
 import matplotlib.pyplot as plt
 import wandb
-
-
-actions_disp = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
 
 class BioGwLabAction:
@@ -217,7 +215,7 @@ class HTMAgentRunner:
         self.current_option_id = None
         self.current_action = None
 
-        self.option_stat = OptionVis(self.environment.env.shape)
+        self.option_stat = OptionVis(self.environment.env.shape, **config['vis_options'])
         self.terminal_pos_stat = dict(zip(self.terminal_positions, [0] * len(self.terminal_positions)))
         self.option_start_pos = None
         self.option_end_pos = None
@@ -231,6 +229,7 @@ class HTMAgentRunner:
         episode = 0
         animation = False
         agent_pos = list()
+        action_displace = self.option_stat.action_displace
 
         while episode < n_episodes:
             if train_patterns:
@@ -421,6 +420,7 @@ class HTMAgentRunner:
         pic = self.environment.callmethod('render_rgb')[0]
         if draw_options:
             c_pos = self.environment.env.agent.position
+            c_direction = self.environment.env.agent.view_direction
             if self.agent.hierarchy.blocks[5].made_decision:
                 agent_pos.append(c_pos)
                 if len(agent_pos) > 1:
@@ -452,12 +452,20 @@ class HTMAgentRunner:
                     self.agent.muscles.depolarize_muscles()
                     action_pattern = self.agent.muscles.get_depolarized_muscles()
                     # convert muscles activation pattern to environment action
-                    a = self.agent.action.get_action(action_pattern)
-                    disp = actions_disp[a]
-                    new_row = c_pos[0] + disp[0]
-                    new_col = c_pos[1] + disp[1]
-                    if (new_row < pic.shape[0]) and (new_col < pic.shape[1]):
-                        pic[new_row, new_col] = [255, 200, 120]
+                    p_action = self.agent.action.get_action(action_pattern)
+                    direction = c_direction - self.option_stat.action_rotation[p_action]
+                    if direction < 0:
+                        direction = 4 - direction
+                    else:
+                        direction %= 4
+                    if (len(self.option_stat.action_displace) == 4) or (np.all(self.option_stat.action_displace[p_action] == 0)):
+                        displacement = self.option_stat.action_displace[p_action]
+                    else:
+                        displacement = self.option_stat.transform_displacement((0, 1), direction)
+                    p_pos = (c_pos[0] + displacement[0], c_pos[1] + displacement[1])
+
+                    if (p_pos[0] < pic.shape[0]) and (p_pos[1] < pic.shape[1]):
+                        pic[p_pos[0], p_pos[1]] = [255, 200, 120]
             pic = np.concatenate([pic, term_draw_options], axis=1)
 
         plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic.astype('uint8'))
@@ -521,7 +529,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_room_9x9_default'
+        default_config_name = 'four_room_9x9_aca_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
@@ -569,6 +577,6 @@ if __name__ == '__main__':
     else:
         log_q_table = True
 
-    runner.run_episodes(1000, logger=wandb, log_q_table=False, log_every_episode=25, log_patterns=False,
+    runner.run_episodes(2000, logger=wandb, log_q_table=False, log_every_episode=50, log_patterns=False,
                         train_patterns=True, log_options=True, log_segments=False, draw_options=True, log_terminal_stat=True,
                         draw_options_stats=True, opt_threshold=4)

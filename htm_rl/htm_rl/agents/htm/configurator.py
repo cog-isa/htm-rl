@@ -6,6 +6,7 @@ def configure(config):
     new_config = dict()
     new_config['environment'] = config['environment']
     new_config['hierarchy'] = config['hierarchy']
+    new_config['vis_options'] = config['vis_options']
 
     environment = BioGwLabEnvironment(**config['environment'])
 

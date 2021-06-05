@@ -1,7 +1,13 @@
-seed: &seed 3121
+seed: &seed 3122
 levels: 2
 basal_ganglia_version: 2
 agent: htm
+
+vis_options:
+  size: 21
+  max_options: 50
+  action_displace: [[-1, 0], [0, 0], [0, 0]]
+  action_rotation: [0, -1, 1]
 
 environment:
   seed: 2151
@@ -14,10 +20,9 @@ environment:
       turn: 1.0
       move: 1.0
   actions:
-    - move right
-    - move down
-    - move left
-    - move up
+    - move forward
+    - turn right
+    - turn left
     - stay
 
   rendering:
@@ -53,13 +58,12 @@ cagent:
   intrinsic_reward: false
   theta: 0.005
   action:
-    do_nothing_action: 4
+    do_nothing_action: 3
     noise_tolerance: 0.1
     patterns:
     - [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
     - [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
   alpha: 1.0
   muscles:
     connected_permanence: 0.5
@@ -139,7 +143,7 @@ blocks:
     tm:
       basal_columns: 1000
 
-cells_per_column: &cells_per_column 15
+cells_per_column: &cells_per_column 25
 
 hierarchy:
   block_connections: [
