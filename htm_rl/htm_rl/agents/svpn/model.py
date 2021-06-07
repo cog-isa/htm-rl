@@ -90,6 +90,10 @@ class TransitionModel:
         self._predicted_columns_sdr.sparse = list(self.columns_from_cells(predicted_cells))
         return predicted_cells
 
+    @property
+    def predicted_cols(self) -> SparseSdr:
+        return self._predicted_columns_sdr.sparse
+
     def columns_from_cells(self, cells_sparse_sdr: SparseSdr) -> SparseSdr:
         """
         Converts cells sparse SDR to columns sparse SDR.
