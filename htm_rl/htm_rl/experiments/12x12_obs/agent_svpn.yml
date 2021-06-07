@@ -35,15 +35,16 @@ sqvn:
   td_error_decay: .6
 
 dreamer:
-  planning_prob_alpha: [2., .99]
-  learning_rate: .75
+  dreaming_prob_alpha: [1.2, 1.]
+  dreaming_prob_threshold: .3
+  rnd_move_prob: .3
+  learning_rate_factor: .75
   trace_decay:
 
-r_learning_rate: [.2, .995]
-first_planning_episode: 0
-last_planning_episode: 2000
+r_learning_rate: [.2, 1.]
+first_dreaming_episode: 0
 prediction_depth: 40
-n_prediction_rollouts: 2
+n_prediction_rollouts: [1, 5]
 
 tm:
   cells_per_column: 1

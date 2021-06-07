@@ -155,3 +155,8 @@ def update_exp_trace(traces, tr, decay, val=1.):
 def exp_decay(factor_decay_tuple):
     factor, decay = factor_decay_tuple
     return factor * decay, decay
+
+
+def modify_factor_tuple(factor_decay_tuple, alpha):
+    factor, decay = factor_decay_tuple
+    return factor * alpha, decay

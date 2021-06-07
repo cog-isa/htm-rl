@@ -39,7 +39,7 @@ agent:
 
   learning_rate: *lr
   first_planning_episode: 10
-#  last_planning_episode: 20
+#  last_dreaming_episode: 20
   prediction_depth: 5
   n_prediction_rollouts: 3
 
