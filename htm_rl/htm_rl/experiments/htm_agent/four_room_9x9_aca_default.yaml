@@ -26,28 +26,31 @@ environment:
     - stay
 
   rendering:
-    view_rectangle: [[-1, -1], [1, 1]]
+      view_rectangle: [[-1, -1], [1, 1]]
 
   areas:
     n_types: 4
+#    rendering: false
 
   obstacle:
     density: 0.1
     map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
+#    rendering: false
 
   food:
     n_items: 1
     reward: 1.
     positions: [[4, 6]]
+#    rendering: false
 
   agent:
     change_position: true
     direction: up
-  #  rendering:
-  #    what:
-  #      - position
-  ##      - view direction
-  #    bucket_size: 3
+#    rendering:
+#      what:
+#        - position
+#        - view direction
+#      bucket_size: 3
 
   terminate:
     episode_max_steps: 200
@@ -61,9 +64,9 @@ cagent:
     do_nothing_action: 3
     noise_tolerance: 0.1
     patterns:
-    - [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
+    - [1, 1, 1, 0, 0, 0, 0, 0, 0]
+    - [0, 0, 0, 1, 1, 1, 0, 0, 0]
+    - [0, 0, 0, 0, 0, 0, 1, 1, 1]
   alpha: 1.0
   muscles:
     connected_permanence: 0.5
@@ -97,7 +100,7 @@ blocks:
       eps: 0.02
       greedy: False
       learn_sp: False
-      noise: 0.0
+      noise: 0.002
     bg_sp: null
     block:
       level: 1
@@ -210,7 +213,7 @@ input_block_default:
   columns: 0
   level: 0
 
-muscles_size: 12
+muscles_size: 9
 
 spatial_memory_default:
   activation_threshold: 1
@@ -281,7 +284,7 @@ temporal_memory_default:
 basal_ganglia_default:
   alpha: 0.01
   beta: 0.01
-  discount_factor: 0.95
+  discount_factor: 0.997
   eps: 0.02
   gamma: 0.01
   greedy: false
@@ -291,7 +294,7 @@ basal_ganglia_default:
   noise: 0.0
 
 block_default:
-  gamma: 0.95
+  gamma: 0.997
   predicted_boost: 0.0
-  min_feedback_boost: 0.2
-  max_feedback_boost: 0.5
+  min_feedback_boost: 0.0
+  max_feedback_boost: 0.0
