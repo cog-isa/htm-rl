@@ -277,7 +277,7 @@ class HTMAgentRunner:
                             directions = None
                             actions_map = {0: 'right', 1: 'down', 2: 'left', 3: 'up'}
 
-                        q = compute_q_values(self.environment.env, self.agent, list(directions.values()))
+                        q = compute_q_values(self.environment.env, self.agent, directions)
 
                         if log_values:
                             draw_values(f'/tmp/values_{logger.run.id}_{episode}.png',
@@ -440,7 +440,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_room_9x9_aca_default'
+        default_config_name = 'four_room_9x9_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 

@@ -3,6 +3,12 @@ levels: 2
 basal_ganglia_version: 2
 agent: htm
 
+vis_options:
+  size: 21
+  max_options: 50
+  action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
+  action_rotation: [0, 0, 0, 0]
+
 environment:
   seed: 2151
   shape_xy: [9, 9]
@@ -93,7 +99,7 @@ blocks:
       eps: 0.02
       greedy: False
       learn_sp: False
-      noise: 0.0
+      noise: 0.002
     bg_sp: null
     block:
       level: 1
@@ -277,7 +283,7 @@ temporal_memory_default:
 basal_ganglia_default:
   alpha: 0.01
   beta: 0.01
-  discount_factor: 0.95
+  discount_factor: 0.997
   eps: 0.02
   gamma: 0.01
   greedy: false
@@ -287,7 +293,7 @@ basal_ganglia_default:
   noise: 0.0
 
 block_default:
-  gamma: 0.95
+  gamma: 0.997
   predicted_boost: 0.0
-  min_feedback_boost: 0.2
-  max_feedback_boost: 0.5
+  min_feedback_boost: 0.0
+  max_feedback_boost: 0.0

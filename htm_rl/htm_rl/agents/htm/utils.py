@@ -114,7 +114,7 @@ class OptionVis:
         return np.dot(disp_xy, R(direction)).astype('int32')
 
 
-def compute_q_values(env: Environment, agent, directions: list = None):
+def compute_q_values(env: Environment, agent, directions: dict = None):
     q = dict()
     visual_block = agent.hierarchy.blocks[2]
     output_block = agent.hierarchy.output_block
@@ -125,11 +125,13 @@ def compute_q_values(env: Environment, agent, directions: list = None):
 
     if directions is None:
         directions = [env.agent.view_direction]
+    else:
+        directions = list(directions.values())
     # пройти по всем состояниям и вычилить для каждого состояния Q
     for i_flat in np.flatnonzero(~env.aggregated_mask[EntityType.Obstacle]):
         env.agent.position = env.agent._unflatten_position(i_flat)
         q[env.agent.position] = dict()
-        for direction in directions:
+        for i, direction in enumerate(directions):
             env.agent.view_direction = direction
             _, observation, _ = env.observe()
             state_pattern.sparse = observation
@@ -143,7 +145,8 @@ def compute_q_values(env: Environment, agent, directions: list = None):
                                                     return_option_value=True,
                                                     return_values=True,
                                                     return_index=True)
-            q[env.agent.position][direction] = option_values[1]
+
+            q[env.agent.position][i] = option_values[1]
     return q
 
 
@@ -156,17 +159,18 @@ def draw_values(path: str, env_shape, q, directions: dict = None):
     values = np.zeros((*env_shape, n_directions))
 
     for pos, q_pos in q.items():
-        for direction, q_pos_dir in q_pos.items():
-            values[pos[0], pos[1], direction] = np.sum(q_pos_dir * softmax(q_pos_dir))
+        for di, q_pos_dir in q_pos.items():
+            values[pos[0], pos[1], di] = np.sum(q_pos_dir * softmax(q_pos_dir))
 
     rows, cols = env_shape
     if n_directions == 4:
+        vd = list(directions.values())
         flat_values = np.zeros((rows*2, cols*2))
         for pos in q.keys():
-            flat_values[pos[0]*2, pos[1]*2] = values[pos[0], pos[1], directions['up']]
-            flat_values[pos[0]*2, pos[1]*2 + 1] = values[pos[0], pos[1], directions['right']]
-            flat_values[pos[0]*2 + 1, pos[1]*2] = values[pos[0], pos[1], directions['left']]
-            flat_values[pos[0]*2 + 1, pos[1]*2 + 1] = values[pos[0], pos[1], directions['down']]
+            flat_values[pos[0]*2, pos[1]*2] = values[pos[0], pos[1], vd.index(directions['up'])]
+            flat_values[pos[0]*2, pos[1]*2 + 1] = values[pos[0], pos[1], vd.index(directions['right'])]
+            flat_values[pos[0]*2 + 1, pos[1]*2] = values[pos[0], pos[1], vd.index(directions['left'])]
+            flat_values[pos[0]*2 + 1, pos[1]*2 + 1] = values[pos[0], pos[1], vd.index(directions['down'])]
     elif n_directions == 1:
         flat_values = values.reshape(env_shape)
     else:
@@ -190,24 +194,25 @@ def draw_policy(path: str, env_shape, q, directions: dict = None, actions_map: d
     actions = np.zeros((*env_shape, n_directions), dtype='int32')
 
     for pos, q_pos in q.items():
-        for direction, q_pos_dir in q_pos.items():
-            probs[pos[0], pos[1], direction] = np.max(softmax(q_pos_dir))
-            actions[pos[0], pos[1], direction] = np.argmax(q_pos_dir)
+        for di, q_pos_dir in q_pos.items():
+            probs[pos[0], pos[1], di] = np.max(softmax(q_pos_dir))
+            actions[pos[0], pos[1], di] = np.argmax(q_pos_dir)
 
     rows, cols = env_shape
     if n_directions == 4:
+        vd = list(directions.values())
         flat_probs = np.zeros((rows*2, cols*2))
         flat_actions = np.zeros((rows*2, cols*2))
         for pos in q.keys():
-            flat_probs[pos[0]*2, pos[1]*2] = probs[pos[0], pos[1], directions['up']]
-            flat_probs[pos[0]*2, pos[1]*2 + 1] = probs[pos[0], pos[1], directions['right']]
-            flat_probs[pos[0]*2 + 1, pos[1]*2] = probs[pos[0], pos[1], directions['left']]
-            flat_probs[pos[0]*2 + 1, pos[1]*2 + 1] = probs[pos[0], pos[1], directions['down']]
+            flat_probs[pos[0]*2, pos[1]*2] = probs[pos[0], pos[1], vd.index(directions['up'])]
+            flat_probs[pos[0]*2, pos[1]*2 + 1] = probs[pos[0], pos[1], vd.index(directions['right'])]
+            flat_probs[pos[0]*2 + 1, pos[1]*2] = probs[pos[0], pos[1], vd.index(directions['left'])]
+            flat_probs[pos[0]*2 + 1, pos[1]*2 + 1] = probs[pos[0], pos[1], vd.index(directions['down'])]
             
-            flat_actions[pos[0]*2, pos[1]*2] = actions[pos[0], pos[1], directions['up']]
-            flat_actions[pos[0]*2, pos[1]*2 + 1] = actions[pos[0], pos[1], directions['right']]
-            flat_actions[pos[0]*2 + 1, pos[1]*2] = actions[pos[0], pos[1], directions['left']]
-            flat_actions[pos[0]*2 + 1, pos[1]*2 + 1] = actions[pos[0], pos[1], directions['down']]
+            flat_actions[pos[0]*2, pos[1]*2] = actions[pos[0], pos[1], vd.index(directions['up'])]
+            flat_actions[pos[0]*2, pos[1]*2 + 1] = actions[pos[0], pos[1], vd.index(directions['right'])]
+            flat_actions[pos[0]*2 + 1, pos[1]*2] = actions[pos[0], pos[1], vd.index(directions['left'])]
+            flat_actions[pos[0]*2 + 1, pos[1]*2 + 1] = actions[pos[0], pos[1], vd.index(directions['down'])]
     elif n_directions == 1:
         flat_probs = probs.reshape(env_shape)
         flat_actions = actions.reshape(env_shape)
