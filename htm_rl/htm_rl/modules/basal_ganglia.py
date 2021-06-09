@@ -41,7 +41,7 @@ class Striatum:
         self.previous_response = copy.deepcopy(self.current_response)
         self.current_response = copy.deepcopy(response)
 
-    def learn(self, reward, k=1, external_value=0):
+    def learn(self, reward, k: int = 1, external_value: float = 0):
         """
         main Striatum learning function
         :param reward: accumulated reward since previous response (for elementary actions it's just immediate reward)
@@ -179,5 +179,5 @@ class BasalGanglia:
 
         return response_index, response, responses_values
 
-    def force_dopamine(self, reward: float):
-        self.stri.learn(reward)
+    def force_dopamine(self, reward: float, k: int = 0, external_value: float = 0):
+        self.stri.learn(reward, k, external_value)
