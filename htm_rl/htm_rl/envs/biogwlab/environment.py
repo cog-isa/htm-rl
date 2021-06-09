@@ -83,6 +83,9 @@ class Environment(Env):
         self.entity_slices.clear()
         self.aggregated_mask.clear()
 
+        self.entity_slices.clear()
+        self.aggregated_mask.clear()
+
         self._run_handlers('reset')
         self.generate()
         # noinspection PyTypeChecker

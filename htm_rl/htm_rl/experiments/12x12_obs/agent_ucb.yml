@@ -12,11 +12,11 @@ type: ucb
 agent:
   state_sp:
     <<: *default_spatial_pooler_params
-    output_dilation_ratio: 1.6
-    potential_synapses_ratio: .7
+    output_dilation_ratio: 2.
+    potential_synapses_ratio: .5
     sparsity: .015
-    boost_strength: .4
-    boost_sliding_window: 1000
+    boost_strength: .2
+    boost_sliding_window: 2000
     expected_normal_overlap_frequency: .001
 
   action_encoder:
@@ -24,16 +24,16 @@ agent:
 
   sa_sp:
     <<: *default_spatial_pooler_params
-    output_dilation_ratio: 2.5
-    potential_synapses_ratio: .7
-    sparsity: .01
-    boost_strength: .3
-    boost_sliding_window: 2000
+    output_dilation_ratio: 3.
+    potential_synapses_ratio: .6
+    sparsity: .015
+    boost_strength: .2
+    boost_sliding_window: 4000
     expected_normal_overlap_frequency: .001
 
   q_network:
-    trace_decay: .7
-    visit_decay: .92
-    discount_factor: .95
-    learning_rate: [.03, 1.]
-    ucb_exploration_factor: [.1, 1.]
+    trace_decay: .75
+    visit_decay: .994
+    discount_factor: .96
+    learning_rate: [.04, .995]
+    ucb_exploration_factor: [.5, .994]

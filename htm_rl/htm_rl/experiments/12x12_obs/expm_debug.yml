@@ -1,29 +1,21 @@
 seed:
-  - 333937
-  - 453572
-  - 271454
-  - 989886
-  - 92165
-  - 201807
-  - 341540
-  - 429951
-  - 711072
-  - 482614
-# in case you need more than 10 seeds
-#  - 851775
+#  - 711072
+#  - 482614
 #  - 743535
-#  - 288985
 #  - 190368
-#  - 885213
-#  - 768840
+  - 583
+  - 885213
+  - 666373
+#seed: 8713
+#n_seeds: 40
 agent_seed:
   - 42
   - 1337
   - 1984
 
 experiment:
-  project: test_1f_obs_8x8
-  n_episodes: 500
+  project:
+  n_episodes: 300
 
 env:
   - obs
@@ -31,7 +23,6 @@ env:
 agent:
   - rnd
   - ucb
-  - svpn
 
 run_results_processor: !RunResultsProcessor
   env_name: biogwlab

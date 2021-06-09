@@ -10,7 +10,8 @@ from htm_rl.common.utils import trace
 class SparseValueNetwork:
     trace_decay: float
     discount_factor: float
-    learning_rate: float
+    learning_rate: Tuple[float, float]
+    ucb_exploration_factor: Tuple[float, float]
 
     # you should not to read it literally cause it's affected by exp MA window
     cell_visit_count: np.ndarray
@@ -19,14 +20,14 @@ class SparseValueNetwork:
     reward_bounds: Tuple[float, float]
 
     cell_eligibility_trace: np.ndarray
-    ucb_exploration_factor: Tuple[float, float]
 
     _rng: Generator
 
     def __init__(
             self, cells_sdr_size: int, seed: int,
             trace_decay: float, visit_decay: float,
-            discount_factor: float, learning_rate: float,
+            discount_factor: float,
+            learning_rate: Tuple[float, float],
             ucb_exploration_factor: Tuple[float, float]
     ):
         self._rng = np.random.default_rng(seed)
@@ -35,13 +36,13 @@ class SparseValueNetwork:
         self.visit_decay = visit_decay
         self.discount_factor = discount_factor
         self.learning_rate = learning_rate
+        self.ucb_exploration_factor = ucb_exploration_factor
 
         self.cell_visit_count = np.full(cells_sdr_size, 1., dtype=np.float)
         # self.cell_value = np.full(cells_sdr_size, 0., dtype=np.float)
         self.cell_value = self._rng.uniform(-1e-4, 1e-4, size=cells_sdr_size)
         self.cell_eligibility_trace = np.zeros(cells_sdr_size, dtype=np.float)
         self.reward_bounds = 0., 1.
-        self.ucb_exploration_factor = ucb_exploration_factor
 
     # noinspection PyTypeChecker
     def choose(self, options: List[SparseSdr], greedy=False) -> int:
@@ -75,7 +76,7 @@ class SparseValueNetwork:
 
     # noinspection PyPep8Naming
     def _update_cell_value(self, sa: SparseSdr, reward: float, sa_next: SparseSdr):
-        lr = self.learning_rate
+        lr, _ = self.learning_rate
         lambda_, gamma = self.trace_decay, self.discount_factor
         R = reward
         V = self.cell_value
@@ -92,7 +93,7 @@ class SparseValueNetwork:
 
     # noinspection PyPep8Naming
     def _update_cell_value_td_0(self, sa: SparseSdr, reward: float, sa_next: SparseSdr):
-        lr = self.learning_rate
+        lr, _ = self.learning_rate
         gamma = self.discount_factor
         R = reward
         V = self.cell_value
@@ -142,4 +143,5 @@ class SparseValueNetwork:
 
         alpha, decay = self.ucb_exploration_factor
         self.ucb_exploration_factor = alpha * decay, decay
-        # self.learning_rate *= self.ucb_exploration_factor[1]
+        alpha, decay = self.learning_rate
+        self.learning_rate = alpha * decay, decay
