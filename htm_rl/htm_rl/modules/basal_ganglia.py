@@ -3,9 +3,6 @@ from typing import List
 import copy
 import numpy as np
 from numpy.random._generator import Generator
-import matplotlib.pyplot as plt
-import os
-
 from htm_rl.common.sdr import SparseSdr
 
 
@@ -13,7 +10,7 @@ def softmax(x):
     return np.exp(x) / np.sum(np.exp(x))
 
 
-class Striatum():
+class Striatum:
     def __init__(self, input_size: int, output_size: int, discount_factor: float,
                  alpha: float, beta: float):
         self._input_size = input_size
@@ -32,6 +29,7 @@ class Striatum():
         self.current_response = None
 
     def compute(self, exc_input: SparseSdr) -> (np.ndarray, np.ndarray):
+        # TODO возможно стоит передавать SDR, а не SparseSDR?
         self.previous_stimulus = copy.deepcopy(self.current_stimulus)
         self.current_stimulus = copy.deepcopy(exc_input)
         d1 = np.mean(self.w_d1[:, exc_input], axis=-1)
@@ -43,25 +41,35 @@ class Striatum():
         self.previous_response = copy.deepcopy(self.current_response)
         self.current_response = copy.deepcopy(response)
 
-    def learn(self, reward):
-        if (self.previous_response is not None) and (len(self.previous_response) > 0):
-            value = 0
+    def learn(self, reward, k=1, external_value=0):
+        """
+        main Striatum learning function
+        :param reward: accumulated reward since previous response (for elementary actions it's just immediate reward)
+        :param k: number of steps taken after previous response (>=1 for non-elementary actions)
+        :param external_value: value from lower level BG (may be !=0 for non-elementary actions)
+        :return:
+        """
+        if (self.previous_response is not None) and (len(self.previous_response) > 0) and (
+                len(self.previous_stimulus) > 0):
+            value = external_value  # это нужно для опций
             prev_values = np.mean(
-                (self.w_d1[self.previous_response] - self.w_d2[self.previous_response])[:,
-                self.previous_stimulus], axis=-1)
+                (self.w_d1[self.previous_response] - self.w_d2[self.previous_response])[:, self.previous_stimulus],
+                axis=-1)
 
-            if (self.current_response is not None) and (len(self.current_response) > 0):
+            if (self.current_response is not None) and (len(self.current_response) > 0) and (
+                    len(self.current_stimulus) > 0):
                 values = np.mean(
-                    (self.w_d1[self.current_response] - self.w_d2[self.current_response])[:,
-                    self.current_stimulus], axis=-1)
+                    (self.w_d1[self.current_response] - self.w_d2[self.current_response])[:, self.current_stimulus],
+                    axis=-1)
                 value = np.median(values)
 
-            deltas = (reward/len(self.previous_response) + self.discount_factor * value) - prev_values
+            deltas = (reward / len(self.previous_response) + (self.discount_factor ** k) * value) - prev_values
 
             self.w_d1[self.previous_response.reshape((-1, 1)), self.previous_stimulus] += (
-                        self.alpha * deltas).reshape((-1, 1))
+                    self.alpha * deltas).reshape((-1, 1))
             self.w_d2[self.previous_response.reshape((-1, 1)), self.previous_stimulus] -= (
-                        self.beta * deltas).reshape((-1, 1))
+                    self.beta * deltas).reshape((-1, 1))
+        # TODO не нужно здесь обновления stimulus and response?
 
     def reset(self):
         self.previous_response = None
@@ -69,13 +77,14 @@ class Striatum():
         self.current_response = None
         self.current_stimulus = None
 
-class GPi():
+
+class GPi:
     def __init__(self, input_size: int, output_size: int, seed: int):
         self._input_size = input_size
         self._output_size = output_size
         self._rng = np.random.default_rng(seed)
-        if self._input_size != self._output_size:
-            raise ValueError
+        # TODO убрать?
+        assert self._input_size == self._output_size, f"Input and output have different sizes: input: {input_size}, output {output_size}"
 
     def compute(self, exc_input: float, inh_input) -> np.ndarray:
         out = exc_input - inh_input[0] - inh_input[1]
@@ -83,32 +92,35 @@ class GPi():
         out = self._rng.random(self._output_size) < out
         return out
 
-class GPe():
+
+class GPe:
     def __init__(self, input_size, output_size):
         self._input_size = input_size
         self._output_size = output_size
-        if self._input_size != self._output_size:
-            raise ValueError
+        # TODO убрать?
+        assert self._input_size == self._output_size, f"Input and output have different sizes: input: {input_size}, output {output_size}"
 
     def compute(self, exc_input: float, inh_input: np.ndarray) -> np.ndarray:
         return exc_input - inh_input
 
-class STN():
+
+class STN:
     def __init__(self, input_size: int, output_size: int):
         self._input_size = input_size
         self._output_size = output_size
 
-        if self._input_size != self._output_size:
-            raise ValueError
+        assert self._input_size == self._output_size, f"Input and output have different sizes: input: {input_size}, output {output_size}"
+
         self.weights = np.zeros(input_size)
         self.time = 0
 
     def compute(self, exc_input: SparseSdr) -> float:
         self.weights[exc_input] += 1
         self.time += 1
-        return np.mean(self.weights/self.time)
+        return np.mean(self.weights / self.time)
 
-class Thalamus():
+
+class Thalamus:
     def __init__(self, input_size: int, output_size: int, seed: int):
         self._input_size = input_size
         self._output_size = output_size
@@ -124,6 +136,7 @@ class Thalamus():
         probs = softmax(weights)
         out = self._rng.choice(len(weights), 1, p=probs)[0]
         return out, responses[out]
+
 
 class BasalGanglia:
     alpha: float
@@ -153,7 +166,6 @@ class BasalGanglia:
     def compute(self, stimulus,
                 responses: List[SparseSdr],
                 responses_weights: List[float]):
-
         d1, d2 = self.stri.compute(stimulus)
         stn = self.stn.compute(stimulus)
         gpe = self.gpe.compute(stn, d2)
@@ -168,5 +180,4 @@ class BasalGanglia:
         return response_index, response, responses_values
 
     def force_dopamine(self, reward: float):
-       self.stri.learn(reward)
-
+        self.stri.learn(reward)
