@@ -2,7 +2,7 @@ import numpy as np
 from htm.bindings.sdr import SDR
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm.bindings.algorithms import SpatialPooler
-from htm_rl.agents.htm.basal_ganglia import BasalGanglia2
+from htm_rl.modules.basal_ganglia import BasalGanglia
 import os
 import pickle
 
@@ -112,7 +112,7 @@ class Block:
     """
     tm: ApicalBasalFeedbackTM
     sp: SpatialPooler
-    bg: BasalGanglia2
+    bg: BasalGanglia
     sm: SpatialMemory
 
     def __init__(self,
@@ -391,11 +391,9 @@ class Block:
                         # feedback boost
                         boost_predicted_options[indices] += self.feedback_boost
 
-                    option, option_value, option_values, option_index = self.bg.choose(options, condition, option_weights=boost_predicted_options,
-                                                                                       return_option_value=True, return_values=True, return_index=True)
-                    # reinforce good patterns and punish bad ones
-                    if self.learn_sm:
-                        self.sm.reinforce(option_values[0])
+                    option_index, option, option_values = self.bg.compute(condition, options, responses_weights=list(boost_predicted_options))
+                    norm_option_values = option_values - option_values.min()
+                    norm_option_values /= (norm_option_values.max() + 1e-12)
 
                     self.made_decision = True
                     self.current_option = option_index
@@ -413,10 +411,10 @@ class Block:
                                 block.bg.current_condition = None
                             else:
                                 block.reinforce()
-                            block.reinforce(external_value=option_value[1])
+                            block.reinforce(external_value=option_values[option_index])
 
                     if return_value:
-                        return option, option_value[0]
+                        return option, norm_option_values[option_index]
                     else:
                         return option
                 else:
@@ -449,7 +447,7 @@ class Block:
             self.k = 0
             self.reward = 0
         elif (external_value is not None) and (self.bg is not None):
-            self.bg.force_dopamine(self.reward, next_external_value=external_value)
+            self.bg.force_dopamine(self.reward, external_value=external_value)
 
         self.made_decision = False
         self.current_option = None
