@@ -29,8 +29,8 @@ class Striatum:
         self.current_response = None
 
     def compute(self, exc_input: SparseSdr) -> (np.ndarray, np.ndarray):
-        # TODO возможно стоит передавать SDR, а не SparseSDR?
-        self.previous_stimulus = copy.deepcopy(self.current_stimulus)
+        if self.current_stimulus is not None:
+            self.previous_stimulus = copy.deepcopy(self.current_response)
         self.current_stimulus = copy.deepcopy(exc_input)
         d1 = np.mean(self.w_d1[:, exc_input], axis=-1)
         d2 = np.mean(self.w_d2[:, exc_input], axis=-1)
@@ -38,7 +38,8 @@ class Striatum:
         return d1, d2
 
     def update_response(self, response: SparseSdr):
-        self.previous_response = copy.deepcopy(self.current_response)
+        if self.current_response is not None:
+            self.previous_response = copy.deepcopy(self.current_response)
         self.current_response = copy.deepcopy(response)
 
     def learn(self, reward, k: int = 1, external_value: float = 0):
@@ -51,7 +52,7 @@ class Striatum:
         """
         if (self.previous_response is not None) and (len(self.previous_response) > 0) and (
                 len(self.previous_stimulus) > 0):
-            value = external_value  # это нужно для опций
+            value = external_value
             prev_values = np.mean(
                 (self.w_d1[self.previous_response] - self.w_d2[self.previous_response])[:, self.previous_stimulus],
                 axis=-1)
@@ -69,7 +70,11 @@ class Striatum:
                     self.alpha * deltas).reshape((-1, 1))
             self.w_d2[self.previous_response.reshape((-1, 1)), self.previous_stimulus] -= (
                     self.beta * deltas).reshape((-1, 1))
-        # TODO не нужно здесь обновления stimulus and response?
+
+        self.previous_stimulus = copy.deepcopy(self.current_stimulus)
+        self.previous_response = copy.deepcopy(self.current_response)
+        self.current_stimulus = None
+        self.current_response = None
 
     def reset(self):
         self.previous_response = None
