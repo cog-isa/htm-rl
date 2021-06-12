@@ -391,7 +391,7 @@ class Block:
                         # feedback boost
                         boost_predicted_options[indices] += self.feedback_boost
 
-                    option_index, option, option_values = self.bg.compute(condition, options, responses_weights=list(boost_predicted_options))
+                    option_index, option, option_values = self.bg.compute(condition.sparse, options, responses_boost=boost_predicted_options)
                     norm_option_values = option_values - option_values.min()
                     norm_option_values /= (norm_option_values.max() + 1e-12)
 
@@ -407,8 +407,8 @@ class Block:
                             block.failed_option = block.current_option
                             k = block.k
                             if k == 0:
-                                block.bg.current_option = None
-                                block.bg.current_condition = None
+                                block.bg.current_stimulus = None
+                                block.bg.current_response = None
                             else:
                                 block.reinforce()
                             block.reinforce(external_value=option_values[option_index])
@@ -442,12 +442,13 @@ class Block:
             self.k += 1
 
     def reinforce(self, external_value=None):
-        if (self.k != 0) and self.made_decision and (self.bg is not None):
-            self.bg.force_dopamine(self.reward, k=self.k)
-            self.k = 0
-            self.reward = 0
-        elif (external_value is not None) and (self.bg is not None):
-            self.bg.force_dopamine(self.reward, external_value=external_value)
+        if self.bg is not None:
+            if (self.k != 0) and self.made_decision:
+                self.bg.force_dopamine(self.reward, k=self.k)
+                self.k = 0
+                self.reward = 0
+            elif external_value is not None:
+                self.bg.force_dopamine(self.reward, external_value=external_value)
 
         self.made_decision = False
         self.current_option = None
@@ -476,15 +477,11 @@ class Block:
         self.learn_sp = False
         self.learn_tm = False
         self.learn_sm = False
-        if self.bg is not None:
-            self.bg.learn_sp = False
 
     def unfreeze(self):
         self.learn_sp = True
         self.learn_tm = True
         self.learn_sm = True
-        if self.bg is not None:
-            self.bg.learn_sp = True
 
 
 class InputBlock:

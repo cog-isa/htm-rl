@@ -65,7 +65,10 @@ class Agent(Entity):
         else:
             self.positions = positions
 
-        self.init_direction = DIRECTIONS_ORDER.index(direction)
+        if direction is None:
+            self.init_direction = None
+        else:
+            self.init_direction = DIRECTIONS_ORDER.index(direction)
         self.change_position = change_position
         self.rng = None
 

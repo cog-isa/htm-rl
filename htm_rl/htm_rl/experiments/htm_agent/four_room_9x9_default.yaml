@@ -1,6 +1,5 @@
 seed: &seed 3121
 levels: 2
-basal_ganglia_version: 2
 agent: htm
 
 vis_options:
@@ -82,7 +81,6 @@ cagent:
 blocks:
   0:
     bg: null
-    bg_sp: null
     block:
       level: 1
     sm: {}
@@ -96,11 +94,6 @@ blocks:
     bg:
       alpha: 0.01
       beta: 0.01
-      eps: 0.02
-      greedy: False
-      learn_sp: False
-      noise: 0.002
-    bg_sp: null
     block:
       level: 1
     sm: {}
@@ -113,7 +106,6 @@ blocks:
 
   2:
     bg: null
-    bg_sp: null
     block:
       level: 2
     sm: { }
@@ -127,11 +119,6 @@ blocks:
     bg:
       alpha: 0.1
       beta: 0.1
-      eps: 0.02
-      greedy: False
-      learn_sp: False
-      noise: 0.0
-    bg_sp: null
     block:
       level: 2
     sm:
@@ -284,13 +271,7 @@ basal_ganglia_default:
   alpha: 0.01
   beta: 0.01
   discount_factor: 0.997
-  eps: 0.02
-  gamma: 0.01
-  greedy: false
-  learn_sp: true
   seed: *seed
-  w_stn: 0.01
-  noise: 0.0
 
 block_default:
   gamma: 0.997

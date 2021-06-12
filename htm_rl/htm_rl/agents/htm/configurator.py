@@ -56,12 +56,6 @@ def configure(config):
         else:
             blocks[i]['bg'] = None
 
-        if block['bg_sp'] is not None:
-            blocks[i]['bg_sp'] = deepcopy(config['spatial_pooler_default'])
-            blocks[i]['bg_sp'].update(block['bg_sp'])
-        else:
-            blocks[i]['bg_sp'] = None
-
         if block['sp'] is not None:
             blocks[i]['sp'] = deepcopy(config['spatial_pooler_default'])
             blocks[i]['sp'].update(deepcopy(block['sp']))
@@ -111,8 +105,6 @@ def configure(config):
         if block['bg'] is not None:
             block['bg'].update({'input_size': apical_input_size, 'output_size': block['tm']['basal_columns']})
 
-        if block['bg_sp'] is not None:
-            block['bg_sp'].update({'inputDimensions': [apical_input_size + block['tm']['basal_columns']]})
     new_config['blocks'] = blocks
     # agent
     new_config['agent'] = config['cagent']
@@ -137,5 +129,4 @@ def configure(config):
     )
     new_config['seed'] = config['seed']
     new_config['levels'] = config['levels']
-    new_config['basal_ganglia_version'] = config['basal_ganglia_version']
     return new_config

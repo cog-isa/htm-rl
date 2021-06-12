@@ -114,8 +114,9 @@ class OptionVis:
         return np.dot(disp_xy, R(direction)).astype('int32')
 
 
-def compute_q_values(env: Environment, agent, directions: dict = None):
+def compute_q_policy(env: Environment, agent, directions: dict = None):
     q = dict()
+    policy = dict()
     visual_block = agent.hierarchy.blocks[2]
     output_block = agent.hierarchy.output_block
     options = output_block.sm.get_sparse_patterns()
@@ -131,26 +132,25 @@ def compute_q_values(env: Environment, agent, directions: dict = None):
     for i_flat in np.flatnonzero(~env.aggregated_mask[EntityType.Obstacle]):
         env.agent.position = env.agent._unflatten_position(i_flat)
         q[env.agent.position] = dict()
+        policy[env.agent.position] = dict()
         for i, direction in enumerate(directions):
             env.agent.view_direction = direction
             _, observation, _ = env.observe()
             state_pattern.sparse = observation
             visual_block.sp.compute(state_pattern, False, sp_output)
-            (option,
-             option_value,
-             option_values,
-             option_index) = output_block.bg.choose(options,
-                                                    condition=sp_output,
-                                                    option_weights=None,
-                                                    return_option_value=True,
-                                                    return_values=True,
-                                                    return_index=True)
+            (option_index,
+             option,
+             option_values) = output_block.bg.compute(sp_output.sparse,
+                                                      options,
+                                                      responses_boost=None,
+                                                      learn=False)
 
-            q[env.agent.position][i] = option_values[1]
-    return q
+            q[env.agent.position][i] = option_values
+            policy[env.agent.position][i] = softmax(output_block.bg.tha.response_activity)
+    return q, policy
 
 
-def draw_values(path: str, env_shape, q, directions: dict = None):
+def draw_values(path: str, env_shape, q, policy, directions: dict = None):
     if directions is None:
         n_directions = 1
     else:
@@ -160,7 +160,7 @@ def draw_values(path: str, env_shape, q, directions: dict = None):
 
     for pos, q_pos in q.items():
         for di, q_pos_dir in q_pos.items():
-            values[pos[0], pos[1], di] = np.sum(q_pos_dir * softmax(q_pos_dir))
+            values[pos[0], pos[1], di] = np.sum(q_pos_dir * policy[pos][di])
 
     rows, cols = env_shape
     if n_directions == 4:
@@ -184,7 +184,7 @@ def draw_values(path: str, env_shape, q, directions: dict = None):
     figure.savefig(path)
 
 
-def draw_policy(path: str, env_shape, q, directions: dict = None, actions_map: dict = None):
+def draw_policy(path: str, env_shape, policy, directions: dict = None, actions_map: dict = None):
     if directions is None:
         n_directions = 1
     else:
@@ -193,17 +193,17 @@ def draw_policy(path: str, env_shape, q, directions: dict = None, actions_map: d
     probs = np.zeros((*env_shape, n_directions))
     actions = np.zeros((*env_shape, n_directions), dtype='int32')
 
-    for pos, q_pos in q.items():
-        for di, q_pos_dir in q_pos.items():
-            probs[pos[0], pos[1], di] = np.max(softmax(q_pos_dir))
-            actions[pos[0], pos[1], di] = np.argmax(q_pos_dir)
+    for pos, pi_pos in policy.items():
+        for di, pi_pos_dir in pi_pos.items():
+            probs[pos[0], pos[1], di] = np.max(pi_pos_dir)
+            actions[pos[0], pos[1], di] = np.argmax(pi_pos_dir)
 
     rows, cols = env_shape
     if n_directions == 4:
         vd = list(directions.values())
         flat_probs = np.zeros((rows*2, cols*2))
         flat_actions = np.zeros((rows*2, cols*2))
-        for pos in q.keys():
+        for pos in policy.keys():
             flat_probs[pos[0]*2, pos[1]*2] = probs[pos[0], pos[1], vd.index(directions['up'])]
             flat_probs[pos[0]*2, pos[1]*2 + 1] = probs[pos[0], pos[1], vd.index(directions['right'])]
             flat_probs[pos[0]*2 + 1, pos[1]*2] = probs[pos[0], pos[1], vd.index(directions['left'])]

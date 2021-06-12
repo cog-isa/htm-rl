@@ -1,11 +1,11 @@
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.muscles import Muscles
-from htm_rl.agents.htm.basal_ganglia import BasalGanglia2, BasalGanglia, BasalGanglia3
+from htm_rl.modules.basal_ganglia import BasalGanglia
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
-from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_values, draw_policy
+from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, draw_policy
 from htm.bindings.sdr import SDR
 import imageio
 import numpy as np
@@ -97,7 +97,7 @@ class HTMAgent:
             reward = 0
         return reward
 
-    def reinforce(self, reward, pseudo_rewards=None):
+    def reinforce(self, reward, pseudo_rewards=None, is_terminal=False):
         """
         Reinforce BasalGanglia.
         :param reward: float:
@@ -185,18 +185,7 @@ class HTMAgentRunner:
                 sp = None
 
             if block_conf['bg'] is not None:
-                if block_conf['bg_sp'] is not None:
-                    bg_sp = SpatialPooler(**block_conf['bg_sp'])
-                else:
-                    bg_sp = None
-                if config['basal_ganglia_version'] == 1:
-                    bg = BasalGanglia(sp=bg_sp, **block_conf['bg'])
-                elif config['basal_ganglia_version'] == 2:
-                    bg = BasalGanglia2(sp=bg_sp, **block_conf['bg'])
-                elif config['basal_ganglia_version'] == 3:
-                    bg = BasalGanglia3(sp=bg_sp, **block_conf['bg'])
-                else:
-                    raise ValueError('There is no such version of BG')
+                bg = BasalGanglia(**block_conf['bg'])
             else:
                 bg = None
 
@@ -206,7 +195,12 @@ class HTMAgentRunner:
 
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.environment = BioGwLabEnvironment(**config['environment'])
-        self.terminal_positions = [tuple(x) for x in config['environment']['food']['positions']]
+        if 'positions' in config['environment']['food'].keys():
+            self.terminal_positions = [tuple(x) for x in config['environment']['food']['positions']]
+            self.terminal_pos_stat = dict(zip(self.terminal_positions, [0] * len(self.terminal_positions)))
+        else:
+            self.terminal_positions = None
+            self.terminal_pos_stat = None
 
         self.option_actions = list()
         self.option_predicted_actions = list()
@@ -214,7 +208,6 @@ class HTMAgentRunner:
         self.current_action = None
 
         self.option_stat = OptionVis(self.environment.env.shape, **config['vis_options'])
-        self.terminal_pos_stat = dict(zip(self.terminal_positions, [0] * len(self.terminal_positions)))
         self.option_start_pos = None
         self.option_end_pos = None
 
@@ -233,8 +226,6 @@ class HTMAgentRunner:
                 self.agent.train_patterns()
 
             reward, obs, is_first = self.environment.observe()
-
-            self.agent.reinforce(reward)
 
             if is_first:
                 if animation:
@@ -267,7 +258,7 @@ class HTMAgentRunner:
                         self.option_stat.draw_options(logger, episode, threshold=opt_threshold,
                                                       obstacle_mask=self.environment.env.entities['obstacle'].mask)
                         self.option_stat.clear_stats()
-                    if log_terminal_stat:
+                    if log_terminal_stat and (self.terminal_pos_stat is not None):
                         logger.log(dict([(str(x[0]), x[1]) for x in self.terminal_pos_stat.items()]), step=episode)
                     if log_values or log_policy:
                         if len(self.option_stat.action_displace) == 3:
@@ -277,19 +268,20 @@ class HTMAgentRunner:
                             directions = None
                             actions_map = {0: 'right', 1: 'down', 2: 'left', 3: 'up'}
 
-                        q = compute_q_values(self.environment.env, self.agent, directions)
+                        q, policy = compute_q_policy(self.environment.env, self.agent, directions)
 
                         if log_values:
                             draw_values(f'/tmp/values_{logger.run.id}_{episode}.png',
                                         self.environment.env.shape,
                                         q,
+                                        policy,
                                         directions=directions)
                             logger.log({'state_values': wandb.Image(f'/tmp/values_{logger.run.id}_{episode}.png')},
                                        step=episode)
                         if log_policy:
                             draw_policy(f'/tmp/policy_{logger.run.id}_{episode}.png',
                                         self.environment.env.shape,
-                                        q,
+                                        policy,
                                         directions=directions,
                                         actions_map=actions_map)
                             logger.log({'policy': wandb.Image(f'/tmp/policy_{logger.run.id}_{episode}.png')},
@@ -311,6 +303,8 @@ class HTMAgentRunner:
             action = self.agent.make_action(obs)
             self.current_action = action
 
+            self.agent.reinforce(reward, is_terminal=self.environment.callmethod('is_terminal'))
+
             if draw_options_stats:
                 self.update_option_stats()
 
@@ -319,10 +313,11 @@ class HTMAgentRunner:
 
             self.environment.act(action)
 
-            if self.environment.callmethod('is_terminal'):
-                pos = self.environment.env.agent.position
-                if pos in self.terminal_pos_stat:
-                    self.terminal_pos_stat[pos] += 1
+            if self.terminal_pos_stat is not None:
+                if self.environment.callmethod('is_terminal'):
+                    pos = self.environment.env.agent.position
+                    if pos in self.terminal_pos_stat:
+                        self.terminal_pos_stat[pos] += 1
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
         pic = self.environment.callmethod('render_rgb')
@@ -440,7 +435,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_room_9x9_default'
+        default_config_name = 'two_levels_8x8_obs_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
@@ -486,6 +481,6 @@ if __name__ == '__main__':
     plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', map_image.astype('uint8'))
     wandb.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png', )})
 
-    runner.run_episodes(2000, logger=wandb, log_every_episode=50, log_values=True, log_policy=True,
+    runner.run_episodes(500, logger=wandb, log_every_episode=50, log_values=True, log_policy=True,
                         train_patterns=True, log_segments=False, draw_options=True, log_terminal_stat=True,
                         draw_options_stats=True, opt_threshold=4)
