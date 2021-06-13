@@ -18,12 +18,13 @@ class RunConfig(FileConfig):
         super(RunConfig, self).__init__(path)
 
     def run(self, agents_filter: list[str], envs_filter: list[str], overwrites: list[str]):
-        experiment = Experiment(**self)
-        env_seeds = self['env_seeds']
-        agent_seeds = self['agent_seeds']
         env_names = self.filter_by(self.read_subconfigs('envs', prefix='env'), envs_filter)
         agent_names = self.filter_by(self.read_subconfigs('agents', prefix='agent'), agents_filter)
         self.add_overwrite_attributes(overwrites)
+
+        env_seeds = self['env_seeds']
+        agent_seeds = self['agent_seeds']
+        experiment = Experiment(**self)
 
         experiment_setups = list(product(env_names, agent_names, env_seeds))
         for env_name, agent_name, env_seed in experiment_setups:
