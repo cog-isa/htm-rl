@@ -195,8 +195,8 @@ class SvpnAgent(UcbAgent):
             depths.append(depth)
 
         self.dream_length += sum_depth
-        if depths:
-            print(depths)
+        # if depths:
+        #     print(depths)
         self._wake()
 
     def _put_into_dream(self):
@@ -319,7 +319,7 @@ class TDErrorProvider(Wrapper):
 
     def get_info(self) -> dict:
         res = self.agent.get_info()
-        res['td_error'] = self.root_agent.dreamer.TD_error
+        res['td_error'] = self.root_agent.sqvn.TD_error
         return res
 
 

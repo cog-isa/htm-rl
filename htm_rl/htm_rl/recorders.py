@@ -4,6 +4,7 @@ from typing import Optional, Any
 import numpy as np
 
 from htm_rl.agents.agent import Agent
+from htm_rl.agents.ucb.sparse_value_network import update_slice_lin_sum, update_slice_exp_sum
 from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.common.utils import ensure_list
 from htm_rl.config import FileConfig
@@ -267,7 +268,6 @@ class TDErrorMapRecorder(BaseRecorder):
     td_error_map: np.ndarray
     frequency: int
     name_str: str
-    value_key: str
     last_td_error: Optional[float]
 
     def __init__(self, config: FileConfig, frequency: int, shape, aggregator=None):
@@ -286,9 +286,9 @@ class TDErrorMapRecorder(BaseRecorder):
 
         position: tuple[int, int] = env_info['agent_position']
         if self.last_td_error is not None:
-            self.td_error_map[position] = self.last_td_error
+            update_slice_exp_sum(self.td_error_map, position, .7, self.last_td_error)
 
-        self.last_td_error = agent_info[self.value_key]
+        self.last_td_error = agent_info['td_error']
 
     def handle_episode(
             self, env: Env, agent: Agent, episode: int,
@@ -307,6 +307,7 @@ class TDErrorMapRecorder(BaseRecorder):
                 images=self.td_error_map, titles=plot_title,
                 show=False, save_path=save_path
             )
+        self.td_error_map.fill(0.)
 
 
 class MapRecorder(BaseRecorder):

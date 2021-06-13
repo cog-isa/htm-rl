@@ -12,7 +12,7 @@ from htm_rl.envs.biogwlab.wrappers.recorders import AgentPositionProvider
 from htm_rl.envs.env import Env, unwrap
 from htm_rl.recorders import (
     AggregateRecorder, HeatmapRecorder, ValueMapRecorder, MapRecorder, DreamRecorder,
-    BaseRecorder, AnomalyMapRecorder,
+    BaseRecorder, AnomalyMapRecorder, TDErrorMapRecorder,
 )
 
 
@@ -57,6 +57,7 @@ class Experiment:
                     # ValueMapRecorder(config, freq, env_shape, 'value_exp', aggregator),
                     DreamRecorder(config, freq, env_shape, aggregator),
                     AnomalyMapRecorder(config, freq, env_shape, aggregator),
+                    TDErrorMapRecorder(config, freq, env_shape, aggregator),
                     aggregator
                 ])
 
