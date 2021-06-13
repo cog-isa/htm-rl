@@ -99,7 +99,10 @@ def main():
     register_arguments(parser)
     args = parser.parse_args()
 
-    config_path = Path(args.config)
+    config_filename: str = args.config
+    if not config_filename.startswith('expm_') or not config_filename.endswith('.yml'):
+        config_filename = f'expm_{config_filename}.yml'
+    config_path = Path(config_filename)
     config = RunConfig(config_path)
 
     base_dir: Path = config.path.parent
