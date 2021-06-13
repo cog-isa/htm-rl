@@ -169,6 +169,7 @@ class Block:
         self.apical_in_size = 0
         self.basal_in_size = 0
 
+        self.option_steps = 0
         self.reward = 0
         self.k = 0
         self.gamma = gamma
@@ -355,6 +356,7 @@ class Block:
             # apical active cells and winners
             return self.tm.get_active_cells(), self.tm.get_winner_cells()
         elif mode == 'feedback':
+            self.option_steps = 0
             # basal predicted columns with filtration
             predicted_columns = self.tm.get_predicted_columns(add_exec=self.should_return_exec_predictions,
                                                               add_apical=self.should_return_apical_predictions)
@@ -392,6 +394,8 @@ class Block:
                         boost_predicted_options[indices] += self.feedback_boost
 
                     option_index, option, option_values = self.bg.compute(condition.sparse, options, responses_boost=boost_predicted_options)
+                    self.bg.stri.update_response(option)
+                    self.bg.stri.update_stimulus(condition.sparse)
                     norm_option_values = option_values - option_values.min()
                     norm_option_values /= (norm_option_values.max() + 1e-12)
 
@@ -400,18 +404,25 @@ class Block:
                     self.failed_option = None
                     self.completed_option = None
                     self.predicted_options = indices
-                    # jumped off a high level option
-                    if not np.isin(option_index, indices):
-                        self.feedback_boost = 0
-                        for block in self.feedback_in:
-                            block.failed_option = block.current_option
-                            k = block.k
-                            if k == 0:
-                                block.bg.current_stimulus = None
-                                block.bg.current_response = None
-                            else:
-                                block.reinforce()
-                            block.reinforce(external_value=option_values[option_index])
+
+                    if indices.size > 0:
+                        # jumped off a high level option
+                        if not np.isin(option_index, indices):
+                            self.feedback_boost = 0
+                            for block in self.feedback_in:
+                                block.failed_option = block.current_option
+                                if block.k == 0:
+                                    block.bg.current_stimulus = None
+                                    block.bg.current_response = None
+                                else:
+                                    block.bg.stri.update_response(None)
+                                    block.bg.stri.update_stimulus(None)
+                                block.reinforce(external_value=option_values[option_index])
+                        else:
+                            for block in self.feedback_in:
+                                # option was just accepted
+                                if block.option_steps == 0:
+                                    block.reinforce()
 
                     if return_value:
                         return option, norm_option_values[option_index]
@@ -440,10 +451,14 @@ class Block:
         if self.made_decision and (self.bg is not None):
             self.reward += (self.gamma ** self.k) * reward
             self.k += 1
+            self.option_steps += 1
 
-    def reinforce(self, external_value=None):
+    def reinforce(self, external_value=None, is_terminal=False):
         if self.bg is not None:
             if (self.k != 0) and self.made_decision:
+                if is_terminal:
+                    self.bg.stri.update_stimulus(None)
+                    self.bg.stri.update_response(None)
                 self.bg.force_dopamine(self.reward, k=self.k)
                 self.k = 0
                 self.reward = 0
@@ -513,6 +528,9 @@ class InputBlock:
 
     def __str__(self):
         return f"InputBlock_{self.id}"
+
+    def reinforce(self, *args, **kwargs):
+        pass
 
     def get_output(self, *args, **kwargs):
         return self.pattern
@@ -623,7 +641,6 @@ class Hierarchy:
             if block.anomaly <= block.anomaly_threshold:
                 for block in block.feedback_in:
                     block.completed_option = block.current_option
-                    block.reinforce()
 
         # logging
         if self.logs_dir is not None:

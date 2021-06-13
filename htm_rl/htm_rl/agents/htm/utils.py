@@ -120,6 +120,12 @@ def compute_q_policy(env: Environment, agent, directions: dict = None):
     visual_block = agent.hierarchy.blocks[2]
     output_block = agent.hierarchy.output_block
     options = output_block.sm.get_sparse_patterns()
+    actions = list()
+    for pattern in options:
+        agent.muscles.set_active_input(pattern)
+        agent.muscles.depolarize_muscles()
+        action_pattern = agent.muscles.get_depolarized_muscles()
+        actions.append(agent.action.get_action(action_pattern))
 
     state_pattern = SDR(env.output_sdr_size)
     sp_output = SDR(visual_block.tm.basal_columns)
@@ -147,7 +153,7 @@ def compute_q_policy(env: Environment, agent, directions: dict = None):
 
             q[env.agent.position][i] = option_values
             policy[env.agent.position][i] = softmax(output_block.bg.tha.response_activity)
-    return q, policy
+    return q, policy, actions
 
 
 def draw_values(path: str, env_shape, q, policy, directions: dict = None):
@@ -184,7 +190,7 @@ def draw_values(path: str, env_shape, q, policy, directions: dict = None):
     figure.savefig(path)
 
 
-def draw_policy(path: str, env_shape, policy, directions: dict = None, actions_map: dict = None):
+def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = None, actions_map: dict = None):
     if directions is None:
         n_directions = 1
     else:
@@ -196,7 +202,7 @@ def draw_policy(path: str, env_shape, policy, directions: dict = None, actions_m
     for pos, pi_pos in policy.items():
         for di, pi_pos_dir in pi_pos.items():
             probs[pos[0], pos[1], di] = np.max(pi_pos_dir)
-            actions[pos[0], pos[1], di] = np.argmax(pi_pos_dir)
+            actions[pos[0], pos[1], di] = actions_env[np.argmax(pi_pos_dir)]
 
     rows, cols = env_shape
     if n_directions == 4:

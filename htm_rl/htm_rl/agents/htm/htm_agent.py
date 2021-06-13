@@ -97,7 +97,7 @@ class HTMAgent:
             reward = 0
         return reward
 
-    def reinforce(self, reward, pseudo_rewards=None, is_terminal=False):
+    def reinforce(self, reward, is_terminal=False):
         """
         Reinforce BasalGanglia.
         :param reward: float:
@@ -105,17 +105,19 @@ class HTMAgent:
         :param pseudo_rewards: list or None
         Rewards for all blocks in hierarchy, they may differ from actual reward.
         List should be length of number of blocks in hierarchy.
+        :param is_terminal:
         :return:
         """
         if self.use_intrinsic_reward:
             reward += (self.theta * self.get_intrinsic_reward())
-        self.hierarchy.output_block.add_reward(reward)
-        self.hierarchy.output_block.reinforce()
 
-        if pseudo_rewards is None:
-            self.hierarchy.add_rewards([reward] * len(self.hierarchy.blocks))
+        self.hierarchy.add_rewards([reward] * len(self.hierarchy.blocks))
+
+        if is_terminal:
+            for block in self.hierarchy.blocks:
+                block.reinforce(is_terminal=is_terminal)
         else:
-            self.hierarchy.add_rewards(pseudo_rewards)
+            self.hierarchy.output_block.reinforce()
 
     def reset(self):
         self.hierarchy.reset()
@@ -268,7 +270,7 @@ class HTMAgentRunner:
                             directions = None
                             actions_map = {0: 'right', 1: 'down', 2: 'left', 3: 'up'}
 
-                        q, policy = compute_q_policy(self.environment.env, self.agent, directions)
+                        q, policy, actions = compute_q_policy(self.environment.env, self.agent, directions)
 
                         if log_values:
                             draw_values(f'/tmp/values_{logger.run.id}_{episode}.png',
@@ -282,6 +284,7 @@ class HTMAgentRunner:
                             draw_policy(f'/tmp/policy_{logger.run.id}_{episode}.png',
                                         self.environment.env.shape,
                                         policy,
+                                        actions,
                                         directions=directions,
                                         actions_map=actions_map)
                             logger.log({'policy': wandb.Image(f'/tmp/policy_{logger.run.id}_{episode}.png')},
@@ -300,10 +303,16 @@ class HTMAgentRunner:
                 steps += 1
                 total_reward += reward
 
-            action = self.agent.make_action(obs)
+            is_terminal = self.environment.callmethod('is_terminal')
+            if not is_terminal:
+                action = self.agent.make_action(obs)
+            else:
+                self.agent.hierarchy.output_block.made_decision = True
+                action = 0
+
             self.current_action = action
 
-            self.agent.reinforce(reward, is_terminal=self.environment.callmethod('is_terminal'))
+            self.agent.reinforce(reward, is_terminal=is_terminal)
 
             if draw_options_stats:
                 self.update_option_stats()
@@ -416,15 +425,15 @@ class HTMAgentRunner:
                 elif option_block.completed_option is not None:
                     last_option = option_block.completed_option
                 else:
-                    raise ValueError('Something went wrong!')
-
-                last_option_id = option_block.sm.unique_id[last_option]
-                self.option_end_pos = self.environment.env.agent.position
-                self.option_stat.update(last_option_id,
-                                        self.option_start_pos,
-                                        self.option_end_pos,
-                                        self.option_actions,
-                                        self.option_predicted_actions)
+                    last_option = None
+                if last_option is not None:
+                    last_option_id = option_block.sm.unique_id[last_option]
+                    self.option_end_pos = self.environment.env.agent.position
+                    self.option_stat.update(last_option_id,
+                                            self.option_start_pos,
+                                            self.option_end_pos,
+                                            self.option_actions,
+                                            self.option_predicted_actions)
                 self.option_actions.clear()
                 self.option_predicted_actions = list()
 
