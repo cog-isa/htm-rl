@@ -29,18 +29,23 @@ class Striatum:
         self.current_response = None
 
     def compute(self, exc_input: SparseSdr) -> (np.ndarray, np.ndarray):
-        if self.current_stimulus is not None:
-            self.previous_stimulus = copy.deepcopy(self.current_response)
-        self.current_stimulus = copy.deepcopy(exc_input)
-        d1 = np.mean(self.w_d1[:, exc_input], axis=-1)
-        d2 = np.mean(self.w_d2[:, exc_input], axis=-1)
-        self.values = d1 - d2
+        if len(exc_input) > 0:
+            d1 = np.mean(self.w_d1[:, exc_input], axis=-1)
+            d2 = np.mean(self.w_d2[:, exc_input], axis=-1)
+            self.values = d1 - d2
+        else:
+            self.values = np.zeros(self.w_d1.shape[0])
+            d1 = np.zeros(self.w_d1.shape[0])
+            d2 = np.zeros(self.w_d1.shape[0])
         return d1, d2
 
     def update_response(self, response: SparseSdr):
-        if self.current_response is not None:
-            self.previous_response = copy.deepcopy(self.current_response)
+        self.previous_response = copy.deepcopy(self.current_response)
         self.current_response = copy.deepcopy(response)
+
+    def update_stimulus(self, stimulus: SparseSdr):
+        self.previous_stimulus = copy.deepcopy(self.current_stimulus)
+        self.current_stimulus = copy.deepcopy(stimulus)
 
     def learn(self, reward, k: int = 1, external_value: float = 0):
         """
@@ -71,16 +76,12 @@ class Striatum:
             self.w_d2[self.previous_response.reshape((-1, 1)), self.previous_stimulus] -= (
                     self.beta * deltas).reshape((-1, 1))
 
-        self.previous_stimulus = copy.deepcopy(self.current_stimulus)
-        self.previous_response = copy.deepcopy(self.current_response)
-        self.current_stimulus = None
-        self.current_response = None
-
     def reset(self):
         self.previous_response = None
         self.previous_stimulus = None
         self.current_response = None
         self.current_stimulus = None
+        self.values = None
 
 
 class GPi:
@@ -119,9 +120,10 @@ class STN:
         self.weights = np.zeros(input_size)
         self.time = 0
 
-    def compute(self, exc_input: SparseSdr) -> float:
-        self.weights[exc_input] += 1
-        self.time += 1
+    def compute(self, exc_input: SparseSdr, learn=True) -> float:
+        if learn:
+            self.weights[exc_input] += 1
+            self.time += 1
         return np.mean(self.weights / self.time)
 
 
@@ -130,16 +132,20 @@ class Thalamus:
         self._input_size = input_size
         self._output_size = output_size
         self._rng = np.random.default_rng(seed)
+        self.response_activity = None
         if self._input_size != self._output_size:
             raise ValueError
 
-    def compute(self, responses, responses_weights, modulation):
-        weights = np.copy(responses_weights)
+    def compute(self, responses, responses_boost, modulation):
+        activity = np.zeros(len(responses))
         bs = ~modulation
         for ind, response in enumerate(responses):
-            weights[ind] *= np.sum(bs[response])
-        probs = softmax(weights)
-        out = self._rng.choice(len(weights), 1, p=probs)[0]
+            activity[ind] = np.sum(bs[response])
+        if responses_boost is not None:
+            activity += responses_boost * activity.max()
+        self.response_activity = activity
+        probs = softmax(activity)
+        out = self._rng.choice(len(activity), 1, p=probs)[0]
         return out, responses[out]
 
 
@@ -170,15 +176,15 @@ class BasalGanglia:
 
     def compute(self, stimulus,
                 responses: List[SparseSdr],
-                responses_weights: List[float]):
+                responses_boost: np.ndarray = None,
+                learn=True):
         d1, d2 = self.stri.compute(stimulus)
-        stn = self.stn.compute(stimulus)
+        stn = self.stn.compute(stimulus, learn=learn)
         gpe = self.gpe.compute(stn, d2)
         gpi = self.gpi.compute(stn, (d1, gpe))
-        response_index, response = self.tha.compute(responses, responses_weights, gpi)
-        self.stri.update_response(response)
 
-        responses_values = np.zeros(len(responses_weights))
+        response_index, response = self.tha.compute(responses, responses_boost, gpi)
+        responses_values = np.zeros(len(responses))
         for ind, resp in enumerate(responses):
             responses_values[ind] = np.median(self.stri.values[resp])
 
