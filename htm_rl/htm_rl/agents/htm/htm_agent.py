@@ -230,6 +230,7 @@ class HTMAgentRunner:
             reward, obs, is_first = self.environment.observe()
 
             if is_first:
+                # ///logging///
                 if animation:
                     # log all saved frames for this episode
                     animation = False
@@ -293,6 +294,7 @@ class HTMAgentRunner:
                 if ((((episode + 1) % log_every_episode) == 0) or (episode == 0)) and (logger is not None):
                     animation = True
                     agent_pos.clear()
+                # \\\logging\\\
 
                 self.agent.reset()
 
@@ -314,19 +316,23 @@ class HTMAgentRunner:
 
             self.agent.reinforce(reward, is_terminal=is_terminal)
 
+            # ///logging///
             if draw_options_stats:
                 self.update_option_stats()
 
             if animation:
                 self.draw_animation_frame(logger, draw_options, agent_pos, episode, steps)
+            # \\\logging\\\
 
             self.environment.act(action)
 
+            # ///logging///
             if self.terminal_pos_stat is not None:
                 if self.environment.callmethod('is_terminal'):
                     pos = self.environment.env.agent.position
                     if pos in self.terminal_pos_stat:
                         self.terminal_pos_stat[pos] += 1
+            # \\\logging\\\
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
         pic = self.environment.callmethod('render_rgb')
@@ -492,4 +498,4 @@ if __name__ == '__main__':
 
     runner.run_episodes(500, logger=wandb, log_every_episode=50, log_values=True, log_policy=True,
                         train_patterns=True, log_segments=False, draw_options=True, log_terminal_stat=True,
-                        draw_options_stats=True, opt_threshold=4)
+                        draw_options_stats=True, opt_threshold=1)

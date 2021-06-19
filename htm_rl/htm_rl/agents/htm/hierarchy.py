@@ -410,7 +410,6 @@ class Block:
                         if not np.isin(option_index, indices):
                             self.feedback_boost = 0
                             for block in self.feedback_in:
-                                block.failed_option = block.current_option
                                 if block.k == 0:
                                     block.bg.current_stimulus = None
                                     block.bg.current_response = None
@@ -418,6 +417,7 @@ class Block:
                                     block.bg.stri.update_response(None)
                                     block.bg.stri.update_stimulus(None)
                                 block.reinforce(external_value=option_values[option_index])
+                                block.finish_current_option('failed')
                         else:
                             for block in self.feedback_in:
                                 # option was just accepted
@@ -465,6 +465,14 @@ class Block:
             elif external_value is not None:
                 self.bg.force_dopamine(self.reward, external_value=external_value)
 
+    def finish_current_option(self, flag):
+        if flag == 'failed':
+            self.failed_option = self.current_option
+        elif flag == 'completed':
+            self.completed_option = self.current_option
+        else:
+            raise ValueError
+
         self.made_decision = False
         self.current_option = None
 
@@ -476,6 +484,7 @@ class Block:
 
         self.reward = 0
         self.k = 0
+        self.option_steps = 0
         self.made_decision = False
         self.current_option = None
         self.failed_option = None
@@ -640,7 +649,7 @@ class Hierarchy:
             # end of an option
             if block.anomaly <= block.anomaly_threshold:
                 for block in block.feedback_in:
-                    block.completed_option = block.current_option
+                    block.finish_current_option('completed')
 
         # logging
         if self.logs_dir is not None:

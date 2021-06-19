@@ -1,4 +1,4 @@
-seed: &seed 5648
+seed: &seed 56533
 levels: 2
 agent: htm
 
@@ -9,7 +9,7 @@ vis_options:
   action_rotation: [0, 0, 0, 0]
 
 environment:
-  seed: 2151
+  seed: 3435
   shape_xy: [8, 8]
 
   actions_cost:
@@ -50,7 +50,7 @@ environment:
     early_stop: true
 
 cagent:
-  intrinsic_reward: true
+  intrinsic_reward: false
   theta: 0.005
   action:
     do_nothing_action: 4
@@ -201,8 +201,8 @@ spatial_memory_default:
   initial_permanence: 1.0
   overlap_threshold: 0.9
   permanence_decrement: 0.0
-  permanence_forgetting_decrement: 0.01
-  permanence_increment: 0.01
+  permanence_forgetting_decrement: 0.0
+  permanence_increment: 0.0
   permanence_threshold: 0.0
 spatial_pooler_default:
   boostStrength: 0.0
@@ -271,5 +271,5 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  min_feedback_boost: 0.1
-  max_feedback_boost: 0.5
+  min_feedback_boost: 1.0
+  max_feedback_boost: 2.0
