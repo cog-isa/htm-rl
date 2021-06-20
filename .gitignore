@@ -3,6 +3,9 @@
 # pycharm project-specific settings
 .idea/
 
+# VS Code project-specific settings
+.vscode/
+
 # additional auto-generated git config
 .gitconfig
 
