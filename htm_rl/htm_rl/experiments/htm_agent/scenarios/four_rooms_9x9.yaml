@@ -1,0 +1,2 @@
+- condition: ['episode', 1999]
+  action: ['call', 'set_food_positions', [[7, 8]]]

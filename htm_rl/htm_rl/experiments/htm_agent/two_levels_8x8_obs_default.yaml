@@ -118,8 +118,8 @@ blocks:
       level: 2
     sm:
       permanence_decrement: 0.0
-      permanence_forgetting_decrement: 0.01
-      permanence_increment: 0.1
+      permanence_forgetting_decrement: 0.0
+      permanence_increment: 0.0
     sp:
       boostStrength: 0.0
       localAreaDensity: 0.02
@@ -271,5 +271,5 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  min_feedback_boost: 1.0
-  max_feedback_boost: 2.0
+  min_feedback_boost: 0.8
+  max_feedback_boost: 1.5

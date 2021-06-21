@@ -188,6 +188,7 @@ def draw_values(path: str, env_shape, q, policy, directions: dict = None):
     ax.vlines(np.arange(0, flat_values.shape[1], 1+n_directions//4), ymin=0, ymax=flat_values.shape[0])
     figure = ax.get_figure()
     figure.savefig(path)
+    plt.close(figure)
 
 
 def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = None, actions_map: dict = None):
@@ -244,6 +245,7 @@ def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = No
 
     figure = ax.get_figure()
     figure.savefig(path)
+    plt.close(figure)
 
 
 def get_arrow(action, direction=None):

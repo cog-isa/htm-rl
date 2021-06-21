@@ -9,11 +9,11 @@ vis_options:
   action_rotation: [0, -1, 1]
 
 environment:
-  seed: 2151
-  shape_xy: [9, 9]
+  seed: 3435
+  shape_xy: [8, 8]
 
   actions_cost:
-    base_cost: -0.005
+    base_cost: -0.002
     weights:
       stay: 2.0
       turn: 1.0
@@ -25,21 +25,20 @@ environment:
     - stay
 
   rendering:
-      view_rectangle: [[-1, -1], [1, 1]]
+      view_rectangle: [[-2, -2], [2, 2]]
 
   areas:
-    n_types: 4
+    n_types: 3
 #    rendering: false
 
   obstacle:
-    density: 0.1
-    map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
+    density: 0.2
 #    rendering: false
 
   food:
     n_items: 1
     reward: 1.
-    positions: [[4, 6]]
+#    positions: [[4, 6]]
 #    rendering: false
 
   agent:
@@ -54,7 +53,6 @@ environment:
   terminate:
     episode_max_steps: 200
     early_stop: true
-    n_items_to_collect: 1
 
 cagent:
   intrinsic_reward: false
@@ -133,7 +131,7 @@ blocks:
     tm:
       basal_columns: 1000
 
-cells_per_column: &cells_per_column 25
+cells_per_column: &cells_per_column 10
 
 hierarchy:
   block_connections: [

@@ -102,7 +102,6 @@ class HTMAgent:
         Reinforce BasalGanglia.
         :param reward: float:
         Main reward of the environment.
-        :param pseudo_rewards: list or None
         Rewards for all blocks in hierarchy, they may differ from actual reward.
         List should be length of number of blocks in hierarchy.
         :param is_terminal:
@@ -195,7 +194,12 @@ class HTMAgentRunner:
 
         hierarchy = Hierarchy(blocks, **config['hierarchy'])
 
+        if 'scenario' in config.keys():
+            self.scenario = Scenario(config['scenario'], self)
+        else:
+            self.scenario = None
         self.agent = HTMAgent(config['agent'], hierarchy)
+        self.env_config = config['environment']
         self.environment = BioGwLabEnvironment(**config['environment'])
         if 'positions' in config['environment']['food'].keys():
             self.terminal_positions = [tuple(x) for x in config['environment']['food']['positions']]
@@ -204,6 +208,11 @@ class HTMAgentRunner:
             self.terminal_positions = None
             self.terminal_pos_stat = None
 
+        self.total_reward = 0
+        self.animation = False
+        self.agent_pos = list()
+        self.steps = 0
+        self.episode = 0
         self.option_actions = list()
         self.option_predicted_actions = list()
         self.current_option_id = None
@@ -217,13 +226,16 @@ class HTMAgentRunner:
                      log_every_episode=50,
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
                      opt_threshold=0):
-        total_reward = 0
-        steps = 0
-        episode = 0
-        animation = False
-        agent_pos = list()
+        self.total_reward = 0
+        self.steps = 0
+        self.episode = 0
+        self.animation = False
+        self.agent_pos = list()
 
-        while episode < n_episodes:
+        while self.episode < n_episodes:
+            if self.scenario is not None:
+                self.scenario.check_conditions()
+
             if train_patterns:
                 self.agent.train_patterns()
 
@@ -231,18 +243,18 @@ class HTMAgentRunner:
 
             if is_first:
                 # ///logging///
-                if animation:
+                if self.animation:
                     # log all saved frames for this episode
-                    animation = False
-                    with imageio.get_writer(f'/tmp/{logger.run.id}_episode_{episode}.gif', mode='I', fps=2) as writer:
-                        for i in range(steps):
-                            image = imageio.imread(f'/tmp/{logger.run.id}_episode_{episode}_step_{i}.png')
+                    self.animation = False
+                    with imageio.get_writer(f'/tmp/{logger.run.id}_episode_{self.episode}.gif', mode='I', fps=2) as writer:
+                        for i in range(self.steps):
+                            image = imageio.imread(f'/tmp/{logger.run.id}_episode_{self.episode}_step_{i}.png')
                             writer.append_data(image)
-                    logger.log({f'animation': logger.Video(f'/tmp/{logger.run.id}_episode_{episode}.gif', fps=2,
-                                                           format='gif')}, step=episode)
+                    logger.log({f'animation': logger.Video(f'/tmp/{logger.run.id}_episode_{self.episode}.gif', fps=2,
+                                                           format='gif')}, step=self.episode)
 
-                if (logger is not None) and (episode > 0):
-                    logger.log({'steps': steps, 'reward': total_reward, 'episode': episode}, step=episode)
+                if (logger is not None) and (self.episode > 0):
+                    logger.log({'steps': self.steps, 'reward': self.total_reward, 'episode': self.episode}, step=self.episode)
                     if log_segments:
                         logger.log(
                             {'basal_segments': self.agent.hierarchy.output_block.tm.basal_connections.numSegments(),
@@ -254,15 +266,15 @@ class HTMAgentRunner:
                              'exec_syn': self.agent.hierarchy.output_block.tm.exec_feedback_connections.numSynapses(),
                              'inhib_syn': self.agent.hierarchy.output_block.tm.inhib_connections.numSynapses()
                              },
-                            step=episode)
+                            step=self.episode)
 
-                if ((episode % log_every_episode) == 0) and (logger is not None) and (episode > 0):
+                if ((self.episode % log_every_episode) == 0) and (logger is not None) and (self.episode > 0):
                     if draw_options_stats:
-                        self.option_stat.draw_options(logger, episode, threshold=opt_threshold,
+                        self.option_stat.draw_options(logger, self.episode, threshold=opt_threshold,
                                                       obstacle_mask=self.environment.env.entities['obstacle'].mask)
                         self.option_stat.clear_stats()
                     if log_terminal_stat and (self.terminal_pos_stat is not None):
-                        logger.log(dict([(str(x[0]), x[1]) for x in self.terminal_pos_stat.items()]), step=episode)
+                        logger.log(dict([(str(x[0]), x[1]) for x in self.terminal_pos_stat.items()]), step=self.episode)
                     if log_values or log_policy:
                         if len(self.option_stat.action_displace) == 3:
                             directions = {'right': 0, 'down': 1, 'left': 2, 'up': 3}
@@ -274,36 +286,36 @@ class HTMAgentRunner:
                         q, policy, actions = compute_q_policy(self.environment.env, self.agent, directions)
 
                         if log_values:
-                            draw_values(f'/tmp/values_{logger.run.id}_{episode}.png',
+                            draw_values(f'/tmp/values_{logger.run.id}_{self.episode}.png',
                                         self.environment.env.shape,
                                         q,
                                         policy,
                                         directions=directions)
-                            logger.log({'state_values': wandb.Image(f'/tmp/values_{logger.run.id}_{episode}.png')},
-                                       step=episode)
+                            logger.log({'state_values': wandb.Image(f'/tmp/values_{logger.run.id}_{self.episode}.png')},
+                                       step=self.episode)
                         if log_policy:
-                            draw_policy(f'/tmp/policy_{logger.run.id}_{episode}.png',
+                            draw_policy(f'/tmp/policy_{logger.run.id}_{self.episode}.png',
                                         self.environment.env.shape,
                                         policy,
                                         actions,
                                         directions=directions,
                                         actions_map=actions_map)
-                            logger.log({'policy': wandb.Image(f'/tmp/policy_{logger.run.id}_{episode}.png')},
-                                       step=episode)
+                            logger.log({'policy': wandb.Image(f'/tmp/policy_{logger.run.id}_{self.episode}.png')},
+                                       step=self.episode)
 
-                if ((((episode + 1) % log_every_episode) == 0) or (episode == 0)) and (logger is not None):
-                    animation = True
-                    agent_pos.clear()
+                if ((((self.episode + 1) % log_every_episode) == 0) or (self.episode == 0)) and (logger is not None):
+                    self.animation = True
+                    self.agent_pos.clear()
                 # \\\logging\\\
 
                 self.agent.reset()
 
-                episode += 1
-                steps = 0
-                total_reward = 0
+                self.episode += 1
+                self.steps = 0
+                self.total_reward = 0
             else:
-                steps += 1
-                total_reward += reward
+                self.steps += 1
+                self.total_reward += reward
 
             is_terminal = self.environment.callmethod('is_terminal')
             if not is_terminal:
@@ -320,8 +332,8 @@ class HTMAgentRunner:
             if draw_options_stats:
                 self.update_option_stats()
 
-            if animation:
-                self.draw_animation_frame(logger, draw_options, agent_pos, episode, steps)
+            if self.animation:
+                self.draw_animation_frame(logger, draw_options, self.agent_pos, self.episode, self.steps)
             # \\\logging\\\
 
             self.environment.act(action)
@@ -342,6 +354,7 @@ class HTMAgentRunner:
         if draw_options:
             c_pos = self.environment.env.agent.position
             c_direction = self.environment.env.agent.view_direction
+
             if self.agent.hierarchy.blocks[5].made_decision:
                 agent_pos.append(c_pos)
                 if len(agent_pos) > 1:
@@ -443,6 +456,40 @@ class HTMAgentRunner:
                 self.option_actions.clear()
                 self.option_predicted_actions = list()
 
+    def set_food_positions(self, positions):
+        self.environment.env.modules['food'].generator.positions = positions
+
+
+class Scenario:
+    def __init__(self, path, runner: HTMAgentRunner):
+        self.runner = runner
+        self.events = list()
+        with open(path, 'r') as file:
+            events = yaml.load(file, Loader=yaml.Loader)
+            for event in events:
+                condition = event['condition']
+                action = event['action']
+                self.events.append({'condition': condition, 'action': (action[0], action[1:]), 'done': False})
+
+    def check_conditions(self):
+        for event in self.events:
+            attr_name, val = event['condition']
+            attr = self.get_attr(attr_name)
+            if (attr == val) and (not event['done']):
+                method_name, params = event['action']
+                if method_name == 'set':
+                    setattr(self.runner, params[1])
+                else:
+                    f = self.get_attr(params[0])
+                    f(*params[1:])
+                event['done'] = True
+
+    def get_attr(self, attr):
+        obj = self.runner
+        for a in attr.split('.'):
+            obj = getattr(obj, a)
+        return obj
+
 
 if __name__ == '__main__':
     import sys
@@ -450,7 +497,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'two_levels_8x8_obs_default'
+        default_config_name = 'four_room_9x9_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
@@ -496,6 +543,6 @@ if __name__ == '__main__':
     plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', map_image.astype('uint8'))
     wandb.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png', )})
 
-    runner.run_episodes(500, logger=wandb, log_every_episode=50, log_values=True, log_policy=True,
+    runner.run_episodes(4000, logger=wandb, log_every_episode=50, log_values=True, log_policy=True,
                         train_patterns=True, log_segments=False, draw_options=True, log_terminal_stat=True,
-                        draw_options_stats=True, opt_threshold=1)
+                        draw_options_stats=True, opt_threshold=4)

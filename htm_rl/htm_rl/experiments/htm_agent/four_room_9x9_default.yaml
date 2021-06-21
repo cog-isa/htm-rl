@@ -2,6 +2,7 @@ seed: &seed 3121
 levels: 2
 agent: htm
 
+scenario: '../../experiments/htm_agent/scenarios/four_rooms_9x9.yaml'
 vis_options:
   size: 21
   max_options: 50
@@ -276,5 +277,5 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  min_feedback_boost: 0.0
-  max_feedback_boost: 0.0
+  min_feedback_boost: 0.5
+  max_feedback_boost: 1.0

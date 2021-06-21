@@ -7,6 +7,8 @@ def configure(config):
     new_config['environment'] = config['environment']
     new_config['hierarchy'] = config['hierarchy']
     new_config['vis_options'] = config['vis_options']
+    if 'scenario' in config.keys():
+        new_config['scenario'] = config['scenario']
 
     environment = BioGwLabEnvironment(**config['environment'])
 
