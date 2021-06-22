@@ -5,16 +5,7 @@ from htm_rl.envs.biogwlab.module import EntityType
 from htm_rl.envs.env import Wrapper
 
 
-class AgentPositionProvider(Wrapper):
-    root_env: Environment
-
-    def get_info(self) -> dict:
-        info = super(AgentPositionProvider, self).get_info()
-        info['agent_position'] = self.root_env.agent.position
-        return info
-
-
-class EntityMapRecorder(Wrapper):
+class EntityMapProvider(Wrapper):
     root_env: Environment
 
     entities: dict[EntityType, np.array]
@@ -24,7 +15,7 @@ class EntityMapRecorder(Wrapper):
         self.entities = entities
 
     def get_info(self) -> dict:
-        info = super(EntityMapRecorder, self).get_info()
+        info = super(EntityMapProvider, self).get_info()
 
         mask_map = dict()
         for entity, entity_flag in self.entities.items():

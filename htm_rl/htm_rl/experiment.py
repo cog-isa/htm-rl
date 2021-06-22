@@ -10,7 +10,7 @@ from htm_rl.common.debug import inject_debug_tools
 from htm_rl.common.utils import timed, wrap
 from htm_rl.config import FileConfig
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
-from htm_rl.envs.biogwlab.wrappers.recorders import AgentPositionProvider
+from htm_rl.envs.biogwlab.wrappers.agent_position_provider import AgentPositionProvider
 from htm_rl.envs.env import Env, unwrap
 from htm_rl.recorders import (
     AggregateRecorder, HeatmapRecorder, ValueMapRecorder, MapRecorder, DreamRecorder,
