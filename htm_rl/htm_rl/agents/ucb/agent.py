@@ -67,7 +67,7 @@ class UcbAgent(Agent):
                 actions_sa_sdr=actions_sa_sdr
             )
 
-        action = self.sqvn.choose(actions_sa_sdr)
+        action, _ = self.sqvn.choose(actions_sa_sdr)
         self._current_sa_sdr = actions_sa_sdr[action]
         return action
 
@@ -75,7 +75,7 @@ class UcbAgent(Agent):
             self, prev_sa_sdr, reward, actions_sa_sdr, td_lambda: bool = True,
             update_visit_count=True
     ):
-        greedy_action = self.sqvn.choose(actions_sa_sdr, greedy=True)
+        greedy_action, _ = self.sqvn.choose(actions_sa_sdr, greedy=True)
         greedy_sa_sdr = actions_sa_sdr[greedy_action]
 
         self.sqvn.update(

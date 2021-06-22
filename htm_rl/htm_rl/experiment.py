@@ -1,10 +1,12 @@
 import numpy as np
 from tqdm import trange
 
-from htm_rl.agents.agent import Agent
+from htm_rl.agents.agent import Agent, Wrapper
 from htm_rl.agents.rnd.agent import RndAgent
-from htm_rl.agents.svpn.agent import SvpnAgent, ValueProvider, TDErrorProvider, AnomalyProvider, DreamingLengthProvider
+from htm_rl.agents.svpn.agent import SvpnAgent
+from htm_rl.agents.svpn.debug import ValueProvider, TDErrorProvider, AnomalyProvider, DreamingLengthProvider
 from htm_rl.agents.ucb.agent import UcbAgent
+from htm_rl.common.debug import inject_debug_tools
 from htm_rl.common.utils import timed, wrap
 from htm_rl.config import FileConfig
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
@@ -12,7 +14,7 @@ from htm_rl.envs.biogwlab.wrappers.recorders import AgentPositionProvider
 from htm_rl.envs.env import Env, unwrap
 from htm_rl.recorders import (
     AggregateRecorder, HeatmapRecorder, ValueMapRecorder, MapRecorder, DreamRecorder,
-    BaseRecorder, AnomalyMapRecorder, TDErrorMapRecorder,
+    BaseRecorder, AnomalyMapRecorder, TDErrorMapRecorder, DreamingValueChangeProvider,
 )
 
 
@@ -45,19 +47,21 @@ class Experiment:
         if self.print['debug'] is not None:
             env = AgentPositionProvider(env)
             agent = wrap(
-                agent, ValueProvider, TDErrorProvider,
-                AnomalyProvider, DreamingLengthProvider
+                agent,
+                TDErrorProvider,
+                AnomalyProvider, DreamingLengthProvider,
             )
             for freq in self.print['debug']:
                 aggregator = AggregateRecorder(config, freq)
                 handlers.extend([
                     MapRecorder(config, freq, False, aggregator),
                     HeatmapRecorder(config, freq, env_shape, aggregator),
-                    ValueMapRecorder(config, freq, env_shape, 'value', aggregator),
+                    # ValueMapRecorder(config, freq, env_shape, 'value', aggregator),
                     # ValueMapRecorder(config, freq, env_shape, 'value_exp', aggregator),
                     DreamRecorder(config, freq, env_shape, aggregator),
                     AnomalyMapRecorder(config, freq, env_shape, aggregator),
                     TDErrorMapRecorder(config, freq, env_shape, aggregator),
+                    DreamingValueChangeProvider(config, freq, agent, env, aggregator),
                     aggregator
                 ])
 
@@ -109,7 +113,8 @@ class Experiment:
         elif agent_type == 'ucb':
             return UcbAgent(seed=seed, env=env, **agent_config)
         elif agent_type == 'svpn':
-            return SvpnAgent(seed=seed, env=env, **agent_config)
+            return inject_debug_tools(SvpnAgent)(seed=seed, env=env, **agent_config)
+            # return SvpnAgent(seed=seed, env=env, **agent_config)
         else:
             raise NameError(agent_type)
 

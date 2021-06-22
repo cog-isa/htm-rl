@@ -51,7 +51,7 @@ class SparseValueNetwork:
             )
 
         option_index: int = np.argmax(option_values)
-        return option_index #, option_values
+        return option_index, option_values
 
     # noinspection PyPep8Naming
     def update(

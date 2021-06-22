@@ -3,11 +3,16 @@ from typing import Optional, Any
 
 import numpy as np
 
-from htm_rl.agents.agent import Agent
+from htm_rl.envs.biogwlab.agent import Agent as EnvAgent
+from htm_rl.agents.agent import Agent, unwrap as agent_unwrap
+from htm_rl.envs.env import unwrap as env_unwrap
+from htm_rl.agents.svpn.agent import SvpnAgent
 from htm_rl.agents.ucb.sparse_value_network import update_slice_lin_sum, update_slice_exp_sum
 from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.common.utils import ensure_list
 from htm_rl.config import FileConfig
+from htm_rl.envs.biogwlab.environment import Environment
+from htm_rl.envs.biogwlab.module import EntityType
 from htm_rl.envs.env import Env
 
 
@@ -260,6 +265,97 @@ class ValueMapRecorder(BaseRecorder):
                 images=self.value_map, titles=plot_title,
                 show=False, save_path=save_path
             )
+
+
+# noinspection PyProtectedMember
+class DreamingValueChangeProvider(BaseRecorder):
+    fill_value: float = 0.
+
+    frequency: int
+    name_str: str
+
+    agent: SvpnAgent
+    env: Env
+    value_maps: list[tuple[np.ndarray, tuple[int, int]]]
+
+    def __init__(
+            self, config: FileConfig, frequency: int,
+            agent: SvpnAgent, env: Env, aggregator=None
+    ):
+        super().__init__(config, aggregator)
+        self.agent = agent_unwrap(agent)
+        self.env = env_unwrap(env)
+        self.value_maps = []
+
+        self.agent.set_breakpoint('_reset_dreaming', self.snapshot_value_map)
+        # self.agent.set_breakpoint('_wake', self.snapshot_value_map)
+
+        self.frequency = frequency
+        self.name_str = f'valuemap_{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}_{frequency}'
+
+    def handle_step(
+            self, env: Env, agent: Agent, step: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        pass
+
+    def handle_episode(
+            self, env: Env, agent: Agent, episode: int,
+            env_info: dict = None, agent_info: dict = None
+    ):
+        if (episode + 1) % self.frequency == 0:
+            if not self.value_maps:
+                self.value_maps.append(self.construct_value_map())
+            self._flush_maps(episode + 1)
+
+    def _flush_maps(self, episode):
+        plot_title = f'{self.name_str}_{episode}'
+        if self.aggregator is not None:
+            for value_map, agent_pos in self.value_maps:
+                self.aggregator.handle_img(value_map, f'{plot_title}_{agent_pos}')
+        else:
+            save_path = self.save_dir.joinpath(f'{plot_title}.svg')
+            value_maps, plot_titles = [], []
+            for value_map, agent_pos in self.value_maps:
+                value_maps.append(value_map)
+                plot_titles.append(f'{plot_title}_{agent_pos}')
+
+            plot_grid_images(images=value_maps, titles=plot_title, show=False, save_path=save_path)
+
+        self.value_maps.clear()
+
+    def snapshot_value_map(self, agent, func, *args, **kwargs):
+        value_map, agent_pos = self.construct_value_map()
+        if self.value_maps:
+            for vm, p in self.value_maps:
+                if p == agent_pos:
+                    value_map -= vm
+                    break
+
+        self.value_maps.append((value_map, agent_pos))
+        func(*args, **kwargs)
+
+    def construct_value_map(self):
+        env: Environment = env_unwrap(self.env)
+        value_map = np.full(env.shape, self.fill_value, dtype=np.float)
+        env_agent: EnvAgent = env.entities['agent']
+        agent_state = env_agent.position, env_agent.view_direction
+        obstacles_mask = env.aggregated_mask[EntityType.Obstacle]
+
+        for i in range(env.shape[0]):
+            for j in range(env.shape[1]):
+                pos = (i, j)
+                if obstacles_mask[pos]:
+                    continue
+                env_agent.position = pos
+                obs = env.render()
+                s = self.agent.state_sp.compute(obs, learn=False)
+                actions_sa_sdr = self.agent._encode_actions(s, learn=False)
+                greedy_action, action_values = self.agent.sqvn.choose(actions_sa_sdr, greedy=True)
+                value_map[pos] = action_values[greedy_action]
+
+        env_agent.position, env_agent.view_direction = agent_state
+        return value_map, env_agent.position
 
 
 class TDErrorMapRecorder(BaseRecorder):

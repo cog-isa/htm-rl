@@ -58,6 +58,6 @@ class Wrapper(Env):
 
 
 def unwrap(env):
-    while isinstance(env, Wrapper):
-        env = env.env
+    if isinstance(env, Wrapper):
+        env = env.root_env
     return env
