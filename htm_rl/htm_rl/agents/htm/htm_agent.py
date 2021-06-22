@@ -509,6 +509,7 @@ class Scenario:
 
 if __name__ == '__main__':
     import sys
+    import ast
 
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
@@ -528,18 +529,7 @@ if __name__ == '__main__':
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
 
-        if value == 'True':
-            value = True
-        elif value == 'False':
-            value = False
-        else:
-            try:
-                value = int(value)
-            except:
-                try:
-                    value = float(value)
-                except:
-                    value = [int(value.strip('[]'))]
+        value = ast.literal_eval(value)
 
         key = key.lstrip('-')
         tokens = key.split('.')

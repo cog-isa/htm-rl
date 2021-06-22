@@ -15,8 +15,8 @@ vis_options:
 log: true
 
 run_options:
-  n_episodes: 10
-  log_every_episode: 1
+  n_episodes: 4000
+  log_every_episode: 50
   log_values: True
   log_policy: True
   train_patterns: True
