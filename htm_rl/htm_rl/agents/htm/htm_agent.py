@@ -216,6 +216,7 @@ class HTMAgentRunner:
         self.option_actions = list()
         self.option_predicted_actions = list()
         self.current_option_id = None
+        self.last_option_id = None
         self.current_action = None
 
         self.option_stat = OptionVis(self.environment.env.shape, **config['vis_options'])
@@ -355,10 +356,19 @@ class HTMAgentRunner:
             pic = pic[0]
 
         if draw_options:
+            option_block = self.agent.hierarchy.blocks[5]
             c_pos = self.environment.env.agent.position
             c_direction = self.environment.env.agent.view_direction
 
+            if option_block.current_option is not None:
+                c_option_id = option_block.sm.unique_id[option_block.current_option]
+            else:
+                c_option_id = None
+
             if self.agent.hierarchy.blocks[5].made_decision:
+                if c_option_id != self.last_option_id:
+                    if len(agent_pos) > 0:
+                        agent_pos.clear()
                 agent_pos.append(c_pos)
                 if len(agent_pos) > 1:
                     pic[tuple(zip(*agent_pos))] = [[255, 255, 150]] * len(agent_pos)
@@ -367,6 +377,8 @@ class HTMAgentRunner:
             else:
                 if len(agent_pos) > 0:
                     agent_pos.clear()
+
+            self.last_option_id = c_option_id
 
             term_draw_options = np.zeros((pic.shape[0], 3, 3))
             c_option = self.agent.hierarchy.blocks[5].current_option
