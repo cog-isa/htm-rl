@@ -1,2 +1,6 @@
-- condition: ['episode', 1999]
-  action: ['call', 'set_food_positions', [[7, 8]]]
+- condition: ['episode', 5]
+  action: 'set_food_positions'
+  params:
+    positions: [[7, 8], [8, 5], [6, 7]]
+    rand: true
+    sample_size: 1

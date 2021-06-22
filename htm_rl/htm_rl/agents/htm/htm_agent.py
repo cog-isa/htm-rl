@@ -222,6 +222,9 @@ class HTMAgentRunner:
         self.option_start_pos = None
         self.option_end_pos = None
 
+        self.seed = seed
+        self.rng = random.Random(self.seed)
+
     def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_values=False, log_policy=False,
                      log_every_episode=50,
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
@@ -456,7 +459,9 @@ class HTMAgentRunner:
                 self.option_actions.clear()
                 self.option_predicted_actions = list()
 
-    def set_food_positions(self, positions):
+    def set_food_positions(self, positions, rand=False, sample_size=1):
+        if rand:
+            positions = self.rng.sample(positions, sample_size)
         self.environment.env.modules['food'].generator.positions = positions
 
 
@@ -469,19 +474,18 @@ class Scenario:
             for event in events:
                 condition = event['condition']
                 action = event['action']
-                self.events.append({'condition': condition, 'action': (action[0], action[1:]), 'done': False})
+                params = event['params']
+                self.events.append({'condition': condition, 'action': action, 'params': params, 'done': False})
 
     def check_conditions(self):
         for event in self.events:
             attr_name, val = event['condition']
             attr = self.get_attr(attr_name)
             if (attr == val) and (not event['done']):
-                method_name, params = event['action']
-                if method_name == 'set':
-                    setattr(self.runner, params[1])
-                else:
-                    f = self.get_attr(params[0])
-                    f(*params[1:])
+                method_name = event['action']
+                params = event['params']
+                f = self.get_attr(method_name)
+                f(**params)
                 event['done'] = True
 
     def get_attr(self, attr):
@@ -497,14 +501,17 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_room_9x9_default'
+        default_config_name = 'four_rooms_9x9_default'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
-    if len(sys.argv) > 1:
-        wandb.init(config=config)
+    if config['log']:
+        logger = wandb
     else:
-        wandb.init(project='hima_multigoal_tests', config=config)
+        logger = None
+
+    if logger is not None:
+        logger.init(project=config['project'], entity=config['entity'], config=config)
 
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
@@ -537,12 +544,11 @@ if __name__ == '__main__':
     runner = HTMAgentRunner(configure(config))
     runner.agent.train_patterns()
 
-    map_image = runner.environment.callmethod('render_rgb')
-    if isinstance(map_image, list):
-        map_image = map_image[0]
-    plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', map_image.astype('uint8'))
-    wandb.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png', )})
+    if logger is not None:
+        map_image = runner.environment.callmethod('render_rgb')
+        if isinstance(map_image, list):
+            map_image = map_image[0]
+        plt.imsave(f'/tmp/map_{config["environment"]["seed"]}.png', map_image.astype('uint8'))
+        logger.log({'map': wandb.Image(f'/tmp/map_{config["environment"]["seed"]}.png', )})
 
-    runner.run_episodes(4000, logger=wandb, log_every_episode=50, log_values=True, log_policy=True,
-                        train_patterns=True, log_segments=False, draw_options=True, log_terminal_stat=True,
-                        draw_options_stats=True, opt_threshold=4)
+    runner.run_episodes(logger=logger, **config['run_options'])

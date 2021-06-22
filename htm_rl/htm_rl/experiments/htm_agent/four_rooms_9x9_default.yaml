@@ -1,13 +1,30 @@
 seed: &seed 3121
 levels: 2
-agent: htm
+agent: hima
+project: four_rooms
+entity: hauska
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_9x9.yaml'
+
 vis_options:
   size: 21
   max_options: 50
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
+
+log: true
+
+run_options:
+  n_episodes: 10
+  log_every_episode: 1
+  log_values: True
+  log_policy: True
+  train_patterns: True
+  log_segments: False
+  draw_options: True
+  log_terminal_stat: True
+  draw_options_stats: True
+  opt_threshold: 4
 
 environment:
   seed: 2151
@@ -277,5 +294,4 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  min_feedback_boost: 0.5
-  max_feedback_boost: 1.0
+  feedback_boost_range: [0.5, 1.0]

@@ -123,8 +123,7 @@ class Block:
                  id_=None,
                  level=None,
                  predicted_boost=0.2,
-                 min_feedback_boost=0,
-                 max_feedback_boost=1,
+                 feedback_boost_range=None,
                  gamma=0.9):
         
         self.tm = tm
@@ -138,6 +137,11 @@ class Block:
         else:
             self.sp_output = None
             self.sp_input = SDR(self.tm.basal_columns)
+
+        if feedback_boost_range is None:
+            self.feedback_boost_range = [0, 1]
+        else:
+            self.feedback_boost_range = feedback_boost_range
 
         self.predicted_columns = SDR(self.tm.basal_columns)
 
@@ -180,8 +184,6 @@ class Block:
         self.predicted_options = None
 
         self.predicted_boost = predicted_boost
-        self.min_feedback_boost = min_feedback_boost
-        self.max_feedback_boost = max_feedback_boost
         self.feedback_boost = 0
 
         self.learn_tm = True
@@ -257,7 +259,7 @@ class Block:
             self.confidence = float('inf')
 
             # evaluate feedback boost
-            self.feedback_boost = self.min_feedback_boost + total_value * (self.max_feedback_boost - self.min_feedback_boost)
+            self.feedback_boost = self.feedback_boost_range[0] + total_value * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
         else:
             basal_active_columns = list()
             shift = 0
