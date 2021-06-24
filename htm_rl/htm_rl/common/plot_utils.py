@@ -11,15 +11,15 @@ def plot_grid_images(
         images: Union[np.ndarray, list[np.ndarray]],
         titles: Union[str, list[str]] = None,
         show: bool = True,
-        save_path: Optional[Path] = None
+        save_path: Optional[Path] = None,
+        cols_per_row: int = 5
 ):
     images = ensure_list(images)
     titles = ensure_list(titles)
     n_images = len(images)
 
-    max_cols = 5
-    n_rows = (n_images - 1) // max_cols + 1
-    n_cols = min(n_images, max_cols)
+    n_rows = (n_images - 1) // cols_per_row + 1
+    n_cols = min(n_images, cols_per_row)
 
     fig, axes = plt.subplots(
         n_rows, n_cols,
@@ -29,7 +29,7 @@ def plot_grid_images(
         axes = [axes]
 
     for i in range(n_images):
-        ax = axes[i] if n_images <= max_cols else axes[i//max_cols][i%max_cols]
+        ax = axes[i] if n_images <= cols_per_row else axes[i//cols_per_row][i%cols_per_row]
         img = images[i]
         title = safe_ith(titles, i)
         _plot_grid_image(ax, img, title=title)

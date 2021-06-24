@@ -1,7 +1,7 @@
 from typing import Any
 
 
-def inject_debug_tools(base_type):
+def inject_debug_tools(base_type, inject_or_not=True):
     """Create subclass with added debugging helpers via dynamic inheritance."""
 
     class DynamicWrapper(base_type):
@@ -38,7 +38,7 @@ def inject_debug_tools(base_type):
 
             setattr(self, method_name, method)
 
-    if issubclass(base_type, DynamicWrapper):
+    if not inject_or_not or issubclass(base_type, DynamicWrapper):
         return base_type
 
     return DynamicWrapper
