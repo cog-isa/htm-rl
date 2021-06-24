@@ -1,7 +1,5 @@
 from inspect import getattr_static
 from pathlib import Path
-from pprint import pprint
-from typing import Dict
 
 import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
@@ -27,6 +25,7 @@ def read_config(file_path: Path, verbose=False):
 
     config = yaml.load(file_path)
     if verbose:
+        from pprint import pprint
         pprint(config)
     return config
 
@@ -107,7 +106,7 @@ class Config(dict):
 
 class FileConfig(Config):
     path: Path
-    content: Dict
+    content: dict
 
     _name: str
 
@@ -124,11 +123,11 @@ class FileConfig(Config):
 
 
 class DictConfig(Config):
-    content: Dict
+    content: dict
 
     _name: str
 
-    def __init__(self, content: Dict, name: str):
+    def __init__(self, content: dict, name: str):
         self.content = content
         self._name = name
 

@@ -16,14 +16,15 @@ class RunConfig(FileConfig):
     def __init__(self, path):
         super(RunConfig, self).__init__(path)
 
-    def run(self, agents_filter: list[str], envs_filter: list[str], overwrites: list[str]):
-        env_names = self.filter_by(self.read_subconfigs('envs', prefix='env'), envs_filter)
-        agent_names = self.filter_by(self.read_subconfigs('agents', prefix='agent'), agents_filter)
-        self.add_overwrite_attributes(overwrites)
+    def run(self,):
+        self.read_subconfigs('envs', prefix='env')
+        self.read_subconfigs('agents', prefix='agent')
+        self.add_overwrite_attributes(self['overwrites'])
 
         env_seeds = self['env_seeds']
         agent_seeds = self['agent_seeds']
-        experiment = Experiment(**self)
+        env_names = self.get_filtered_names_for('envs')
+        agent_names = self.get_filtered_names_for('agents')
 
         experiment_setups = list(product(env_names, agent_names, env_seeds))
         for env_name, agent_name, env_seed in experiment_setups:
@@ -34,7 +35,8 @@ class RunConfig(FileConfig):
             for agent_seed in agent_seeds:
                 self['agent_seed'] = agent_seed
                 print(f'AGENT: {agent_name}     SEED: {env_seed} {agent_seed}')
-                results: RunStats = experiment.run(self)
+
+                results: RunStats = Experiment(self).run()
                 results.print_results()
                 agent_results.append(results)
 
@@ -97,8 +99,11 @@ class RunConfig(FileConfig):
                 pass
         return val
 
-    @staticmethod
-    def filter_by(names, names_filter):
+    def get_filtered_names_for(self, key):
+        filter_key = f'{key}_filter'
+        names = self[key].keys()
+        names_filter = self[filter_key]
+
         if names_filter is None:
             return names
 
@@ -121,8 +126,8 @@ class RunConfig(FileConfig):
 def register_arguments(parser: ArgumentParser):
     # todo: comment arguments with examples
     parser.add_argument('-c', '--config', dest='config', required=True)
-    parser.add_argument('-a', '--agent', dest='agent', default=None, nargs='+')
-    parser.add_argument('-e', '--env', dest='env', default=None, nargs='+')
+    parser.add_argument('-e', '--envs_filter', dest='envs_filter', default=None, nargs='+')
+    parser.add_argument('-a', '--agents_filter', dest='agents_filter', default=None, nargs='+')
     parser.add_argument('-m', '--print_maps', dest='print_maps', default=None, type=int)
     parser.add_argument('-t', '--print_heatmaps', dest='print_heatmaps', default=None, nargs='+', type=int)
     parser.add_argument('-d', '--print_debug', dest='print_debug', default=None, nargs='+', type=int)
@@ -156,7 +161,10 @@ def main():
         os.environ['WANDB_MODE'] = 'dryrun'
         # os.environ['WANDB_SILENT'] = 'true'
 
-    config.run(args.agent, args.env, overwrites)
+    config['envs_filter'] = args.envs_filter
+    config['agents_filter'] = args.agents_filter
+    config['overwrites'] = overwrites
+    config.run()
 
 
 if __name__ == '__main__':
