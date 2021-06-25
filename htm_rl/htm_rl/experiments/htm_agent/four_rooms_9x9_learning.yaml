@@ -110,6 +110,7 @@ blocks:
     bg:
       alpha: 0.01
       beta: 0.01
+      off_policy: true
     block:
       level: 1
     sm: {}
@@ -285,6 +286,7 @@ basal_ganglia_default:
   alpha: 0.01
   beta: 0.01
   discount_factor: 0.997
+  off_policy: false
   seed: *seed
 
 block_default:

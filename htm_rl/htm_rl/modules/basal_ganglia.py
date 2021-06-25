@@ -27,6 +27,7 @@ class Striatum:
         self.previous_response = None
         self.current_stimulus = None
         self.current_response = None
+        self.current_max_response = None
 
     def compute(self, exc_input: SparseSdr) -> (np.ndarray, np.ndarray):
         if len(exc_input) > 0:
@@ -47,12 +48,13 @@ class Striatum:
         self.previous_stimulus = copy.deepcopy(self.current_stimulus)
         self.current_stimulus = copy.deepcopy(stimulus)
 
-    def learn(self, reward, k: int = 1, external_value: float = 0):
+    def learn(self, reward, k: int = 1, external_value: float = 0, off_policy=False):
         """
         main Striatum learning function
         :param reward: accumulated reward since previous response (for elementary actions it's just immediate reward)
         :param k: number of steps taken after previous response (>=1 for non-elementary actions)
         :param external_value: value from lower level BG (may be !=0 for non-elementary actions)
+        :param off_policy: if true, then max_response is used instead of current response
         :return:
         """
         if (self.previous_response is not None) and (len(self.previous_response) > 0) and (
@@ -64,8 +66,14 @@ class Striatum:
 
             if (self.current_response is not None) and (len(self.current_response) > 0) and (
                     len(self.current_stimulus) > 0):
+
+                if off_policy:
+                    response = self.current_max_response
+                else:
+                    response = self.current_response
+
                 values = np.mean(
-                    (self.w_d1[self.current_response] - self.w_d2[self.current_response])[:, self.current_stimulus],
+                    (self.w_d1[response] - self.w_d2[response])[:, self.current_stimulus],
                     axis=-1)
                 value = np.median(values)
 
@@ -81,6 +89,7 @@ class Striatum:
         self.previous_stimulus = None
         self.current_response = None
         self.current_stimulus = None
+        self.current_max_response = None
         self.values = None
 
 
@@ -133,6 +142,7 @@ class Thalamus:
         self._output_size = output_size
         self._rng = np.random.default_rng(seed)
         self.response_activity = None
+        self.max_response = None
         if self._input_size != self._output_size:
             raise ValueError
 
@@ -143,10 +153,17 @@ class Thalamus:
             activity[ind] = np.sum(bs[response])
         if responses_boost is not None:
             activity += responses_boost * activity.max()
+
         self.response_activity = activity
+        self.max_response = responses[np.nanargmax(activity)]
+
         probs = softmax(activity)
         out = self._rng.choice(len(activity), 1, p=probs)[0]
         return out, responses[out]
+
+    def reset(self):
+        self.response_activity = None
+        self.max_response = None
 
 
 class BasalGanglia:
@@ -161,6 +178,7 @@ class BasalGanglia:
                  alpha: float,
                  beta: float,
                  discount_factor: float,
+                 off_policy: bool,
                  seed: int):
         self._input_size = input_size
         self._output_size = output_size
@@ -171,8 +189,11 @@ class BasalGanglia:
         self.gpe = GPe(output_size, output_size)
         self.tha = Thalamus(output_size, output_size, seed)
 
+        self.off_policy = off_policy
+
     def reset(self):
         self.stri.reset()
+        self.tha.reset()
 
     def compute(self, stimulus,
                 responses: List[SparseSdr],
@@ -184,6 +205,8 @@ class BasalGanglia:
         gpi = self.gpi.compute(stn, (d1, gpe))
 
         response_index, response = self.tha.compute(responses, responses_boost, gpi)
+        self.stri.current_max_response = self.tha.max_response
+
         responses_values = np.zeros(len(responses))
         for ind, resp in enumerate(responses):
             responses_values[ind] = np.median(self.stri.values[resp])
@@ -191,4 +214,4 @@ class BasalGanglia:
         return response_index, response, responses_values
 
     def force_dopamine(self, reward: float, k: int = 0, external_value: float = 0):
-        self.stri.learn(reward, k, external_value)
+        self.stri.learn(reward, k, external_value, self.off_policy)
