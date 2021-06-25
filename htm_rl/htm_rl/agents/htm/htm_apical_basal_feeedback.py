@@ -66,7 +66,8 @@ class ApicalBasalFeedbackTM:
                  prune_zero_synapses=True,
                  max_segments_per_cell_apical=255,
                  max_segments_per_cell_exec=255,
-                 max_segments_per_cell_inhib=255):
+                 max_segments_per_cell_inhib=255,
+                 timeseries=False):
         self.step = 0
 
         self.apical_columns = apical_columns
@@ -140,14 +141,20 @@ class ApicalBasalFeedbackTM:
         self.basal_range = (self.apical_range[1], self.apical_range[1] + self.basal_total_cells)
         self.feedback_range = (self.basal_range[1], self.basal_range[1] + self.feedback_columns)
 
+        self.timeseries = timeseries
+
         self.apical_connections = Connections(numCells=self.total_cells,
-                                              connectedThreshold=self.connected_threshold_apical)
+                                              connectedThreshold=self.connected_threshold_apical,
+                                              timeseries=self.timeseries)
         self.basal_connections = Connections(numCells=self.total_cells,
-                                             connectedThreshold=self.connected_threshold)
+                                             connectedThreshold=self.connected_threshold,
+                                             timeseries=self.timeseries)
         self.exec_feedback_connections = Connections(numCells=self.total_cells,
-                                                     connectedThreshold=self.connected_threshold_exec)
+                                                     connectedThreshold=self.connected_threshold_exec,
+                                                     timeseries=self.timeseries)
         self.inhib_connections = Connections(numCells=self.total_cells,
-                                             connectedThreshold=self.connected_threshold_inhib)
+                                             connectedThreshold=self.connected_threshold_inhib,
+                                             timeseries=self.timeseries)
 
         self.active_basal_cells = SDR(self.total_cells)
         self.winner_basal_cells = SDR(self.total_cells)

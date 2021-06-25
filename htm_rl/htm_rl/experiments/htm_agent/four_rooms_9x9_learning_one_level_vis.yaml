@@ -1,10 +1,8 @@
 seed: &seed 3121
 levels: 2
 agent: hima
-project: four_rooms
+project: four_rooms_learning
 entity: hauska
-
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_9x9.yaml'
 
 vis_options:
   size: 21
@@ -15,7 +13,7 @@ vis_options:
 log: true
 
 run_options:
-  n_episodes: 4000
+  n_episodes: 2000
   log_every_episode: 50
   log_values: True
   log_policy: True
@@ -198,7 +196,7 @@ hierarchy:
 
     {
       'basal_in': [ 3 ],
-      'apical_in': [ 4 ],
+      'apical_in': [ 2 ],
       'feedback_in': [ ],
       'basal_out': [ ],
       'apical_out': [ 4 ],
@@ -269,7 +267,7 @@ temporal_memory_default:
   initial_permanence_inhib: 0.75
   connected_threshold_inhib: 0.5
   permanence_decrement_inhib: 0.1
-  permanence_increment_inhib: 0.01
+  permanence_increment_inhib: 0.1
   predicted_segment_decrement_inhib: 0.1
   enable_pruning_basal: False
   enable_pruning_apical: False
@@ -281,6 +279,7 @@ temporal_memory_default:
   pruning_period_inhib: 2000
   prune_zero_synapses: True
   seed: *seed
+  timeseries: True
 
 basal_ganglia_default:
   alpha: 0.01

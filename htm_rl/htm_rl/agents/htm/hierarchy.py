@@ -407,24 +407,23 @@ class Block:
                     self.completed_option = None
                     self.predicted_options = indices
 
-                    if indices.size > 0:
-                        # jumped off a high level option
-                        if not np.isin(option_index, indices):
-                            self.feedback_boost = 0
-                            for block in self.feedback_in:
-                                if block.k == 0:
-                                    block.bg.current_stimulus = None
-                                    block.bg.current_response = None
-                                else:
-                                    block.bg.stri.update_response(None)
-                                    block.bg.stri.update_stimulus(None)
-                                block.reinforce(external_value=option_values[option_index])
-                                block.finish_current_option('failed')
-                        else:
-                            for block in self.feedback_in:
-                                # option was just accepted
-                                if block.option_steps == 0:
-                                    block.reinforce()
+                    # jumped off a high level option
+                    if not np.isin(option_index, indices):
+                        self.feedback_boost = 0
+                        for block in self.feedback_in:
+                            if block.k == 0:
+                                block.bg.current_stimulus = None
+                                block.bg.current_response = None
+                            else:
+                                block.bg.stri.update_response(None)
+                                block.bg.stri.update_stimulus(None)
+                            block.reinforce(external_value=option_values[option_index])
+                            block.finish_current_option('failed')
+                    else:
+                        for block in self.feedback_in:
+                            # option was just accepted
+                            if block.option_steps == 0:
+                                block.reinforce()
 
                     if return_value:
                         return option, norm_option_values[option_index]
