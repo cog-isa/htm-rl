@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 
@@ -26,11 +26,19 @@ class AgentStateProvider(Debugger):
 
     @property
     def state(self):
-        return self.env_agent.position, self.env_agent.view_direction
+        return self.position, self.view_direction
+
+    @property
+    def position(self):
+        return self.env_agent.position
+
+    @property
+    def view_direction(self):
+        return self.env_agent.view_direction
 
     def overwrite(self, position=None, view_direction=None):
         if self.origin is None:
-            self.origin = self.env_agent.position, self.env_agent.view_direction
+            self.origin = self.state
         self._set(position, view_direction)
 
     def restore(self):
