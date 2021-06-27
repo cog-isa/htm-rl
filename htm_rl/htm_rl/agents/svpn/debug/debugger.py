@@ -19,3 +19,15 @@ class Debugger:
         inject_debug_tools(self.env)
         inject_debug_tools(self.agent)
         inject_debug_tools(self.progress)
+
+    @property
+    def _default_config_identifier(self) -> str:
+        config = self.experiment.config
+        return f'{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}'
+
+    @property
+    def _default_progress_identifier(self) -> str:
+        if self.progress.is_new_episode:
+            return f'{self.progress.episode}'
+        return f'{self.progress.episode}_{self.progress.step}'
+
