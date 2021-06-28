@@ -77,7 +77,7 @@ class EnvMapProvider(Debugger):
     include_observation: bool
 
     def __init__(self, experiment: Experiment):
-        super(EnvMapProvider).__init__(experiment)
+        super().__init__(experiment)
 
         self._maps = None
         config = self.experiment.config
@@ -149,3 +149,49 @@ class StateEncodingProvider(Debugger):
                 best_match = position, overlap
 
         return best_match[0]
+
+
+class ValueMapProvider(Debugger):
+    fill_value: float = 0.
+    name_prefix: str = 'position'
+
+    agent: SvpnAgent
+    env: Environment
+
+    state_encoding_provider: StateEncodingProvider
+
+    def __init__(self, experiment: Experiment):
+        super().__init__(experiment)
+        self.state_encoding_provider = StateEncodingProvider(experiment)
+
+    # noinspection PyProtectedMember
+    def get_q_value_map(self, greedy=True) -> np.ndarray:
+        encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
+        shape = self.env.shape + (self.env.n_actions, )
+        q_value_map = np.full(shape, self.fill_value, dtype=np.float)
+
+        for position, state in encoding_scheme.items():
+            actions_sa_sdr = self.agent._encode_actions(state, learn=False)
+            _, option_values = self.agent.sqvn.choose(actions_sa_sdr, greedy=greedy)
+            q_value_map[position] = np.array(option_values)
+
+        return q_value_map
+
+    def get_value_map(self, q_value_map=None) -> np.ndarray:
+        if q_value_map is None:
+            q_value_map = self.get_q_value_map()
+        return np.max(q_value_map, axis=-1)
+
+    def get_q_value_map_for_rendering(self, q_value_map=None):
+        if q_value_map is None:
+            q_value_map = self.get_q_value_map()
+
+        assert self.env.n_actions == 4
+
+        shape = self.env.shape[0] * 2, self.env.shape[1] * 2
+        m = np.empty(shape, dtype=np.float)
+        m[0::2, 0::2] = q_value_map[..., 0]
+        m[0::2, 1::2] = q_value_map[..., 1]
+        m[1::2, 1::2] = q_value_map[..., 2]
+        m[1::2, 0::2] = q_value_map[..., 3]
+        return m
