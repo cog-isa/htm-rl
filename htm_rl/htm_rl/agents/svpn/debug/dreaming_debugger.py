@@ -60,11 +60,11 @@ class DreamingDebugger(Debugger):
     def _add_value_map(self, greedy):
         q_map = self.value_map_provider.get_q_value_map(greedy)
         q_map *= 10
-        v_map = self.value_map_provider.get_value_map(q_map)
+        v_map = self.value_map_provider.V()
         title = 'V-func' if greedy else 'V-func-ucb'
         self.output_renderer.handle_img(v_map, title, with_value_text=True)
 
-        q_map_render = self.value_map_provider.get_q_value_map_for_rendering(q_map)
+        q_map_render = self.value_map_provider.reshape_q_for_rendering()
         title = 'Q-func' if greedy else 'Q-func-ucb'
         self.output_renderer.handle_img(q_map_render, title, with_value_text=False)
 

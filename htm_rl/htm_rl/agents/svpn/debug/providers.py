@@ -152,6 +152,7 @@ class StateEncodingProvider(Debugger):
         return best_match[0]
 
 
+# noinspection PyPep8Naming
 class ValueMapProvider(Debugger):
     fill_value: float = 0.
     name_prefix: str = 'position'
@@ -161,38 +162,48 @@ class ValueMapProvider(Debugger):
 
     state_encoding_provider: StateEncodingProvider
 
+    Q: Optional[np.ndarray]
+    ucb: Optional[np.ndarray]
+
     def __init__(self, experiment: Experiment):
         super().__init__(experiment)
         self.state_encoding_provider = StateEncodingProvider(experiment)
+        self.Q = None
+        self.ucb = None
 
     # noinspection PyProtectedMember
-    def get_q_value_map(self, greedy=True) -> np.ndarray:
+    def precompute(self, greedy_map: bool = False, ucb_map: bool = False):
         encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
-        shape = self.env.shape + (self.env.n_actions, )
-        q_value_map = np.full(shape, self.fill_value, dtype=np.float)
+
+        self.Q = None
+        self.ucb = None
+        if not greedy_map and not ucb_map:
+            return
+
+        shape = self.env.shape + (self.env.n_actions,)
+        if greedy_map:
+            self.Q = np.full(shape, self.fill_value, dtype=np.float)
+        if ucb_map:
+            self.ucb = np.full(shape, self.fill_value, dtype=np.float)
 
         for position, state in encoding_scheme.items():
             actions_sa_sdr = self.agent._encode_actions(state, learn=False)
-            _, option_values = self.agent.sqvn.choose(actions_sa_sdr, greedy=greedy)
-            q_value_map[position] = np.array(option_values)
+            if greedy_map:
+                self.Q[position] = self.agent.sqvn.evaluate_options(actions_sa_sdr)
+            if ucb_map:
+                self.ucb[position] = self.agent.sqvn.evaluate_options_ucb_term(actions_sa_sdr)
 
-        return q_value_map
+    @property
+    def V(self) -> np.ndarray:
+        return np.max(self.Q, axis=-1)
 
-    def get_value_map(self, q_value_map=None) -> np.ndarray:
-        if q_value_map is None:
-            q_value_map = self.get_q_value_map()
-        return np.max(q_value_map, axis=-1)
-
-    def get_q_value_map_for_rendering(self, q_value_map=None):
-        if q_value_map is None:
-            q_value_map = self.get_q_value_map()
-
+    def reshape_q_for_rendering(self, Q):
         assert self.env.n_actions == 4
 
-        shape = self.env.shape[0] * 2, self.env.shape[1] * 2
-        m = np.empty(shape, dtype=np.float)
-        m[0::2, 0::2] = q_value_map[..., 0]
-        m[0::2, 1::2] = q_value_map[..., 1]
-        m[1::2, 1::2] = q_value_map[..., 2]
-        m[1::2, 0::2] = q_value_map[..., 3]
-        return m
+        shape = Q.shape[0] * 2, Q.shape[1] * 2
+        Qr = np.empty(shape, dtype=np.float)
+        Qr[0::2, 0::2] = Q[..., 0]
+        Qr[0::2, 1::2] = Q[..., 1]
+        Qr[1::2, 1::2] = Q[..., 2]
+        Qr[1::2, 0::2] = Q[..., 3]
+        return Qr
