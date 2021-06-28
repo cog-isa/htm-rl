@@ -8,6 +8,7 @@ from htm_rl.experiment import Experiment
 from htm_rl.debug_output import ImageOutput
 
 
+# noinspection PyUnresolvedReferences
 class DreamingDebugger(Debugger):
     env: Environment
     agent: SvpnAgent
@@ -42,8 +43,7 @@ class DreamingDebugger(Debugger):
     def on_end_episode(self, agent, func, *args, **kwargs):
         if self.output_renderer.is_empty:
             self._add_env_map()
-            self._add_value_map(greedy=True)
-            self._add_value_map(greedy=False)
+            self._add_value_maps(q=True, v=True, greedy=True, exploration=True, ucb=True)
             self._add_trajectory()
             self.output_renderer.flush(
                 f'end_episode_{self._default_config_identifier}_{self._default_progress_identifier}'
@@ -57,16 +57,33 @@ class DreamingDebugger(Debugger):
         )
         self.trajectory_tracker.reset()
 
-    def _add_value_map(self, greedy):
-        q_map = self.value_map_provider.get_q_value_map(greedy)
-        q_map *= 10
-        v_map = self.value_map_provider.V()
-        title = 'V-func' if greedy else 'V-func-ucb'
-        self.output_renderer.handle_img(v_map, title, with_value_text=True)
+    # noinspection PyUnboundLocalVariable
+    def _add_value_maps(self, q: bool, v: bool, greedy: bool, exploration: bool, ucb: bool):
+        self.value_map_provider.precompute(greedy or exploration, exploration or ucb)
 
-        q_map_render = self.value_map_provider.reshape_q_for_rendering()
-        title = 'Q-func' if greedy else 'Q-func-ucb'
-        self.output_renderer.handle_img(q_map_render, title, with_value_text=False)
+        if greedy or exploration:
+            Q = self.value_map_provider.Q
+            V = self.value_map_provider.V(Q)
+        if v and greedy:
+            self.output_renderer.handle_img(V, 'V', with_value_text=True)
+        if q and greedy:
+            Q_render = self.value_map_provider.reshape_q_for_rendering(Q)
+            self.output_renderer.handle_img(Q_render, 'Q', with_value_text=False)
+
+        if ucb or exploration:
+            UCB = self.value_map_provider.UCB
+
+        if v and exploration:
+            Q_exp = Q + UCB
+            V_exp = self.value_map_provider.V(Q_exp)
+            self.output_renderer.handle_img(V_exp, 'V exp', with_value_text=True)
+        if q and exploration:
+            Q_exp_render = self.value_map_provider.reshape_q_for_rendering(Q_exp)
+            self.output_renderer.handle_img(Q_exp_render, 'Q exp', with_value_text=False)
+
+        if ucb:
+            UCB_render = self.value_map_provider.reshape_q_for_rendering(UCB)
+            self.output_renderer.handle_img(UCB_render, 'UCB term', with_value_text=False)
 
     def _add_env_map(self):
         env_maps = self.env_map_provider.maps

@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 import numpy as np
 from numpy.random._generator import Generator
@@ -51,17 +51,11 @@ class SparseValueNetwork:
         return option_index
 
     def evaluate_options(self, options: List[SparseSdr]) -> np.ndarray:
-        return np.array([
-            self._evaluate_option(option)
-            for option in options
-        ])
+        return np.array([self._evaluate_option(option) for option in options])
 
     def evaluate_options_ucb_term(self, options: List[SparseSdr]) -> np.ndarray:
         total_visits = self._total_visits(options)
-        return np.array([
-            self._ucb_upper_bound_term(option, total_visits)
-            for option in options
-        ])
+        return np.array([self._ucb_term(option, total_visits) for option in options])
 
     # noinspection PyPep8Naming
     def update(
@@ -109,22 +103,23 @@ class SparseValueNetwork:
         return self.cell_value[option].mean()
 
     # noinspection PyPep8Naming
-    def _ucb_upper_bound_term(self, cells_sdr, total_visits) -> np.ndarray:
+    def _ucb_term(self, option, total_visits) -> float:
         # NB: T regards to a total options visits, N - to just a cell
         # but we consider here as if each cell was a single
         # representative of an option
         T = total_visits
-        N = self.cell_visit_count[cells_sdr]
+        N = self.cell_visit_count[option]
         cp = self.ucb_exploration_factor[0]
 
-        return cp * np.sqrt(2 * np.log(T + 1) / (N + 1))
+        ucb = cp * np.sqrt(2 * np.log(T + 1) / (N + 1))
+        return ucb.mean()
 
     def _total_visits(self, options: List[SparseSdr]) -> int:
         # option visit count: avg visit count of its cells
         return sum(
-            np.mean(self.cell_visit_count[state])
-            for state in options
-            if len(state) > 0
+            np.mean(self.cell_visit_count[option])
+            for option in options
+            if len(option) > 0
         )
 
     def reset(self):
