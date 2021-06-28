@@ -12,6 +12,7 @@ def plot_grid_images(
         titles: Union[str, list[str]] = None,
         show: bool = True,
         save_path: Optional[Path] = None,
+        with_value_text_flags: list[bool] = None,
         cols_per_row: int = 5
 ):
     images = ensure_list(images)
@@ -32,7 +33,8 @@ def plot_grid_images(
         ax = axes[i] if n_images <= cols_per_row else axes[i//cols_per_row][i%cols_per_row]
         img = images[i]
         title = safe_ith(titles, i)
-        _plot_grid_image(ax, img, title=title)
+        with_value_text = safe_ith(with_value_text_flags, i)
+        _plot_grid_image(ax, img, title=title, with_value_text=with_value_text)
 
     if show:
         plt.show()
@@ -55,7 +57,10 @@ def store_environment_map(
     plot_grid_images(env_map, titles, show=False, save_path=save_path)
 
 
-def _plot_grid_image(ax, img: np.ndarray, title: Optional[str] = None):
+def _plot_grid_image(
+        ax, img: np.ndarray, title: Optional[str] = None,
+        with_value_text: bool = False
+):
     h, w = img.shape[:2]
     ax.set_xticks(np.arange(-.5, w, 1))
     ax.set_yticks(np.arange(-.5, h, 1))
@@ -65,4 +70,11 @@ def _plot_grid_image(ax, img: np.ndarray, title: Optional[str] = None):
     ax.grid(color='grey', linestyle='-', linewidth=.5)
     if title is not None:
         ax.set_title(title)
+    if with_value_text:
+        for i in range(h):
+            for j in range(w):
+                val = img[i, j]
+                if img.dtype == np.float:
+                    val = round(val, 1)
+                ax.text(j, i, val, ha="center", va="center", color="w")
     ax.imshow(img)
