@@ -5,7 +5,7 @@ from htm_rl.agents.svpn.debug.trajectory_tracker import TrajectoryTracker
 from htm_rl.envs.biogwlab.environment import Environment
 
 from htm_rl.experiment import Experiment
-from htm_rl.recorders import ImageOutput
+from htm_rl.debug_output import ImageOutput
 
 
 class DreamingDebugger(Debugger):

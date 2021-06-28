@@ -127,7 +127,8 @@ class StateEncodingProvider(Debugger):
                 position = i, j
                 self.position_provider.overwrite(position)
                 observation = self.env.render()
-                encoding_scheme[position] = observation
+                state = self.agent.state_sp.compute(observation, learn=False)
+                encoding_scheme[position] = state
 
         self.position_provider.restore()
         return encoding_scheme
