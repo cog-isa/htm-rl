@@ -43,15 +43,25 @@ class SparseValueNetwork:
 
     # noinspection PyTypeChecker
     def choose(self, options: List[SparseSdr], greedy=False) -> int:
-        total_visits = self._total_visits(options) if not greedy else None
-        option_values = []
-        for option in options:
-            option_values.append(
-                self._value_option(option, greedy, total_visits)
-            )
+        option_values = self.evaluate_options(options)
+        if not greedy:
+            option_values += self.evaluate_options_ucb_term(options)
 
         option_index: int = np.argmax(option_values)
-        return option_index, option_values
+        return option_index
+
+    def evaluate_options(self, options: List[SparseSdr]) -> np.ndarray:
+        return np.array([
+            self._evaluate_option(option)
+            for option in options
+        ])
+
+    def evaluate_options_ucb_term(self, options: List[SparseSdr]) -> np.ndarray:
+        total_visits = self._total_visits(options)
+        return np.array([
+            self._ucb_upper_bound_term(option, total_visits)
+            for option in options
+        ])
 
     # noinspection PyPep8Naming
     def update(
@@ -93,17 +103,13 @@ class SparseValueNetwork:
     def _update_cell_visit_counter(self, sa: SparseSdr):
         update_exp_trace(self.cell_visit_count, sa, self.visit_decay)
 
-    def _value_option(self, option, greedy: bool, total_visits: Optional[float] = None) -> float:
+    def _evaluate_option(self, option) -> float:
         if len(option) == 0:
             return np.infty
-
-        value = self.cell_value[option]
-        if not greedy:
-            value += self._ucb_upper_bound_term(option, total_visits)
-        return value.mean()
+        return self.cell_value[option].mean()
 
     # noinspection PyPep8Naming
-    def _ucb_upper_bound_term(self, cells_sdr, total_visits):
+    def _ucb_upper_bound_term(self, cells_sdr, total_visits) -> np.ndarray:
         # NB: T regards to a total options visits, N - to just a cell
         # but we consider here as if each cell was a single
         # representative of an option

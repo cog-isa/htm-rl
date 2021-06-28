@@ -87,7 +87,7 @@ class SvpnAgent(UcbAgent):
             if reward <= 0.:
                 self._dream(s)
 
-        action, _ = self.sqvn.choose(actions_sa_sdr)
+        action = self.sqvn.choose(actions_sa_sdr)
         self._current_sa_sdr = actions_sa_sdr[action]
         self._process_transition(s, action, learn_tm=True)
         return action
@@ -147,7 +147,7 @@ class SvpnAgent(UcbAgent):
         if self.rng.random() < self.dreamer.rnd_move_prob:
             action = self.rng.choice(self.n_actions)
         else:
-            action, _ = self.sqvn.choose(actions_sa_sdr, greedy=True)
+            action = self.sqvn.choose(actions_sa_sdr, greedy=True)
 
         # process feedback
         self._learn_step(
