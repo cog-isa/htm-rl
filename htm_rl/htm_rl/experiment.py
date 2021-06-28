@@ -5,13 +5,9 @@ from htm_rl.agents.agent import Agent
 from htm_rl.agents.rnd.agent import RndAgent
 from htm_rl.agents.svpn.agent import SvpnAgent
 from htm_rl.agents.ucb.agent import UcbAgent
-from htm_rl.common.debug import inject_debug_tools
 from htm_rl.common.utils import timed
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
-from htm_rl.envs.env import Env, unwrap
-from htm_rl.recorders import (
-    BaseOutput,
-)
+from htm_rl.envs.env import Env
 
 
 class ProgressPoint:
@@ -29,7 +25,7 @@ class ProgressPoint:
     def next_step(self):
         self.step += 1
 
-    def start_new_episode(self):
+    def end_episode(self):
         self.step = 0
         self.episode += 1
 
@@ -38,6 +34,7 @@ class Experiment:
     config: dict
 
     n_episodes: int
+    debug: bool
     print: dict
     wandb: dict
 
@@ -52,59 +49,25 @@ class Experiment:
         self.print = config['print']
         self.wandb = config['wandb']
 
-        debug_enabled = self.print['debug'] is not None
+        self.debug = self.print['debug'] is not None
 
-        self.env = self.materialize_environment(
-            config['env'], config['env_seed'], config['envs'], debug_enabled
-        )
-        self.agent = self.materialize_agent(
-            config['agent'], config['agent_seed'], config['agents'], self.env, debug_enabled
-        )
+        self.env = self.materialize_environment(config['env'], config['env_seed'], config['envs'])
+        self.agent = self.materialize_agent(config['agent'], config['agent_seed'], config['agents'], self.env)
 
         self.progress = ProgressPoint()
 
     def run(self):
-        env_shape = unwrap(self.env).shape
-        #
-        # handlers = []
-        # if self.print['maps'] is not None:
-        #     handlers.append(MapRecorder(self.config, self.n_episodes))
-        #
-        # if self.print['heatmaps'] is not None:
-        #     env = AgentPositionProvider(self.env)
-        #     handlers.extend([
-        #         HeatmapRecorder(config, freq, env_shape)
-        #         for freq in self.print['heatmaps']
-        #     ])
-        #
-        # if self.print['debug'] is not None:
-        #     env = AgentPositionProvider(env)
-        #     agent = wrap(
-        #         agent,
-        #         TDErrorProvider,
-        #         AnomalyProvider, DreamingLengthProvider,
-        #     )
-        #     for freq in self.print['debug']:
-        #         aggregator = ImageOutput(config, freq)
-        #         handlers.extend([
-        #             MapRecorder(config, freq, False, aggregator),
-        #             HeatmapRecorder(config, freq, env_shape, aggregator),
-        #             # ValueMapRecorder(config, freq, env_shape, 'value', aggregator),
-        #             # ValueMapRecorder(config, freq, env_shape, 'value_exp', aggregator),
-        #             DreamRecorder(config, freq, env_shape, aggregator),
-        #             AnomalyMapRecorder(config, freq, env_shape, aggregator),
-        #             TDErrorMapRecorder(config, freq, env_shape, aggregator),
-        #             DreamingValueChangeProvider(config, freq, agent, env, aggregator),
-        #             aggregator
-        #         ])
-
         train_stats = RunStats()
         wandb_run = self.init_wandb_run()
+
+        if self.debug:
+            from htm_rl.agents.svpn.debug.dreaming_debugger import DreamingDebugger
+            debugger = DreamingDebugger(self)
 
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode()
             train_stats.append_stats(steps, reward, elapsed_time)
-            self.progress.start_new_episode()
+            self.progress.end_episode()
 
             if wandb_run is not None:
                 wandb_run.log({
@@ -133,10 +96,7 @@ class Experiment:
         return self.progress.step, total_reward
 
     @staticmethod
-    def materialize_agent(
-            name: str, seed: int, agent_configs: dict[str, dict], env: Env,
-            debug_enabled: bool
-    ) -> Agent:
+    def materialize_agent(name: str, seed: int, agent_configs: dict[str, dict], env: Env) -> Agent:
         agent_config: dict = agent_configs[name]
 
         agent_type = agent_config['_type_']
@@ -146,22 +106,18 @@ class Experiment:
         elif agent_type == 'ucb':
             return UcbAgent(seed=seed, env=env, **agent_config)
         elif agent_type == 'svpn':
-            ctor = inject_debug_tools(SvpnAgent, inject_or_not=debug_enabled)
-            return ctor(seed=seed, env=env, **agent_config)
+            return SvpnAgent(seed=seed, env=env, **agent_config)
         else:
             raise NameError(agent_type)
 
     @staticmethod
-    def materialize_environment(
-            name: str, seed: int, env_configs: dict[str, dict], debug_enabled: bool
-    ) -> Env:
+    def materialize_environment(name: str, seed: int, env_configs: dict[str, dict]) -> Env:
         env_config: dict = env_configs[name]
 
         env_type = env_config['_type_']
         env_config = filter_out_non_passable_items(env_config)
         if env_type == 'biogwlab':
-            ctor = inject_debug_tools(BioGwLabEnvironment, inject_or_not=debug_enabled)
-            return ctor(seed=seed, **env_config)
+            return BioGwLabEnvironment(seed=seed, **env_config)
         else:
             raise NameError(env_type)
 
@@ -183,26 +139,6 @@ class Experiment:
             'seed': self.config['env_seed']
         }
         return run
-
-    def handle_episode(
-            self, env: Env, agent: Agent, episode: int, handlers: list[BaseOutput]
-    ):
-        env_info = env.get_info()
-        agent_info = agent.get_info()
-        for handler in handlers:
-            handler.handle_episode(
-                env, agent, episode, env_info=env_info, agent_info=agent_info
-            )
-
-    def handle_step(
-            self, env: Env, agent: Agent, step: int, handlers: list[BaseOutput]
-    ):
-        env_info = env.get_info()
-        agent_info = agent.get_info()
-        for handler in handlers:
-            handler.handle_step(
-                env, agent, step, env_info=env_info, agent_info=agent_info
-            )
 
 
 class RunStats:
