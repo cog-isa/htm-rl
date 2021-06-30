@@ -156,6 +156,43 @@ def compute_q_policy(env: Environment, agent, directions: dict = None):
     return q, policy, actions
 
 
+def compute_mu_policy(env: Environment, agent, directions: dict = None):
+    q = dict()
+    policy = dict()
+    visual_block = agent.hierarchy.blocks[2]
+    output_block = agent.hierarchy.blocks[5]
+    options = output_block.sm.get_sparse_patterns()
+    option_ids = output_block.sm.unique_id
+
+    state_pattern = SDR(env.output_sdr_size)
+    sp_output = SDR(visual_block.tm.basal_columns)
+
+    if directions is None:
+        directions = [env.agent.view_direction]
+    else:
+        directions = list(directions.values())
+    # пройти по всем состояниям и вычилить для каждого состояния Q
+    for i_flat in np.flatnonzero(~env.aggregated_mask[EntityType.Obstacle]):
+        env.agent.position = env.agent._unflatten_position(i_flat)
+        q[env.agent.position] = dict()
+        policy[env.agent.position] = dict()
+        for i, direction in enumerate(directions):
+            env.agent.view_direction = direction
+            _, observation, _ = env.observe()
+            state_pattern.sparse = observation
+            visual_block.sp.compute(state_pattern, False, sp_output)
+            (option_index,
+             option,
+             option_values) = output_block.bg.compute(sp_output.sparse,
+                                                      options,
+                                                      responses_boost=None,
+                                                      learn=False)
+
+            q[env.agent.position][i] = option_values
+            policy[env.agent.position][i] = softmax(output_block.bg.tha.response_activity)
+    return q, policy, option_ids
+
+
 def draw_values(path: str, env_shape, q, policy, directions: dict = None):
     if directions is None:
         n_directions = 1
@@ -230,7 +267,7 @@ def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = No
     ax = sns.heatmap(flat_probs, cbar=True, vmin=0, vmax=1)
     ax.hlines(np.arange(0, flat_probs.shape[0], 1+n_directions//4), xmin=0, xmax=flat_probs.shape[1])
     ax.vlines(np.arange(0, flat_probs.shape[1], 1+n_directions//4), ymin=0, ymax=flat_probs.shape[0])
-    # draw arrows
+    # draw action labels
     for i in range(flat_actions.shape[0]):
         for j in range(flat_actions.shape[1]):
             action = flat_actions[i, j]
@@ -238,10 +275,13 @@ def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = No
                 direction = None
             else:
                 direction = get_direction_from_flat((i, j))
-            row, col, drow, dcol = get_arrow(actions_map[action], direction)
-            ax.arrow(j+col, i+row, dcol, drow, length_includes_head=True,
-                     head_width=0.2,
-                     head_length=0.2)
+            if actions_map is not None:
+                row, col, drow, dcol = get_arrow(actions_map[action], direction)
+                ax.arrow(j+col, i+row, dcol, drow, length_includes_head=True,
+                         head_width=0.2,
+                         head_length=0.2)
+            else:
+                ax.text(j+0.5, i+0.5, str(action), fontsize=12)
 
     figure = ax.get_figure()
     figure.savefig(path)

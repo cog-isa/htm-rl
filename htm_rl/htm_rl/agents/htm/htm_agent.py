@@ -5,7 +5,7 @@ from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
-from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, draw_policy
+from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy
 from htm.bindings.sdr import SDR
 import imageio
 import numpy as np
@@ -229,7 +229,7 @@ class HTMAgentRunner:
     def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_values=False, log_policy=False,
                      log_every_episode=50,
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
-                     opt_threshold=0):
+                     opt_threshold=0, log_option_values=False, log_option_policy=False):
         self.total_reward = 0
         self.steps = 0
         self.episode = 0
@@ -305,6 +305,31 @@ class HTMAgentRunner:
                                         directions=directions,
                                         actions_map=actions_map)
                             logger.log({'policy': wandb.Image(f'/tmp/policy_{logger.run.id}_{self.episode}.png')},
+                                       step=self.episode)
+
+                    if log_option_values or log_option_policy:
+                        if len(self.option_stat.action_displace) == 3:
+                            directions = {'right': 0, 'down': 1, 'left': 2, 'up': 3}
+                        else:
+                            directions = None
+
+                        q, policy, option_ids = compute_mu_policy(self.environment.env, self.agent, directions)
+
+                        if log_option_values:
+                            draw_values(f'/tmp/option_values_{logger.run.id}_{self.episode}.png',
+                                        self.environment.env.shape,
+                                        q,
+                                        policy,
+                                        directions=directions)
+                            logger.log({'option_state_values': wandb.Image(f'/tmp/option_values_{logger.run.id}_{self.episode}.png')},
+                                       step=self.episode)
+                        if log_option_policy:
+                            draw_policy(f'/tmp/option_policy_{logger.run.id}_{self.episode}.png',
+                                        self.environment.env.shape,
+                                        policy,
+                                        option_ids,
+                                        directions=directions)
+                            logger.log({'option_policy': wandb.Image(f'/tmp/option_policy_{logger.run.id}_{self.episode}.png')},
                                        step=self.episode)
 
                 if ((((self.episode + 1) % log_every_episode) == 0) or (self.episode == 0)) and (logger is not None):
@@ -514,7 +539,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_rooms_9x9_learning'
+        default_config_name = 'cross_11x11_best'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 

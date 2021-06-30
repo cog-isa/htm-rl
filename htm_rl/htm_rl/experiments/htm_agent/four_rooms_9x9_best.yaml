@@ -4,6 +4,8 @@ agent: hima
 project: four_rooms_learning
 entity: hauska
 
+scenario: '../../experiments/htm_agent/scenarios/four_rooms_9x9.yaml'
+
 vis_options:
   size: 21
   max_options: 50
@@ -13,7 +15,7 @@ vis_options:
 log: true
 
 run_options:
-  n_episodes: 2000
+  n_episodes: 4000
   log_every_episode: 50
   log_values: True
   log_policy: True
@@ -292,4 +294,4 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  feedback_boost_range: [0.0, 0.0]
+  feedback_boost_range: [0.5, 0.8]

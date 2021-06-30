@@ -1,8 +1,10 @@
 seed: &seed 3121
 levels: 2
 agent: hima
-project: four_rooms_learning
+project: cross_11x11
 entity: hauska
+
+#scenario: '../../experiments/htm_agent/scenarios/cross_11x11.yaml'
 
 vis_options:
   size: 21
@@ -13,10 +15,12 @@ vis_options:
 log: true
 
 run_options:
-  n_episodes: 2000
+  n_episodes: 300
   log_every_episode: 50
   log_values: True
   log_policy: True
+  log_option_values: True
+  log_option_policy: True
   train_patterns: True
   log_segments: False
   draw_options: True
@@ -26,7 +30,7 @@ run_options:
 
 environment:
   seed: 2151
-  shape_xy: [9, 9]
+  shape_xy: [11, 11]
 
   actions_cost:
     base_cost: -0.005
@@ -49,14 +53,15 @@ environment:
 
   obstacle:
     density: 0.1
-    map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
+    map_name: '../../experiments/htm_agent/maps/cross_11x11.map'
 
   food:
     n_items: 1
     reward: 1.
-    positions: [[4, 6]]
+    positions: [ [ 5, 5 ] ]
 
   agent:
+    positions: [ [ 5, 0 ], [ 0, 5 ], [ 5, 10 ], [ 10, 5 ] ]
     change_position: true
     direction: up
   #  rendering:
@@ -292,4 +297,4 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  feedback_boost_range: [0.0, 0.0]
+  feedback_boost_range: [0.0, 0.8]
