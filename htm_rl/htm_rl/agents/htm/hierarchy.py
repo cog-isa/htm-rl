@@ -99,6 +99,9 @@ class SpatialMemory:
     def get_sparse_patterns(self):
         return [np.flatnonzero(pattern) for pattern in self.patterns]
 
+    def get_options_by_id(self, unique_ids):
+        return self.patterns[np.in1d(self.unique_id, unique_ids)]
+
 
 class Block:
     """
@@ -173,7 +176,6 @@ class Block:
         self.apical_in_size = 0
         self.basal_in_size = 0
 
-        self.option_steps = 0
         self.reward = 0
         self.k = 0
         self.gamma = gamma
@@ -367,7 +369,6 @@ class Block:
             # apical active cells and winners
             return self.tm.get_active_cells(), self.tm.get_winner_cells()
         elif mode == 'feedback':
-            self.option_steps = 0
             # basal predicted columns with filtration
             predicted_columns = self.tm.get_predicted_columns(add_exec=self.should_return_exec_predictions,
                                                               add_apical=self.should_return_apical_predictions)
@@ -452,8 +453,10 @@ class Block:
     def finish_current_option(self, flag):
         if flag == 'failed':
             self.failed_option = self.current_option
+            self.completed_option = None
         elif flag == 'completed':
             self.completed_option = self.current_option
+            self.failed_option = None
         else:
             raise ValueError
 
@@ -468,7 +471,6 @@ class Block:
 
         self.reward = 0
         self.k = 0
-        self.option_steps = 0
         self.made_decision = False
         self.current_option = None
         self.failed_option = None

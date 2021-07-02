@@ -329,6 +329,7 @@ class HTMAgentRunner:
                     self.animation = True
                     self.agent_pos.clear()
                 # \\\logging\\\
+
                 # Ad hoc terminal state
                 self.current_action = self.agent.make_action(obs)
 
@@ -404,8 +405,9 @@ class HTMAgentRunner:
                 term_draw_options[comp_option, 2] = [0, 0, 200]
 
             if self.agent.hierarchy.output_block.predicted_options is not None:
-                for o in self.agent.hierarchy.output_block.predicted_options:
-                    predicted_action_pattern = np.flatnonzero(self.agent.hierarchy.output_block.sm.patterns[o])
+                predicted_options = self.agent.hierarchy.output_block.sm.get_options_by_id(self.agent.hierarchy.output_block.predicted_options)
+                for o in predicted_options:
+                    predicted_action_pattern = np.flatnonzero(o)
                     self.agent.muscles.set_active_input(predicted_action_pattern)
                     self.agent.muscles.depolarize_muscles()
                     action_pattern = self.agent.muscles.get_depolarized_muscles()
@@ -431,31 +433,34 @@ class HTMAgentRunner:
     def update_option_stats(self):
         option_block = self.agent.hierarchy.blocks[5]
 
-        if self.agent.hierarchy.blocks[5].made_decision:
-            if len(self.option_actions) == 0:
-                self.option_start_pos = self.environment.env.agent.position
+        if option_block.made_decision:
             current_option_id = option_block.current_option
-            if (self.current_option_id != current_option_id) and (len(self.option_actions) != 0):
-                # update stats
-                self.option_end_pos = self.environment.env.agent.position
-                self.option_stat.update(self.current_option_id,
-                                        self.option_start_pos,
-                                        self.option_end_pos,
-                                        self.option_actions,
-                                        self.option_predicted_actions)
-                self.option_actions.clear()
-                self.option_predicted_actions = list()
-            if self.agent.hierarchy.blocks[5].made_decision:
-                predicted_actions = list()
-                if self.agent.hierarchy.output_block.predicted_options is not None:
-                    for o in self.agent.hierarchy.output_block.predicted_options:
-                        predicted_action_pattern = np.flatnonzero(self.agent.hierarchy.output_block.sm.patterns[o])
-                        self.agent.muscles.set_active_input(predicted_action_pattern)
-                        self.agent.muscles.depolarize_muscles()
-                        action_pattern = self.agent.muscles.get_depolarized_muscles()
-                        # convert muscles activation pattern to environment action
-                        a = self.agent.action.get_action(action_pattern)
-                        predicted_actions.append(a)
+            if self.current_option_id != current_option_id:
+                if len(self.option_actions) != 0:
+                    # update stats
+                    self.option_end_pos = self.environment.env.agent.position
+                    self.option_stat.update(self.current_option_id,
+                                            self.option_start_pos,
+                                            self.option_end_pos,
+                                            self.option_actions,
+                                            self.option_predicted_actions)
+                    self.option_actions.clear()
+                    self.option_predicted_actions = list()
+
+                self.option_start_pos = self.environment.env.agent.position
+
+            predicted_actions = list()
+            if self.agent.hierarchy.output_block.predicted_options is not None:
+                predicted_options = self.agent.hierarchy.output_block.sm.get_options_by_id(
+                    self.agent.hierarchy.output_block.predicted_options)
+                for o in predicted_options:
+                    predicted_action_pattern = np.flatnonzero(o)
+                    self.agent.muscles.set_active_input(predicted_action_pattern)
+                    self.agent.muscles.depolarize_muscles()
+                    action_pattern = self.agent.muscles.get_depolarized_muscles()
+                    # convert muscles activation pattern to environment action
+                    a = self.agent.action.get_action(action_pattern)
+                    predicted_actions.append(a)
 
                 self.option_actions.append(self.current_action)
                 self.option_predicted_actions.append(predicted_actions)
@@ -478,6 +483,7 @@ class HTMAgentRunner:
                                             self.option_predicted_actions)
                 self.option_actions.clear()
                 self.option_predicted_actions = list()
+                self.current_option_id = None
 
     def set_food_positions(self, positions, rand=False, sample_size=1):
         if rand:
