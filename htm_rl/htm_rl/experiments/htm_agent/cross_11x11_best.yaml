@@ -1,7 +1,7 @@
 seed: &seed 3121
 levels: 2
 agent: hima
-project: cross_11x11
+project: full_learning
 entity: hauska
 
 #scenario: '../../experiments/htm_agent/scenarios/cross_11x11.yaml'
@@ -15,7 +15,7 @@ vis_options:
 log: true
 
 run_options:
-  n_episodes: 300
+  n_episodes: 500
   log_every_episode: 50
   log_values: True
   log_policy: True

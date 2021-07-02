@@ -97,26 +97,19 @@ class HTMAgent:
             reward = 0
         return reward
 
-    def reinforce(self, reward, is_terminal=False):
+    def reinforce(self, reward):
         """
         Reinforce BasalGanglia.
         :param reward: float:
         Main reward of the environment.
         Rewards for all blocks in hierarchy, they may differ from actual reward.
         List should be length of number of blocks in hierarchy.
-        :param is_terminal:
         :return:
         """
         if self.use_intrinsic_reward:
             reward += (self.theta * self.get_intrinsic_reward())
 
         self.hierarchy.add_rewards([reward] * len(self.hierarchy.blocks))
-
-        if is_terminal:
-            for block in self.hierarchy.blocks:
-                block.reinforce(is_terminal=is_terminal)
-        else:
-            self.hierarchy.output_block.reinforce()
 
     def reset(self):
         self.hierarchy.reset()
@@ -336,6 +329,8 @@ class HTMAgentRunner:
                     self.animation = True
                     self.agent_pos.clear()
                 # \\\logging\\\
+                # Ad hoc terminal state
+                self.current_action = self.agent.make_action(obs)
 
                 self.agent.reset()
 
@@ -346,16 +341,9 @@ class HTMAgentRunner:
                 self.steps += 1
                 self.total_reward += reward
 
-            is_terminal = self.environment.callmethod('is_terminal')
-            if not is_terminal:
-                action = self.agent.make_action(obs)
-            else:
-                self.agent.hierarchy.output_block.made_decision = True
-                action = 0
+            self.current_action = self.agent.make_action(obs)
 
-            self.current_action = action
-
-            self.agent.reinforce(reward, is_terminal=is_terminal)
+            self.agent.reinforce(reward)
 
             # ///logging///
             if draw_options_stats:
@@ -365,7 +353,7 @@ class HTMAgentRunner:
                 self.draw_animation_frame(logger, draw_options, self.agent_pos, self.episode, self.steps)
             # \\\logging\\\
 
-            self.environment.act(action)
+            self.environment.act(self.current_action)
 
             # ///logging///
             if self.terminal_pos_stat is not None:
@@ -384,11 +372,7 @@ class HTMAgentRunner:
             option_block = self.agent.hierarchy.blocks[5]
             c_pos = self.environment.env.agent.position
             c_direction = self.environment.env.agent.view_direction
-
-            if option_block.current_option is not None:
-                c_option_id = option_block.sm.unique_id[option_block.current_option]
-            else:
-                c_option_id = None
+            c_option_id = option_block.current_option
 
             if self.agent.hierarchy.blocks[5].made_decision:
                 if c_option_id != self.last_option_id:
@@ -450,8 +434,7 @@ class HTMAgentRunner:
         if self.agent.hierarchy.blocks[5].made_decision:
             if len(self.option_actions) == 0:
                 self.option_start_pos = self.environment.env.agent.position
-            current_option = option_block.current_option
-            current_option_id = option_block.sm.unique_id[current_option]
+            current_option_id = option_block.current_option
             if (self.current_option_id != current_option_id) and (len(self.option_actions) != 0):
                 # update stats
                 self.option_end_pos = self.environment.env.agent.position
@@ -486,7 +469,7 @@ class HTMAgentRunner:
                 else:
                     last_option = None
                 if last_option is not None:
-                    last_option_id = option_block.sm.unique_id[last_option]
+                    last_option_id = last_option
                     self.option_end_pos = self.environment.env.agent.position
                     self.option_stat.update(last_option_id,
                                             self.option_start_pos,

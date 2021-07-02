@@ -57,14 +57,14 @@ class Striatum:
         :param off_policy: if true, then max_response is used instead of current response
         :return:
         """
-        if (self.previous_response is not None) and (len(self.previous_response) > 0) and (
+        if (self.previous_response is not None) and (len(self.previous_response) > 0) and (self.previous_stimulus is not None) and (
                 len(self.previous_stimulus) > 0):
             value = external_value
             prev_values = np.mean(
                 (self.w_d1[self.previous_response] - self.w_d2[self.previous_response])[:, self.previous_stimulus],
                 axis=-1)
 
-            if (self.current_response is not None) and (len(self.current_response) > 0) and (
+            if (self.current_response is not None) and (len(self.current_response) > 0) and (self.current_stimulus is not None) and (
                     len(self.current_stimulus) > 0):
 
                 if off_policy:

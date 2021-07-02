@@ -258,7 +258,7 @@ class Block:
             self.anomaly = -float('inf')
             self.confidence = float('inf')
 
-            # evaluate feedback boost
+            # Evaluate feedback boost
             self.feedback_boost = self.feedback_boost_range[0] + total_value * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
         else:
             basal_active_columns = list()
@@ -273,7 +273,7 @@ class Block:
             else:
                 basal_active_columns = np.empty(0)
 
-            # form apical input sdr(cells)
+            # Form apical input sdr(cells)
             apical_active_cells = list()
             apical_winner_cells = list()
             shift = 0
@@ -294,7 +294,7 @@ class Block:
             else:
                 apical_winner_cells = np.empty(0)
 
-            # form feedback input sdr(columns)
+            # Form feedback input sdr(columns)
             feedback_active_columns = list()
             shift = 0
 
@@ -312,15 +312,24 @@ class Block:
             if self.sp is not None:
                 self.sp.compute(self.sp_input, self.learn_sp, self.sp_output)
                 basal_active_columns = self.sp_output.sparse
-            # refresh patterns
+            # Refresh patterns
                 if self.learn_sm:
                     self.sm.add(self.sp_output.dense.copy())
             else:
                 if self.learn_sm:
                     self.sm.add(self.sp_input.dense.copy())
-            # model forgetting
+
+            # Reinforce
+            if (self.bg is not None) and (self.k != 0):
+                self.bg.stri.update_response(basal_active_columns)
+                self.bg.force_dopamine(self.reward, k=self.k)
+                self.reward = 0
+                self.k = 0
+
+            # Forgetting
             if self.learn_sm:
                 self.sm.forget()
+
             # TM
             self.tm.set_active_columns(basal_active_columns)
             self.tm.activate_cells(self.learn_tm)
@@ -396,34 +405,21 @@ class Block:
                         boost_predicted_options[indices] += self.feedback_boost
 
                     option_index, option, option_values = self.bg.compute(condition.sparse, options, responses_boost=boost_predicted_options)
-                    self.bg.stri.update_response(option)
                     self.bg.stri.update_stimulus(condition.sparse)
                     norm_option_values = option_values - option_values.min()
                     norm_option_values /= (norm_option_values.max() + 1e-12)
 
                     self.made_decision = True
-                    self.current_option = option_index
+                    self.current_option = self.sm.unique_id[option_index]
                     self.failed_option = None
                     self.completed_option = None
-                    self.predicted_options = indices
+                    self.predicted_options = self.sm.unique_id[indices]
 
                     # jumped off a high level option
                     if not np.isin(option_index, indices):
                         self.feedback_boost = 0
                         for block in self.feedback_in:
-                            if block.k == 0:
-                                block.bg.current_stimulus = None
-                                block.bg.current_response = None
-                            else:
-                                block.bg.stri.update_response(None)
-                                block.bg.stri.update_stimulus(None)
-                            block.reinforce(external_value=option_values[option_index])
                             block.finish_current_option('failed')
-                    else:
-                        for block in self.feedback_in:
-                            # option was just accepted
-                            if block.option_steps == 0:
-                                block.reinforce()
 
                     if return_value:
                         return option, norm_option_values[option_index]
@@ -449,22 +445,9 @@ class Block:
         return self.feedback_in_size, self.apical_in_size, self.basal_in_size
 
     def add_reward(self, reward):
-        if self.made_decision and (self.bg is not None):
+        if self.bg is not None:
             self.reward += (self.gamma ** self.k) * reward
             self.k += 1
-            self.option_steps += 1
-
-    def reinforce(self, external_value=None, is_terminal=False):
-        if self.bg is not None:
-            if (self.k != 0) and self.made_decision:
-                if is_terminal:
-                    self.bg.stri.update_stimulus(None)
-                    self.bg.stri.update_response(None)
-                self.bg.force_dopamine(self.reward, k=self.k)
-                self.k = 0
-                self.reward = 0
-            elif external_value is not None:
-                self.bg.force_dopamine(self.reward, external_value=external_value)
 
     def finish_current_option(self, flag):
         if flag == 'failed':
