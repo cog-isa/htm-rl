@@ -4,7 +4,7 @@ agent: hima
 project: full_learning
 entity: hauska
 
-#scenario: '../../experiments/htm_agent/scenarios/cross_11x11.yaml'
+scenario: '../../experiments/htm_agent/scenarios/cross_11x11.yaml'
 
 vis_options:
   size: 21
@@ -15,7 +15,7 @@ vis_options:
 log: true
 
 run_options:
-  n_episodes: 500
+  n_episodes: 1000
   log_every_episode: 50
   log_values: True
   log_policy: True
@@ -141,6 +141,7 @@ blocks:
     bg:
       alpha: 0.1
       beta: 0.1
+      off_policy: true
     block:
       level: 2
     sm: { }
@@ -297,4 +298,4 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  feedback_boost_range: [0.0, 0.8]
+  feedback_boost_range: [0.0, 0.0]
