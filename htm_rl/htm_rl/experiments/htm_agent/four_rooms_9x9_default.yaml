@@ -112,6 +112,7 @@ blocks:
     bg:
       alpha: 0.01
       beta: 0.01
+      off_policy: true
     block:
       level: 1
     sm: {}
@@ -137,6 +138,7 @@ blocks:
     bg:
       alpha: 0.1
       beta: 0.1
+      off_policy: false
     block:
       level: 2
     sm: { }

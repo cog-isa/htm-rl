@@ -4,12 +4,19 @@ program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:
   seed:
-    values: [4234, 3342, 23423]
+    values: [42334, 23342, 263423]
   environment.seed:
     values:
-      - 333937
-      - 453572
-      - 271454
+      - 335363
+      - 4512341
+      - 242131
+  block_default.feedback_boost_range:
+    values:
+      - [0.0, 0.0]
+      - [0.0, 0.2]
+      - [0.0, 0.5]
+      - [0.0, 1.0]
+      - [0.0, 1.5]
 
 command:
   - ${env}

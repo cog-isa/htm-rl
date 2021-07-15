@@ -1,0 +1,31 @@
+project: cross_policy
+entity: hauska
+program: ../../agents/htm/htm_agent.py
+method: grid
+parameters:
+  seed:
+    values: [33312, 90893, 887463]
+  environment.seed:
+    values:
+      - 423111
+      - 998932
+      - 55566
+  block_default.feedback_boost_range:
+    values:
+      - [0.0, 0.7]
+  blocks.1.bg.off_policy:
+    values:
+      - true
+      - false
+  blocks.3.bg.off_policy:
+    values:
+      - true
+      - false
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - cross_11x11_best
+  - ${args}
+

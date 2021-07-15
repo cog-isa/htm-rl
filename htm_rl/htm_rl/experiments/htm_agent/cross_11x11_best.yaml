@@ -115,7 +115,7 @@ blocks:
     bg:
       alpha: 0.01
       beta: 0.01
-      off_policy: true
+      off_policy: false
     block:
       level: 1
     sm: {}
@@ -203,7 +203,7 @@ hierarchy:
 
     {
       'basal_in': [ 3 ],
-      'apical_in': [ 2 ],
+      'apical_in': [ 4 ],
       'feedback_in': [ ],
       'basal_out': [ ],
       'apical_out': [ 4 ],
@@ -298,4 +298,4 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  feedback_boost_range: [0.0, 0.0]
+  feedback_boost_range: [0.0, 0.8]

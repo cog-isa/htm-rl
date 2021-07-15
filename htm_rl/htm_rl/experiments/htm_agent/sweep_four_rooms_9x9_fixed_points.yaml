@@ -10,10 +10,10 @@ parameters:
       - 333937
       - 453572
       - 271454
-  block_default.feedback_boost_range:
-    values:
-      - [0.0, 0.0]
-      - [0.0, 0.8]
+#  block_default.feedback_boost_range:
+#    values:
+#      - [0.0, 0.0]
+#      - [0.0, 0.8]
 
 command:
   - ${env}
