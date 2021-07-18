@@ -215,14 +215,24 @@ class HTMAgentRunner:
         self.option_stat = OptionVis(self.environment.env.shape, **config['vis_options'])
         self.option_start_pos = None
         self.option_end_pos = None
-
+        self.last_options_usage = dict()
+        
+        self.n_blocks = len(self.agent.hierarchy.blocks)
+        self.block_metrics = {'anomaly_threshold': [0]*self.n_blocks,
+                              'd_anomaly': [0] * self.n_blocks,
+                              'confidence_threshold': [0]*self.n_blocks,
+                              'da_1lvl': 0,
+                              'dda_1lvl': 0,
+                              'da_2lvl': 0,
+                              'dda_2lvl': 0}
         self.seed = seed
         self.rng = random.Random(self.seed)
 
     def run_episodes(self, n_episodes, train_patterns=True, logger=None, log_values=False, log_policy=False,
                      log_every_episode=50,
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
-                     opt_threshold=0, log_option_values=False, log_option_policy=False):
+                     opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
+                     log_td_error=False, log_anomaly=False, log_confidence=False):
         self.total_reward = 0
         self.steps = 0
         self.episode = 0
@@ -265,11 +275,31 @@ class HTMAgentRunner:
                              },
                             step=self.episode)
 
+                    if log_options_usage:
+                        options_usage_gain = self.get_options_usage_gain()
+                        logger.log({f"option_{key}_usage": value for key, value in options_usage_gain.items()}, step=self.episode)
+                        logger.log({'total_options_usage': sum(options_usage_gain.values())}, step=self.episode)
+                        self.update_options_usage()
+
+                    if log_td_error:
+                        logger.log({'da_1lvl': self.block_metrics['da_1lvl'], 'da_2lvl': self.block_metrics['da_2lvl'],
+                                    'dda_1lvl': self.block_metrics['dda_1lvl'], 'dda_2lvl': self.block_metrics['dda_2lvl']}, step=self.episode)
+                    if log_anomaly:
+                        anomaly_th = {f"anomaly_th_block{block_id}": an for block_id, an in enumerate(self.block_metrics['anomaly_threshold'])}
+                        d_anomaly = {f"d_anomaly_block{block_id}": an for block_id, an in enumerate(self.block_metrics['d_anomaly'])}
+                        logger.log(anomaly_th, step=self.episode)
+                        logger.log(d_anomaly, step=self.episode)
+                    if log_confidence:
+                        confidence_th = {f"confidence_th_block{block_id}": an for block_id, an in enumerate(self.block_metrics['confidence_threshold'])}
+                        logger.log(confidence_th, step=self.episode)
+                    self.reset_block_metrics()
+
                 if ((self.episode % log_every_episode) == 0) and (logger is not None) and (self.episode > 0):
                     if draw_options_stats:
                         self.option_stat.draw_options(logger, self.episode, threshold=opt_threshold,
                                                       obstacle_mask=self.environment.env.entities['obstacle'].mask)
                         self.option_stat.clear_stats()
+                        self.last_options_usage = dict()
                     if log_terminal_stat and (self.terminal_pos_stat is not None):
                         logger.log(dict([(str(x[0]), x[1]) for x in self.terminal_pos_stat.items()]), step=self.episode)
                     if log_values or log_policy:
@@ -347,6 +377,8 @@ class HTMAgentRunner:
             self.agent.reinforce(reward)
 
             # ///logging///
+            self.update_block_metrics()
+            
             if draw_options_stats:
                 self.update_option_stats()
 
@@ -485,10 +517,49 @@ class HTMAgentRunner:
                 self.option_predicted_actions = list()
                 self.current_option_id = None
 
+    def get_options_usage_gain(self):
+        options_usage_gain = dict()
+        for id_, stats in self.option_stat.options.items():
+            if id_ in self.last_options_usage.keys():
+                last_value = self.last_options_usage[id_]
+            else:
+                last_value = 0
+            options_usage_gain[id_] = stats['n_uses'] - last_value
+        return options_usage_gain
+
+    def update_options_usage(self):
+        last_options_usage = dict()
+        for id_, stats in self.option_stat.options.items():
+            last_options_usage[id_] = stats['n_uses']
+        self.last_options_usage = last_options_usage
+
+    def update_block_metrics(self):
+        for i, block in enumerate(self.agent.hierarchy.blocks):
+            self.block_metrics['anomaly_threshold'][i] = self.block_metrics['anomaly_threshold'][i] + (block.anomaly_threshold - self.block_metrics['anomaly_threshold'][i]) / (self.steps + 1)
+            self.block_metrics['d_anomaly'][i] = self.block_metrics['d_anomaly'][i] + (block.d_anomaly - self.block_metrics['d_anomaly'][i]) / (self.steps + 1)
+            self.block_metrics['confidence_threshold'][i] = self.block_metrics['confidence_threshold'][i] + (block.confidence_threshold - self.block_metrics['confidence_threshold'][i]) / (self.steps + 1)
+
+        self.block_metrics['da_1lvl'] = self.block_metrics['da_1lvl'] + (self.agent.hierarchy.output_block.da - self.block_metrics['da_1lvl']) / (self.steps + 1)
+        self.block_metrics['dda_1lvl'] = self.block_metrics['dda_1lvl'] + (self.agent.hierarchy.output_block.dda - self.block_metrics['dda_1lvl']) / (self.steps + 1)
+        self.block_metrics['da_2lvl'] = self.block_metrics['da_2lvl'] + (self.agent.hierarchy.blocks[5].da - self.block_metrics['da_2lvl']) / (self.steps + 1)
+        self.block_metrics['dda_2lvl'] = self.block_metrics['dda_2lvl'] + (self.agent.hierarchy.blocks[5].dda - self.block_metrics['dda_2lvl']) / (self.steps + 1)
+
+    def reset_block_metrics(self):
+        self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
+                              'd_anomaly': [0] * self.n_blocks,
+                              'confidence_threshold': [0] * self.n_blocks,
+                              'da_1lvl': 0,
+                              'dda_1lvl': 0,
+                              'da_2lvl': 0,
+                              'dda_2lvl': 0}
+
     def set_food_positions(self, positions, rand=False, sample_size=1):
         if rand:
             positions = self.rng.sample(positions, sample_size)
         self.environment.env.modules['food'].generator.positions = positions
+
+    def set_feedback_boost_range(self, boost):
+        self.agent.hierarchy.output_block.feedback_boost_range = boost
 
 
 class Scenario:
@@ -528,7 +599,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_rooms_9x9_fixed_points'
+        default_config_name = 'cross_11x11_best'
     with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 

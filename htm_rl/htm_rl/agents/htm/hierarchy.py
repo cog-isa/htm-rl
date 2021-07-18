@@ -1,4 +1,5 @@
 import numpy as np
+from math import pi
 from htm.bindings.sdr import SDR
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm.bindings.algorithms import SpatialPooler
@@ -127,7 +128,10 @@ class Block:
                  level=None,
                  predicted_boost=0.2,
                  feedback_boost_range=None,
-                 gamma=0.9):
+                 gamma=0.9,
+                 sm_da=0,
+                 sm_dda=0,
+                 sm_d_anomaly=0):
         
         self.tm = tm
         self.sp = sp
@@ -162,6 +166,14 @@ class Block:
         self.confidence = 1
         self.anomaly_threshold = 0
         self.confidence_threshold = 0
+
+        self.da = 0
+        self.dda = 0
+        self.sm_da = sm_da
+        self.sm_dda = sm_dda
+
+        self.d_anomaly = 0
+        self.sm_d_anomaly = sm_d_anomaly
 
         self.should_return_exec_predictions = False
         self.should_return_apical_predictions = False
@@ -261,7 +273,7 @@ class Block:
             self.confidence = float('inf')
 
             # Evaluate feedback boost
-            self.feedback_boost = self.feedback_boost_range[0] + total_value * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
+            self.feedback_boost = self.feedback_boost_range[0] + total_value * self.d_anomaly * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
         else:
             basal_active_columns = list()
             shift = 0
@@ -327,6 +339,9 @@ class Block:
                 self.bg.force_dopamine(self.reward, k=self.k)
                 self.reward = 0
                 self.k = 0
+                prev_da = self.da
+                self.da = self.da * self.sm_da + np.power(self.bg.stri.error, 2).flatten().sum() * (1 - self.sm_da)
+                self.dda = self.dda * self.sm_dda + (self.da - prev_da) * (1 - self.sm_dda)
 
             # Forgetting
             if self.learn_sm:
@@ -351,6 +366,14 @@ class Block:
 
             self.confidence = self.tm.confidence[-1]
             self.confidence_threshold = self.tm.confidence_threshold
+
+            d_anomaly = self.confidence - self.confidence_threshold
+            if d_anomaly < 0:
+                d_anomaly = 1
+            else:
+                d_anomaly = 0
+
+            self.d_anomaly = self.d_anomaly * self.sm_d_anomaly + (1 - self.sm_d_anomaly) * d_anomaly
 
             self.feedback_in_pattern = feedback_active_columns
             self.apical_in_pattern = apical_active_cells
@@ -520,6 +543,11 @@ class InputBlock:
         self.bg = None
         self.tm = None
         self.sp = None
+        self.anomaly = 0
+        self.anomaly_threshold = 0
+        self.d_anomaly = 0
+        self.confidence = 0
+        self.confidence_threshold = 0
 
     def __str__(self):
         return f"InputBlock_{self.id}"
