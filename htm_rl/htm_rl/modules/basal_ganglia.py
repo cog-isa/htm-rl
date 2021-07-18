@@ -22,6 +22,7 @@ class Striatum:
         self.alpha = alpha
         self.beta = beta
 
+        self.error = 0
         self.values = None
         self.previous_stimulus = None
         self.previous_response = None
@@ -78,6 +79,7 @@ class Striatum:
                 value = np.median(values)
 
             deltas = (reward / len(self.previous_response) + (self.discount_factor ** k) * value) - prev_values
+            self.error = deltas
 
             self.w_d1[self.previous_response.reshape((-1, 1)), self.previous_stimulus] += (
                     self.alpha * deltas).reshape((-1, 1))
