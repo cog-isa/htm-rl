@@ -131,7 +131,10 @@ class Block:
                  gamma=0.9,
                  sm_da=0,
                  sm_dda=0,
-                 sm_d_anomaly=0):
+                 sm_freq=0,
+                 d_an_th=0,
+                 d_cn_th=0,
+                 max_freq_decay=0.99):
         
         self.tm = tm
         self.sp = sp
@@ -162,18 +165,26 @@ class Block:
         self.apical_out = list()
         self.feedback_out = list()
 
+        self.d_an_th = d_an_th
+        self.d_cn_th = d_cn_th
+
         self.anomaly = -1
         self.confidence = 1
         self.anomaly_threshold = 0
         self.confidence_threshold = 0
+        self.d_an = 0
+        self.d_cn = 0
 
         self.da = 0
         self.dda = 0
         self.sm_da = sm_da
         self.sm_dda = sm_dda
 
-        self.d_anomaly = 0
-        self.sm_d_anomaly = sm_d_anomaly
+        self.freq = 0.1
+        self.max_freq = 0.1
+        self.max_freq_decay = max_freq_decay
+        self.sm_freq = sm_freq
+        self.boost_modulation = 1
 
         self.should_return_exec_predictions = False
         self.should_return_apical_predictions = False
@@ -236,8 +247,8 @@ class Block:
 
                 self.tm.inactivate_exec_dendrites()
 
-            self.anomaly = -float('inf')
-            self.confidence = float('inf')
+            self.d_an = 0
+            self.d_cn = 0
         elif add_exec:
             self.should_return_exec_predictions = True
             feedback_active_columns = list()
@@ -269,11 +280,11 @@ class Block:
             # if self.tm.exec_predictive_cells.size == 0:
             #     self.should_return_apical_predictions = True
 
-            self.anomaly = -float('inf')
-            self.confidence = float('inf')
+            self.d_an = 0
+            self.d_cn = 0
 
             # Evaluate feedback boost
-            self.feedback_boost = self.feedback_boost_range[0] + total_value * self.d_anomaly * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
+            self.feedback_boost = self.feedback_boost_range[0] + total_value * self.boost_modulation * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
         else:
             basal_active_columns = list()
             shift = 0
@@ -354,6 +365,8 @@ class Block:
             self.anomaly = self.tm.anomaly[-1]
             self.anomaly_threshold = self.tm.anomaly_threshold
 
+            self.d_an = (self.anomaly - self.anomaly_threshold)/(self.anomaly_threshold + 1e-12)
+
             self.tm.set_active_apical_cells(apical_active_cells)
             self.tm.set_winner_apical_cells(apical_winner_cells)
             self.tm.set_active_feedback_columns(feedback_active_columns)
@@ -367,13 +380,17 @@ class Block:
             self.confidence = self.tm.confidence[-1]
             self.confidence_threshold = self.tm.confidence_threshold
 
-            d_anomaly = self.confidence - self.confidence_threshold
-            if d_anomaly < 0:
-                d_anomaly = 1
-            else:
-                d_anomaly = 0
+            self.d_cn = (self.confidence - self.confidence_threshold)/(self.confidence_threshold + 1e-12)
 
-            self.d_anomaly = self.d_anomaly * self.sm_d_anomaly + (1 - self.sm_d_anomaly) * d_anomaly
+            fired = (self.d_an < -self.d_an_th) and (self.d_cn < - self.d_cn_th)
+            self.freq = self.freq * self.sm_freq + int(fired) * (1 - self.sm_freq)
+
+            if self.freq > self.max_freq:
+                self.max_freq = self.freq
+            else:
+                self.max_freq *= self.max_freq_decay
+
+            self.boost_modulation = self.freq/(self.max_freq + 1e-12)
 
             self.feedback_in_pattern = feedback_active_columns
             self.apical_in_pattern = apical_active_cells
@@ -545,9 +562,14 @@ class InputBlock:
         self.sp = None
         self.anomaly = 0
         self.anomaly_threshold = 0
-        self.d_anomaly = 0
         self.confidence = 0
         self.confidence_threshold = 0
+        self.d_an = 0
+        self.d_cn = 0
+        self.d_an_th = 0
+        self.d_cn_th = 0
+        self.freq = 0
+        self.boost_modulation = 1
 
     def __str__(self):
         return f"InputBlock_{self.id}"
@@ -654,11 +676,11 @@ class Hierarchy:
         else:
             block.compute(**kwargs)
 
-        if (block.anomaly > block.anomaly_threshold) and (block.confidence >= block.confidence_threshold):
+        if (block.d_an > block.d_an_th) and (block.d_cn >= - block.d_cn_th):
             tasks = zip(block.basal_out, [None]*len(block.basal_out))
             self.queue.append((block, {'learn_exec': True}))
             self.queue.extend(tasks)
-        elif block.confidence < block.confidence_threshold:
+        elif block.d_cn < -block.d_cn_th:
             self.queue.append((block, {'add_exec': True}))
             # end of an option
             if block.anomaly <= block.anomaly_threshold:

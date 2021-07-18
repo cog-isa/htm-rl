@@ -1,10 +1,10 @@
 seed: &seed 3121
 levels: 2
 agent: hima
-project: full_learning
+project: cross_boost_modulation
 entity: hauska
 
-scenario: '../../experiments/htm_agent/scenarios/cross_11x11.yaml'
+scenario: '../../experiments/htm_agent/scenarios/cross_11x11_feedback_boost.yaml'
 
 vis_options:
   size: 21
@@ -21,6 +21,11 @@ run_options:
   log_policy: True
   log_option_values: True
   log_option_policy: True
+  log_options_usage: True
+  log_td_error: True
+  log_anomaly: True
+  log_confidence: True
+  log_boost_modulation: True
   train_patterns: True
   log_segments: False
   draw_options: True
@@ -298,4 +303,10 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  feedback_boost_range: [0.0, 0.8]
+  feedback_boost_range: [0.0, 0.7]
+  sm_da: 0.9
+  sm_dda: 0.9
+  sm_freq: 0.9
+  d_an_th: 0.1
+  d_cn_th: 0.1
+  max_freq_decay: 0.99

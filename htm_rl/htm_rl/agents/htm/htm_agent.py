@@ -219,8 +219,8 @@ class HTMAgentRunner:
         
         self.n_blocks = len(self.agent.hierarchy.blocks)
         self.block_metrics = {'anomaly_threshold': [0]*self.n_blocks,
-                              'd_anomaly': [0] * self.n_blocks,
                               'confidence_threshold': [0]*self.n_blocks,
+                              'boost_modulation': [0]*self.n_blocks,
                               'da_1lvl': 0,
                               'dda_1lvl': 0,
                               'da_2lvl': 0,
@@ -232,7 +232,7 @@ class HTMAgentRunner:
                      log_every_episode=50,
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
                      opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
-                     log_td_error=False, log_anomaly=False, log_confidence=False):
+                     log_td_error=False, log_anomaly=False, log_confidence=False, log_boost_modulation=False):
         self.total_reward = 0
         self.steps = 0
         self.episode = 0
@@ -286,12 +286,15 @@ class HTMAgentRunner:
                                     'dda_1lvl': self.block_metrics['dda_1lvl'], 'dda_2lvl': self.block_metrics['dda_2lvl']}, step=self.episode)
                     if log_anomaly:
                         anomaly_th = {f"anomaly_th_block{block_id}": an for block_id, an in enumerate(self.block_metrics['anomaly_threshold'])}
-                        d_anomaly = {f"d_anomaly_block{block_id}": an for block_id, an in enumerate(self.block_metrics['d_anomaly'])}
                         logger.log(anomaly_th, step=self.episode)
-                        logger.log(d_anomaly, step=self.episode)
                     if log_confidence:
                         confidence_th = {f"confidence_th_block{block_id}": an for block_id, an in enumerate(self.block_metrics['confidence_threshold'])}
                         logger.log(confidence_th, step=self.episode)
+                    if log_boost_modulation:
+                        boost_modulation = {f"boost_modulation_block{block_id}": x for block_id, x in
+                                                enumerate(self.block_metrics['boost_modulation'])}
+                        logger.log(boost_modulation, step=self.episode)
+
                     self.reset_block_metrics()
 
                 if ((self.episode % log_every_episode) == 0) and (logger is not None) and (self.episode > 0):
@@ -536,8 +539,8 @@ class HTMAgentRunner:
     def update_block_metrics(self):
         for i, block in enumerate(self.agent.hierarchy.blocks):
             self.block_metrics['anomaly_threshold'][i] = self.block_metrics['anomaly_threshold'][i] + (block.anomaly_threshold - self.block_metrics['anomaly_threshold'][i]) / (self.steps + 1)
-            self.block_metrics['d_anomaly'][i] = self.block_metrics['d_anomaly'][i] + (block.d_anomaly - self.block_metrics['d_anomaly'][i]) / (self.steps + 1)
             self.block_metrics['confidence_threshold'][i] = self.block_metrics['confidence_threshold'][i] + (block.confidence_threshold - self.block_metrics['confidence_threshold'][i]) / (self.steps + 1)
+            self.block_metrics['boost_modulation'][i] = self.block_metrics['boost_modulation'][i] + (block.boost_modulation - self.block_metrics['boost_modulation'][i]) / (self.steps + 1)
 
         self.block_metrics['da_1lvl'] = self.block_metrics['da_1lvl'] + (self.agent.hierarchy.output_block.da - self.block_metrics['da_1lvl']) / (self.steps + 1)
         self.block_metrics['dda_1lvl'] = self.block_metrics['dda_1lvl'] + (self.agent.hierarchy.output_block.dda - self.block_metrics['dda_1lvl']) / (self.steps + 1)
@@ -546,8 +549,8 @@ class HTMAgentRunner:
 
     def reset_block_metrics(self):
         self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
-                              'd_anomaly': [0] * self.n_blocks,
                               'confidence_threshold': [0] * self.n_blocks,
+                              'boost_modulation': [0] * self.n_blocks,
                               'da_1lvl': 0,
                               'dda_1lvl': 0,
                               'da_2lvl': 0,
