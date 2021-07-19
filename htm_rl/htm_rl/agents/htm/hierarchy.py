@@ -1,5 +1,5 @@
 import numpy as np
-from math import pi
+from math import log1p
 from htm.bindings.sdr import SDR
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm.bindings.algorithms import SpatialPooler
@@ -131,10 +131,10 @@ class Block:
                  gamma=0.9,
                  sm_da=0,
                  sm_dda=0,
-                 sm_freq=0,
                  d_an_th=0,
                  d_cn_th=0,
-                 max_freq_decay=0.99):
+                 max_dda_decay=0.99,
+                 sm_max_dda=0.95):
         
         self.tm = tm
         self.sp = sp
@@ -177,13 +177,12 @@ class Block:
 
         self.da = 0
         self.dda = 0
+        self.max_dda = 0
         self.sm_da = sm_da
         self.sm_dda = sm_dda
+        self.max_dda_decay = max_dda_decay
+        self.sm_max_dda = sm_max_dda
 
-        self.freq = 0.1
-        self.max_freq = 0.1
-        self.max_freq_decay = max_freq_decay
-        self.sm_freq = sm_freq
         self.boost_modulation = 1
 
         self.should_return_exec_predictions = False
@@ -353,6 +352,10 @@ class Block:
                 prev_da = self.da
                 self.da = self.da * self.sm_da + np.power(self.bg.stri.error, 2).flatten().sum() * (1 - self.sm_da)
                 self.dda = self.dda * self.sm_dda + (self.da - prev_da) * (1 - self.sm_dda)
+                if abs(self.dda) > self.max_dda:
+                    self.max_dda = self.max_dda * self.sm_max_dda + log1p(abs(self.dda)) * (1 - self.sm_max_dda)
+                else:
+                    self.max_dda *= self.max_dda_decay
 
             # Forgetting
             if self.learn_sm:
@@ -382,15 +385,7 @@ class Block:
 
             self.d_cn = (self.confidence - self.confidence_threshold)/(self.confidence_threshold + 1e-12)
 
-            fired = (self.d_an < -self.d_an_th) and (self.d_cn < - self.d_cn_th)
-            self.freq = self.freq * self.sm_freq + int(fired) * (1 - self.sm_freq)
-
-            if self.freq > self.max_freq:
-                self.max_freq = self.freq
-            else:
-                self.max_freq *= self.max_freq_decay
-
-            self.boost_modulation = self.freq/(self.max_freq + 1e-12)
+            self.boost_modulation = min(log1p(abs(self.dda)) / (self.max_dda + 1e-12), 1.0)
 
             self.feedback_in_pattern = feedback_active_columns
             self.apical_in_pattern = apical_active_cells
