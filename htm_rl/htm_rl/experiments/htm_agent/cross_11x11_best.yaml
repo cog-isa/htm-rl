@@ -304,9 +304,14 @@ block_default:
   gamma: 0.997
   predicted_boost: 0.0
   feedback_boost_range: [0.0, 1.0]
+  modulation: true
   sm_da: 0.9
   sm_dda: 0.995
   d_an_th: 0.1
   d_cn_th: 0.1
-  max_dda_decay: 0.999
-  sm_max_dda: 0.997
+  sm_reward: 0.995
+  sm_max_reward: 0.997
+  max_reward_decay: 0.999
+  min_reward_decay: 0.999
+  sm_bm_inc: 0.7
+  sm_bm_dec: 0.998

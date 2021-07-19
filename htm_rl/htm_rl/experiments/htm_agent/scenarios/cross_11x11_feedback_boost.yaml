@@ -4,7 +4,7 @@
     positions: [[8, 5], [2, 5], [5, 8], [5, 2]]
     rand: true
     sample_size: 1
-#- condition: ['episode', 599]
-#  action: 'set_feedback_boost_range'
-#  params:
-#    boost: [0, 0]
+- condition: ['episode', 599]
+  action: 'set_feedback_boost_range'
+  params:
+    boost: [0, 0]

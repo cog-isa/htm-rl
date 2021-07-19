@@ -133,8 +133,13 @@ class Block:
                  sm_dda=0,
                  d_an_th=0,
                  d_cn_th=0,
-                 max_dda_decay=0.99,
-                 sm_max_dda=0.95):
+                 sm_reward=0,
+                 max_reward_decay=0.99,
+                 sm_max_reward=0.95,
+                 min_reward_decay=0.99,
+                 sm_bm_inc=0.9,
+                 sm_bm_dec=0.999,
+                 modulation=True):
         
         self.tm = tm
         self.sp = sp
@@ -177,13 +182,21 @@ class Block:
 
         self.da = 0
         self.dda = 0
-        self.max_dda = 0
         self.sm_da = sm_da
         self.sm_dda = sm_dda
-        self.max_dda_decay = max_dda_decay
-        self.sm_max_dda = sm_max_dda
 
+        self.mean_reward = 0
+        self.sm_reward = sm_reward
+        self.min_reward = 0
+        self.min_reward_decay = min_reward_decay
+        self.max_reward = 0
+        self.max_reward_decay = max_reward_decay
+        self.sm_max_reward = sm_max_reward
+
+        self.modulation = modulation
         self.boost_modulation = 1
+        self.sm_bm_inc = sm_bm_inc
+        self.sm_bm_dec = sm_bm_dec
 
         self.should_return_exec_predictions = False
         self.should_return_apical_predictions = False
@@ -283,7 +296,12 @@ class Block:
             self.d_cn = 0
 
             # Evaluate feedback boost
-            self.feedback_boost = self.feedback_boost_range[0] + total_value * self.boost_modulation * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
+            if self.modulation:
+                boost_modulation = self.boost_modulation
+            else:
+                boost_modulation = 1
+
+            self.feedback_boost = self.feedback_boost_range[0] + total_value * boost_modulation * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
         else:
             basal_active_columns = list()
             shift = 0
@@ -347,15 +365,23 @@ class Block:
             if (self.bg is not None) and (self.k != 0):
                 self.bg.stri.update_response(basal_active_columns)
                 self.bg.force_dopamine(self.reward, k=self.k)
+
+                self.mean_reward = self.mean_reward * self.sm_reward + self.reward * (1 - self.sm_reward)
+                if self.mean_reward > self.max_reward:
+                    self.max_reward = self.max_reward * self.sm_max_reward + self.mean_reward * (1 - self.sm_max_reward)
+                else:
+                    self.max_reward *= self.max_reward_decay
+
+                if self.mean_reward < self.min_reward:
+                    self.min_reward = self.mean_reward
+                else:
+                    self.min_reward *= self.min_reward_decay
+
                 self.reward = 0
                 self.k = 0
                 prev_da = self.da
                 self.da = self.da * self.sm_da + np.power(self.bg.stri.error, 2).flatten().sum() * (1 - self.sm_da)
                 self.dda = self.dda * self.sm_dda + (self.da - prev_da) * (1 - self.sm_dda)
-                if abs(self.dda) > self.max_dda:
-                    self.max_dda = self.max_dda * self.sm_max_dda + log1p(abs(self.dda)) * (1 - self.sm_max_dda)
-                else:
-                    self.max_dda *= self.max_dda_decay
 
             # Forgetting
             if self.learn_sm:
@@ -385,7 +411,11 @@ class Block:
 
             self.d_cn = (self.confidence - self.confidence_threshold)/(self.confidence_threshold + 1e-12)
 
-            self.boost_modulation = min(log1p(abs(self.dda)) / (self.max_dda + 1e-12), 1.0)
+            boost_modulation = 1 - min((self.mean_reward - self.min_reward) / (self.max_reward + 1e-12), 1.0)
+            if boost_modulation > self.boost_modulation:
+                self.boost_modulation = self.sm_bm_inc * self.boost_modulation + (1 - self.sm_bm_inc) * boost_modulation
+            else:
+                self.boost_modulation = self.sm_bm_dec * self.boost_modulation + (1 - self.sm_bm_dec) * boost_modulation
 
             self.feedback_in_pattern = feedback_active_columns
             self.apical_in_pattern = apical_active_cells
