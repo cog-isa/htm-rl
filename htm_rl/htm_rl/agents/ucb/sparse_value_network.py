@@ -4,6 +4,7 @@ import numpy as np
 from numpy.random._generator import Generator
 
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.common.utils import update_exp_trace, exp_decay
 
 
 class SparseValueNetwork:
@@ -129,35 +130,3 @@ class SparseValueNetwork:
         self.ucb_exploration_factor = exp_decay(self.ucb_exploration_factor)
         self.learning_rate = exp_decay(self.learning_rate)
 
-
-def exp_sum(s, decay, val):
-    return s * decay + val
-
-
-def lin_sum(s, lr, val):
-    return s + lr * (val - s)
-
-
-def update_slice_exp_sum(s, ind, decay, val):
-    s[ind] *= decay
-    s[ind] += val
-
-
-def update_slice_lin_sum(s, ind, lr, val):
-    s[ind] *= (1 - lr)
-    s[ind] += lr * val
-
-
-def update_exp_trace(traces, tr, decay, val=1.):
-    traces *= decay
-    traces[tr] += val
-
-
-def exp_decay(factor_decay_tuple):
-    factor, decay = factor_decay_tuple
-    return factor * decay, decay
-
-
-def modify_factor_tuple(factor_decay_tuple, alpha):
-    factor, decay = factor_decay_tuple
-    return factor * alpha, decay

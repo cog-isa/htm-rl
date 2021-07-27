@@ -4,9 +4,8 @@ from typing import Tuple
 import numpy as np
 from htm import SDR
 
-from htm_rl.agents.ucb.sparse_value_network import exp_decay, update_slice_lin_sum
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import isnone
+from htm_rl.common.utils import isnone, update_slice_lin_sum, exp_decay
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 

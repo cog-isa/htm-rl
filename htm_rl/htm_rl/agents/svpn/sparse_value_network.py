@@ -1,4 +1,5 @@
-from htm_rl.agents.ucb.sparse_value_network import SparseValueNetwork as SVN, lin_sum, exp_sum
+from htm_rl.agents.ucb.sparse_value_network import SparseValueNetwork as SVN
+from htm_rl.common.utils import exp_sum
 from htm_rl.common.sdr import SparseSdr
 
 

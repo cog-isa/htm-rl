@@ -62,7 +62,7 @@ class Experiment:
 
         if self.debug:
             from htm_rl.agents.svpn.debug.dreaming_debugger import DreamingDebugger
-            debugger = DreamingDebugger(self)
+            _ = DreamingDebugger(self)
 
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode()

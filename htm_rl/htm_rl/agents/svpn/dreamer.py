@@ -3,7 +3,7 @@ from typing import Tuple, Optional
 import numpy as np
 
 from htm_rl.agents.svpn.sparse_value_network import SparseValueNetwork
-from htm_rl.agents.ucb.sparse_value_network import modify_factor_tuple
+from htm_rl.common.utils import modify_factor_tuple
 from htm_rl.common.sdr import SparseSdr
 
 

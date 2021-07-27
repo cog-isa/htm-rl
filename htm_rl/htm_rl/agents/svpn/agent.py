@@ -7,9 +7,8 @@ from htm_rl.agents.svpn.dreamer import Dreamer
 from htm_rl.agents.svpn.model import TransitionModel, RewardModel
 from htm_rl.agents.svpn.sparse_value_network import SparseValueNetwork
 from htm_rl.agents.ucb.agent import UcbAgent
-from htm_rl.agents.ucb.sparse_value_network import exp_decay
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import isnone, clip
+from htm_rl.common.utils import isnone, clip, exp_decay
 from htm_rl.envs.env import Env
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
