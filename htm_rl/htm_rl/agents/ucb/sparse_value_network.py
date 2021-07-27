@@ -7,6 +7,139 @@ from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import update_exp_trace, exp_decay
 
 
+class EligibilityTraces:
+    trace_decay: float
+    discount_factor: float
+    E: np.ndarray
+
+    def __init__(self, cells_sdr_size: int, trace_decay: float, discount_factor: float):
+        self.trace_decay = trace_decay
+        self.discount_factor = discount_factor
+        self.E = np.empty(cells_sdr_size, dtype=np.float)
+
+        self.reset()
+
+    # noinspection PyPep8Naming
+    def update(self, sa: SparseSdr):
+        E = self.E
+        lambda_, gamma = self.trace_decay, self.discount_factor
+        update_exp_trace(E, sa, lambda_ * gamma)
+
+    def reset(self):
+        self.E.fill(0.)
+
+
+class QValueNetwork:
+    discount_factor: float
+    learning_rate: Tuple[float, float]
+
+    cell_value: np.ndarray
+    _rng: Generator
+
+    def __init__(
+            self, cells_sdr_size: int, seed: int,
+            discount_factor: float,
+            learning_rate: Tuple[float, float],
+    ):
+        self._rng = np.random.default_rng(seed)
+
+        self.discount_factor = discount_factor
+        self.learning_rate = learning_rate
+
+        # self.cell_value = np.full(cells_sdr_size, 0., dtype=np.float)
+        self.cell_value = self._rng.uniform(-1e-4, 1e-4, size=cells_sdr_size)
+
+    def values(self, xs: List[SparseSdr]) -> np.ndarray:
+        return np.array([self.value(x) for x in xs])
+
+    # noinspection PyPep8Naming
+    def update(self, sa: SparseSdr, reward: float, sa_next: SparseSdr, E_trace):
+        lr, _ = self.learning_rate
+        Q = self.cell_value
+        TD_error = self.td_error(sa, reward, sa_next)
+
+        if E_trace is not None:
+            Q += lr * TD_error * E_trace
+        else:
+            Q[sa] += lr * TD_error
+
+    # noinspection PyPep8Naming
+    def td_error(self, sa: SparseSdr, reward: float, sa_next: SparseSdr):
+        # in general it could be s instead sa and V instead of Q
+        gamma = self.discount_factor
+        R = reward
+        Q = self.cell_value
+
+        Q_sa = Q[sa].mean()
+        Q_sa_next = Q[sa_next].mean()
+
+        TD_error = R + gamma * Q_sa_next - Q_sa
+        return TD_error
+
+    def value(self, x) -> float:
+        if len(x) == 0:
+            return np.infty
+        return self.cell_value[x].mean()
+
+    def decay_learning_factors(self):
+        self.learning_rate = exp_decay(self.learning_rate)
+
+
+class UcbEstimator:
+    visit_decay: float
+    discount_factor: float
+    learning_rate: Tuple[float, float]
+    ucb_exploration_factor: Tuple[float, float]
+
+    # you should not to read it literally cause it's affected by exp MA window
+    cell_visit_count: np.ndarray
+
+    def __init__(
+            self, cells_sdr_size: int,
+            visit_decay: float,
+            discount_factor: float,
+            learning_rate: Tuple[float, float],
+            ucb_exploration_factor: Tuple[float, float]
+    ):
+        self.visit_decay = visit_decay
+        self.discount_factor = discount_factor
+        self.learning_rate = learning_rate
+        self.ucb_exploration_factor = ucb_exploration_factor
+
+        self.cell_visit_count = np.full(cells_sdr_size, 1., dtype=np.float)
+
+    def ucb_terms(self, xs: List[SparseSdr]) -> np.ndarray:
+        total_visits = self.total_visits(xs)
+        return np.array([self.ucb_term(x, total_visits) for x in xs])
+
+    def update(self, sa: SparseSdr):
+        update_exp_trace(self.cell_visit_count, sa, self.visit_decay)
+
+    # noinspection PyPep8Naming
+    def ucb_term(self, x, total_visits) -> float:
+        # NB: T regards to a total options (xs) visits, N - to just a cells in x
+        # but we consider here as if each cell was a single
+        # representative of an option
+        T = total_visits
+        N = self.cell_visit_count[x]
+        cp = self.ucb_exploration_factor[0]
+
+        ucb = cp * np.sqrt(2 * np.log(T + 1) / (N + 1))
+        return ucb.mean()
+
+    def total_visits(self, xs: List[SparseSdr]) -> int:
+        # option visit count: avg visit count of its cells
+        return sum(
+            self.cell_visit_count[x].mean()
+            for x in xs
+            if len(x) > 0
+        )
+
+    def decay_learning_factors(self):
+        self.ucb_exploration_factor = exp_decay(self.ucb_exploration_factor)
+        self.learning_rate = exp_decay(self.learning_rate)
+
+
 class SparseValueNetwork:
     trace_decay: float
     visit_decay: float
