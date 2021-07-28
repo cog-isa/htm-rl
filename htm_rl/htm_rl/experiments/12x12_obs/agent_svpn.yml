@@ -1,30 +1,6 @@
 _type_: svpn
 
-.default_spatial_pooler_params: &default_spatial_pooler_params
-  synapse_permanence_deltas: [ .1, .01 ]
-  connected_permanence_threshold: .5
-  min_activation_threshold: 1
-
-state_sp:
-  <<: *default_spatial_pooler_params
-  output_dilation_ratio: 2.
-  potential_synapses_ratio: .5
-  sparsity: .015
-  boost_strength: .2
-  boost_sliding_window: 2000
-  expected_normal_overlap_frequency: .001
-
-action_encoder:
-  bucket_size: 4
-
-sa_sp:
-  <<: *default_spatial_pooler_params
-  output_dilation_ratio: 3.
-  potential_synapses_ratio: .6
-  sparsity: .015
-  boost_strength: .2
-  boost_sliding_window: 4000
-  expected_normal_overlap_frequency: .001
+sa_encoder: q
 
 sqvn:
   trace_decay: .75

@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 from ast import literal_eval
 from itertools import product
 from pathlib import Path
+from pprint import pprint
 
 import numpy as np
 
@@ -19,6 +20,8 @@ class RunConfig(FileConfig):
     def run(self,):
         self.read_subconfigs('envs', prefix='env')
         self.read_subconfigs('agents', prefix='agent')
+        for key, agent in self['agents'].items():
+            agent.read_subconfig('sa_encoder', 'sa_encoder')
         self.add_overwrite_attributes(self['overwrites'])
 
         env_seeds = self['env_seeds']
@@ -44,26 +47,6 @@ class RunConfig(FileConfig):
                 results = self.aggregate_stats(agent_results)
                 results.print_results()
             print('')
-
-    def read_subconfigs(self, key, prefix):
-        if not isinstance(self[key], dict):
-            # has to be the name/names
-            self[key] = ensure_list(self[key])
-            d = dict()
-            for name in self[key]:
-                d[name] = name
-            self[key] = d
-
-        configs = dict()
-        for name, val in self[key].items():
-            if isinstance(val, dict):
-                continue
-            config_path = self.path.with_name(f'{prefix}_{val}.yml')
-            config = FileConfig(config_path, name=name)
-            configs[name] = config
-
-        self[key] = configs
-        return self[key].keys()
 
     def add_overwrite_attributes(self, overwrites: list[str]):
         i = 0

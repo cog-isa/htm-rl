@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 from ruamel.yaml import YAML, BaseLoader, SafeConstructor
 
-from htm_rl.common.utils import isnone
+from htm_rl.common.utils import isnone, ensure_list
 
 
 class TagMethods:
@@ -74,6 +74,20 @@ class Config(dict):
     def name(self) -> str:
         raise NotImplementedError
 
+    def __contains__(self, item):
+        if not isinstance(item, str):
+            return super(Config, self).__contains__(item)
+
+        keys = item.split('.')
+        if len(keys) == 1:
+            return super(Config, self).__contains__(item)
+        res = self
+        for key in keys:
+            if key not in res:
+                return False
+            res = res[key]
+        return True
+
     def __getitem__(self, item):
         if not isinstance(item, str):
             return super(Config, self).__getitem__(item)
@@ -120,6 +134,34 @@ class FileConfig(Config):
     @property
     def name(self):
         return self._name
+
+    def read_subconfigs(self, key, prefix):
+        self._ensure_dict(key)
+        for name, val in self[key].items():
+            if isinstance(val, dict):
+                continue
+            self.read_subconfig(f'{key}.{name}', prefix)
+
+    def read_subconfig(self, key: str, prefix: str):
+        if key not in self:
+            return
+        val: str = self[key]
+        if isinstance(val, dict):
+            return
+        config_path = self.path.with_name(f'{prefix}_{val}.yml')
+        name = key.split('.')[-1]
+        config = FileConfig(config_path, name=name)
+
+        self[key] = config
+
+    def _ensure_dict(self, key):
+        if not isinstance(self[key], dict):
+            # has to be the name/names
+            self[key] = ensure_list(self[key])
+            d = dict()
+            for name in self[key]:
+                d[name] = name
+            self[key] = d
 
 
 class DictConfig(Config):
