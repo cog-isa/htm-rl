@@ -51,10 +51,6 @@ class QAgent(Agent):
     def name(self):
         return 'q'
 
-    @property
-    def td_lambda(self):
-        return self.E_traces is not None
-
     def act(self, reward: float, state: SparseSdr, first: bool):
         if first:
             self.on_new_episode()
@@ -62,30 +58,26 @@ class QAgent(Agent):
         s = self.sa_encoder.encode_state(state, learn=True)
         actions_sa_sdr = self.sa_encoder.encode_actions(s, learn=True)
 
-        greedy_action = self.choose(actions_sa_sdr)
-        greedy_sa_sdr = actions_sa_sdr[greedy_action]
-
+        action_values = self.Q.values(actions_sa_sdr)
+        greedy_action = np.argmax(action_values)
         if not first:
-            # process feedback
+            # Q-learning step
+            greedy_sa_sdr = actions_sa_sdr[greedy_action]
             self.Q.update(
                 sa=self._current_sa_sdr, reward=reward,
                 sa_next=greedy_sa_sdr,
                 E_traces=self.E_traces.E
             )
 
-        self._current_sa_sdr = greedy_sa_sdr
-        return greedy_action
+        # choose action
+        action = greedy_action
+        if self.exploration_eps is not None and self._rng.random() < self.exploration_eps[0]:
+            action = self._rng.integers(self.n_actions)
+        elif self.softmax_enabled:
+            action = self._rng.choice(self.n_actions, p=softmax(action_values))
 
-    # noinspection PyTypeChecker
-    def choose(self, actions: List[SparseSdr]) -> int:
-        if self.exploration_eps is not None:
-            if self._rng.random() < self.exploration_eps[0]:
-                return self._rng.integers(self.n_actions)
-
-        action_values = self.Q.values(actions)
-        if self.softmax_enabled:
-            return self._rng.choice(self.n_actions, p=softmax(action_values))
-        return np.argmax(action_values)
+        self._current_sa_sdr = actions_sa_sdr[action]
+        return action
 
     def on_new_episode(self):
         self.Q.decay_learning_factors()

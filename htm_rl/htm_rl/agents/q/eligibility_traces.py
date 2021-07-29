@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from htm_rl.common.sdr import SparseSdr
@@ -7,7 +9,7 @@ from htm_rl.common.utils import update_exp_trace
 class EligibilityTraces:
     trace_decay: float
     discount_factor: float
-    E: np.ndarray
+    E: Optional[np.ndarray]
     enabled: bool
 
     def __init__(self, cells_sdr_size: int, trace_decay: float, discount_factor: float):

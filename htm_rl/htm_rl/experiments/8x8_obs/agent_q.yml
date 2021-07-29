@@ -7,8 +7,8 @@ qvn:
   learning_rate: [.1, .995]
 
 eligibility_traces:
-  trace_decay: .0
+  trace_decay: .75
   discount_factor: *discount_factor
 
-#exploration_eps: [.3, .99]
-softmax_enabled: true
+exploration_eps: [.3, .99]
+softmax_enabled: false
