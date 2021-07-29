@@ -2,9 +2,14 @@ _type_: ucb
 
 sa_encoder: q
 
-q_network:
-  trace_decay: .8
+qvn:
+  discount_factor: &discount_factor .97
+  learning_rate: [.1, .995]
+
+eligibility_traces:
+  trace_decay: .75
+  discount_factor: *discount_factor
+
+ucb_estimate:
   visit_decay: .92
-  discount_factor: .95
-  learning_rate: [.04, .995]
   ucb_exploration_factor: [.3, .997]
