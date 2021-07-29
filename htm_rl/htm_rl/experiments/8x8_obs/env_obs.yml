@@ -1,3 +1,4 @@
+_type_: biogwlab
 shape_xy: [8, 8]
 
 actions:
@@ -27,7 +28,7 @@ food:
   n_items: 1
   reward: 1.
 
-agent:
+#agent:
 #  rendering:
 #    what:
 #      - position
