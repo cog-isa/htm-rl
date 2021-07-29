@@ -31,13 +31,16 @@ class QValueNetwork:
         return np.array([self.value(x) for x in xs])
 
     # noinspection PyPep8Naming
-    def update(self, sa: SparseSdr, reward: float, sa_next: SparseSdr, E_trace):
+    def update(
+            self, sa: SparseSdr, reward: float, sa_next: SparseSdr,
+            E_traces: np.ndarray
+    ):
         lr, _ = self.learning_rate
         Q = self.cell_value
         TD_error = self.td_error(sa, reward, sa_next)
 
-        if E_trace is not None:
-            Q += lr * TD_error * E_trace
+        if E_traces is not None:
+            Q += lr * TD_error * E_traces
         else:
             Q[sa] += lr * TD_error
 

@@ -8,19 +8,25 @@ class EligibilityTraces:
     trace_decay: float
     discount_factor: float
     E: np.ndarray
+    enabled: bool
 
     def __init__(self, cells_sdr_size: int, trace_decay: float, discount_factor: float):
         self.trace_decay = trace_decay
         self.discount_factor = discount_factor
-        self.E = np.empty(cells_sdr_size, dtype=np.float)
+        self.enabled = trace_decay == .0
+        if self.enabled:
+            self.E = np.empty(cells_sdr_size, dtype=np.float)
+        else:
+            self.E = None
 
         self.reset()
 
     # noinspection PyPep8Naming
     def update(self, sa: SparseSdr):
-        E = self.E
-        lambda_, gamma = self.trace_decay, self.discount_factor
-        update_exp_trace(E, sa, lambda_ * gamma)
+        if self.enabled:
+            lambda_, gamma = self.trace_decay, self.discount_factor
+            update_exp_trace(self.E, sa, lambda_ * gamma)
 
     def reset(self):
-        self.E.fill(0.)
+        if self.enabled:
+            self.E.fill(0.)

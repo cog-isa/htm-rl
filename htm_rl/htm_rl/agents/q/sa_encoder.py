@@ -50,3 +50,7 @@ class SaEncoder:
         s_a = self.sa_concatenator.concatenate(s, a)
         sa = self.sa_sp.compute(s_a, learn=learn)
         return sa
+
+    @property
+    def output_sdr_size(self):
+        return self.sa_sp.output_sdr_size

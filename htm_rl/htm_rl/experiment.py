@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import trange
 
 from htm_rl.agents.agent import Agent
+from htm_rl.agents.q.agent import QAgent
 from htm_rl.agents.rnd.agent import RndAgent
 from htm_rl.agents.svpn.agent import SvpnAgent
 from htm_rl.agents.ucb.agent import UcbAgent
@@ -100,9 +101,11 @@ class Experiment:
         agent_config: dict = agent_configs[name]
 
         agent_type = agent_config['_type_']
-        agent_config = filter_out_non_passable_items(agent_config)
+        agent_config = filter_out_non_passable_items(agent_config, depth=2)
         if agent_type == 'rnd':
             return RndAgent(seed=seed, env=env)
+        elif agent_type == 'q':
+            return QAgent(seed=seed, env=env, **agent_config)
         elif agent_type == 'ucb':
             return UcbAgent(seed=seed, env=env, **agent_config)
         elif agent_type == 'svpn':
@@ -115,7 +118,7 @@ class Experiment:
         env_config: dict = env_configs[name]
 
         env_type = env_config['_type_']
-        env_config = filter_out_non_passable_items(env_config)
+        env_config = filter_out_non_passable_items(env_config, depth=2)
         if env_type == 'biogwlab':
             return BioGwLabEnvironment(seed=seed, **env_config)
         else:
@@ -167,10 +170,13 @@ class RunStats:
         )
 
 
-def filter_out_non_passable_items(config: dict):
-    """Filters out non-passable args started with '.' and '_'."""
+def filter_out_non_passable_items(config: dict, depth: int):
+    """Recursively filters out non-passable args started with '.' and '_'."""
+    if not isinstance(config, dict) or depth <= 0:
+        return config
+
     return {
-        k: v
+        k: filter_out_non_passable_items(v, depth - 1)
         for k, v in config.items()
         if not (k.startswith('.') or k.startswith('_'))
     }
