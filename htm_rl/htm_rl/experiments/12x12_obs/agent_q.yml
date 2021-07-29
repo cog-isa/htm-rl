@@ -6,9 +6,9 @@ qvn:
   discount_factor: &discount_factor .97
   learning_rate: [.1, .995]
 
-#exploration_strategy:
-
-
 eligibility_traces:
-  trace_decay: .75
+  trace_decay: .0
   discount_factor: *discount_factor
+
+#exploration_eps: [.3, .99]
+softmax_enabled: true

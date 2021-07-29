@@ -1,8 +1,8 @@
 env_seeds:
-#  - 92165
-#  - 711072
-#  - 482614
-#  - 743535
+  - 92165
+  - 711072
+  - 482614
+  - 743535
   - 190368
 #  - 583
 # use it
@@ -15,8 +15,8 @@ env_seeds:
 
 agent_seeds:
   ## better
-#  - 773956
-#  - 654571
+  - 773956
+  - 654571
 # use it
   - 697368
   ## worse
@@ -29,6 +29,7 @@ envs:
   - obs
 
 agents:
+  q: q
   ucb: ucb
   svpn: svpn
   svpn_nd: svpn
