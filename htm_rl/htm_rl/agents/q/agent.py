@@ -1,12 +1,14 @@
 from typing import Optional, List
 
 import numpy as np
+from numpy.random import Generator
 
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.qvn import QValueNetwork
 from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.common.utils import exp_decay
 from htm_rl.envs.env import Env
 
 
@@ -16,7 +18,11 @@ class QAgent(Agent):
     Q: QValueNetwork
     E_traces: Optional[EligibilityTraces]
 
+    exploration_eps: Optional[tuple[float, float]]
+    softmax_enabled: bool
+
     _current_sa_sdr: Optional[SparseSdr]
+    _rng: Generator
 
     def __init__(
             self,
@@ -25,14 +31,20 @@ class QAgent(Agent):
             sa_encoder: dict,
             qvn: dict,
             eligibility_traces: dict = None,
+            exploration_eps: tuple[float, float] = None,
+            softmax_enabled: bool = False
     ):
+        self.n_actions = env.n_actions
         self.sa_encoder = SaEncoder(env, seed, **sa_encoder)
         self.Q = QValueNetwork(self.sa_encoder.output_sdr_size, seed, **qvn)
         self.E_traces = EligibilityTraces(
             self.sa_encoder.output_sdr_size,
             **eligibility_traces
         )
-        self.n_actions = env.n_actions
+        self.exploration_eps = exploration_eps
+        self.softmax_enabled = softmax_enabled
+
+        self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
 
     @property
@@ -66,8 +78,23 @@ class QAgent(Agent):
 
     # noinspection PyTypeChecker
     def choose(self, actions: List[SparseSdr]) -> int:
-        return np.argmax(self.Q.values(actions))
+        if self.exploration_eps is not None:
+            if self._rng.random() < self.exploration_eps[0]:
+                return self._rng.integers(self.n_actions)
+
+        action_values = self.Q.values(actions)
+        if self.softmax_enabled:
+            return self._rng.choice(self.n_actions, p=softmax(action_values))
+        return np.argmax(action_values)
 
     def on_new_episode(self):
         self.Q.decay_learning_factors()
         self.E_traces.reset()
+        if self.exploration_eps is not None:
+            exp_decay(self.exploration_eps)
+
+
+def softmax(x):
+    """Computes softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
