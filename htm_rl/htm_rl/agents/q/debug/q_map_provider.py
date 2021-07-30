@@ -3,26 +3,18 @@ from typing import Optional
 import numpy as np
 
 from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
-from htm_rl.agents.svpn.agent import SvpnAgent
 from htm_rl.agents.rnd.debug.debugger import Debugger
+from htm_rl.agents.q.agent import QAgent
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.experiment import Experiment
 
 
-class AnomalyProvider(Debugger):
-    agent: SvpnAgent
-
-    @property
-    def anomaly(self):
-        return self.agent.sa_transition_model.anomaly
-
-
 # noinspection PyPep8Naming
-class ValueMapProvider(Debugger):
+class QMapProvider(Debugger):
     fill_value: float = 0.
     name_prefix: str = 'position'
 
-    agent: SvpnAgent
+    agent: QAgent
     env: Environment
 
     state_encoding_provider: StateEncodingProvider
@@ -37,26 +29,15 @@ class ValueMapProvider(Debugger):
         self.UCB = None
 
     # noinspection PyProtectedMember
-    def precompute(self, greedy_map: bool = False, ucb_map: bool = False):
+    def precompute(self):
         encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
 
-        self.Q = None
-        self.UCB = None
-        if not greedy_map and not ucb_map:
-            return
-
         shape = self.env.shape + (self.env.n_actions,)
-        if greedy_map:
-            self.Q = np.full(shape, self.fill_value, dtype=np.float)
-        if ucb_map:
-            self.UCB = np.full(shape, self.fill_value, dtype=np.float)
+        self.Q = np.full(shape, self.fill_value, dtype=np.float)
 
-        for position, state in encoding_scheme.items():
-            actions_sa_sdr = self.agent._encode_actions(state, learn=False)
-            if greedy_map:
-                self.Q[position] = self.agent.sqvn.evaluate_options(actions_sa_sdr)
-            if ucb_map:
-                self.UCB[position] = self.agent.sqvn.evaluate_options_ucb_term(actions_sa_sdr)
+        for position, s in encoding_scheme.items():
+            actions_sa_sdr = self.agent.sa_encoder.encode_actions(s, learn=False)
+            self.Q[position] = self.agent.Q.values(actions_sa_sdr)
 
     @staticmethod
     def V(Q) -> np.ndarray:

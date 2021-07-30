@@ -1,7 +1,8 @@
 from htm_rl.agents.svpn.agent import SvpnAgent
-from htm_rl.agents.svpn.debug.debugger import Debugger
-from htm_rl.agents.svpn.debug.providers import ValueMapProvider, EnvMapProvider
-from htm_rl.agents.svpn.debug.trajectory_tracker import TrajectoryTracker
+from htm_rl.agents.rnd.debug.debugger import Debugger
+from htm_rl.agents.svpn.debug.providers import ValueMapProvider
+from htm_rl.agents.rnd.debug.env_map_provider import EnvMapProvider
+from htm_rl.agents.rnd.debug.trajectory_tracker import TrajectoryTracker
 from htm_rl.envs.biogwlab.environment import Environment
 
 from htm_rl.experiment import Experiment

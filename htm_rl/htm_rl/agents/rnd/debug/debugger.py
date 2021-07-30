@@ -30,4 +30,3 @@ class Debugger:
         if self.progress.is_new_episode:
             return f'{self.progress.episode}'
         return f'{self.progress.episode}_{self.progress.step}'
-
