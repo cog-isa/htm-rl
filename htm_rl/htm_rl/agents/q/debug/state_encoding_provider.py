@@ -2,7 +2,7 @@ from typing import Optional
 
 from htm_rl.agents.rnd.debug.agent_state_provider import AgentStateProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
-from htm_rl.agents.svpn.agent import SvpnAgent
+from htm_rl.agents.q.agent import QAgent
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.module import EntityType
@@ -10,7 +10,7 @@ from htm_rl.experiment import Experiment
 
 
 class StateEncodingProvider(Debugger):
-    agent: SvpnAgent
+    agent: QAgent
     env: Environment
 
     position_provider: AgentStateProvider
@@ -30,9 +30,9 @@ class StateEncodingProvider(Debugger):
                     continue
                 position = i, j
                 self.position_provider.overwrite(position)
-                observation = self.env.render()
-                state = self.agent.state_sp.compute(observation, learn=False)
-                encoding_scheme[position] = state
+                state = self.env.render()
+                s = self.agent.sa_encoder.encode_state(state, learn=False)
+                encoding_scheme[position] = s
 
         self.position_provider.restore()
         return encoding_scheme

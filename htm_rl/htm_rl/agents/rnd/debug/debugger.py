@@ -21,6 +21,11 @@ class Debugger:
         inject_debug_tools(self.progress)
 
     @property
+    def _default_env_identifier(self):
+        config = self.experiment.config
+        return f'{config["env_seed"]}'
+
+    @property
     def _default_config_identifier(self) -> str:
         config = self.experiment.config
         return f'{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}'

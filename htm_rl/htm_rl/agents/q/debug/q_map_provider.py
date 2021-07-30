@@ -12,7 +12,7 @@ from htm_rl.experiment import Experiment
 # noinspection PyPep8Naming
 class QMapProvider(Debugger):
     fill_value: float = 0.
-    name_prefix: str = 'position'
+    name_prefix: str = 'Q'
 
     agent: QAgent
     env: Environment
@@ -20,13 +20,11 @@ class QMapProvider(Debugger):
     state_encoding_provider: StateEncodingProvider
 
     Q: Optional[np.ndarray]
-    UCB: Optional[np.ndarray]
 
     def __init__(self, experiment: Experiment):
         super().__init__(experiment)
         self.state_encoding_provider = StateEncodingProvider(experiment)
         self.Q = None
-        self.UCB = None
 
     # noinspection PyProtectedMember
     def precompute(self):

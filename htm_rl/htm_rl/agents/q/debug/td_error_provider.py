@@ -1,10 +1,11 @@
 from htm_rl.agents.rnd.debug.debugger import Debugger
-from htm_rl.agents.svpn.agent import SvpnAgent
+from htm_rl.agents.q.agent import QAgent
 
 
 class TDErrorProvider(Debugger):
-    agent: SvpnAgent
+    agent: QAgent
 
     @property
     def td_error(self):
-        return self.agent.sqvn.TD_error
+        # FIXME
+        return self.agent.TD_error
