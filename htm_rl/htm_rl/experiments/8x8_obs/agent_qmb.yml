@@ -1,0 +1,31 @@
+_type_: qmb
+
+sa_encoder: q
+
+qvn:
+  discount_factor: &discount_factor .97
+  learning_rate: [.1, .995]
+
+eligibility_traces:
+  trace_decay: .75
+  discount_factor: *discount_factor
+
+exploration_eps: [.3, .99]
+softmax_enabled: false
+
+reward_model:
+  learning_rate: [.2, 1.]
+
+transition_model:
+  tm:
+    cells_per_column: 1
+    initial_permanence: .5
+    connected_permanence: .4
+    activation_threshold: .9
+    learning_threshold: .75
+    max_new_synapse_count: 1.
+    max_synapses_per_segment: 1.1
+    predictedSegmentDecrement: .0001
+    permanenceIncrement: .1
+    permanenceDecrement: .03
+    maxSegmentsPerCell: 4

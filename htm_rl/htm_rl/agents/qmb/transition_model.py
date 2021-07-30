@@ -1,31 +1,15 @@
 import pickle
-from typing import Tuple
 
-import numpy as np
 from htm import SDR
 
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import isnone, update_slice_lin_sum, exp_decay
+from htm_rl.common.utils import isnone
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
-
-
-class RewardModel:
-    rewards: np.ndarray
-    learning_rate: Tuple[float, float]
-
-    def __init__(self, shape, learning_rate: Tuple[float, float]):
-        self.learning_rate = learning_rate
-        self.rewards = np.zeros(shape, dtype=np.float)
-
-    def update(self, s: SparseSdr, reward: float):
-        update_slice_lin_sum(self.rewards, s, self.learning_rate[0], reward)
-
-    def decay_learning_factors(self):
-        self.learning_rate = exp_decay(self.learning_rate)
 
 
 class TransitionModel:
     tm: TemporalMemory
+
     anomaly: float
     precision: float
     recall: float
@@ -34,9 +18,7 @@ class TransitionModel:
     _predicted_columns_sdr: SDR   # cached SDR
     _tm_dump: bytes
 
-    def __init__(
-            self, tm: TemporalMemory, collect_anomalies: bool = False
-    ):
+    def __init__(self, tm: TemporalMemory):
         self.tm = tm
         self.precision = 0.
         self.recall = 0.
@@ -47,8 +29,9 @@ class TransitionModel:
 
     def reset(self):
         self.tm.reset()
+        self._predicted_columns_sdr.sparse = []
 
-    def process(self, proximal_input: SparseSdr, learn: bool) -> Tuple[SparseSdr, SparseSdr]:
+    def process(self, proximal_input: SparseSdr, learn: bool) -> tuple[SparseSdr, SparseSdr]:
         """
         Given new piece of proximal input data, processes it by sequentially activating cells
         and then depolarizes them, making prediction about next proximal input.
@@ -129,3 +112,16 @@ class TransitionModel:
         else:
             f_beta_score = (1 + beta**2) * (precision * recall) / (beta**2 * precision + recall)
         self.anomaly = 1. - f_beta_score
+
+
+def make_s_a_transition_model(state_encoder, action_encoder, tm: dict):
+    a_active_bits = action_encoder.output_sdr_size / action_encoder.n_values
+    sa_active_bits = state_encoder.n_active_bits + a_active_bits
+
+    # print(state_encoder.output_sdr_size, state_encoder.n_active_bits, action_encoder.output_sdr_size, a_active_bits)
+    tm = TemporalMemory(
+        n_columns=action_encoder.output_sdr_size + state_encoder.output_sdr_size,
+        n_active_bits=sa_active_bits,
+        **tm
+    )
+    return TransitionModel(tm)

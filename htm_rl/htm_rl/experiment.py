@@ -3,6 +3,7 @@ from tqdm import trange
 
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.q.agent import QAgent
+from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.agents.rnd.agent import RndAgent
 from htm_rl.agents.svpn.agent import SvpnAgent
 from htm_rl.agents.ucb.agent import UcbAgent
@@ -106,6 +107,8 @@ class Experiment:
             return RndAgent(seed=seed, env=env)
         elif agent_type == 'q':
             return QAgent(seed=seed, env=env, **agent_config)
+        elif agent_type == 'qmb':
+            return QModelBasedAgent(seed=seed, env=env, **agent_config)
         elif agent_type == 'ucb':
             return UcbAgent(seed=seed, env=env, **agent_config)
         elif agent_type == 'svpn':

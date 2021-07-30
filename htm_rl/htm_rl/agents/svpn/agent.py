@@ -4,13 +4,13 @@ import numpy as np
 from numpy.random import Generator
 
 from htm_rl.agents.svpn.dreamer import Dreamer
-from htm_rl.agents.svpn.model import TransitionModel, RewardModel
+from htm_rl.agents.qmb.transition_model import TransitionModel, make_s_a_transition_model
+from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.svpn.sparse_value_network import SparseValueNetwork
 from htm_rl.agents.ucb.agent import UcbAgent
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import isnone, clip, exp_decay
 from htm_rl.envs.env import Env
-from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
 class SvpnAgent(UcbAgent):
@@ -44,7 +44,7 @@ class SvpnAgent(UcbAgent):
     ):
         super().__init__(env, seed, **ucb_agent_kwargs)
 
-        self.sa_transition_model = self._make_sa_transition_model(
+        self.sa_transition_model = make_s_a_transition_model(
             self.state_sp, self.action_encoder, tm
         )
         self.reward_model = RewardModel(
@@ -211,18 +211,5 @@ class SvpnAgent(UcbAgent):
         self.reward_model.decay_learning_factors()
         self.sa_transition_model.reset()
         self.episode += 1
-
-    @staticmethod
-    def _make_sa_transition_model(state_encoder, action_encoder, tm_config):
-        a_active_bits = action_encoder.output_sdr_size / action_encoder.n_values
-        sa_active_bits = state_encoder.n_active_bits + a_active_bits
-
-        # print(state_encoder.output_sdr_size, state_encoder.n_active_bits, action_encoder.output_sdr_size, a_active_bits)
-        tm = TemporalMemory(
-            n_columns=action_encoder.output_sdr_size + state_encoder.output_sdr_size,
-            n_active_bits=sa_active_bits,
-            **tm_config
-        )
-        return TransitionModel(tm, collect_anomalies=True)
 
 
