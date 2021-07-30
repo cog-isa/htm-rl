@@ -1,8 +1,8 @@
 import numpy as np
 
-from htm_rl.agents.rnd.debug.debugger import Debugger
-from htm_rl.agents.svpn.debug.providers import AnomalyProvider
+from htm_rl.agents.qmb.debug.anomaly_provider import AnomalyProvider
 from htm_rl.agents.rnd.debug.agent_state_provider import AgentStateProvider
+from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.experiment import Experiment
 
@@ -25,8 +25,9 @@ class AnomalyTracker(Debugger):
         self.agent.set_breakpoint('act', self.on_act)
 
     def on_act(self, agent, act, *args, **kwargs):
+        action = act(*args, **kwargs)
         self.heatmap[self.agent_state_provider.position] += self.anomaly_provider.anomaly
-        act(*args, **kwargs)
+        return action
 
     def reset(self):
         self.heatmap.fill(self.fill_value)

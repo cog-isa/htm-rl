@@ -9,14 +9,6 @@ from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.experiment import Experiment
 
 
-class AnomalyProvider(Debugger):
-    agent: SvpnAgent
-
-    @property
-    def anomaly(self):
-        return self.agent.sa_transition_model.anomaly
-
-
 # noinspection PyPep8Naming
 class ValueMapProvider(Debugger):
     fill_value: float = 0.
