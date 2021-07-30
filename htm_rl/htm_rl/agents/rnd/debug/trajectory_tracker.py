@@ -19,7 +19,7 @@ class TrajectoryTracker(Debugger):
         super(TrajectoryTracker, self).__init__(experiment)
 
         self.agent_state_provider = AgentStateProvider(experiment)
-        self.heatmap = np.full(self.env.shape, self.fill_value, dtype=np.float)
+        self.heatmap = np.full(self.env.shape, self.fill_value, dtype=np.int)
         self.agent.set_breakpoint(act_method_name, self.on_act)
 
     def on_act(self, agent, act, *args, **kwargs):

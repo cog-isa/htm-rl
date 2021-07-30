@@ -63,8 +63,10 @@ class Experiment:
         wandb_run = self.init_wandb_run()
 
         if self.debug:
-            from htm_rl.agents.svpn.debug.dreaming_debugger import DreamingDebugger
-            _ = DreamingDebugger(self)
+            # from htm_rl.agents.svpn.debug.dreaming_debugger import DreamingDebugger
+            # _ = DreamingDebugger(self)
+            from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
+            _ = ModelDebugger(self)
 
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode()

@@ -29,8 +29,8 @@ class ModelDebugger(Debugger):
     def on_end_episode(self, agent, func, *args, **kwargs):
         if self.output_renderer.is_empty:
             self._add_env_map()
-            self._add_value_maps(q=True, v=True, greedy=True, exploration=True, ucb=True)
-            # self.
+            self._add_value_maps(q=True, v=True)
+            self._add_anomaly()
             self._add_trajectory()
             self.output_renderer.flush(
                 f'end_episode_{self._default_config_identifier}_{self._default_progress_identifier}'
@@ -41,7 +41,7 @@ class ModelDebugger(Debugger):
     def _add_anomaly(self):
         an_tr = self.anomaly_tracker
         self.output_renderer.handle_img(
-            an_tr.heatmap, self.an_tr.title, with_value_text=True
+            an_tr.heatmap, an_tr.title, with_value_text=True
         )
         an_tr.reset()
 

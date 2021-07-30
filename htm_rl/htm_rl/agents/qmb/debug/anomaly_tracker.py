@@ -26,7 +26,7 @@ class AnomalyTracker(Debugger):
 
     def on_act(self, agent, act, *args, **kwargs):
         action = act(*args, **kwargs)
-        self.heatmap[self.agent_state_provider.position] += self.anomaly_provider.anomaly
+        self.heatmap[self.agent_state_provider.position] = 1. - self.anomaly_provider.recall
         return action
 
     def reset(self):
