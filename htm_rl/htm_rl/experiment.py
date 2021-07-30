@@ -66,7 +66,7 @@ class Experiment:
             # from htm_rl.agents.svpn.debug.dreaming_debugger import DreamingDebugger
             # _ = DreamingDebugger(self)
             from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
-            _ = ModelDebugger(self)
+            model_debugger = ModelDebugger(self)
 
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode()
@@ -79,6 +79,13 @@ class Experiment:
                     'reward': reward,
                     'elapsed_time': elapsed_time
                 })
+
+        if self.debug:
+            import matplotlib.pyplot as plt
+            anomalies = np.array(model_debugger.anomaly_tracker.anomalies)
+            plt.hist(anomalies)
+            plt.show()
+            print(anomalies.mean())
 
         return train_stats
 
