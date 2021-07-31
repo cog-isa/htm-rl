@@ -15,7 +15,7 @@ class ModelDebugger(Debugger):
     env: Environment
     agent: QModelBasedAgent
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Experiment, images: bool):
         super().__init__(experiment)
 
         self.output_renderer = ImageOutput(experiment.config)
@@ -23,11 +23,12 @@ class ModelDebugger(Debugger):
         self.trajectory_tracker = TrajectoryTracker(experiment)
         self.q_map_provider = QMapProvider(experiment)
         self.anomaly_tracker = AnomalyTracker(experiment)
+        self.images = images
 
         self.progress.set_breakpoint('end_episode', self.on_end_episode)
 
     def on_end_episode(self, agent, func, *args, **kwargs):
-        if self.output_renderer.is_empty:
+        if self.output_renderer.is_empty and self.images:
             self._add_env_map()
             self._add_value_maps(q=True, v=True)
             self._add_anomaly()

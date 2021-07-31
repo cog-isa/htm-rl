@@ -12,3 +12,7 @@ class AnomalyProvider(Debugger):
     @property
     def recall(self):
         return self.agent.sa_transition_model.recall
+
+    @property
+    def reward_anomaly(self):
+        return self.agent.reward_model.reward_anomaly

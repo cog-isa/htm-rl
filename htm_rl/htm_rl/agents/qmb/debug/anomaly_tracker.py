@@ -16,6 +16,7 @@ class AnomalyTracker(Debugger):
     anomaly_provider: AnomalyProvider
     heatmap: np.ndarray
     anomalies: list[float]
+    reward_anomalies: list[float]
 
     def __init__(self, experiment: Experiment):
         super(AnomalyTracker, self).__init__(experiment)
@@ -24,6 +25,7 @@ class AnomalyTracker(Debugger):
         self.anomaly_provider = AnomalyProvider(experiment)
         self.heatmap = np.full(self.env.shape, self.fill_value, dtype=np.float)
         self.anomalies = []
+        self.reward_anomalies = []
         self.agent.set_breakpoint('act', self.on_act)
 
     def on_act(self, agent, act, *args, **kwargs):
@@ -31,6 +33,8 @@ class AnomalyTracker(Debugger):
         anomaly = 1. - self.anomaly_provider.recall
         self.heatmap[self.agent_state_provider.position] = anomaly
         self.anomalies.append(anomaly)
+
+        self.reward_anomalies.append(self.anomaly_provider.reward_anomaly)
         return action
 
     def reset(self):

@@ -99,6 +99,7 @@ class QModelBasedAgent(Agent):
         if self.exploration_eps is not None:
             exp_decay(self.exploration_eps)
         self.sa_transition_model.reset()
+        self.reward_model.decay_learning_factors()
 
 
 def softmax(x):
