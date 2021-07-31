@@ -19,13 +19,13 @@ reward_model:
 transition_model:
   tm:
     cells_per_column: 1
-    initial_permanence: .5
-    connected_permanence: .4
-    activation_threshold: .9
-    learning_threshold: .75
-    max_new_synapse_count: 1.
+    initial_permanence: .55
+    connected_permanence: .5
+    activation_threshold: .7
+    learning_threshold: .3
+    max_new_synapse_count: 1.1
     max_synapses_per_segment: 1.1
-    predictedSegmentDecrement: .0001
+    predictedSegmentDecrement: .001
     permanenceIncrement: .1
-    permanenceDecrement: .03
+    permanenceDecrement: .05
     maxSegmentsPerCell: 4
