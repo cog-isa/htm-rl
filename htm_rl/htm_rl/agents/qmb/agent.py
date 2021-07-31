@@ -8,7 +8,7 @@ from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.qvn import QValueNetwork
 from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
-from htm_rl.agents.qmb.transition_model import TransitionModel, make_s_a_transition_model
+from htm_rl.agents.qmb.transition_model import SsaTransitionModel
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import exp_decay
 from htm_rl.envs.env import Env
@@ -20,7 +20,7 @@ class QModelBasedAgent(Agent):
     Q: QValueNetwork
     E_traces: Optional[EligibilityTraces]
 
-    sa_transition_model: TransitionModel
+    sa_transition_model: SsaTransitionModel
     reward_model: RewardModel
 
     exploration_eps: Optional[tuple[float, float]]
@@ -48,8 +48,8 @@ class QModelBasedAgent(Agent):
             self.sa_encoder.output_sdr_size,
             **eligibility_traces
         )
-        self.sa_transition_model = make_s_a_transition_model(
-            self.sa_encoder.state_sp, self.sa_encoder.action_encoder,
+        self.sa_transition_model = SsaTransitionModel(
+            self.sa_encoder.state_sp, self.sa_encoder.sa_sp,
             **transition_model
         )
         self.reward_model = RewardModel(self.sa_encoder.output_sdr_size, **reward_model)
@@ -90,13 +90,8 @@ class QModelBasedAgent(Agent):
             action = self._rng.choice(self.n_actions, p=softmax(action_values))
 
         self._current_sa_sdr = actions_sa_sdr[action]
-        self.process_transition(s, action, learn_tm=True)
+        self.sa_transition_model.process(s, self._current_sa_sdr, learn=True)
         return action
-
-    def process_transition(self, s, action, learn_tm: bool) -> tuple[SparseSdr, SparseSdr]:
-        a = self.sa_encoder.action_encoder.encode(action)
-        s_a = self.sa_encoder.sa_concatenator.concatenate(s, a)
-        return self.sa_transition_model.process(s_a, learn=learn_tm)
 
     def on_new_episode(self):
         self.Q.decay_learning_factors()
