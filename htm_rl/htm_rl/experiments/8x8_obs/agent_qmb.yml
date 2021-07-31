@@ -14,7 +14,7 @@ exploration_eps: [.3, .99]
 softmax_enabled: false
 
 reward_model:
-  learning_rate: [.1, .995]
+  learning_rate: [1., .995]
 
 transition_model:
   tm:
