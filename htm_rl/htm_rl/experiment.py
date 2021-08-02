@@ -5,7 +5,7 @@ from htm_rl.agents.agent import Agent
 from htm_rl.agents.q.agent import QAgent
 from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.agents.rnd.agent import RndAgent
-from htm_rl.agents.svpn.agent import SvpnAgent
+from htm_rl.agents.dreamer.agent import DreamerAgent
 from htm_rl.agents.ucb.agent import UcbAgent
 from htm_rl.common.utils import timed
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
@@ -118,8 +118,8 @@ class Experiment:
             return QModelBasedAgent(seed=seed, env=env, **agent_config)
         elif agent_type == 'ucb':
             return UcbAgent(seed=seed, env=env, **agent_config)
-        elif agent_type == 'svpn':
-            return SvpnAgent(seed=seed, env=env, **agent_config)
+        elif agent_type == 'dreamer':
+            return DreamerAgent(seed=seed, env=env, **agent_config)
         else:
             raise NameError(agent_type)
 
@@ -170,13 +170,17 @@ class RunStats:
         self.times.append(elapsed_time)
 
     def print_results(self):
-        avg_len = np.array(self.steps).mean()
+        steps = np.array(self.steps)
+        avg_len = steps.mean()
+        last_10_pcnt = steps.shape[0] // 10
+        last10_avg_len = steps[-last_10_pcnt:].mean()
         avg_reward = np.array(self.rewards).mean()
         avg_time = np.array(self.times).mean()
         elapsed = np.array(self.times).sum()
         print(
-            f'AvgLen: {avg_len: .2f}  AvgReward: {avg_reward: .5f}  '
-            f'AvgTime: {avg_time: .6f}  TotalTime: {elapsed: .6f}'
+            f'Len10: {last10_avg_len: .2f}  Len: {avg_len: .2f}  '
+            f'R: {avg_reward: .5f}  '
+            f'EpT: {avg_time: .6f}  TotT: {elapsed: .6f}'
         )
 
 

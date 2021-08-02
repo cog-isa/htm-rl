@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
-from htm_rl.agents.svpn.agent import SvpnAgent
+from htm_rl.agents.dreamer.agent import DreamerAgent
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.experiment import Experiment
@@ -14,7 +14,7 @@ class ValueMapProvider(Debugger):
     fill_value: float = 0.
     name_prefix: str = 'position'
 
-    agent: SvpnAgent
+    agent: DreamerAgent
     env: Environment
 
     state_encoding_provider: StateEncodingProvider

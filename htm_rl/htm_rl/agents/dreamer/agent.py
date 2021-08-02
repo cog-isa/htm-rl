@@ -3,27 +3,37 @@ from typing import Dict, Tuple, Optional
 import numpy as np
 from numpy.random import Generator
 
-from htm_rl.agents.svpn.dreamer import Dreamer
-from htm_rl.agents.qmb.transition_model import TransitionModel, make_s_a_transition_model
+from htm_rl.agents.agent import Agent
+from htm_rl.agents.dreamer.dreamer import Dreamer
+from htm_rl.agents.q.eligibility_traces import EligibilityTraces
+from htm_rl.agents.q.qvn import QValueNetwork
+from htm_rl.agents.q.sa_encoder import SaEncoder
+from htm_rl.agents.qmb.transition_model import TransitionModel, make_s_a_transition_model, SsaTransitionModel
 from htm_rl.agents.qmb.reward_model import RewardModel
-from htm_rl.agents.svpn.sparse_value_network import SparseValueNetwork
-from htm_rl.agents.ucb.agent import UcbAgent
+from htm_rl.agents.dreamer.sparse_value_network import SparseValueNetwork
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import isnone, clip, exp_decay
 from htm_rl.envs.env import Env
 
 
-class SvpnAgent(UcbAgent):
-    """Sparse Value Prediction Network Agent"""
-    SparseValueNetwork = SparseValueNetwork
+class DreamerAgent(Agent):
+    n_actions: int
+    sa_encoder: SaEncoder
+    Q: QValueNetwork
+    E_traces: Optional[EligibilityTraces]
 
-    sqvn: SparseValueNetwork
-    sa_transition_model: TransitionModel
+    sa_transition_model: SsaTransitionModel
     reward_model: RewardModel
+
+    im_weight: tuple[float, float]
+    exploration_eps: Optional[tuple[float, float]]
+    softmax_enabled: bool
+
     dreamer: Dreamer
 
-    first_dreaming_episode: int
-    last_dreaming_episode: Optional[int]
+    _current_sa_sdr: Optional[SparseSdr]
+    _rng: Generator
+
     prediction_depth: int
     n_prediction_rollouts: Tuple[int, int]
     dream_length: Optional[int]
@@ -73,6 +83,7 @@ class SvpnAgent(UcbAgent):
         actions_sa_sdr = self._encode_actions(s, learn=True)
 
         if not first:
+            self.reward_model.update(s, reward)
             # process feedback
             self._learn_step(
                 prev_sa_sdr=self._current_sa_sdr,
@@ -80,11 +91,9 @@ class SvpnAgent(UcbAgent):
                 actions_sa_sdr=actions_sa_sdr
             )
 
-        if not first:
-            self.reward_model.update(s, reward)
+        if not first and reward <= 0.:
             # condition prevents inevitable useless planning in the end
-            if reward <= 0.:
-                self._dream(s)
+            self._dream(s)
 
         action = self.sqvn.choose(actions_sa_sdr)
         self._current_sa_sdr = actions_sa_sdr[action]
@@ -207,9 +216,10 @@ class SvpnAgent(UcbAgent):
         return state, actions
 
     def _on_new_episode(self):
-        super(SvpnAgent, self)._on_new_episode()
+        super(DreamerAgent, self)._on_new_episode()
         self.reward_model.decay_learning_factors()
         self.sa_transition_model.reset()
         self.episode += 1
+
 
 

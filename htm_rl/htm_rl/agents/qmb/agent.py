@@ -9,6 +9,7 @@ from htm_rl.agents.q.qvn import QValueNetwork
 from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import SsaTransitionModel
+from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import exp_decay
 from htm_rl.envs.env import Env
@@ -23,9 +24,10 @@ class QModelBasedAgent(Agent):
     sa_transition_model: SsaTransitionModel
     reward_model: RewardModel
 
-    im_weight: tuple[float, float]
     exploration_eps: Optional[tuple[float, float]]
     softmax_enabled: bool
+    im_weight: tuple[float, float]
+    ucb_estimate: Optional[UcbEstimator]
 
     _current_sa_sdr: Optional[SparseSdr]
     _rng: Generator
@@ -41,7 +43,8 @@ class QModelBasedAgent(Agent):
             im_weight: tuple[float, float],
             eligibility_traces: dict = None,
             exploration_eps: tuple[float, float] = None,
-            softmax_enabled: bool = False
+            softmax_enabled: bool = False,
+            ucb_estimate: dict = None,
     ):
         self.n_actions = env.n_actions
         self.sa_encoder = SaEncoder(env, seed, **sa_encoder)
@@ -58,6 +61,9 @@ class QModelBasedAgent(Agent):
         self.exploration_eps = exploration_eps
         self.softmax_enabled = softmax_enabled
         self.im_weight = im_weight
+        self.ucb_estimate = None
+        if ucb_estimate:
+            self.ucb_estimate = UcbEstimator(self.sa_encoder.output_sdr_size, **ucb_estimate)
 
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
@@ -95,9 +101,14 @@ class QModelBasedAgent(Agent):
             action = self._rng.integers(self.n_actions)
         elif self.softmax_enabled:
             action = self._rng.choice(self.n_actions, p=softmax(action_values))
+        elif self.ucb_estimate:
+            ucb_values = self.ucb_estimate.ucb_terms(actions_sa_sdr)
+            action = np.argmax(action_values + ucb_values)
 
         self._current_sa_sdr = actions_sa_sdr[action]
         self.sa_transition_model.process(s, self._current_sa_sdr, learn=True)
+        if self.ucb_estimate:
+            self.ucb_estimate.update(self._current_sa_sdr)
         return action
 
     def on_new_episode(self):
@@ -108,6 +119,7 @@ class QModelBasedAgent(Agent):
         self.sa_transition_model.reset()
         self.reward_model.decay_learning_factors()
         self.im_weight = exp_decay(self.im_weight)
+        self.ucb_estimate.decay_learning_factors()
 
 
 def softmax(x):

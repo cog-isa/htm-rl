@@ -1,6 +1,6 @@
-from htm_rl.agents.svpn.agent import SvpnAgent
+from htm_rl.agents.dreamer.agent import DreamerAgent
 from htm_rl.agents.rnd.debug.debugger import Debugger
-from htm_rl.agents.svpn.debug.providers import ValueMapProvider
+from htm_rl.agents.dreamer.debug.providers import ValueMapProvider
 from htm_rl.agents.rnd.debug.env_map_provider import EnvMapProvider
 from htm_rl.agents.rnd.debug.trajectory_tracker import TrajectoryTracker
 from htm_rl.envs.biogwlab.environment import Environment
@@ -12,7 +12,7 @@ from htm_rl.debug_output import ImageOutput
 # noinspection PyUnresolvedReferences
 class DreamingDebugger(Debugger):
     env: Environment
-    agent: SvpnAgent
+    agent: DreamerAgent
 
     waking: bool
 

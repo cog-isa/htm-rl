@@ -8,7 +8,7 @@ class UcbEstimator:
     visit_decay: float
     ucb_exploration_factor: tuple[float, float]
 
-    # you should not to read it literally cause it's affected by exp MA window
+    # you should not read it literally cause it's affected by exp MA window
     cell_visit_count: np.ndarray
 
     def __init__(

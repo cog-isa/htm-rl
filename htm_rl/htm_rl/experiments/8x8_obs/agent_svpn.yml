@@ -1,19 +1,34 @@
-_type_: svpn
+_type_: dreamer
 
 sa_encoder: q
 
-sqvn:
-  trace_decay: .8
-  visit_decay: .92
-  discount_factor: .95
+qvn:
+  discount_factor: &discount_factor .95
   learning_rate: [.04, .995]
-  ucb_exploration_factor: [.3, .997]
 
-learning_rate: .02
-first_planning_episode: 10
-last_planning_episode: 2000
-prediction_depth: 5
-n_prediction_rollouts: 1
+eligibility_traces:
+  trace_decay: .8
+  discount_factor: *discount_factor
+
+exploration_eps: [.3, .995]
+softmax_enabled: false
+
+dreaming:
+  enabled: true
+  enter_prob_alpha: [1.2, 1.]
+  enter_prob_threshold: .3
+  exploration_eps: [.3, .997]
+  qvn:
+    learning_rate_factor: .75
+  eligibility_traces:
+    nest_traces: true
+    trace_decay:
+
+prediction_depth: 10
+n_prediction_rollouts: [1, 5]
+
+reward_model:
+  learning_rate: [1., .995]
 
 tm:
   cells_per_column: 1
