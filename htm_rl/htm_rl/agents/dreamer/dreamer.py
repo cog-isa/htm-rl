@@ -1,33 +1,18 @@
-from typing import Tuple, Optional
+from typing import Optional
 
 import numpy as np
 from numpy.random import Generator
 
 from htm_rl.agents.agent import Agent
-from htm_rl.agents.dreamer.sparse_value_network import SparseValueNetwork
+from htm_rl.agents.dreamer.qvn_double import QValueNetworkDouble
 from htm_rl.agents.q.agent import softmax
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
-from htm_rl.agents.q.qvn import QValueNetwork
 from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import SsaTransitionModel
 from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import modify_factor_tuple, exp_decay, isnone, clip
-
-
-class QValueNetworkDouble(QValueNetwork):
-    origin_learning_rate: tuple[float, float]
-    learning_rate_factor: float
-
-    # noinspection PyMissingConstructor
-    def __init__(self, origin: QValueNetwork, learning_rate_factor: float):
-        self.origin_learning_rate = origin.learning_rate
-        self.learning_rate_factor = learning_rate_factor
-        self.learning_rate = modify_factor_tuple(origin.learning_rate, learning_rate_factor)
-        self.discount_factor = origin.discount_factor
-        self.cell_value = origin.cell_value
-        self.last_td_error = .0
 
 
 class DreamingAgent(Agent):
