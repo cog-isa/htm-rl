@@ -23,6 +23,7 @@ class QModelBasedAgent(Agent):
     sa_transition_model: SsaTransitionModel
     reward_model: RewardModel
 
+    im_weight: tuple[float, float]
     exploration_eps: Optional[tuple[float, float]]
     softmax_enabled: bool
 
@@ -37,6 +38,7 @@ class QModelBasedAgent(Agent):
             qvn: dict,
             reward_model: dict,
             transition_model: dict,
+            im_weight: tuple[float, float],
             eligibility_traces: dict = None,
             exploration_eps: tuple[float, float] = None,
             softmax_enabled: bool = False
@@ -55,6 +57,7 @@ class QModelBasedAgent(Agent):
         self.reward_model = RewardModel(self.sa_encoder.output_sdr_size, **reward_model)
         self.exploration_eps = exploration_eps
         self.softmax_enabled = softmax_enabled
+        self.im_weight = im_weight
 
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
@@ -66,6 +69,10 @@ class QModelBasedAgent(Agent):
     def act(self, reward: float, state: SparseSdr, first: bool):
         if first:
             self.on_new_episode()
+
+        # x = 1 - max(.0, self.sa_transition_model.recall - .2)
+        x = (1 - self.sa_transition_model.recall)**2
+        reward += self.im_weight[0] * x
 
         s = self.sa_encoder.encode_state(state, learn=True)
         actions_sa_sdr = self.sa_encoder.encode_actions(s, learn=True)
@@ -97,9 +104,10 @@ class QModelBasedAgent(Agent):
         self.Q.decay_learning_factors()
         self.E_traces.reset()
         if self.exploration_eps is not None:
-            exp_decay(self.exploration_eps)
+            self.exploration_eps = exp_decay(self.exploration_eps)
         self.sa_transition_model.reset()
         self.reward_model.decay_learning_factors()
+        self.im_weight = exp_decay(self.im_weight)
 
 
 def softmax(x):
