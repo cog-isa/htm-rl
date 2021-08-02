@@ -16,7 +16,7 @@ class QAgent(Agent):
     n_actions: int
     sa_encoder: SaEncoder
     Q: QValueNetwork
-    E_traces: Optional[EligibilityTraces]
+    E_traces: EligibilityTraces
 
     exploration_eps: Optional[tuple[float, float]]
     softmax_enabled: bool

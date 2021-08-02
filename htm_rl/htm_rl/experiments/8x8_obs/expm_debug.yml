@@ -21,8 +21,7 @@ agents:
   q: q
   qmb: qmb
   ucb: ucb
-  svpn: svpn
-  svpn_nd: svpn
+  dreamer: dreamer
 
 wandb:
   project: test

@@ -1,4 +1,4 @@
-_type_: qmb
+_type_: dreamer
 
 sa_encoder: q
 
@@ -14,9 +14,18 @@ exploration_eps: [.3, .995]
 softmax_enabled: false
 im_weight: [.002, 1.]
 
-#ucb_estimate:
-#  visit_decay: .92
-#  ucb_exploration_factor: [.3, .997]
+dreaming:
+  enabled: true
+  enter_prob_alpha: [1.2, 1.]
+  enter_prob_threshold: .3
+  exploration_eps: [.3, .997]
+  qvn:
+    learning_rate_factor: .75
+  eligibility_traces:
+    trace_decay:
+  nest_traces: true
+  prediction_depth: 10
+  n_prediction_rollouts: [1, 5]
 
 reward_model:
   learning_rate: [1., .995]

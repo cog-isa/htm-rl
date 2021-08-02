@@ -1,18 +1,19 @@
-from typing import Dict, Tuple, Optional
+from typing import Tuple, Optional
 
 import numpy as np
 from numpy.random import Generator
 
 from htm_rl.agents.agent import Agent
-from htm_rl.agents.dreamer.dreamer import Dreamer
+from htm_rl.agents.dreamer.dreamer import DreamingAgent
+from htm_rl.agents.q.agent import softmax
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.qvn import QValueNetwork
 from htm_rl.agents.q.sa_encoder import SaEncoder
-from htm_rl.agents.qmb.transition_model import TransitionModel, make_s_a_transition_model, SsaTransitionModel
 from htm_rl.agents.qmb.reward_model import RewardModel
-from htm_rl.agents.dreamer.sparse_value_network import SparseValueNetwork
+from htm_rl.agents.qmb.transition_model import SsaTransitionModel
+from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import isnone, clip, exp_decay
+from htm_rl.common.utils import exp_decay
 from htm_rl.envs.env import Env
 
 
@@ -29,197 +30,112 @@ class DreamerAgent(Agent):
     exploration_eps: Optional[tuple[float, float]]
     softmax_enabled: bool
 
-    dreamer: Dreamer
-
-    _current_sa_sdr: Optional[SparseSdr]
-    _rng: Generator
+    dreamer: DreamingAgent
 
     prediction_depth: int
     n_prediction_rollouts: Tuple[int, int]
     dream_length: Optional[int]
 
-    rng: Generator
-    _episode: int
+    _current_sa_sdr: Optional[SparseSdr]
+    _rng: Generator
 
     def __init__(
-            self, env: Env, seed: int,
-            tm: Dict,
-            dreamer: Dict,
-            prediction_depth: int,
-            n_prediction_rollouts: Tuple[int, int],
-            first_dreaming_episode: int = 0,
-            last_dreaming_episode: int = None,
-            r_learning_rate: Tuple[float, float] = None,
-            **ucb_agent_kwargs
+            self,
+            env: Env,
+            seed: int,
+            sa_encoder: dict,
+            qvn: dict,
+            reward_model: dict,
+            transition_model: dict,
+            im_weight: tuple[float, float],
+            dreaming: dict,
+            eligibility_traces: dict,
+            exploration_eps: tuple[float, float] = None,
+            softmax_enabled: bool = False,
+            ucb_estimate: dict = None,
     ):
-        super().__init__(env, seed, **ucb_agent_kwargs)
-
-        self.sa_transition_model = make_s_a_transition_model(
-            self.state_sp, self.action_encoder, tm
+        self.n_actions = env.n_actions
+        self.sa_encoder = SaEncoder(env, seed, **sa_encoder)
+        self.Q = QValueNetwork(self.sa_encoder.output_sdr_size, seed, **qvn)
+        self.E_traces = EligibilityTraces(
+            self.sa_encoder.output_sdr_size,
+            **eligibility_traces
         )
-        self.reward_model = RewardModel(
-            self.state_sp.output_sdr_size,
-            isnone(r_learning_rate, self.sqvn.learning_rate)
+        self.sa_transition_model = SsaTransitionModel(
+            self.sa_encoder.state_sp, self.sa_encoder.sa_sp,
+            **transition_model
         )
-        self.dreamer = Dreamer(self.sqvn, **dreamer)
+        self.reward_model = RewardModel(self.sa_encoder.output_sdr_size, **reward_model)
+        self.exploration_eps = exploration_eps
+        self.softmax_enabled = softmax_enabled
+        self.im_weight = im_weight
+        self.ucb_estimate = None
+        if ucb_estimate:
+            self.ucb_estimate = UcbEstimator(self.sa_encoder.output_sdr_size, **ucb_estimate)
 
-        self.prediction_depth = prediction_depth
-        self.n_prediction_rollouts = n_prediction_rollouts
-        self.first_dreaming_episode = first_dreaming_episode
-        self.last_dreaming_episode = isnone(last_dreaming_episode, 999999)
-        self.dream_length = None
-        self.episode = 0
-        self.rng = np.random.default_rng(seed)
+        self._rng = np.random.default_rng(seed)
+        self._current_sa_sdr = None
+        self._episode = 0
+
+        self.dreamer = DreamingAgent(seed, self, **dreaming)
 
     @property
     def name(self):
-        return 'svpn'
+        return 'dreamer'
 
     def act(self, reward: float, state: SparseSdr, first: bool):
         if first:
-            self._on_new_episode()
+            self.on_new_episode()
 
-        s = self.state_sp.compute(state, learn=True)
-        actions_sa_sdr = self._encode_actions(s, learn=True)
+        # x = 1 - max(.0, self.sa_transition_model.recall - .2)
+        x = (1 - self.sa_transition_model.recall)**2
+        reward += self.im_weight[0] * x
 
+        s = self.sa_encoder.encode_state(state, learn=True)
+        actions_sa_sdr = self.sa_encoder.encode_actions(s, learn=True)
+
+        action_values = self.Q.values(actions_sa_sdr)
+        greedy_action = np.argmax(action_values)
         if not first:
             self.reward_model.update(s, reward)
-            # process feedback
-            self._learn_step(
-                prev_sa_sdr=self._current_sa_sdr,
-                reward=reward,
-                actions_sa_sdr=actions_sa_sdr
+            # Q-learning step
+            greedy_sa_sdr = actions_sa_sdr[greedy_action]
+            self.Q.update(
+                sa=self._current_sa_sdr, reward=reward,
+                sa_next=greedy_sa_sdr,
+                E_traces=self.E_traces.E
             )
 
-        if not first and reward <= 0.:
+        if not first and reward <= 0.1 and self.dreamer.decide_to_dream():
             # condition prevents inevitable useless planning in the end
-            self._dream(s)
+            self.dreamer.dream(s, self._current_sa_sdr)
+            action_values = self.Q.values(actions_sa_sdr)
+            greedy_action = np.argmax(action_values)
 
-        action = self.sqvn.choose(actions_sa_sdr)
+        # choose action
+        action = greedy_action
+        if self.exploration_eps is not None and self._rng.random() < self.exploration_eps[0]:
+            action = self._rng.integers(self.n_actions)
+        elif self.softmax_enabled:
+            action = self._rng.choice(self.n_actions, p=softmax(action_values))
+        elif self.ucb_estimate is not None:
+            ucb_values = self.ucb_estimate.ucb_terms(actions_sa_sdr)
+            action = np.argmax(action_values + ucb_values)
+
         self._current_sa_sdr = actions_sa_sdr[action]
-        self._process_transition(s, action, learn_tm=True)
+        self.sa_transition_model.process(s, self._current_sa_sdr, learn=True)
+        if self.ucb_estimate is not None:
+            self.ucb_estimate.update(self._current_sa_sdr)
         return action
 
-    def _dream(self, starting_state):
-        if not self._decide_to_dream():
-            return
-
-        # print(self.sqvn.TD_error)
-        self.dreamer.dreaming_prob_alpha = exp_decay(self.dreamer.dreaming_prob_alpha)
-        self._put_into_dream()
-
-        starting_state_len = len(starting_state)
-        i_rollout = 0
-        sum_depth = 0
-        depths = []
-        while i_rollout < self.n_prediction_rollouts[0] or (
-                i_rollout < self.n_prediction_rollouts[1]
-                and sum_depth * self.dreamer.rnd_move_prob >= .3 * i_rollout
-        ):
-            self._reset_dreaming(i_rollout)
-            state = starting_state
-            depth = 0
-            for depth in range(self.prediction_depth):
-                state = self._move_in_dream(state, td_lambda=self.dreamer.td_lambda)
-                if len(state) < .6 * starting_state_len:
-                    break
-
-            sum_depth += depth ** .5
-            i_rollout += 1
-            depths.append(depth)
-
-        self.dream_length += sum_depth
-        # if depths:
-        #     print(depths)
-        self._wake()
-
-    def _put_into_dream(self):
-        self.sa_transition_model.save_tm_state()
-        self.dreamer.put_into_dream(starting_sa_sdr=self._current_sa_sdr)
-        self.dream_length = 0
-
-    def _reset_dreaming(self, i_rollout=None):
-        if i_rollout == 0:
-            return
-        self._current_sa_sdr = self.dreamer.reset_dreaming(i_rollout)
-        self.sa_transition_model.restore_tm_state()
-
-    def _wake(self):
-        self._reset_dreaming()
-        self.dreamer.wake()
-
-    def _move_in_dream(self, state: SparseSdr, td_lambda: bool):
-        reward = self.reward_model.rewards[state].mean()
-        actions_sa_sdr = self._encode_actions(state, learn=False)
-
-        if self.rng.random() < self.dreamer.rnd_move_prob:
-            action = self.rng.choice(self.n_actions)
-        else:
-            action = self.sqvn.choose(actions_sa_sdr, greedy=True)
-
-        # process feedback
-        self._learn_step(
-            prev_sa_sdr=self._current_sa_sdr,
-            reward=reward,
-            actions_sa_sdr=actions_sa_sdr,
-            td_lambda=td_lambda,
-            update_visit_count=False
-        )
-
-        self._current_sa_sdr = actions_sa_sdr[action]
-        _, s_a_next_superposition = self._process_transition(state, action, learn_tm=False)
-        s_a_next_superposition = self.sa_transition_model.columns_from_cells(s_a_next_superposition)
-        next_state = self._split_s_a(s_a_next_superposition)
-        return next_state
-
-    def _choose_action(self, actions):
-        return self.rng.choice(len(actions))
-
-    def _decide_to_dream(self):
-        self.dream_length = None
-        if not self.dreamer.enabled:
-            return False
-        if not self.first_dreaming_episode <= self.episode < self.last_dreaming_episode:
-            return False
-        if self.dreamer.learning_rate_factor < 1e-3:
-            return False
-
-        td_error = self.sqvn.TD_error
-        max_abs_td_error = 2.
-        dreaming_prob_boost = self.dreamer.dreaming_prob_alpha[0]
-        dreaming_prob = (dreaming_prob_boost * abs(td_error) - self.dreamer.dreaming_prob_threshold)
-        dreaming_prob = clip(dreaming_prob / max_abs_td_error, 1.)
-        return self.rng.random() < dreaming_prob
-
-    def _process_transition(self, s, action, learn_tm: bool) -> Tuple[SparseSdr, SparseSdr]:
-        a = self.action_encoder.encode(action)
-        s_a = self.sa_concatenator.concatenate(s, a)
-
-        return self.sa_transition_model.process(s_a, learn=learn_tm)
-
-    def _split_s_a(self, s_a: SparseSdr, with_options=False):
-        size = self.state_sp.output_sdr_size
-        state = np.array([x for x in s_a if x < size])
-        if not with_options:
-            return state
-
-        actions = [x - size for x in s_a if x >= size]
-        actions_activation = [0 for _ in range(self.n_actions)]
-        for x in actions:
-            actions_activation[self.action_encoder.decode_bit(x)] += 1
-
-        actions = []
-        for action, activation in enumerate(actions_activation):
-            if self.action_encoder.activation_fraction(activation) > .3:
-                actions.append(action)
-
-        return state, actions
-
-    def _on_new_episode(self):
-        super(DreamerAgent, self)._on_new_episode()
-        self.reward_model.decay_learning_factors()
+    def on_new_episode(self):
+        self.Q.decay_learning_factors()
+        self.E_traces.reset()
+        if self.exploration_eps is not None:
+            self.exploration_eps = exp_decay(self.exploration_eps)
         self.sa_transition_model.reset()
-        self.episode += 1
-
-
-
+        self.reward_model.decay_learning_factors()
+        self.im_weight = exp_decay(self.im_weight)
+        if self.ucb_estimate is not None:
+            self.ucb_estimate.decay_learning_factors()
+        self.dreamer.on_new_episode()

@@ -4,6 +4,7 @@ import numpy as np
 from numpy.random import Generator
 
 from htm_rl.agents.agent import Agent
+from htm_rl.agents.q.agent import softmax
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.qvn import QValueNetwork
 from htm_rl.agents.q.sa_encoder import SaEncoder
@@ -41,7 +42,7 @@ class QModelBasedAgent(Agent):
             reward_model: dict,
             transition_model: dict,
             im_weight: tuple[float, float],
-            eligibility_traces: dict = None,
+            eligibility_traces: dict,
             exploration_eps: tuple[float, float] = None,
             softmax_enabled: bool = False,
             ucb_estimate: dict = None,
@@ -101,13 +102,13 @@ class QModelBasedAgent(Agent):
             action = self._rng.integers(self.n_actions)
         elif self.softmax_enabled:
             action = self._rng.choice(self.n_actions, p=softmax(action_values))
-        elif self.ucb_estimate:
+        elif self.ucb_estimate is not None:
             ucb_values = self.ucb_estimate.ucb_terms(actions_sa_sdr)
             action = np.argmax(action_values + ucb_values)
 
         self._current_sa_sdr = actions_sa_sdr[action]
         self.sa_transition_model.process(s, self._current_sa_sdr, learn=True)
-        if self.ucb_estimate:
+        if self.ucb_estimate is not None:
             self.ucb_estimate.update(self._current_sa_sdr)
         return action
 
@@ -119,10 +120,5 @@ class QModelBasedAgent(Agent):
         self.sa_transition_model.reset()
         self.reward_model.decay_learning_factors()
         self.im_weight = exp_decay(self.im_weight)
-        self.ucb_estimate.decay_learning_factors()
-
-
-def softmax(x):
-    """Computes softmax values for each sets of scores in x."""
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum(axis=0)
+        if self.ucb_estimate is not None:
+            self.ucb_estimate.decay_learning_factors()

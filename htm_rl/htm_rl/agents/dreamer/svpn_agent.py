@@ -96,7 +96,7 @@ class SvpnAgent(Agent):
             return
 
         # print(self.sqvn.TD_error)
-        self.dreamer.dreaming_prob_alpha = exp_decay(self.dreamer.dreaming_prob_alpha)
+        self.dreamer.enter_prob_alpha = exp_decay(self.dreamer.enter_prob_alpha)
         self._put_into_dream()
 
         starting_state_len = len(starting_state)
@@ -177,8 +177,8 @@ class SvpnAgent(Agent):
 
         td_error = self.sqvn.TD_error
         max_abs_td_error = 2.
-        dreaming_prob_boost = self.dreamer.dreaming_prob_alpha[0]
-        dreaming_prob = (dreaming_prob_boost * abs(td_error) - self.dreamer.dreaming_prob_threshold)
+        dreaming_prob_boost = self.dreamer.enter_prob_alpha[0]
+        dreaming_prob = (dreaming_prob_boost * abs(td_error) - self.dreamer.enter_prob_threshold)
         dreaming_prob = clip(dreaming_prob / max_abs_td_error, 1.)
         return self.rng.random() < dreaming_prob
 

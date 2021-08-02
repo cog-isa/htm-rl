@@ -12,6 +12,8 @@ class QValueNetwork:
     learning_rate: Tuple[float, float]
 
     cell_value: np.ndarray
+    last_td_error: float
+
     _rng: Generator
 
     def __init__(
@@ -26,6 +28,7 @@ class QValueNetwork:
 
         # self.cell_value = np.full(cells_sdr_size, 0., dtype=np.float)
         self.cell_value = self._rng.uniform(-1e-4, 1e-4, size=cells_sdr_size)
+        self.last_td_error = 0.
 
     def values(self, xs: List[SparseSdr]) -> np.ndarray:
         return np.array([self.value(x) for x in xs])
@@ -38,6 +41,7 @@ class QValueNetwork:
         lr, _ = self.learning_rate
         Q = self.cell_value
         TD_error = self.td_error(sa, reward, sa_next)
+        self.last_td_error = TD_error
 
         if E_traces is not None:
             Q += lr * TD_error * E_traces
