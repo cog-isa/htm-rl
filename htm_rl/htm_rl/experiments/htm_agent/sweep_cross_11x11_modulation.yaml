@@ -12,7 +12,7 @@ parameters:
       - 271454
   block_default.feedback_boost_range:
     values:
-      - [0.0, 1.0]
+      - [0.0, 2.0]
   block_default.modulation:
     values:
       - true

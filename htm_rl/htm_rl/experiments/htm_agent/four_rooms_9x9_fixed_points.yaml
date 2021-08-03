@@ -15,8 +15,8 @@ vis_options:
 log: true
 
 run_options:
-  n_episodes: 2000
-  log_every_episode: 50
+  n_episodes: 4000
+  log_every_episode: 250
   log_values: True
   log_policy: True
   log_option_values: True
@@ -116,6 +116,7 @@ blocks:
       alpha: 0.01
       beta: 0.01
       off_policy: false
+      noise: 0.05
     block:
       level: 1
     sm: {}
@@ -293,9 +294,21 @@ basal_ganglia_default:
   beta: 0.01
   discount_factor: 0.997
   off_policy: false
+  noise: 0
   seed: *seed
 
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
   feedback_boost_range: [0.0, 0.8]
+  modulation: false
+  sm_da: 0.9
+  sm_dda: 0.995
+  d_an_th: 0.1
+  d_cn_th: 0.1
+  sm_reward: 0.995
+  sm_max_reward: 0.997
+  max_reward_decay: 0.999
+  min_reward_decay: 0.999
+  sm_bm_inc: 0.9
+  sm_bm_dec: 0.998

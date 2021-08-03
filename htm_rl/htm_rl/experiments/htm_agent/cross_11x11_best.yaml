@@ -4,7 +4,7 @@ agent: hima
 project: cross_boost_modulation
 entity: hauska
 
-scenario: '../../experiments/htm_agent/scenarios/cross_11x11_feedback_boost.yaml'
+scenario: '../../experiments/htm_agent/scenarios/cross_11x11.yaml'
 
 vis_options:
   size: 21
@@ -313,5 +313,5 @@ block_default:
   sm_max_reward: 0.997
   max_reward_decay: 0.999
   min_reward_decay: 0.999
-  sm_bm_inc: 0.7
+  sm_bm_inc: 0.9
   sm_bm_dec: 0.998
