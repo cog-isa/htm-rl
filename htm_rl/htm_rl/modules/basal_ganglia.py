@@ -148,7 +148,7 @@ class Thalamus:
         if self._input_size != self._output_size:
             raise ValueError
 
-    def compute(self, responses, responses_boost, modulation):
+    def compute(self, responses, responses_boost, modulation, noise: float = 0):
         activity = np.zeros(len(responses))
         bs = ~modulation
         for ind, response in enumerate(responses):
@@ -160,6 +160,8 @@ class Thalamus:
         self.max_response = responses[np.nanargmax(activity)]
 
         probs = softmax(activity)
+        # epsilon greedy noise
+        probs = noise / probs.size + (1 - noise) * probs
         out = self._rng.choice(len(activity), 1, p=probs)[0]
         return out, responses[out]
 
@@ -181,6 +183,7 @@ class BasalGanglia:
                  beta: float,
                  discount_factor: float,
                  off_policy: bool,
+                 noise: float,
                  seed: int):
         self._input_size = input_size
         self._output_size = output_size
@@ -192,6 +195,7 @@ class BasalGanglia:
         self.tha = Thalamus(output_size, output_size, seed)
 
         self.off_policy = off_policy
+        self.noise = noise
 
     def reset(self):
         self.stri.reset()
@@ -206,7 +210,7 @@ class BasalGanglia:
         gpe = self.gpe.compute(stn, d2)
         gpi = self.gpi.compute(stn, (d1, gpe))
 
-        response_index, response = self.tha.compute(responses, responses_boost, gpi)
+        response_index, response = self.tha.compute(responses, responses_boost, gpi, self.noise)
         self.stri.current_max_response = self.tha.max_response
 
         responses_values = np.zeros(len(responses))
