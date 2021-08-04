@@ -13,4 +13,4 @@ class QValueNetworkDouble(QValueNetwork):
         self.learning_rate = modify_factor_tuple(origin.learning_rate, learning_rate_factor)
         self.discount_factor = origin.discount_factor
         self.cell_value = origin.cell_value
-        self.last_td_error = .0
+        self.last_td_error = 0.

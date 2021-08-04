@@ -15,7 +15,7 @@ from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import modify_factor_tuple, exp_decay, isnone, clip
 
 
-class DreamingAgent(Agent):
+class DreamingDouble(Agent):
     n_actions: int
     sa_encoder: SaEncoder
     Q: QValueNetworkDouble
@@ -197,6 +197,11 @@ class DreamingAgent(Agent):
         if self.Q.learning_rate[0] < 1e-3:
             return False
 
+        if self._td_error_based_dreaming(td_error):
+            return True
+        return False
+
+    def _td_error_based_dreaming(self, td_error):
         max_abs_td_error = 2.
         dreaming_prob_boost = self.enter_prob_alpha[0]
         dreaming_prob = (dreaming_prob_boost * abs(td_error) - self.enter_prob_threshold)
@@ -230,4 +235,4 @@ class DreamingAgent(Agent):
 
     @property
     def name(self):
-        return 'fake: dreaming'
+        return 'dreaming_double'
