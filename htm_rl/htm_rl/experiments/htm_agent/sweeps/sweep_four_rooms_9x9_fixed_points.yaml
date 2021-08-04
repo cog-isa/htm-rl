@@ -1,6 +1,6 @@
 project: four_rooms_fixed_points_final
 entity: hauska
-program: ../../agents/htm/htm_agent.py
+program: ../../../agents/htm/htm_agent.py
 method: grid
 parameters:
   seed:

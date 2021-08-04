@@ -603,7 +603,7 @@ if __name__ == '__main__':
         default_config_name = sys.argv[1]
     else:
         default_config_name = 'cross_11x11_best'
-    with open(f'../../experiments/htm_agent/{default_config_name}.yaml', 'r') as file:
+    with open(f'../../experiments/htm_agent/configs/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
     if config['log']:

@@ -116,7 +116,7 @@ blocks:
       alpha: 0.01
       beta: 0.01
       off_policy: false
-      noise: 0.05
+      softmax_beta: 0.7
     block:
       level: 1
     sm: {}
@@ -294,7 +294,7 @@ basal_ganglia_default:
   beta: 0.01
   discount_factor: 0.997
   off_policy: false
-  noise: 0
+  softmax_beta: 1
   seed: *seed
 
 block_default:
