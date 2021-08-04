@@ -106,7 +106,7 @@ class DreamerAgent(Agent):
                 E_traces=self.E_traces.E
             )
 
-        if not first and reward <= 0.1 and self.dreamer.decide_to_dream():
+        if not first and reward <= 0.1 and self.dreamer.decide_to_dream(self.Q.last_td_error):
             # condition prevents inevitable useless planning in the end
             self.dreamer.dream(s, self._current_sa_sdr)
             action_values = self.Q.values(actions_sa_sdr)

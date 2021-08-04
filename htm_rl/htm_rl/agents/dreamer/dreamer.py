@@ -111,7 +111,7 @@ class DreamingAgent(Agent):
 
         if i_rollout is not None:
             self.Q.learning_rate = modify_factor_tuple(
-                self.Q.learning_rate,
+                self.Q.origin_learning_rate,
                 1.0/(i_rollout + 1.)**.5
             )
         self.sa_transition_model.restore_tm_state()
@@ -188,7 +188,7 @@ class DreamingAgent(Agent):
         next_s = self._split_s_sa(s_sa_next_superposition)
         return next_s
 
-    def decide_to_dream(self):
+    def decide_to_dream(self, td_error):
         self.dream_length = None
         if not self.enabled:
             return False
@@ -197,7 +197,6 @@ class DreamingAgent(Agent):
         if self.Q.learning_rate[0] < 1e-3:
             return False
 
-        td_error = self.Q.last_td_error
         max_abs_td_error = 2.
         dreaming_prob_boost = self.enter_prob_alpha[0]
         dreaming_prob = (dreaming_prob_boost * abs(td_error) - self.enter_prob_threshold)
