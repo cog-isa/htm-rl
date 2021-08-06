@@ -1,5 +1,4 @@
 import numpy as np
-from math import log1p
 from htm.bindings.sdr import SDR
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm.bindings.algorithms import SpatialPooler
@@ -121,25 +120,25 @@ class Block:
 
     def __init__(self,
                  tm: ApicalBasalFeedbackTM,
-                 sm: SpatialMemory,
-                 sp=None,
-                 bg=None,
-                 id_=None,
-                 level=None,
-                 predicted_boost=0.2,
-                 feedback_boost_range=None,
-                 gamma=0.9,
-                 sm_da=0,
-                 sm_dda=0,
-                 d_an_th=0,
-                 d_cn_th=0,
-                 sm_reward=0,
-                 max_reward_decay=0.99,
-                 sm_max_reward=0.95,
-                 min_reward_decay=0.99,
-                 sm_bm_inc=0.9,
-                 sm_bm_dec=0.999,
-                 modulation=True):
+                 sm: SpatialMemory = None,
+                 sp: SpatialPooler = None,
+                 bg: BasalGanglia = None,
+                 id_: int = None,
+                 level: int = None,
+                 predicted_boost: float = 0.2,
+                 feedback_boost_range: list[float, float] = None,
+                 gamma: float = 0.9,
+                 sm_da: float = 0,
+                 sm_dda: float = 0,
+                 d_an_th: float = 0,
+                 d_cn_th: float = 0,
+                 sm_reward: float = 0,
+                 max_reward_decay: float = 0.99,
+                 sm_max_reward: float = 0.95,
+                 min_reward_decay: float = 0.99,
+                 sm_bm_inc: float = 0.9,
+                 sm_bm_dec: float = 0.999,
+                 modulation: bool = True):
         
         self.tm = tm
         self.sp = sp
@@ -355,10 +354,10 @@ class Block:
                 self.sp.compute(self.sp_input, self.learn_sp, self.sp_output)
                 basal_active_columns = self.sp_output.sparse
             # Refresh patterns
-                if self.learn_sm:
+                if (self.sm is not None) and self.learn_sm:
                     self.sm.add(self.sp_output.dense.copy())
             else:
-                if self.learn_sm:
+                if (self.sm is not None) and self.learn_sm:
                     self.sm.add(self.sp_input.dense.copy())
 
             # Reinforce
@@ -384,7 +383,7 @@ class Block:
                 self.dda = self.dda * self.sm_dda + (self.da - prev_da) * (1 - self.sm_dda)
 
             # Forgetting
-            if self.learn_sm:
+            if (self.sm is not None) and self.learn_sm:
                 self.sm.forget()
 
             # TM
@@ -439,7 +438,7 @@ class Block:
                                                               add_apical=self.should_return_apical_predictions)
             self.predicted_columns.sparse = predicted_columns
             # filter columns by Basal Ganglia conditioned on apical input
-            if self.bg is not None:
+            if (self.bg is not None) and (self.sm is not None):
                 # form apical input
                 apical_active_columns = list()
                 shift = 0

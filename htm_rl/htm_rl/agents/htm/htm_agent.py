@@ -171,7 +171,10 @@ class HTMAgentRunner:
         for block_conf in block_configs:
             tm = ApicalBasalFeedbackTM(**block_conf['tm'])
 
-            sm = SpatialMemory(**block_conf['sm'])
+            if block_conf['sm'] is not None:
+                sm = SpatialMemory(**block_conf['sm'])
+            else:
+                sm = None
 
             if block_conf['sp'] is not None:
                 sp = SpatialPooler(**block_conf['sp'])
@@ -602,7 +605,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'test_noise'
+        default_config_name = 'test_config'
     with open(f'../../experiments/htm_agent/configs/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 

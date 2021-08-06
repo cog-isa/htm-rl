@@ -27,7 +27,6 @@ def configure(config):
     config['cagent']['muscles']['seed'] = config['seed']
 
     blocks = [{'block': deepcopy(config['block_default']),
-               'sm': deepcopy(config['spatial_memory_default']),
                'tm': deepcopy(config['temporal_memory_default'])} for _ in range(len(config['blocks']))]
 
     for i, block, con in zip(range(len(config['blocks'])), config['blocks'].values(), connections):
@@ -46,7 +45,13 @@ def configure(config):
                                            config['blocks'][inf - len(input_blocks)]['tm']['basal_columns'])
 
         blocks[i]['block'].update(deepcopy(block['block']))
-        blocks[i]['sm'].update(deepcopy(block['sm']))
+
+        if block['sm'] is not None:
+            blocks[i]['sm'] = deepcopy(config['spatial_memory_default'])
+            blocks[i]['sm'].update(deepcopy(block['sm']))
+        else:
+            blocks[i]['sm'] = None
+
         blocks[i]['tm'].update(deepcopy(block['tm']))
         blocks[i]['tm'].update({
                         'feedback_columns': feedback_in_size
