@@ -1,10 +1,10 @@
 seed: &seed 3121
 levels: 2
 agent: hima
-project: four_rooms_fixed_points
+project: test_noise
 entity: hauska
 
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_9x9_doors.yaml'
+scenario: '../../experiments/htm_agent/scenarios/test_noise.yaml'
 
 vis_options:
   size: 21
@@ -15,8 +15,8 @@ vis_options:
 log: true
 
 run_options:
-  n_episodes: 4000
-  log_every_episode: 250
+  n_episodes: 200
+  log_every_episode: 25
   log_values: True
   log_policy: True
   log_option_values: True
@@ -30,7 +30,7 @@ run_options:
 
 environment:
   seed: 2151
-  shape_xy: [9, 9]
+  shape_xy: [5, 5]
 
   actions_cost:
     base_cost: -0.005
@@ -53,17 +53,17 @@ environment:
 
   obstacle:
     density: 0.1
-    map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
+    map_name: '../../experiments/htm_agent/maps/test_noise.map'
 
   food:
     n_items: 1
     reward: 1.
-    positions: [[4, 6]]
+    positions: [[0, 0]]
 
   agent:
-    change_position: true
+    change_position: false
     direction: up
-    positions: [ [ 1, 2 ], [ 7, 2 ], [ 7, 6 ], [ 1, 6 ] ]
+    positions: [ [ 4, 0 ] ]
   #  rendering:
   #    what:
   #      - position
@@ -71,7 +71,7 @@ environment:
   #    bucket_size: 3
 
   terminate:
-    episode_max_steps: 200
+    episode_max_steps: 100
     early_stop: true
     n_items_to_collect: 1
 
@@ -117,7 +117,7 @@ blocks:
       beta: 0.01
       off_policy: false
       softmax_beta: 0.7
-      epsilon_noise: 0.05
+      epsilon_noise: 0.0
     block:
       level: 1
     sm: {}
@@ -302,7 +302,7 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  feedback_boost_range: [0.0, 0.8]
+  feedback_boost_range: [0.0, 0.0]
   modulation: false
   sm_da: 0.9
   sm_dda: 0.995

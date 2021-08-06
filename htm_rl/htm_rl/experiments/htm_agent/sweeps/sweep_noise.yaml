@@ -1,23 +1,25 @@
-project: four_rooms_fixed_points_final
+project: test_noise
 entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:
   seed:
-    values: [42434, 1342, 23923]
+    values: [42434, 342, 213]
   environment.seed:
     values:
       - 339
-      - 453672
-      - 274
+      - 2315
+      - 954
   block_default.feedback_boost_range:
     values:
-      - [0.0, 0.0]
+      - [0.0, 0.7]
+  blocks.1.bg.softmax_beta:
+    values: [0.2, 0.3, 0.5]
 
 command:
   - ${env}
   - python
   - ${program}
-  - four_rooms_9x9_fixed_points
+  - test_noise
   - ${args}
 
