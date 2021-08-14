@@ -386,7 +386,7 @@ class HTMAgentRunner:
             self.update_block_metrics()
             
             if draw_options_stats:
-                self.update_option_stats()
+                self.update_option_stats(self.environment.callmethod('is_terminal'))
 
             if self.animation:
                 self.draw_animation_frame(logger, draw_options, self.agent_pos, self.episode, self.steps)
@@ -468,10 +468,10 @@ class HTMAgentRunner:
 
         plt.imsave(f'/tmp/{logger.run.id}_episode_{episode}_step_{steps}.png', pic.astype('uint8'))
 
-    def update_option_stats(self):
+    def update_option_stats(self, is_terminal):
         option_block = self.agent.hierarchy.blocks[5]
 
-        if option_block.made_decision:
+        if option_block.made_decision and not is_terminal:
             current_option_id = option_block.current_option
             if self.current_option_id != current_option_id:
                 if len(self.option_actions) != 0:
@@ -505,7 +505,9 @@ class HTMAgentRunner:
                 self.current_option_id = current_option_id
         else:
             if len(self.option_actions) > 0:
-                if option_block.failed_option is not None:
+                if option_block.current_option is not None:
+                    last_option = option_block.current_option
+                elif option_block.failed_option is not None:
                     last_option = option_block.failed_option
                 elif option_block.completed_option is not None:
                     last_option = option_block.completed_option

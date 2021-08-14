@@ -347,8 +347,11 @@ class ApicalBasalFeedbackTM:
         :return: nothing
         """
         # exclude inhibited cells
-        candidate_basal_predictive_cells = self.basal_predictive_cells[
-            np.in1d(self.basal_predictive_cells, self.inhibited_cells, invert=True)]
+        if self.inhibited_cells.size > 0:
+            candidate_basal_predictive_cells = self.basal_predictive_cells[
+                np.in1d(self.basal_predictive_cells, self.inhibited_cells)]
+        else:
+            candidate_basal_predictive_cells = self.basal_predictive_cells
         predicted_cells = list()
         # basal and apical coincidence predict first
         predicted_cells.append(np.intersect1d(candidate_basal_predictive_cells, self.apical_predictive_cells))
@@ -713,14 +716,14 @@ class ApicalBasalFeedbackTM:
         apical_segments_to_punish = self.matching_apical_segments[incorrect_matching_apical_mask]
 
         # cells on which new inhibitory segments will be grown and matching segments that will be learned
-        cells_to_inhibit = np.unique(self.basal_connections.mapSegmentsToCells(basal_segments_to_punish))
+        cells_to_inhibit = winner_cells
         learning_matching_inhibit_segments, cells_to_grow_inhibit_segments = setCompare(self.matching_inhib_segments,
                                                                                         cells_to_inhibit,
                                                                                         aKey=self.inhib_connections.mapSegmentsToCells(
                                                                                             self.matching_inhib_segments),
                                                                                         rightMinusLeft=True)
         # reinforce correct inhibition and punish incorrect
-        incorrect_inhibit_cells, correct_inhibit_cells = setCompare(self.inhibited_cells, self.active_columns.sparse,
+        correct_inhibit_cells, incorrect_inhibit_cells = setCompare(self.inhibited_cells, self.active_columns.sparse,
                                                                     aKey=self._basal_columns_for_cells(
                                                                         self.inhibited_cells),
                                                                     leftMinusRight=True)

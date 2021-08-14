@@ -159,8 +159,8 @@ def compute_q_policy(env: Environment, agent, directions: dict = None):
 def compute_mu_policy(env: Environment, agent, directions: dict = None):
     q = dict()
     policy = dict()
-    visual_block = agent.hierarchy.blocks[2]
     output_block = agent.hierarchy.blocks[5]
+    visual_block = agent.hierarchy.blocks[2]
     options = output_block.sm.get_sparse_patterns()
     option_ids = output_block.sm.unique_id
 
