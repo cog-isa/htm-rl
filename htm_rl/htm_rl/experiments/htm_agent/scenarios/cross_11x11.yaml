@@ -1,4 +1,4 @@
-- condition: ['episode', 499]
+- condition: ['episode', 999]
   action: 'set_food_positions'
   params:
     positions: [[8, 5], [2, 5], [5, 8], [5, 2]]

@@ -348,8 +348,7 @@ class ApicalBasalFeedbackTM:
         """
         # exclude inhibited cells
         if self.inhibited_cells.size > 0:
-            candidate_basal_predictive_cells = self.basal_predictive_cells[
-                np.in1d(self.basal_predictive_cells, self.inhibited_cells)]
+            candidate_basal_predictive_cells = self.inhibited_cells
         else:
             candidate_basal_predictive_cells = self.basal_predictive_cells
         predicted_cells = list()
