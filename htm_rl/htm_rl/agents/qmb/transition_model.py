@@ -1,6 +1,6 @@
 import pickle
 
-from htm import SDR
+from htm.bindings.sdr import SDR
 
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import SdrConcatenator

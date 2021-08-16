@@ -1,8 +1,8 @@
 from typing import Tuple
 
 import numpy as np
-from htm import SDR
 from htm.algorithms import SpatialPooler as HtmSpatialPooler
+from htm.bindings.sdr import SDR
 
 
 class SpatialPooler:

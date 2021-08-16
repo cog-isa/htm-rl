@@ -5,18 +5,18 @@ matplotlib
 jupyterlab
 ruamel.yaml
 tqdm
-
-#   htm.core dependencies
-mock
-prettytable
-pytest==4.6.5
-
-
-
-# >>>>>>>>> pip requirements
 wandb
 
 #   htm.core dependencies
+mock
+
+
+# >>>>>>>>> pip requirements
+
+#   htm.core dependencies
 hexy
-#       better install htm.core from sources, but remember to fix boost url manually
+prettytable
+pytest==4.6.5
+
+#       better install htm.core from sources, but remember to fix boost url manually if it's not
 htm.core
