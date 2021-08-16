@@ -179,16 +179,13 @@ class GeneralFeedbackTM:
         Calculates predicted cells. Should be called after dendrite activations.
         :return:
         """
-        predicted_cells = list()
         # basal and apical coincidence predict first
-        predicted_cells.append(np.intersect1d(self.predictive_cells_basal, self.predictive_cells_apical))
-        # filter basal cells by already predicted columns and predict them
-        predicted_columns = list()
-        predicted_columns.append(np.unique(self._columns_for_cells(predicted_cells[0])))
-        predicted_cells.append(
-            self._filter_by_columns(self.predictive_cells_basal, predicted_columns[0], invert=True))
+        predicted_cells = np.intersect1d(self.predictive_cells_basal, self.predictive_cells_apical)
+        # if there is no coincidence, predict all possible cases
+        if predicted_cells.size == 0:
+            predicted_cells = self.predictive_cells_basal
 
-        self.predicted_cells.sparse = np.unique(np.concatenate(predicted_cells)).astype('uint32')
+        self.predicted_cells.sparse = predicted_cells.astype('uint32')
         self.predicted_columns.sparse = np.unique(self._columns_for_cells(self.predicted_cells.sparse))
 
         confidence = min(len(self.predicted_cells.sparse) / (self.mean_active_columns + EPS), 1.0)
