@@ -93,7 +93,7 @@ class DreamerAgent(Agent):
             self.on_new_episode()
 
         x = (1 - self.sa_transition_model.recall)**2
-        reward += self.im_weight[0] * x
+        im_reward = self.im_weight[0] * x
 
         s = self.sa_encoder.encode_state(state, learn=True)
         actions_sa_sdr = self.sa_encoder.encode_actions(s, learn=True)
@@ -105,7 +105,7 @@ class DreamerAgent(Agent):
             # Q-learning step
             greedy_sa_sdr = actions_sa_sdr[greedy_action]
             self.Q.update(
-                sa=self._current_sa_sdr, reward=reward,
+                sa=self._current_sa_sdr, reward=reward + im_reward,
                 sa_next=greedy_sa_sdr,
                 E_traces=self.E_traces.E
             )
