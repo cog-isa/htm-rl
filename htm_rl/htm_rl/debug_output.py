@@ -39,7 +39,7 @@ class ImageOutput(BaseOutput):
 
         save_path = self.save_dir.joinpath(filename)
         if not save_path.suffix:
-            save_path = save_path.with_suffix('.svg')
+            save_path = save_path.with_suffix('.png')
 
         plot_grid_images(
             images=self.images, titles=self.titles,

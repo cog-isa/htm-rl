@@ -113,7 +113,7 @@ def register_arguments(parser: ArgumentParser):
     parser.add_argument('-a', '--agents_filter', dest='agents_filter', default=None, nargs='+')
     parser.add_argument('-m', '--print_maps', dest='print_maps', default=None, type=int)
     parser.add_argument('-t', '--print_heatmaps', dest='print_heatmaps', default=None, nargs='+', type=int)
-    parser.add_argument('-d', '--print_debug', dest='print_debug', default=None, nargs='+', type=int)
+    parser.add_argument('-d', '--print_debug', dest='print_debug', action='store_true', default=False)
     parser.add_argument('-w', '--wandb_enabled', dest='wandb_enabled', action='store_true', default=False)
 
 

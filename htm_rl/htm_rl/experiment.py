@@ -51,7 +51,7 @@ class Experiment:
         self.print = config['print']
         self.wandb = config['wandb']
 
-        self.debug = self.print['debug'] is not None
+        self.debug = self.print['debug']
 
         self.env = self.materialize_environment(config['env'], config['env_seed'], config['envs'])
         self.agent = self.materialize_agent(config['agent'], config['agent_seed'], config['agents'], self.env)
@@ -66,7 +66,7 @@ class Experiment:
             # from htm_rl.agents.svpn.debug.dreaming_debugger import DreamingDebugger
             # _ = DreamingDebugger(self)
             from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
-            model_debugger = ModelDebugger(self, images=False)
+            model_debugger = ModelDebugger(self, images=True)
 
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode()
