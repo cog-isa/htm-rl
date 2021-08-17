@@ -1,0 +1,27 @@
+env_seeds:
+#  - 851775
+  - 743535
+#  - 288985
+#  - 190368
+#  - 885213
+#  - 768840
+
+agent_seeds:
+  - 42
+#  - 1337
+#  - 1984
+#  - 3433
+
+n_episodes: 50
+
+envs:
+  - pos
+
+agents:
+  rnd: rnd
+  qmb: qmb
+  dreamer: dreamer0
+
+wandb:
+  project: test
+
