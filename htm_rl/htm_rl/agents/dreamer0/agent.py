@@ -8,9 +8,9 @@ from htm_rl.agents.dreamer.dreaming_double import DreamingDouble
 from htm_rl.agents.q.agent import softmax
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.qvn import QValueNetwork
-from htm_rl.agents.q.sa_encoder import SaEncoder
+from htm_rl.agents.dreamer0.perfect_sa_encoder import PerfectSaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
-from htm_rl.agents.qmb.transition_model import SsaTransitionModel
+from htm_rl.agents.dreamer0.transition_model import SaTransitionModel
 from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import exp_decay, exp_sum
@@ -19,11 +19,11 @@ from htm_rl.envs.env import Env
 
 class DreamerAgent(Agent):
     n_actions: int
-    sa_encoder: SaEncoder
+    sa_encoder: PerfectSaEncoder
     Q: QValueNetwork
     E_traces: Optional[EligibilityTraces]
 
-    sa_transition_model: SsaTransitionModel
+    sa_transition_model: SaTransitionModel
     reward_model: RewardModel
 
     im_weight: tuple[float, float]
@@ -45,7 +45,6 @@ class DreamerAgent(Agent):
             self,
             env: Env,
             seed: int,
-            sa_encoder: dict,
             qvn: dict,
             reward_model: dict,
             transition_model: dict,
@@ -58,15 +57,14 @@ class DreamerAgent(Agent):
             ucb_estimate: dict = None,
     ):
         self.n_actions = env.n_actions
-        self.sa_encoder = SaEncoder(env, seed, **sa_encoder)
+        self.sa_encoder = PerfectSaEncoder(env, seed)
         self.Q = QValueNetwork(self.sa_encoder.output_sdr_size, seed, **qvn)
         self.E_traces = EligibilityTraces(
             self.sa_encoder.output_sdr_size,
             **eligibility_traces
         )
-        self.sa_transition_model = SsaTransitionModel(
-            self.sa_encoder.state_sp, self.sa_encoder.sa_sp,
-            **transition_model
+        self.sa_transition_model = SaTransitionModel(
+            self.sa_encoder.sa_concatenator, **transition_model
         )
         self.reward_model = RewardModel(self.sa_encoder.output_sdr_size, **reward_model)
         self.exploration_eps = exploration_eps

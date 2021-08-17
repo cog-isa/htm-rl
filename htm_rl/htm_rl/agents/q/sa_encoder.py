@@ -1,5 +1,6 @@
 from typing import Dict, List
 
+import numpy as np
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.envs.env import Env
@@ -50,6 +51,12 @@ class SaEncoder:
         s_a = self.sa_concatenator.concatenate(s, a)
         sa = self.sa_sp.compute(s_a, learn=learn)
         return sa
+
+    def split_s_sa(self, s_a: SparseSdr) -> SparseSdr:
+        state_part_size = self.state_sp.output_sdr_size
+        if not isinstance(s_a, np.ndarray):
+            s_a = np.array(list(s_a))
+        return s_a[s_a < state_part_size].copy()
 
     @property
     def output_sdr_size(self):

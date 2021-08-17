@@ -165,3 +165,18 @@ class SdrConcatenator:
             result[l:r] = sdr
             result[l:r] += self._shifts[i - 1]
         return result
+
+
+class IdEncoder:
+    """Identity encoder that does nothing."""
+
+    output_sdr_size: int
+
+    def __init__(self, input_source):
+        self.output_sdr_size = input_source.output_sdr_size
+
+    def encode(self, x):
+        return x
+
+    def decode(self, x):
+        return x[0] // len(x)

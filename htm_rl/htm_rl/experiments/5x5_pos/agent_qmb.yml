@@ -1,5 +1,7 @@
 _type_: qmb
 
+sa_encoder: q
+
 qvn:
   discount_factor: &discount_factor .97
   learning_rate: [.1, .995]

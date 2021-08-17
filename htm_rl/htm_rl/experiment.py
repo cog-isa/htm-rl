@@ -6,6 +6,7 @@ from htm_rl.agents.q.agent import QAgent
 from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.agents.rnd.agent import RndAgent
 from htm_rl.agents.dreamer.agent import DreamerAgent
+from htm_rl.agents.dreamer0.agent import DreamerAgent as DreamerAgent0
 from htm_rl.agents.ucb.agent import UcbAgent
 from htm_rl.common.utils import timed
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
@@ -66,7 +67,7 @@ class Experiment:
             # from htm_rl.agents.svpn.debug.dreaming_debugger import DreamingDebugger
             # _ = DreamingDebugger(self)
             from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
-            model_debugger = ModelDebugger(self, images=True)
+            model_debugger = ModelDebugger(self, images=False)
 
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode()
@@ -120,6 +121,8 @@ class Experiment:
             return UcbAgent(seed=seed, env=env, **agent_config)
         elif agent_type == 'dreamer':
             return DreamerAgent(seed=seed, env=env, **agent_config)
+        elif agent_type == 'dreamer0':
+            return DreamerAgent0(seed=seed, env=env, **agent_config)
         else:
             raise NameError(agent_type)
 

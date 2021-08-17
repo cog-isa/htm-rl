@@ -16,6 +16,7 @@ n_episodes: 50
 
 envs:
   - pos
+  - obs
 
 agents:
   rnd: rnd

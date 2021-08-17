@@ -185,7 +185,7 @@ class DreamingDouble(Agent):
 
         _, s_sa_next_superposition = self.sa_transition_model.process(state, self._current_sa_sdr, learn=False)
         s_sa_next_superposition = self.sa_transition_model.columns_from_cells(s_sa_next_superposition)
-        next_s = self._split_s_sa(s_sa_next_superposition)
+        next_s = self.sa_encoder.split_s_sa(s_sa_next_superposition)
         return next_s
 
     def decide_to_dream(self, td_error):
@@ -207,25 +207,6 @@ class DreamingDouble(Agent):
         dreaming_prob = (dreaming_prob_boost * abs(td_error) - self.enter_prob_threshold)
         dreaming_prob = clip(dreaming_prob / max_abs_td_error, 1.)
         return self._rng.random() < dreaming_prob
-
-    def _split_s_sa(self, s_a: SparseSdr, with_options=False):
-        size = self.sa_encoder.state_sp.output_sdr_size
-        state = np.array([x for x in s_a if x < size])
-        if not with_options:
-            return state
-
-        # FIXME
-        actions = [x - size for x in s_a if x >= size]
-        actions_activation = [0 for _ in range(self.n_actions)]
-        for x in actions:
-            actions_activation[self.sa_encoder.action_encoder.decode_bit(x)] += 1
-
-        actions = []
-        for action, activation in enumerate(actions_activation):
-            if self.sa_encoder.action_encoder.activation_fraction(activation) > .3:
-                actions.append(action)
-
-        return state, actions
 
     def on_new_episode(self):
         if self.exploration_eps is not None:
