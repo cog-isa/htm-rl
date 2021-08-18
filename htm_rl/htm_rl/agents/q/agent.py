@@ -65,6 +65,7 @@ class QAgent(Agent):
         if not first:
             # Q-learning step
             greedy_sa_sdr = actions_sa_sdr[greedy_action]
+            self.E_traces.update(self._current_sa_sdr)
             self.Q.update(
                 sa=self._current_sa_sdr, reward=reward,
                 sa_next=greedy_sa_sdr,

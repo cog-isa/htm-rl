@@ -146,7 +146,7 @@ class FileConfig(Config):
         if key not in self:
             return
         val: str = self[key]
-        if isinstance(val, dict):
+        if val is None or isinstance(val, dict):
             return
         config_path = self.path.with_name(f'{prefix}_{val}.yml')
         name = key.split('.')[-1]
