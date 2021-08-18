@@ -16,7 +16,7 @@ mock
 #   htm.core dependencies
 hexy
 prettytable
-pytest==4.6.5
+pytest>=4.6.5
 
 #       better install htm.core from sources, but remember to fix boost url manually if it's not
 htm.core
