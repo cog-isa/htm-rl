@@ -6,7 +6,7 @@ from numpy.random import Generator
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.qvn import QValueNetwork
-from htm_rl.agents.q.sa_encoder import SaEncoder
+from htm_rl.agents.q.sa_encoder import SaEncoder, make_sa_encoder
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import exp_decay
 from htm_rl.envs.env import Env
@@ -35,10 +35,12 @@ class QAgent(Agent):
             softmax_enabled: bool = False
     ):
         self.n_actions = env.n_actions
-        self.sa_encoder = SaEncoder(env, seed, **sa_encoder)
-        self.Q = QValueNetwork(self.sa_encoder.output_sdr_size, seed, **qvn)
+        self.sa_encoder = make_sa_encoder(env, seed, sa_encoder)
+        sa_sdr_size = self.sa_encoder.output_sdr_size
+
+        self.Q = QValueNetwork(sa_sdr_size, seed, **qvn)
         self.E_traces = EligibilityTraces(
-            self.sa_encoder.output_sdr_size,
+            sa_sdr_size,
             **eligibility_traces
         )
         self.exploration_eps = exploration_eps

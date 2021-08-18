@@ -8,32 +8,19 @@ from htm_rl.envs.env import Env
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
-class CartesianProductEncoder:
-    output_sdr_size: int
-    n_active_bits: int
+# Forward declaration
+class CrossProductEncoder: pass
 
-    _n_actions: int
 
-    def __init__(self, s_input_source, n_actions):
-        self._n_actions = n_actions
-        self.output_sdr_size = s_input_source.output_sdr_size * n_actions
-        self.n_active_bits = 1
-
-    def encode(self, state, action, bucket_size):
-        self.n_active_bits = bucket_size
-        l = (state * self._n_actions + action) * bucket_size
-        r = l + bucket_size
-        return np.arange(l, r)
-
-class PerfectSaEncoder:
+class NaiveSaEncoder:
     n_actions: int
     state_sp: IdEncoder
-    sa_concatenator: CartesianProductEncoder
+    sa_concatenator: CrossProductEncoder
     sa_sp: IdEncoder
 
-    def __init__(self, env: Env, seed: int):
+    def __init__(self, env: Env):
         self.state_sp = IdEncoder(input_source=env)
-        self.sa_concatenator = CartesianProductEncoder(
+        self.sa_concatenator = CrossProductEncoder(
             self.state_sp, env.n_actions
         )
         self.sa_sp = IdEncoder(input_source=self.sa_concatenator)
@@ -60,3 +47,21 @@ class PerfectSaEncoder:
     @property
     def output_sdr_size(self):
         return self.sa_sp.output_sdr_size
+
+
+class CrossProductEncoder:
+    output_sdr_size: int
+    n_active_bits: int
+
+    _n_actions: int
+
+    def __init__(self, s_input_source, n_actions):
+        self._n_actions = n_actions
+        self.output_sdr_size = s_input_source.output_sdr_size * n_actions
+        self.n_active_bits = 1
+
+    def encode(self, state, action, bucket_size):
+        self.n_active_bits = bucket_size
+        l = (state * self._n_actions + action) * bucket_size
+        r = l + bucket_size
+        return np.arange(l, r)
