@@ -6,8 +6,7 @@ from htm.bindings.math import Random
 from math import exp
 import copy
 from htm.bindings.algorithms import SpatialPooler
-from htm_rl.agents.cc.utils import ExponentialDecayFunction, NoDecayFunction, LogisticExciteFunction, \
-    FixedExciteFunction
+from htm_rl.agents.cc.utils import ExponentialDecayFunction, NoDecayFunction, LogisticExciteFunction, FixedExciteFunction
 
 EPS = 1e-12
 UINT_DTYPE = "uint32"
@@ -25,6 +24,10 @@ class UnionTemporalPooler(SpatialPooler):
   """
 
     def __init__(self,
+                 output_sparsity,
+                 n_cortical_columns,
+                 cells_per_cortical_column,
+                 current_cc_id,
                  activeOverlapWeight=1.0,
                  predictedActiveOverlapWeight=0.0,
                  maxUnionActivity=0.20,
@@ -35,6 +38,17 @@ class UnionTemporalPooler(SpatialPooler):
                  synPermPreviousPredActiveInc=0.0,
                  historyLength=0,
                  minHistory=0,
+                 connected_threshold_basal=0.5,
+                 prune_zero_synapses_basal=True,
+                 activation_threshold_basal=0,
+                 learning_threshold_basal=0,
+                 initial_permanence_basal=0.4,
+                 permanence_increment_basal=0.1,
+                 permanence_decrement_basal=0.01,
+                 sample_size_basal=-1,
+                 max_synapses_per_segment_basal=-1,
+                 max_segments_per_cell_basal=255,
+                 timeseries=True,
                  **kwargs):
         """
     Please see spatial_pooler.py in NuPIC for super class parameter
@@ -74,6 +88,49 @@ class UnionTemporalPooler(SpatialPooler):
         self._historyLength = historyLength
         self._minHistory = minHistory
 
+        self.n_cortical_columns = n_cortical_columns
+        self.current_cc_id = current_cc_id
+        self.output_sparsity = output_sparsity
+        self.k = max(int(self.output_sparsity * self.getNumColumns()), 1)
+        self.seed = kwargs['seed']
+
+        # basal connections
+        self.connected_threshold_basal = connected_threshold_basal
+        self.activation_threshold_basal = activation_threshold_basal
+        self.learning_threshold_basal = learning_threshold_basal
+        self.initial_permanence_basal = initial_permanence_basal
+        self.permanence_increment_basal = permanence_increment_basal
+        self.permanence_decrement_basal = permanence_decrement_basal
+        self.sample_size_basal = sample_size_basal
+        self.max_synapses_per_segment_basal = max_synapses_per_segment_basal
+        self.max_segments_per_cell_basal = max_segments_per_cell_basal
+        self.prune_zero_synapses_basal = prune_zero_synapses_basal
+        self.timeseries = timeseries
+
+        if not isinstance(cells_per_cortical_column, list):
+            self.cells_per_cortical_column = [cells_per_cortical_column]*self.n_cortical_columns
+        else:
+            assert len(cells_per_cortical_column) == self.n_cortical_columns
+            self.cells_per_cortical_column = cells_per_cortical_column
+
+        self.cc_id_range = list()
+        shift = 0
+        for cells in self.cells_per_cortical_column:
+            self.cc_id_range.append((shift, shift+cells))
+            shift += cells
+
+        self.total_cells = sum(self.cells_per_cortical_column)
+        assert 0 <= current_cc_id < n_cortical_columns
+
+        self.connections_basal = Connections(numCells=self.total_cells,
+                                             connectedThreshold=self.connected_threshold_basal,
+                                             timeseries=self.timeseries)
+
+        self.pre_all_cortical_activity = SDR(self.total_cells)
+        self.matching_segments_basal = np.empty(0, dtype=UINT_DTYPE)
+        self.cells_to_grow_segments_basal = np.empty(0, dtype=UINT_DTYPE)
+        self.num_potential_basal = np.empty(0, dtype=UINT_DTYPE)
+
         # initialize excite/decay functions
 
         if exciteFunctionType == 'Fixed':
@@ -98,8 +155,9 @@ class UnionTemporalPooler(SpatialPooler):
         self._poolingActivation = np.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
 
         # include a small amount of tie-breaker when sorting pooling activation
-        np.random.seed(1)
+        np.random.seed(self.seed)
         self._poolingActivation_tieBreaker = np.random.randn(self.getNumColumns()) * _TIE_BREAKER_FACTOR
+        self._basalActivation_tieBreaker = np.random.randn(self.getNumColumns()) * _TIE_BREAKER_FACTOR
 
         # time since last pooling activation increment
         # initialized to be a large number
@@ -121,6 +179,11 @@ class UnionTemporalPooler(SpatialPooler):
         # predicted inputs from the last n steps
         self._prePredictedActiveInput = list()
 
+        if self.seed:
+            self.rng = Random(kwargs['seed'])
+        else:
+            self.rng = Random()
+
     def reset(self):
         """
     Reset the state of the Union Temporal Pooler.
@@ -132,28 +195,35 @@ class UnionTemporalPooler(SpatialPooler):
         self._poolingTimer = np.ones(self.getNumColumns(), dtype=REAL_DTYPE) * 1000
         self._poolingActivationInitLevel = np.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
         self._preActiveInput = np.zeros(self.getNumInputs(), dtype=REAL_DTYPE)
-        self._prePredictedActiveInput = [0]*self._historyLength
+        self._prePredictedActiveInput = list()
 
         # Reset Spatial Pooler fields
         self.setOverlapDutyCycles(np.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
         self.setActiveDutyCycles(np.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
         self.setMinOverlapDutyCycles(np.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
         self.setBoostFactors(np.ones(self.getNumColumns(), dtype=REAL_DTYPE))
+        #
+        self.pre_all_cortical_activity = SDR(self.total_cells)
+        self.matching_segments_basal = np.empty(0, dtype=UINT_DTYPE)
+        self.cells_to_grow_segments_basal = np.empty(0, dtype=UINT_DTYPE)
+        self.num_potential_basal = np.empty(0, dtype=UINT_DTYPE)
 
-    def compute(self, input_active: SDR, correctly_predicted: SDR, learn: bool):
+    def compute(self, input_active: SDR, correctly_predicted_input: SDR,
+                learn: bool, pre_all_active_output: SDR = None):
         """
     Computes one cycle of the Union Temporal Pooler algorithm.
-    @param input_active (SDR)
+    @param input_active (SDR) Input bottom up feedforward activity
+    @param correctly_predicted_input (SDR) Represents correctly predicted input
     @param learn (bool) A boolean value indicating whether learning should be performed
-    @param correctly_predicted (SDR) Represents correctly predicted input
+    @param pre_all_active_output (SDR) Represents all cortical output activity from previous step
     """
         assert input_active.dense.size == self.getNumInputs()
-        assert correctly_predicted.dense.size == self.getNumInputs()
+        assert correctly_predicted_input.dense.size == self.getNumInputs()
         self._updateBookeepingVars(learn)
 
         # Compute proximal dendrite overlaps with active and active-predicted inputs
-        overlapsActive = self.connections.computeActivity(input_active, learn)
-        overlapsPredictedActive = self.connections.computeActivity(correctly_predicted, learn)
+        overlapsActive = self.connections.computeActivity(input_active, False)
+        overlapsPredictedActive = self.connections.computeActivity(correctly_predicted_input, learn)
         totalOverlap = (overlapsActive * self._activeOverlapWeight +
                         overlapsPredictedActive *
                         self._predictedActiveOverlapWeight).astype(REAL_DTYPE)
@@ -175,18 +245,26 @@ class UnionTemporalPooler(SpatialPooler):
         self._addToPoolingActivation(activeCells, overlapsPredictedActive)
 
         # update union SDR
-        self._getMostActiveCells()
+        self._getMostActiveCellsProximal()
+
+        if pre_all_active_output is not None:
+            self.pre_all_cortical_activity.sparse = pre_all_active_output.sparse
+            self._getMostActiveCellsDistal(learn)
+
+            if learn:
+                self._adaptBasalSegments()
+                self._growNewBasalSegments()
 
         if learn:
             # adapt permanence of connections from predicted active inputs to newly active cell
             # This step is the spatial pooler learning rule, applied only to the predictedActiveInput
             # Todo: should we also include unpredicted active input in this step?
-            self._adaptSynapses(correctly_predicted, self._activeCells, self.getSynPermActiveInc(),
+            self._adaptSynapses(correctly_predicted_input, self._activeCells, self.getSynPermActiveInc(),
                                 self.getSynPermInactiveDec())
 
             # Increase permanence of connections from predicted active inputs to cells in the union SDR
             # This is Hebbian learning applied to the current time step
-            self._adaptSynapses(correctly_predicted, self._unionSDR, self._synPermPredActiveInc, 0.0)
+            self._adaptSynapses(correctly_predicted_input, self._unionSDR, self._synPermPredActiveInc, 0.0)
 
             # adapt permanence of connections from previously predicted inputs to newly active cells
             # This is a reinforcement learning rule that considers previous input to the current cell
@@ -207,7 +285,7 @@ class UnionTemporalPooler(SpatialPooler):
         if self._historyLength > 0:
             if len(self._prePredictedActiveInput) == self._historyLength:
                 self._prePredictedActiveInput.pop(0)
-            self._prePredictedActiveInput.append(correctly_predicted)
+            self._prePredictedActiveInput.append(correctly_predicted_input)
 
         return self._unionSDR
 
@@ -243,7 +321,7 @@ class UnionTemporalPooler(SpatialPooler):
 
         return self._poolingActivation
 
-    def _getMostActiveCells(self):
+    def _getMostActiveCellsProximal(self):
         """
     Gets the most active cells in the Union SDR having at least non-zero
     activation in sorted order.
@@ -265,6 +343,98 @@ class UnionTemporalPooler(SpatialPooler):
             self._unionSDR.sparse = []
 
         return self._unionSDR
+
+    def _getMostActiveCellsDistal(self, learn: bool):
+        """
+        Gets the most active from cells Union SDR by distal active segments.
+        Called after feedforward proximal activation.
+        :param learn:
+        :return:
+        """
+        # Active
+        num_connected, num_potential = self.connections_basal.computeActivityFull(self.pre_all_cortical_activity, learn)  # The role of "learn" parameter isn't clear
+        active_segments = np.flatnonzero(num_connected >= self.activation_threshold_basal)
+        self.matching_segments_basal = np.flatnonzero(num_potential >= self.learning_threshold_basal)
+        self.num_potential_basal = num_potential
+        # filter segments by active cells
+        active_segments = self.connections_basal.filterSegmentsByCell(active_segments, self._unionSDR.sparse)
+        self.matching_segments_basal = self.connections_basal.filterSegmentsByCell(self.matching_segments_basal, self._unionSDR.sparse)
+
+        if active_segments.size > 0:
+            active_cells = self.connections_basal.mapSegmentsToCells(active_segments)
+            active_cells, counts = np.unique(active_cells, return_counts=True)
+            # needs a tiebreaker because argpartition brings bias
+            indices = np.argpartition(counts + self._basalActivation_tieBreaker[active_cells], -self.k)[:self.k]
+            k_th_value = counts[indices].min()
+
+            if k_th_value != 0:
+                top_k_cells = active_cells[indices]
+                self._unionSDR.sparse = np.intersect1d(top_k_cells, self._unionSDR.sparse)
+                self.cells_to_grow_segments_basal = np.empty(0, dtype=UINT_DTYPE)
+            else:
+                cells_with_matching_segments = np.unique(self.connections_basal.mapSegmentsToCells(self.matching_segments_basal))
+                self.cells_to_grow_segments_basal = self._unionSDR.sparse[np.in1d(self._unionSDR.sparse, cells_with_matching_segments, invert=True)]
+        else:
+            cells_with_matching_segments = np.unique(
+                self.connections_basal.mapSegmentsToCells(self.matching_segments_basal))
+            self.cells_to_grow_segments_basal = self._unionSDR.sparse[
+                np.in1d(self._unionSDR.sparse, cells_with_matching_segments, invert=True)]
+
+    def _adaptBasalSegments(self):
+            """
+            Learn on basal segments.
+            :return:
+            """
+
+            for segment in self.matching_segments_basal:
+                self.connections_basal.adaptSegment(segment, self.pre_all_cortical_activity,
+                                                    self.permanence_increment_basal, self.permanence_decrement_basal,
+                                                    self.prune_zero_synapses_basal, self.learning_threshold_basal)
+                cc_id = self._getSegmentInputCC(segment)
+                receptor_field_cells = self._filterCellsByCC(self.pre_all_cortical_activity.sparse, cc_id)
+                if self.sample_size_basal == -1:
+                    max_new = len(receptor_field_cells)
+                else:
+                    max_new = self.sample_size_basal - self.num_potential_basal[segment]
+
+                if self.max_synapses_per_segment_basal != -1:
+                    synapse_counts = self.connections_basal.numSynapses(segment)
+                    num_synapses_to_reach_max = self.max_synapses_per_segment_basal - synapse_counts
+                    max_new = min(max_new, num_synapses_to_reach_max)
+                if max_new > 0:
+                    self.connections_basal.growSynapses(segment, receptor_field_cells, self.initial_permanence_basal, self.rng, max_new)
+
+    def _growNewBasalSegments(self):
+        # separate segment for every cc
+        for cc_id in range(self.n_cortical_columns):
+            growth_candidates = self._filterCellsByCC(self.pre_all_cortical_activity.sparse, cc_id)
+            num_new_synapses = len(growth_candidates)
+            if num_new_synapses > 0:
+                if self.sample_size_basal != -1:
+                    num_new_synapses = min(num_new_synapses, self.sample_size_basal)
+
+                if self.max_synapses_per_segment_basal != -1:
+                    num_new_synapses = min(num_new_synapses, self.max_synapses_per_segment_basal)
+
+                for cell in self.cells_to_grow_segments_basal:
+                    new_segment = self.connections_basal.createSegment(cell, self.max_segments_per_cell_basal)
+                    self.connections_basal.growSynapses(new_segment, growth_candidates, self.initial_permanence_basal, self.rng,
+                                             maxNew=num_new_synapses)
+
+    def _filterCellsByCC(self, cells_id, cortical_column_id):
+        r = self.cc_id_range[cortical_column_id]
+        return cells_id[(cells_id >= r[0]) & (cells_id < r[1])]
+
+    def _getCCForCell(self, cell):
+        for cc_id, r in enumerate(self.cc_id_range):
+            if r[0] <= cell < r[1]:
+                return cc_id
+        else:
+            return None
+
+    def _getSegmentInputCC(self, segment):
+        presynaptic_cells = self.connections_basal.presynapticCellsForSegment(segment)
+        return self._getCCForCell(presynaptic_cells[0])
 
     def getUnionSDR(self):
         return self._unionSDR
@@ -425,16 +595,16 @@ class GeneralFeedbackTM:
         return self.winner_cells.sparse - self.local_range[0]
 
     # processing
-    def activate_basal_dendrites(self):
+    def activate_basal_dendrites(self, learn):
         self.active_segments_basal, self.matching_segments_basal, self.predictive_cells_basal, self.num_potential_basal = self._activate_dendrites(
             self.basal_connections, self.active_cells_context, self.activation_threshold_basal,
-            self.learning_threshold_basal
+            self.learning_threshold_basal, learn
         )
 
-    def activate_apical_dendrites(self):
+    def activate_apical_dendrites(self, learn):
         self.active_segments_apical, self.matching_segments_apical, self.predictive_cells_apical, self.num_potential_apical = self._activate_dendrites(
             self.apical_connections, self.active_cells_feedback, self.activation_threshold_apical,
-            self.learning_threshold_apical
+            self.learning_threshold_apical, learn
         )
 
     def predict_cells(self):
@@ -773,7 +943,7 @@ class GeneralFeedbackTM:
         return candidate_cells[one_per_column_filter].astype('uint32')
 
     @staticmethod
-    def _activate_dendrites(connections, presynaptic_cells, activation_threshold, learning_threshold):
+    def _activate_dendrites(connections, presynaptic_cells, activation_threshold, learning_threshold, learn):
         """
         Calculates active and matching segments and predictive cells.
         :param connections:
@@ -784,7 +954,7 @@ class GeneralFeedbackTM:
         """
         # Active
         num_connected, num_potential = connections.computeActivityFull(presynaptic_cells,
-                                                                       False)  # The role of "learn" parameter isn't clear
+                                                                       learn)  # The role of "learn" parameter isn't clear
         active_segments = np.flatnonzero(num_connected >= activation_threshold)
         predictive_cells = connections.mapSegmentsToCells(active_segments)  # with duplicates
 
