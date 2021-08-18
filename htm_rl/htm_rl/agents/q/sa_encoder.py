@@ -1,7 +1,6 @@
 from typing import Dict, List
 
 import numpy as np
-from htm_rl.agents.q.naive_sa_encoder import NaiveSaEncoder
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.envs.env import Env
@@ -64,10 +63,3 @@ class SaEncoder:
         return self.sa_sp.output_sdr_size
 
 
-def make_sa_encoder(
-        env: Env, seed: int, sa_encoder_config: dict
-    ):
-    if sa_encoder_config:
-        return SaEncoder(env, seed, **sa_encoder_config)
-    else:
-        return NaiveSaEncoder(env)

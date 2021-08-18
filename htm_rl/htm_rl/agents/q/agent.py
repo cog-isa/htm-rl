@@ -5,8 +5,9 @@ from numpy.random import Generator
 
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
+from htm_rl.agents.q.naive_sa_encoder import NaiveSaEncoder
 from htm_rl.agents.q.qvn import QValueNetwork
-from htm_rl.agents.q.sa_encoder import SaEncoder, make_sa_encoder
+from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import exp_decay
 from htm_rl.envs.env import Env
@@ -28,8 +29,8 @@ class QAgent(Agent):
             self,
             env: Env,
             seed: int,
-            sa_encoder: dict,
             qvn: dict,
+            sa_encoder: dict = None,
             eligibility_traces: dict = None,
             exploration_eps: tuple[float, float] = None,
             softmax_enabled: bool = False
@@ -93,3 +94,12 @@ def softmax(x):
     """Computes softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum(axis=0)
+
+
+def make_sa_encoder(
+        env: Env, seed: int, sa_encoder_config: dict
+    ):
+    if sa_encoder_config:
+        return SaEncoder(env, seed, **sa_encoder_config)
+    else:
+        return NaiveSaEncoder(env)
