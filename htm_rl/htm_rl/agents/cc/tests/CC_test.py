@@ -66,8 +66,8 @@ def visualize_tm(tm: GeneralFeedbackTM, feedback_shape=(1, -1), step: int = 0):
 
 
 n_actions = 4
-action_bucket = 5
-n_states = 5
+action_bucket = 10
+n_states = 25
 state_bucket = 3
 action_encoder = IntBucketEncoder(n_actions, action_bucket)
 state_encoder = IntBucketEncoder(n_states, state_bucket)
@@ -80,7 +80,7 @@ input_active_cells = action_bucket
 cells_per_column = 16
 output_columns = 4000
 output_active_cells = 40
-seed = 87832
+seed = 8543
 config_tm = dict(columns=input_columns,
                  cells_per_column=cells_per_column,
                  context_cells=state_encoder.output_sdr_size,
@@ -138,10 +138,10 @@ config_tp = dict(
     synPermPreviousPredActiveInc=0.05,
     historyLength=5,
     minHistory=5,
-    boostStrength=0.1,
+    boostStrength=1.0,
     columnDimensions=[output_columns],
-    inputDimensions=[input_columns * cells_per_column],
-    potentialRadius=input_columns * cells_per_column,
+    inputDimensions=[input_columns*cells_per_column],
+    potentialRadius=input_columns*cells_per_column,
     dutyCyclePeriod=1000,
     globalInhibition=True,
     localAreaDensity=0.01,
@@ -160,46 +160,93 @@ config_tp = dict(
 
 # In[40]:
 
-
-def run(tm, tp, policy, repeat=1, visualize=False):
+def run(tm, tp, policy, learn=True, repeat=1, visualize=False):
     tp_input = SDR(tp.getNumInputs())
     tp_predictive = SDR(tp.getNumInputs())
-    tp_prev_out = SDR(tp.getNumColumns())
     for _ in range(repeat):
-        for state, action in enumerate(policy):
+        for state, action in policy:
             context = state_encoder.encode(state)
             active_input = action_encoder.encode(action)
 
             tm.set_active_feedback_cells(tp.getUnionSDR().sparse)
             tm.set_active_context_cells(context)
 
-            tm.activate_apical_dendrites(True)
-            tm.activate_basal_dendrites(True)
+            tm.activate_apical_dendrites(learn)
+            tm.activate_basal_dendrites(learn)
             tm.predict_cells()
 
             tm.set_active_columns(active_input)
-            tm.activate_cells(True)
+            tm.activate_cells(learn)
 
             if visualize:
                 visualize_tm(tm, feedback_shape=(40, -1))
 
             tp_input.sparse = tm.get_active_cells()
             tp_predictive.sparse = tm.get_correctly_predicted_cells()
-            tp.compute(tp_input, tp_predictive, True, tp_prev_out)
-            tp_prev_out = tp.getUnionSDR()
+            tp.compute(tp_input, tp_predictive, learn, tp.getUnionSDR())
 
             if visualize:
                 visualize_tp(tp, 40, -1)
 
 
+def train(tm, tp, data, codes, repeat=5):
+    for i, p in enumerate(data):
+        run(tm, tp, p, repeat=repeat, learn=True)
+        codes[i] = tp.getUnionSDR().dense
+        tp.reset(boosting=False)
+        tm.reset()
+
+
+def test(tm, tp, data, codes, threshold):
+    n_sensations_per_policy = list()
+    for i, policy in enumerate(data):
+        n_sensations = 0
+        for state, action in policy:
+            run(tm, tp, [(state, action)], learn=False)
+            n_sensations += 1
+            overlap = np.dot(codes, tp.getUnionSDR().dense[None].T)
+            if np.sum(overlap >= threshold) == 1:
+                n_sensations_per_policy.append(n_sensations)
+                break
+        else:
+            n_sensations_per_policy.append(-1)
+        tp.reset()
+        tm.reset()
+    return n_sensations_per_policy
+
+
+def test_retrieval(tm, tp, data, codes, threshold):
+    n_sensations = test(tm, tp, data, codes, threshold)
+    print(n_sensations)
+    print(np.sum(np.array(n_sensations) != -1) / len(n_sensations))
+
+
+def test_coding_similarity(data, codes, n_policies):
+    raw_similarity = np.zeros((n_policies, n_policies))
+    codes_similarity = np.zeros((n_policies, n_policies))
+    for i, seq1 in enumerate(data):
+        for j, seq2 in enumerate(data):
+            raw_similarity[i, j] = 1 - np.count_nonzero(seq1 - seq2)/seq1.size
+            codes_similarity[i, j] = np.dot(codes[i], codes[j]) / codes[i].sum()
+
+    sns.heatmap(raw_similarity)
+    plt.show()
+    sns.heatmap(codes_similarity)
+    plt.show()
+
+
 def main():
     n_policies = 50
-    data = [np.random.randint(0, n_actions, n_states) for _ in range(n_policies)]
+    data1 = [np.random.randint(0, n_actions, n_states) for _ in range(n_policies)]
+    data = [list(zip(range(n_states), x)) for x in data1]
+    codes = np.zeros((n_policies, output_columns), dtype='int8')
     tm = GeneralFeedbackTM(**config_tm)
     tp = UnionTemporalPooler(**config_tp)
-    #run(tm, tp, data[0], repeat=3, visualize=False)
-    run(tm, tp, data[1], repeat=3, visualize=True)
-    plt.show()
+    train(tm, tp, data, codes, repeat=10)
+
+    test_retrieval(tm, tp, data, codes, 30)
+
+    test_coding_similarity(data1, codes, n_policies)
 
 
 if __name__ == '__main__':

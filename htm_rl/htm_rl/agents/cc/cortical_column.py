@@ -365,13 +365,17 @@ class UnionTemporalPooler(SpatialPooler):
             active_cells = self.connections_basal.mapSegmentsToCells(active_segments)
             active_cells, counts = np.unique(active_cells, return_counts=True)
             # needs a tiebreaker because argpartition brings bias
-            indices = np.argpartition(counts + self._basalActivation_tieBreaker[active_cells], -self.k)[:self.k]
-            k_th_value = counts[indices].min()
+            if active_cells.size >= self.k:
+                indices = np.argpartition(counts + self._basalActivation_tieBreaker[active_cells], -self.k)[:self.k]
+                k_th_value = counts[indices].min()
 
-            if k_th_value != 0:
-                top_k_cells = active_cells[indices]
-                self._unionSDR.sparse = np.intersect1d(top_k_cells, self._unionSDR.sparse)
-                self.cells_to_grow_segments_basal = np.empty(0, dtype=UINT_DTYPE)
+                if k_th_value != 0:
+                    top_k_cells = active_cells[indices]
+                    self._unionSDR.sparse = np.intersect1d(top_k_cells, self._unionSDR.sparse)
+                    self.cells_to_grow_segments_basal = np.empty(0, dtype=UINT_DTYPE)
+                else:
+                    cells_with_matching_segments = np.unique(self.connections_basal.mapSegmentsToCells(self.matching_segments_basal))
+                    self.cells_to_grow_segments_basal = self._unionSDR.sparse[np.in1d(self._unionSDR.sparse, cells_with_matching_segments, invert=True)]
             else:
                 cells_with_matching_segments = np.unique(self.connections_basal.mapSegmentsToCells(self.matching_segments_basal))
                 self.cells_to_grow_segments_basal = self._unionSDR.sparse[np.in1d(self._unionSDR.sparse, cells_with_matching_segments, invert=True)]
