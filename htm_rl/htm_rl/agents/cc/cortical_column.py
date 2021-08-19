@@ -184,7 +184,7 @@ class UnionTemporalPooler(SpatialPooler):
         else:
             self.rng = Random()
 
-    def reset(self):
+    def reset(self, boosting=True):
         """
     Reset the state of the Union Temporal Pooler.
     """
@@ -198,10 +198,11 @@ class UnionTemporalPooler(SpatialPooler):
         self._prePredictedActiveInput = list()
 
         # Reset Spatial Pooler fields
-        self.setOverlapDutyCycles(np.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
-        self.setActiveDutyCycles(np.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
-        self.setMinOverlapDutyCycles(np.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
-        self.setBoostFactors(np.ones(self.getNumColumns(), dtype=REAL_DTYPE))
+        if boosting:
+            self.setOverlapDutyCycles(np.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+            self.setActiveDutyCycles(np.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+            self.setMinOverlapDutyCycles(np.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
+            self.setBoostFactors(np.ones(self.getNumColumns(), dtype=REAL_DTYPE))
         #
         self.pre_all_cortical_activity = SDR(self.total_cells)
         self.matching_segments_basal = np.empty(0, dtype=UINT_DTYPE)
@@ -524,6 +525,7 @@ class GeneralFeedbackTM:
         self.predicted_cells = SDR(self.total_cells)
         self.active_columns = SDR(self.columns)
         self.predicted_columns = SDR(self.columns)
+        self.correct_predicted_cells = SDR(self.total_cells)
 
         self.active_cells_context = SDR(self.total_cells)
         self.active_cells_feedback = SDR(self.total_cells)
@@ -594,6 +596,9 @@ class GeneralFeedbackTM:
     def get_winner_cells(self):
         return self.winner_cells.sparse - self.local_range[0]
 
+    def get_correctly_predicted_cells(self):
+        return self.correct_predicted_cells.sparse - self.local_range[0]
+
     # processing
     def activate_basal_dendrites(self, learn):
         self.active_segments_basal, self.matching_segments_basal, self.predictive_cells_basal, self.num_potential_basal = self._activate_dendrites(
@@ -638,6 +643,7 @@ class GeneralFeedbackTM:
                                                                aKey=self._columns_for_cells(
                                                                    self.predicted_cells.sparse),
                                                                rightMinusLeft=True)
+        self.correct_predicted_cells.sparse = correct_predicted_cells
         new_active_cells = np.concatenate((correct_predicted_cells,
                                            getAllCellsInColumns(bursting_columns,
                                                                 self.cells_per_column) + self.local_range[0]))
@@ -811,9 +817,12 @@ class GeneralFeedbackTM:
             learning_matching_apical_segments2 = np.empty(0, dtype=np.int32)
             cells_to_grow_apical_segments2 = np.empty(0, dtype=np.int32)
         # cells on which new apical and basal segments will be grown
-        cells_to_grow_apical_and_basal_segments = self._get_cells_with_fewest_segments(self.basal_connections,
-                                                                                       self.apical_connections,
-                                                                                       bursting_columns_with_no_match)
+        if bursting_columns_with_no_match.size > 0:
+            cells_to_grow_apical_and_basal_segments = self._get_cells_with_fewest_segments(self.basal_connections,
+                                                                                           self.apical_connections,
+                                                                                           bursting_columns_with_no_match)
+        else:
+            cells_to_grow_apical_and_basal_segments = np.empty(0, dtype=UINT_DTYPE)
 
         # compile all segments and cells together
         cells_to_grow_apical_segments = np.concatenate([cells_to_grow_apical_segments, cells_to_grow_apical_segments2])
@@ -925,22 +934,14 @@ class GeneralFeedbackTM:
             newshape=(len(columns), self.cells_per_column))
 
         # Filter to just the cells that are tied for fewest in their minicolumn.
+        tiebreaker = np.empty_like(segment_counts, dtype='float64')
+        self.rng.initializeReal64Array(tiebreaker)
+        segment_counts = segment_counts + tiebreaker*0.1
+
         min_segment_counts = np.amin(segment_counts, axis=1, keepdims=True)
         candidate_cells = candidate_cells[np.flatnonzero(segment_counts == min_segment_counts)]
 
-        # Filter to one cell per column, choosing randomly from the minimums.
-        # To do the random choice, add a random offset to each index in-place, using
-        # casting to floor the result.
-        _, one_per_column_filter, num_candidates_in_columns = np.unique(self._columns_for_cells(candidate_cells),
-                                                                        return_index=True, return_counts=True)
-
-        offset_percents = np.empty(len(columns), dtype="float64")
-        self.rng.initializeReal64Array(offset_percents)
-
-        np.add(one_per_column_filter, offset_percents * num_candidates_in_columns, out=one_per_column_filter,
-               casting="unsafe")
-
-        return candidate_cells[one_per_column_filter].astype('uint32')
+        return candidate_cells.astype('uint32')
 
     @staticmethod
     def _activate_dendrites(connections, presynaptic_cells, activation_threshold, learning_threshold, learn):
