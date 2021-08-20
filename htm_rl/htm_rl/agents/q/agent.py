@@ -5,9 +5,8 @@ from numpy.random import Generator
 
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
-from htm_rl.agents.q.naive_sa_encoder import NaiveSaEncoder
 from htm_rl.agents.q.qvn import QValueNetwork
-from htm_rl.agents.q.sa_encoder import SaEncoder
+from htm_rl.agents.q.sa_encoders import SaEncoder
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import exp_decay
 from htm_rl.envs.env import Env
@@ -100,6 +99,8 @@ def make_sa_encoder(
         env: Env, seed: int, sa_encoder_config: dict
     ):
     if sa_encoder_config:
-        return SaEncoder(env, seed, **sa_encoder_config)
+        from htm_rl.agents.q.sa_encoders import SpSaEncoder
+        return SpSaEncoder(env, seed, **sa_encoder_config)
     else:
-        return NaiveSaEncoder(env)
+        from htm_rl.agents.q.sa_encoders import CrossSaEncoder
+        return CrossSaEncoder(env)
