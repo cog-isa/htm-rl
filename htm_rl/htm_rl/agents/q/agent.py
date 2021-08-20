@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 
 import numpy as np
 from numpy.random import Generator
@@ -97,7 +97,7 @@ def softmax(x):
 
 def make_sa_encoder(
         env: Env, seed: int, sa_encoder_config: dict
-    ):
+):
     if sa_encoder_config:
         from htm_rl.agents.q.sa_encoders import SpSaEncoder
         return SpSaEncoder(env, seed, **sa_encoder_config)
