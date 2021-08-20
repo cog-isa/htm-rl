@@ -165,21 +165,3 @@ class SdrConcatenator:
             result[l:r] = sdr
             result[l:r] += self._shifts[i - 1]
         return result
-
-
-class DummyEncoder:
-    """Dummy [=identity] encoder that does nothing."""
-
-    output_sdr_size: int
-
-    def __init__(self, input_source):
-        self.output_sdr_size = input_source.output_sdr_size
-
-    # noinspection PyMethodMayBeStatic
-    def encode(self, x):
-        return x
-
-    # noinspection PyMethodMayBeStatic
-    def decode(self, x):
-        # assumes IntBucket encoded input w/o overlap
-        return x[0] // len(x)
