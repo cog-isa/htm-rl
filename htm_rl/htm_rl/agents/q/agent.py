@@ -36,11 +36,9 @@ class QAgent(Agent):
     ):
         self.n_actions = env.n_actions
         self.sa_encoder = make_sa_encoder(env, seed, sa_encoder)
-        sa_sdr_size = self.sa_encoder.output_sdr_size
-
-        self.Q = QValueNetwork(sa_sdr_size, seed, **qvn)
+        self.Q = QValueNetwork(self.sa_encoder.output_sdr_size, seed, **qvn)
         self.E_traces = EligibilityTraces(
-            sa_sdr_size,
+            self.sa_encoder.output_sdr_size,
             **eligibility_traces
         )
         self.exploration_eps = exploration_eps
