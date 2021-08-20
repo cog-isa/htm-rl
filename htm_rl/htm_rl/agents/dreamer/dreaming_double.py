@@ -1,3 +1,4 @@
+import pickle
 from typing import Optional
 
 import numpy as np
@@ -9,7 +10,8 @@ from htm_rl.agents.q.agent import softmax
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
-from htm_rl.agents.qmb.transition_model import SsaTransitionModel
+from htm_rl.agents.qmb.transition_model import TransitionModel
+from htm_rl.agents.qmb.transition_models import SsaTransitionModel
 from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import modify_factor_tuple, exp_decay, isnone, clip
@@ -23,7 +25,8 @@ class DreamingDouble(Agent):
     wake_E_traces: EligibilityTraces
     nest_traces: bool
 
-    sa_transition_model: SsaTransitionModel
+    transition_model: TransitionModel
+    tm_checkpoint: Optional[bytes]
     reward_model: RewardModel
 
     exploration_eps: Optional[tuple[float, float]]
@@ -70,7 +73,8 @@ class DreamingDouble(Agent):
         self.wake_E_traces = wake_agent.E_traces
         self.nest_traces = nest_traces
 
-        self.sa_transition_model = wake_agent.sa_transition_model
+        self.transition_model = wake_agent.transition_model
+        self.tm_checkpoint = None
         self.reward_model = wake_agent.reward_model
         self.exploration_eps = exploration_eps
         self.softmax_enabled = wake_agent.softmax_enabled
@@ -93,7 +97,7 @@ class DreamingDouble(Agent):
         self._episode = 0
 
     def put_into_dream(self, starting_sa_sdr):
-        self.sa_transition_model.save_tm_state()
+        self.save_tm_checkpoint()
         self.dream_length = 0
         self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
         self.Q.learning_rate = modify_factor_tuple(self.Q.origin_learning_rate, self.Q.learning_rate_factor)
@@ -114,7 +118,7 @@ class DreamingDouble(Agent):
                 self.Q.origin_learning_rate,
                 1.0/(i_rollout + 1.)**.5
             )
-        self.sa_transition_model.restore_tm_state()
+        self.restore_tm_checkpoint()
         self._current_sa_sdr = self.starting_sa_sdr.copy()
 
     def wake(self):
@@ -183,9 +187,9 @@ class DreamingDouble(Agent):
         reward = self.reward_model.rewards[state].mean()
         _ = self.act(reward, state, False)
 
-        _, s_sa_next_superposition = self.sa_transition_model.process(state, self._current_sa_sdr, learn=False)
-        s_sa_next_superposition = self.sa_transition_model.columns_from_cells(s_sa_next_superposition)
-        next_s = self.sa_encoder.split_s_sa(s_sa_next_superposition)
+        _, s_sa_next_superposition = self.transition_model.process(state, self._current_sa_sdr, learn=False)
+        s_sa_next_superposition = self.transition_model.columns_from_cells(s_sa_next_superposition)
+        next_s = self.sa_encoder.decode_state(s_sa_next_superposition)
         return next_s
 
     def decide_to_dream(self, td_error):
@@ -213,6 +217,16 @@ class DreamingDouble(Agent):
             self.exploration_eps = exp_decay(self.exploration_eps)
         self.im_weight = exp_decay(self.im_weight)
         self._episode += 1
+
+    def save_tm_checkpoint(self) -> bytes:
+        """Saves TM state."""
+        self.tm_checkpoint = pickle.dumps(self.transition_model)
+        return self.tm_checkpoint
+
+    def restore_tm_checkpoint(self, tm_checkpoint: bytes = None):
+        """Restores saved TM state."""
+        tm_checkpoint = isnone(tm_checkpoint, self.tm_checkpoint)
+        self.transition_model = pickle.loads(tm_checkpoint)
 
     @property
     def name(self):
