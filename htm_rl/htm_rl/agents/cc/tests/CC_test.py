@@ -80,7 +80,7 @@ input_active_cells = action_bucket
 cells_per_column = 16
 output_columns = 4000
 output_active_cells = 40
-seed = 8543
+seed = 0
 config_tm = dict(columns=input_columns,
                  cells_per_column=cells_per_column,
                  context_cells=state_encoder.output_sdr_size,
@@ -117,28 +117,29 @@ config_tp = dict(
     n_cortical_columns=1,
     cells_per_cortical_column=output_columns,
     current_cc_id=0,
-    activeOverlapWeight=0.5,
-    predictedActiveOverlapWeight=0.5,
-    maxUnionActivity=0.5,
-    exciteFunctionType='Fixed',
-    decayFunctionType='NoDecay',
+    activeOverlapWeight=1,
+    predictedActiveOverlapWeight=1,
+    maxUnionActivity=0.02,
+    exciteFunctionType='Logistic',
+    decayFunctionType='Exponential',
     decayTimeConst=20.0,
     prune_zero_synapses_basal=True,
     activation_threshold_basal=output_active_cells,
     learning_threshold_basal=output_active_cells,
     connected_threshold_basal=0.5,
-    initial_permanence_basal=0.4,
+    initial_permanence_basal=0.1,
     permanence_increment_basal=0.1,
     permanence_decrement_basal=0.01,
     sample_size_basal=output_active_cells,
     max_synapses_per_segment_basal=output_active_cells,
     max_segments_per_cell_basal=32,
     timeseries=True,
+    sm_stability=0.9,
     synPermPredActiveInc=0.1,
-    synPermPreviousPredActiveInc=0.05,
-    historyLength=5,
-    minHistory=5,
-    boostStrength=1.0,
+    synPermPreviousPredActiveInc=0.01,
+    historyLength=10,
+    minHistory=0,
+    boostStrength=0.1,
     columnDimensions=[output_columns],
     inputDimensions=[input_columns*cells_per_column],
     potentialRadius=input_columns*cells_per_column,
@@ -168,7 +169,10 @@ def run(tm, tp, policy, learn=True, repeat=1, visualize=False):
             context = state_encoder.encode(state)
             active_input = action_encoder.encode(action)
 
-            tm.set_active_feedback_cells(tp.getUnionSDR().sparse)
+            if tp.stability >= 0.9:
+                tm.set_active_feedback_cells(tp.getUnionSDR().sparse)
+            else:
+                tm.set_active_feedback_cells([])
             tm.set_active_context_cells(context)
 
             tm.activate_apical_dendrites(learn)
@@ -189,12 +193,16 @@ def run(tm, tp, policy, learn=True, repeat=1, visualize=False):
                 visualize_tp(tp, 40, -1)
 
 
-def train(tm, tp, data, codes, repeat=5):
-    for i, p in enumerate(data):
-        run(tm, tp, p, repeat=repeat, learn=True)
-        codes[i] = tp.getUnionSDR().dense
-        tp.reset(boosting=False)
-        tm.reset()
+def train(tm, tp, data, codes, repeat=5, seed=0):
+    np.random.seed(seed)
+    indices = np.arange(len(data))
+    for _ in range(repeat):
+        np.random.shuffle(indices)
+        for i in indices:
+            run(tm, tp, data[i], learn=True)
+            codes[i] = tp.getUnionSDR().dense
+            tp.reset(boosting=False)
+            tm.reset()
 
 
 def test(tm, tp, data, codes, threshold):
@@ -205,8 +213,12 @@ def test(tm, tp, data, codes, threshold):
             run(tm, tp, [(state, action)], learn=False)
             n_sensations += 1
             overlap = np.dot(codes, tp.getUnionSDR().dense[None].T)
-            if np.sum(overlap >= threshold) == 1:
-                n_sensations_per_policy.append(n_sensations)
+            mask = np.flatnonzero(overlap >= threshold)
+            if mask.size == 1:
+                if mask[0] == i:
+                    n_sensations_per_policy.append(n_sensations)
+                else:
+                    n_sensations_per_policy.append(-2)
                 break
         else:
             n_sensations_per_policy.append(-1)
@@ -218,7 +230,7 @@ def test(tm, tp, data, codes, threshold):
 def test_retrieval(tm, tp, data, codes, threshold):
     n_sensations = test(tm, tp, data, codes, threshold)
     print(n_sensations)
-    print(np.sum(np.array(n_sensations) != -1) / len(n_sensations))
+    print(np.sum(np.array(n_sensations) > 0) / len(n_sensations))
 
 
 def test_coding_similarity(data, codes, n_policies):
@@ -235,10 +247,26 @@ def test_coding_similarity(data, codes, n_policies):
     plt.show()
 
 
+def generate_data(n, n_actions, n_states, randomness=1.0):
+    raw_data = list()
+    seed_seq = np.random.randint(0, n_actions, n_states)
+    raw_data.append(seed_seq.copy())
+    n_replace = int(n_states * randomness)
+    for i in range(1, n):
+        new_seq = np.random.randint(0, n_actions, n_states)
+        if randomness == 1.0:
+            raw_data.append(new_seq)
+        else:
+            indices = np.random.randint(0, n_states, n_replace)
+            seed_seq[indices] = new_seq[indices]
+            raw_data.append(seed_seq.copy())
+    data = [list(zip(range(n_states), x)) for x in raw_data]
+    return raw_data, data
+
+
 def main():
-    n_policies = 50
-    data1 = [np.random.randint(0, n_actions, n_states) for _ in range(n_policies)]
-    data = [list(zip(range(n_states), x)) for x in data1]
+    n_policies = 10
+    raw_data, data = generate_data(n_policies, n_actions, n_states, randomness=0.3)
     codes = np.zeros((n_policies, output_columns), dtype='int8')
     tm = GeneralFeedbackTM(**config_tm)
     tp = UnionTemporalPooler(**config_tp)
@@ -246,7 +274,7 @@ def main():
 
     test_retrieval(tm, tp, data, codes, 30)
 
-    test_coding_similarity(data1, codes, n_policies)
+    test_coding_similarity(raw_data, codes, n_policies)
 
 
 if __name__ == '__main__':
