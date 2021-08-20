@@ -6,7 +6,7 @@ from numpy.random import Generator
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.qvn import QValueNetwork
-from htm_rl.agents.q.sa_encoders import SaEncoder
+from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import exp_decay
 from htm_rl.envs.env import Env

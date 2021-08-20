@@ -1,28 +1,12 @@
 from typing import Dict, List
 
 import numpy as np
+
+from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.envs.env import Env
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
-
-
-class SaEncoder:
-    def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
-        raise NotImplementedError()
-
-    def encode_actions(self, s: SparseSdr, learn: bool) -> List[SparseSdr]:
-        raise NotImplementedError()
-
-    def encode_sa(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        raise NotImplementedError()
-
-    def decode_state(self, sdr) -> SparseSdr:
-        raise NotImplementedError()
-
-    @property
-    def output_sdr_size(self):
-        raise NotImplementedError()
 
 
 class SpSaEncoder(SaEncoder):

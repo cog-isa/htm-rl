@@ -1,10 +1,8 @@
-import pickle
-
 from htm.bindings.sdr import SDR
 
+from htm_rl.agents.q.sa_encoders import SpSaEncoder, CrossSaEncoder
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import SdrConcatenator
-from htm_rl.common.utils import isnone
 from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
@@ -32,6 +30,11 @@ class TransitionModel:
         self.tm.reset()
         self._predicted_columns_sdr.sparse = []
 
+    def preprocess(self, *data) -> SparseSdr:
+        if len(data) == 1 and isinstance(data[0], SparseSdr):
+            return data[0]
+        raise NotImplementedError()
+
     def process(self, proximal_input: SparseSdr, learn: bool) -> tuple[SparseSdr, SparseSdr]:
         """
         Given new piece of proximal input data, processes it by sequentially activating cells
@@ -41,11 +44,11 @@ class TransitionModel:
         :param learn: whether or not to force learning.
         :return: tuple (active cells, depolarized cells) of sparse SDRs.
         """
-        active_cells = self.activate_cells(proximal_input, learn)
-        depolarized_cells = self.depolarize_cells(learn)
+        active_cells = self._activate_cells(proximal_input, learn)
+        depolarized_cells = self._depolarize_cells(learn)
         return active_cells, depolarized_cells
 
-    def activate_cells(self, proximal_input: SparseSdr, learn: bool) -> SparseSdr:
+    def _activate_cells(self, proximal_input: SparseSdr, learn: bool) -> SparseSdr:
         """
         Given proximal input SDR, activates TM cells and [optionally] applies learning step.
 
@@ -60,7 +63,7 @@ class TransitionModel:
         self.tm.activateCells(self._proximal_input_sdr, learn=learn)
         return self.tm.getActiveCells().sparse
 
-    def depolarize_cells(self, learn: bool) -> SparseSdr:
+    def _depolarize_cells(self, learn: bool) -> SparseSdr:
         """
         Given the current state of active cells, activates cells' segments
         leading to cells depolarization.
@@ -87,16 +90,6 @@ class TransitionModel:
         cpc = self.tm.cells_per_column
         return set(cell_ind // cpc for cell_ind in cells_sparse_sdr)
 
-    def save_tm_state(self):
-        """Saves TM state."""
-        self._tm_dump = pickle.dumps(self.tm)
-        return self._tm_dump
-
-    def restore_tm_state(self, tm_dump=None):
-        """Restores saved TM state."""
-        tm_dump = isnone(tm_dump, self._tm_dump)
-        self.tm = pickle.loads(tm_dump)
-
     def _compute_prediction_quality(self):
         n_predicted = self._predicted_columns_sdr.getSum()
         n_active = self._proximal_input_sdr.getSum()
@@ -114,34 +107,66 @@ class TransitionModel:
             f_beta_score = (1 + beta**2) * (precision * recall) / (beta**2 * precision + recall)
         self.anomaly = 1. - f_beta_score
 
+    def __getstate__(self):
+        # used to pickle object
+        data = (
+            self.tm
+        )
+        return data
+
+    def __setstate__(self, state):
+        # used to unpickle
+        self.tm = state
+
 
 class SsaTransitionModel(TransitionModel):
     s_sa_concatenator: SdrConcatenator
 
-    def __init__(self, state_encoder, sa_encoder, tm: dict):
-        tm = TemporalMemory(
-            n_columns=state_encoder.output_sdr_size + sa_encoder.output_sdr_size,
-            n_active_bits=state_encoder.n_active_bits + sa_encoder.n_active_bits,
-            **tm
-        )
+    def __init__(self, sa_encoder: SpSaEncoder, tm: dict):
+        tm = self.make_tm(sa_encoder, tm)
         super(SsaTransitionModel, self).__init__(tm)
 
-        self.s_sa_concatenator = SdrConcatenator([state_encoder, sa_encoder])
+        self.s_sa_concatenator = SdrConcatenator([
+            sa_encoder.state_sp,
+            sa_encoder.sa_sp
+        ])
 
-    # noinspection PyMethodOverriding
-    def process(self, s: SparseSdr, sa: SparseSdr, learn: bool) -> tuple[SparseSdr, SparseSdr]:
+    def preprocess(self, s: SparseSdr, sa: SparseSdr) -> SparseSdr:
         s_sa = self.s_sa_concatenator.concatenate(s, sa)
+        return s_sa
+
+    def process(self, s_sa: SparseSdr, learn: bool) -> tuple[SparseSdr, SparseSdr]:
         return super(SsaTransitionModel, self).process(s_sa, learn)
 
+    @staticmethod
+    def make_tm(sa_encoder, tm: dict) -> TemporalMemory:
+        s_size = sa_encoder.state_sp.output_sdr_size
+        sa_size = sa_encoder.sa_sp.output_sdr_size
+        s_active_bits = sa_encoder.state_sp.n_active_bits
+        sa_active_bits = sa_encoder.sa_sp.n_active_bits
 
-def make_s_a_transition_model(state_encoder, action_encoder, tm: dict):
-    a_active_bits = action_encoder.output_sdr_size / action_encoder.n_values
-    sa_active_bits = state_encoder.n_active_bits + a_active_bits
+        return TemporalMemory(
+            n_columns=s_size + sa_size,
+            n_active_bits=s_active_bits + sa_active_bits,
+            **tm
+        )
 
-    # print(state_encoder.output_sdr_size, state_encoder.n_active_bits, action_encoder.output_sdr_size, a_active_bits)
-    tm = TemporalMemory(
-        n_columns=action_encoder.output_sdr_size + state_encoder.output_sdr_size,
-        n_active_bits=sa_active_bits,
-        **tm
-    )
-    return TransitionModel(tm)
+
+class SaTransitionModel(TransitionModel):
+    def __init__(self, sa_encoder: CrossSaEncoder, tm: dict):
+        tm = self.make_tm(sa_encoder, tm)
+        super(SaTransitionModel, self).__init__(tm)
+
+    def preprocess(self, s: SparseSdr, sa: SparseSdr) -> SparseSdr:
+        return sa
+
+    def process(self, sa: SparseSdr, learn: bool) -> tuple[SparseSdr, SparseSdr]:
+        return super(SaTransitionModel, self).process(sa, learn)
+
+    @staticmethod
+    def make_tm(sa_encoder: CrossSaEncoder, tm: dict) -> TemporalMemory:
+        return TemporalMemory(
+            n_columns=sa_encoder.sa_encoder.output_sdr_size,
+            n_active_bits=sa_encoder.sa_encoder.n_active_bits,
+            **tm
+        )
