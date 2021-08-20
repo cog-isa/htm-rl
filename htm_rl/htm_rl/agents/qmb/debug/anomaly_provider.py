@@ -7,11 +7,11 @@ class AnomalyProvider(Debugger):
 
     @property
     def anomaly(self):
-        return self.agent.sa_transition_model.anomaly
+        return self.agent.transition_model.anomaly
 
     @property
     def recall(self):
-        return self.agent.sa_transition_model.recall
+        return self.agent.transition_model.recall
 
     @property
     def reward_anomaly(self):
