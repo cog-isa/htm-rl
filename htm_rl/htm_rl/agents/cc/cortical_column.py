@@ -49,7 +49,6 @@ class UnionTemporalPooler(SpatialPooler):
                  max_synapses_per_segment_basal=-1,
                  max_segments_per_cell_basal=255,
                  timeseries=True,
-                 sm_stability=0.99,
                  **kwargs):
         """
     Please see spatial_pooler.py in NuPIC for super class parameter
@@ -107,8 +106,6 @@ class UnionTemporalPooler(SpatialPooler):
         self.max_segments_per_cell_basal = max_segments_per_cell_basal
         self.prune_zero_synapses_basal = prune_zero_synapses_basal
         self.timeseries = timeseries
-        self.stability = 0
-        self.sm_stability = sm_stability
 
         if not isinstance(cells_per_cortical_column, list):
             self.cells_per_cortical_column = [cells_per_cortical_column]*self.n_cortical_columns
@@ -211,7 +208,6 @@ class UnionTemporalPooler(SpatialPooler):
         self.matching_segments_basal = np.empty(0, dtype=UINT_DTYPE)
         self.cells_to_grow_segments_basal = np.empty(0, dtype=UINT_DTYPE)
         self.num_potential_basal = np.empty(0, dtype=UINT_DTYPE)
-        self.stability = 0
 
     def compute(self, input_active: SDR, correctly_predicted_input: SDR,
                 learn: bool, pre_all_active_output: SDR = None):
@@ -225,8 +221,6 @@ class UnionTemporalPooler(SpatialPooler):
         assert input_active.dense.size == self.getNumInputs()
         assert correctly_predicted_input.dense.size == self.getNumInputs()
         self._updateBookeepingVars(learn)
-
-        pre_union_sdr = np.copy(self._unionSDR.sparse)
 
         # Compute proximal dendrite overlaps with active and active-predicted inputs
         overlapsActive = self.connections.computeActivity(input_active, False)
@@ -294,8 +288,6 @@ class UnionTemporalPooler(SpatialPooler):
                 self._prePredictedActiveInput.pop(0)
             self._prePredictedActiveInput.append(correctly_predicted_input)
 
-        stability = np.intersect1d(self._unionSDR.sparse, pre_union_sdr).size / (np.union1d(self._unionSDR.sparse, pre_union_sdr).size + EPS)
-        self.stability = self.stability * self.sm_stability + (1 - self.stability) * stability
         return self._unionSDR
 
     def _decayPoolingActivation(self):
@@ -366,8 +358,9 @@ class UnionTemporalPooler(SpatialPooler):
         self.matching_segments_basal = np.flatnonzero(num_potential >= self.learning_threshold_basal)
         self.num_potential_basal = num_potential
         # filter segments by active cells
-        active_segments = self.connections_basal.filterSegmentsByCell(active_segments, self._unionSDR.sparse)
-        self.matching_segments_basal = self.connections_basal.filterSegmentsByCell(self.matching_segments_basal, self._unionSDR.sparse)
+        union_sdr = self._unionSDR.sparse + self.cc_id_range[self.current_cc_id][0]
+        active_segments = self.connections_basal.filterSegmentsByCell(active_segments, union_sdr)
+        self.matching_segments_basal = self.connections_basal.filterSegmentsByCell(self.matching_segments_basal, union_sdr)
 
         if active_segments.size > 0:
             active_cells = self.connections_basal.mapSegmentsToCells(active_segments)
@@ -375,23 +368,17 @@ class UnionTemporalPooler(SpatialPooler):
             # needs a tiebreaker because argpartition brings bias
             if active_cells.size >= self.k:
                 indices = np.argpartition(counts + self._basalActivation_tieBreaker[active_cells], -self.k)[:self.k]
-                k_th_value = counts[indices].min()
-
-                if k_th_value != 0:
-                    top_k_cells = active_cells[indices]
-                    self._unionSDR.sparse = np.intersect1d(top_k_cells, self._unionSDR.sparse)
-                    self.cells_to_grow_segments_basal = np.empty(0, dtype=UINT_DTYPE)
-                else:
-                    cells_with_matching_segments = np.unique(self.connections_basal.mapSegmentsToCells(self.matching_segments_basal))
-                    self.cells_to_grow_segments_basal = self._unionSDR.sparse[np.in1d(self._unionSDR.sparse, cells_with_matching_segments, invert=True)]
+                top_k_cells = active_cells[indices]
+                self._unionSDR.sparse = top_k_cells - self.cc_id_range[self.current_cc_id][0]
+                self.cells_to_grow_segments_basal = np.empty(0, dtype=UINT_DTYPE)  #
             else:
                 cells_with_matching_segments = np.unique(self.connections_basal.mapSegmentsToCells(self.matching_segments_basal))
-                self.cells_to_grow_segments_basal = self._unionSDR.sparse[np.in1d(self._unionSDR.sparse, cells_with_matching_segments, invert=True)]
+                self.cells_to_grow_segments_basal = union_sdr[np.in1d(union_sdr, cells_with_matching_segments, invert=True)]
         else:
             cells_with_matching_segments = np.unique(
                 self.connections_basal.mapSegmentsToCells(self.matching_segments_basal))
-            self.cells_to_grow_segments_basal = self._unionSDR.sparse[
-                np.in1d(self._unionSDR.sparse, cells_with_matching_segments, invert=True)]
+            self.cells_to_grow_segments_basal = union_sdr[
+                np.in1d(union_sdr, cells_with_matching_segments, invert=True)]
 
     def _adaptBasalSegments(self):
             """
