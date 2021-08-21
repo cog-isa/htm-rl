@@ -92,8 +92,6 @@ class DreamerAgent(Agent):
         if first:
             self.on_new_episode()
 
-        print(f'S: {state}')
-
         x = (1 - self.transition_model.recall) ** 2
         im_reward = self.im_weight[0] * x
 
@@ -106,6 +104,7 @@ class DreamerAgent(Agent):
             self.reward_model.update(s, reward)
             # Q-learning step
             greedy_sa_sdr = actions_sa_sdr[greedy_action]
+            self.E_traces.update(self._current_sa_sdr)
             self.Q.update(
                 sa=self._current_sa_sdr, reward=reward + im_reward,
                 sa_next=greedy_sa_sdr,
@@ -136,7 +135,6 @@ class DreamerAgent(Agent):
         )
         if self.ucb_estimate is not None:
             self.ucb_estimate.update(self._current_sa_sdr)
-        print(f'A: {self._current_sa_sdr}')
         return action
 
     def on_new_episode(self):

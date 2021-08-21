@@ -33,7 +33,7 @@ class EligibilityTraces:
             lambda_, gamma = self.trace_decay[0], self.discount_factor
             update_exp_trace(self.E, sa, lambda_ * gamma)
 
-    def reset(self):
+    def reset(self, decay: bool = True):
         if not self.enabled:
             self.E = None
             return
@@ -42,4 +42,5 @@ class EligibilityTraces:
             self.E = np.empty(self.cells_sdr_size, dtype=np.float)
 
         self.E.fill(0.)
-        self.trace_decay = exp_decay(self.trace_decay)
+        if decay:
+            self.trace_decay = exp_decay(self.trace_decay)

@@ -86,8 +86,14 @@ class CrossSaEncoder(SaEncoder):
             return np.arange(l, r)
 
         def decode_state(self, sa_superposition):
+            if not sa_superposition:
+                return []
+
             stride = self.n_actions * self.n_active_bits
-            state = sa_superposition[0] // stride
+            state = -1
+            for x in sa_superposition:
+                state = x // stride
+                break
             bucket_size = self.n_active_bits
             l = state * bucket_size
             r = l + bucket_size

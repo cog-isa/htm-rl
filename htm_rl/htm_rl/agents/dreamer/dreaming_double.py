@@ -11,7 +11,6 @@ from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
-from htm_rl.agents.qmb.transition_models import SsaTransitionModel
 from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import modify_factor_tuple, exp_decay, isnone, clip
@@ -111,7 +110,7 @@ class DreamingDouble(Agent):
             if self.nest_traces and self.wake_E_traces.enabled:
                 self.E_traces.E = self.wake_E_traces.E.copy()
             else:
-                self.E_traces.E.fill(0.)
+                self.E_traces.reset(decay=False)
 
         if i_rollout is not None:
             self.Q.learning_rate = modify_factor_tuple(
@@ -125,7 +124,6 @@ class DreamingDouble(Agent):
         self.reset_dreaming()
 
     def dream(self, starting_state, prev_sa_sdr):
-        # print(self.sqvn.TD_error)
         self.put_into_dream(prev_sa_sdr)
 
         starting_state_len = len(starting_state)
@@ -149,8 +147,9 @@ class DreamingDouble(Agent):
             depths.append(depth)
 
         self.dream_length += sum_depth
-        # if depths:
-        #     print(depths)
+        if depths:
+            print(sum_depth)
+            print(depths)
         self.wake()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
@@ -161,6 +160,7 @@ class DreamingDouble(Agent):
         if not first:
             # Q-learning step
             greedy_sa_sdr = actions_sa_sdr[greedy_action]
+            self.E_traces.update(self._current_sa_sdr)
             self.Q.update(
                 sa=self._current_sa_sdr, reward=reward,
                 sa_next=greedy_sa_sdr,
@@ -187,13 +187,17 @@ class DreamingDouble(Agent):
         reward = self.reward_model.rewards[state].mean()
         _ = self.act(reward, state, False)
 
-        _, s_sa_next_superposition = self.transition_model.process(state, self._current_sa_sdr, learn=False)
-        s_sa_next_superposition = self.transition_model.columns_from_cells(s_sa_next_superposition)
+        _, s_sa_next_superposition = self.transition_model.process(
+            self._current_sa_sdr, learn=False
+        )
+        s_sa_next_superposition = self.transition_model.columns_from_cells(
+            s_sa_next_superposition
+        )
         next_s = self.sa_encoder.decode_state(s_sa_next_superposition)
         return next_s
 
     def decide_to_dream(self, td_error):
-        self.dream_length = None
+        self.dream_length = 0
         if not self.enabled:
             return False
         if not self.first_dreaming_episode <= self._episode < self.last_dreaming_episode:
@@ -215,6 +219,7 @@ class DreamingDouble(Agent):
     def on_new_episode(self):
         if self.exploration_eps is not None:
             self.exploration_eps = exp_decay(self.exploration_eps)
+        self.E_traces.reset()
         self.im_weight = exp_decay(self.im_weight)
         self._episode += 1
 
