@@ -83,7 +83,7 @@ config_tm = dict(columns=input_columns,
                  initial_permanence_apical=0.4,
                  predicted_segment_decrement_apical=0.001,
                  sample_size_apical=-1,
-                 max_synapses_per_segment_apical=-1,
+                 max_synapses_per_segment_apical=output_active_cells*20,
                  max_segments_per_cell_apical=32,
                  prune_zero_synapses=True,
                  timeseries=False,
@@ -93,27 +93,12 @@ config_tm = dict(columns=input_columns,
                  sm_ac=0.99,
                  seed=seed)
 config_tp = dict(
-    output_sparsity=0.01,
-    n_cortical_columns=1,
-    cells_per_cortical_column=output_columns,
-    current_cc_id=0,
-    activeOverlapWeight=0.5,
-    predictedActiveOverlapWeight=1,
+    activeOverlapWeight=1,
+    predictedActiveOverlapWeight=0,
     maxUnionActivity=0.2,
     exciteFunctionType='Logistic',
     decayFunctionType='Exponential',
     decayTimeConst=20.0,
-    prune_zero_synapses_basal=True,
-    activation_threshold_basal=int(output_active_cells*(1 - noise_tolerance_basal)),
-    learning_threshold_basal=int(output_active_cells*(1-learning_margin_basal)),
-    connected_threshold_basal=0.5,
-    initial_permanence_basal=0.4,
-    permanence_increment_basal=0.1,
-    permanence_decrement_basal=0.01,
-    sample_size_basal=-1,
-    max_synapses_per_segment_basal=-1,
-    max_segments_per_cell_basal=32,
-    timeseries=True,
     synPermPredActiveInc=0.1,
     synPermPreviousPredActiveInc=0.1,
     historyLength=10,
@@ -141,7 +126,6 @@ config_tp = dict(
 def run(tm, tp, policy, learn=True, repeat=1, visualize=False):
     tp_input = SDR(tp.getNumInputs())
     tp_predictive = SDR(tp.getNumInputs())
-    tp_pre_all_activity = SDR(tp.getNumColumns())
     for _ in range(repeat):
         for state, action in policy:
             context = state_encoder.encode(state)
@@ -162,8 +146,7 @@ def run(tm, tp, policy, learn=True, repeat=1, visualize=False):
 
             tp_input.sparse = tm.get_active_cells()
             tp_predictive.sparse = tm.get_correctly_predicted_cells()
-            tp_pre_all_activity.sparse = tp.getUnionSDR().sparse.copy()
-            tp.compute(tp_input, tp_predictive, learn, tp_pre_all_activity)
+            tp.compute(tp_input, tp_predictive, learn)
 
             if visualize:
                 visualize_tp(tp, 40, -1)
@@ -179,8 +162,8 @@ def train(tm, tp, data, codes, repeat=5, seed=0, log=False):
             codes[i] = tp.getUnionSDR().dense
             if log:
                 wandb.log({'tm_apical_segments': tm.apical_connections.numSegments(),
-                           'tm_basal_segments': tm.basal_connections.numSegments(),
-                           'tp_basal_segments': tp.connections_basal.numSegments()})
+                           'tm_basal_segments': tm.basal_connections.numSegments()
+                           })
             tp.reset(boosting=False)
             tm.reset()
 
