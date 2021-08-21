@@ -2,26 +2,25 @@ _type_: dreamer0
 
 qvn:
   discount_factor: &discount_factor .95
-  learning_rate: [.05, .995]
+  learning_rate: [.1, .995]
 
-eligibility_traces:
-  trace_decay: .75
+eligibility_traces: &e_traces
+  trace_decay: [.75, .99]
   discount_factor: *discount_factor
 
-exploration_eps: [.2, .995]
+exploration_eps: [.2, .99]
 softmax_enabled: false
 im_weight: [.000, 1.]
 
 td_error_decay: .6
 dreaming:
-  enabled: false
+  enabled: true
   enter_prob_alpha: [1.2, 1.]
   enter_prob_threshold: .3
   exploration_eps: [.3, .997]
   qvn:
     learning_rate_factor: .75
-  eligibility_traces:
-    trace_decay:
+  eligibility_traces: *e_traces
   nest_traces: true
   prediction_depth: 10
   n_prediction_rollouts: [1, 5]
