@@ -37,8 +37,8 @@ class Experiment:
     config: dict
 
     n_episodes: int
-    debug: bool
-    print: dict
+    debug: dict
+    debug_enabled: bool
     wandb: dict
 
     env: Env
@@ -49,10 +49,10 @@ class Experiment:
         self.config = config
 
         self.n_episodes = config['n_episodes']
-        self.print = config['print']
+        self.debug = config['debug']
         self.wandb = config['wandb']
 
-        self.debug = self.print['debug']
+        self.debug_enabled = self.debug['enabled']
 
         self.env = self.materialize_environment(config['env'], config['env_seed'], config['envs'])
         self.agent = self.materialize_agent(config['agent'], config['agent_seed'], config['agents'], self.env)
@@ -63,11 +63,10 @@ class Experiment:
         train_stats = RunStats()
         wandb_run = self.init_wandb_run()
 
-        if self.debug:
-            # from htm_rl.agents.svpn.debug.dreaming_debugger import DreamingDebugger
-            # _ = DreamingDebugger(self)
+        if self.debug_enabled:
             from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
-            model_debugger = ModelDebugger(self, images=False)
+            print_images = self.debug['images']
+            model_debugger = ModelDebugger(self, images=print_images)
 
         for _ in trange(self.n_episodes):
             (steps, reward), elapsed_time = self.run_episode()
@@ -81,7 +80,7 @@ class Experiment:
                     'elapsed_time': elapsed_time
                 })
 
-        if self.debug:
+        if self.debug_enabled:
             anomalies = np.array(model_debugger.anomaly_tracker.anomalies)
             reward_anomalies = np.array(model_debugger.anomaly_tracker.reward_anomalies)
             print(round(anomalies.mean(), 4), round(reward_anomalies.mean(), 4))
@@ -175,8 +174,8 @@ class RunStats:
     def print_results(self):
         steps = np.array(self.steps)
         avg_len = steps.mean()
-        last_10_pcnt = steps.shape[0] // 10
-        last10_avg_len = steps[-last_10_pcnt:].mean()
+        last_10_pct = steps.shape[0] // 10
+        last10_avg_len = steps[-last_10_pct:].mean()
         avg_reward = np.array(self.rewards).mean()
         avg_time = np.array(self.times).mean()
         elapsed = np.array(self.times).sum()
