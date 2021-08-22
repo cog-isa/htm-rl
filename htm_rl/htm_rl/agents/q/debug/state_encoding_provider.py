@@ -6,7 +6,7 @@ from htm_rl.agents.q.agent import QAgent
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.module import EntityType
-from htm_rl.experiment import Experiment
+from htm_rl.scenarios.standard.experiment import Experiment
 
 
 class StateEncodingProvider(Debugger):

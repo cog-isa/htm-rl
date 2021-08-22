@@ -6,7 +6,7 @@ from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.agents.q.agent import QAgent
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.experiment import Experiment
+from htm_rl.scenarios.standard.experiment import Experiment
 
 
 # noinspection PyPep8Naming

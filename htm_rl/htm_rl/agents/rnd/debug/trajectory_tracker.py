@@ -3,7 +3,7 @@ import numpy as np
 from htm_rl.agents.rnd.debug.agent_state_provider import AgentStateProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.experiment import Experiment
+from htm_rl.scenarios.standard.experiment import Experiment
 
 
 class TrajectoryTracker(Debugger):

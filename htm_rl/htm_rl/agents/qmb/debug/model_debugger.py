@@ -6,8 +6,8 @@ from htm_rl.agents.q.debug.q_map_provider import QMapProvider
 from htm_rl.agents.qmb.debug.anomaly_tracker import AnomalyTracker
 from htm_rl.envs.biogwlab.environment import Environment
 
-from htm_rl.experiment import Experiment
-from htm_rl.debug_output import ImageOutput
+from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.debug_output import ImageOutput
 
 
 # noinspection PyUnresolvedReferences

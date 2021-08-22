@@ -11,26 +11,7 @@ from htm_rl.agents.ucb.agent import UcbAgent
 from htm_rl.common.utils import timed
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.envs.env import Env
-
-
-class ProgressPoint:
-    step: int
-    episode: int
-
-    def __init__(self):
-        self.step = 0
-        self.episode = 0
-
-    @property
-    def is_new_episode(self) -> bool:
-        return self.step == 0
-
-    def next_step(self):
-        self.step += 1
-
-    def end_episode(self):
-        self.step = 0
-        self.episode += 1
+from htm_rl.scenarios.utils import ProgressPoint, filter_out_non_passable_items
 
 
 class Experiment:
@@ -184,15 +165,3 @@ class RunStats:
             f'R: {avg_reward: .5f}  '
             f'EpT: {avg_time: .6f}  TotT: {elapsed: .6f}'
         )
-
-
-def filter_out_non_passable_items(config: dict, depth: int):
-    """Recursively filters out non-passable args started with '.' and '_'."""
-    if not isinstance(config, dict) or depth <= 0:
-        return config
-
-    return {
-        k: filter_out_non_passable_items(v, depth - 1)
-        for k, v in config.items()
-        if not (k.startswith('.') or k.startswith('_'))
-    }

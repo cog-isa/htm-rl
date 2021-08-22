@@ -1,7 +1,8 @@
 from htm_rl.agents.agent import Agent, unwrap as agent_unwrap
 from htm_rl.common.debug import inject_debug_tools
 from htm_rl.envs.env import Env, unwrap as env_unwrap
-from htm_rl.experiment import Experiment, ProgressPoint
+from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.utils import ProgressPoint
 
 
 class Debugger:

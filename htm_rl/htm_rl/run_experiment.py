@@ -8,8 +8,8 @@ from pathlib import Path
 import numpy as np
 
 from htm_rl.common.utils import ensure_list
-from htm_rl.config import FileConfig
-from htm_rl.experiment import Experiment, RunStats
+from htm_rl.scenarios.config import FileConfig
+from htm_rl.scenarios.standard.experiment import Experiment, RunStats
 
 
 class RunConfig(FileConfig):

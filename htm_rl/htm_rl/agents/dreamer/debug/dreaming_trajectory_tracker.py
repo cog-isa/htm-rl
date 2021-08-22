@@ -1,7 +1,7 @@
 from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
 from htm_rl.agents.rnd.debug.trajectory_tracker import TrajectoryTracker
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.experiment import Experiment
+from htm_rl.scenarios.standard.experiment import Experiment
 
 
 class DreamingTrajectoryTracker(TrajectoryTracker):
