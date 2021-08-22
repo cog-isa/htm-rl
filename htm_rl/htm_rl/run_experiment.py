@@ -110,7 +110,7 @@ def register_arguments(parser: ArgumentParser):
     parser.add_argument('-c', '--config', dest='config', required=True)
     parser.add_argument('-e', '--envs_filter', dest='envs_filter', default=None, nargs='+')
     parser.add_argument('-a', '--agents_filter', dest='agents_filter', default=None, nargs='+')
-    parser.add_argument('-d', '--print_debug', dest='print_debug', action='store_true', default=False)
+    parser.add_argument('-d', '--print_debug', dest='debug_enabled', action='store_true', default=False)
     parser.add_argument('-w', '--wandb_enabled', dest='wandb_enabled', action='store_true', default=False)
 
 
@@ -131,16 +131,10 @@ def main():
 
     config['base_dir'] = base_dir
     config['results_dir'] = results_dir
-
-    config['debug.enabled'] = args.print_debug
-
-    config['wandb.enabled'] = args.wandb_enabled
-    if False:
-        os.environ['WANDB_MODE'] = 'dryrun'
-        # os.environ['WANDB_SILENT'] = 'true'
-
     config['envs_filter'] = args.envs_filter
     config['agents_filter'] = args.agents_filter
+    config['debug.enabled'] = args.debug_enabled
+    config['wandb.enabled'] = args.wandb_enabled
     config['overwrites'] = overwrites
     config.run()
 
