@@ -19,7 +19,7 @@ import numpy as np
 
 
 class Connections(CPPConnections):
-    def filterSegmentsByCell(self, segments, cells):
+    def filterSegmentsByCell(self, segments, cells, invert=False):
         """
         Return the subset of segments that are on the provided cells.
 
@@ -30,7 +30,7 @@ class Connections(CPPConnections):
             The cells whose segments we want to keep. Must be sorted.
 
         """
-        mask = np.isin(self.mapSegmentsToCells(segments), cells)
+        mask = np.isin(self.mapSegmentsToCells(segments), cells, invert=invert)
         return segments[mask]
 
     def mapSegmentsToCells(self, segments):
