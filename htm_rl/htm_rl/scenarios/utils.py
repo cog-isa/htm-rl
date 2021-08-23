@@ -8,9 +8,13 @@ class ProgressPoint:
     step: int
     episode: int
 
-    def __init__(self):
-        self.step = 0
-        self.episode = 0
+    def __init__(self, pp: 'ProgressPoint' = None):
+        if pp is not None:
+            self.step = pp.step
+            self.episode = pp.episode
+        else:
+            self.step = 0
+            self.episode = 0
 
     @property
     def is_new_episode(self) -> bool:
@@ -19,9 +23,10 @@ class ProgressPoint:
     def next_step(self):
         self.step += 1
 
-    def end_episode(self):
+    def end_episode(self, increase_episode: bool = True):
         self.step = 0
-        self.episode += 1
+        if increase_episode:
+            self.episode += 1
 
 
 def filter_out_non_passable_items(config: dict, depth: int):

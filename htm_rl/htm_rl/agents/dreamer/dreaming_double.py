@@ -99,7 +99,9 @@ class DreamingDouble(Agent):
         self.save_tm_checkpoint()
         self.dream_length = 0
         self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
-        self.Q.learning_rate = modify_factor_tuple(self.Q.origin_learning_rate, self.Q.learning_rate_factor)
+        self.Q.learning_rate = modify_factor_tuple(
+            self.Q.origin_learning_rate, self.Q.learning_rate_factor
+        )
         self.starting_sa_sdr = starting_sa_sdr.copy()
 
     def reset_dreaming(self, i_rollout=None):
@@ -147,9 +149,9 @@ class DreamingDouble(Agent):
             depths.append(depth)
 
         self.dream_length += sum_depth
-        if depths:
-            print(sum_depth)
-            print(depths)
+        # if depths:
+        #     print(sum_depth)
+        #     print(depths)
         self.wake()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
@@ -169,7 +171,7 @@ class DreamingDouble(Agent):
 
         # choose action
         action = greedy_action
-        if self.exploration_eps is not None and self._rng.random() < self.exploration_eps[0]:
+        if self._make_random_action():
             action = self._rng.integers(self.n_actions)
         elif self.softmax_enabled:
             action = self._rng.choice(self.n_actions, p=softmax(action_values))
@@ -182,6 +184,11 @@ class DreamingDouble(Agent):
             self.ucb_estimate.update(self._current_sa_sdr)
 
         return action
+
+    def _make_random_action(self):
+        if self.exploration_eps is not None:
+            return self._rng.random() < self.exploration_eps[0]
+        return False
 
     def move_in_dream(self, state: SparseSdr):
         reward = self.reward_model.rewards[state].mean()

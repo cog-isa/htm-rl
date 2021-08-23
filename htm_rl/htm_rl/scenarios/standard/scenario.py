@@ -29,8 +29,8 @@ class Scenario:
 
         self.debug_enabled = self.debug['enabled']
 
-        self.env = materialize_environment(config['env'], config['env_seed'], config['envs'])
-        self.agent = materialize_agent(config['agent'], config['agent_seed'], config['agents'], self.env)
+        self.env = materialize_environment(config['envs'][config['env']], config['env_seed'])
+        self.agent = materialize_agent(config['agents'][config['agent']], config['agent_seed'], self.env)
 
         self.progress = ProgressPoint()
 

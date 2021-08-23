@@ -14,6 +14,13 @@ agent_seeds:
 #  - 1984
 #  - 3433
 
+max_episodes: 10
+train_ep_before_eval: 1
+n_goals_before_dreaming: 5
+dreaming_test: 5
+test_forward: 10
+compare_vs_last_eps: 5
+
 envs:
   - pos
   - obs

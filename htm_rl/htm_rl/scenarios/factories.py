@@ -5,9 +5,7 @@ from htm_rl.scenarios.experiment import Experiment
 from htm_rl.scenarios.utils import filter_out_non_passable_items
 
 
-def materialize_environment(name: str, seed: int, env_configs: dict[str, dict]) -> Env:
-    env_config: dict = env_configs[name]
-
+def materialize_environment(env_config: dict, seed: int) -> Env:
     env_type = env_config['_type_']
     env_config = filter_out_non_passable_items(env_config, depth=2)
     if env_type == 'biogwlab':
@@ -17,9 +15,7 @@ def materialize_environment(name: str, seed: int, env_configs: dict[str, dict]) 
         raise NameError(env_type)
 
 
-def materialize_agent(name: str, seed: int, agent_configs: dict[str, dict], env: Env) -> Agent:
-    agent_config: dict = agent_configs[name]
-
+def materialize_agent(agent_config: dict, seed: int, env: Env) -> Agent:
     agent_type = agent_config['_type_']
     agent_config = filter_out_non_passable_items(agent_config, depth=2)
     if agent_type == 'rnd':
