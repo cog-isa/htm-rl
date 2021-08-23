@@ -6,7 +6,7 @@ from htm_rl.scenarios.standard.scenario import RunStats, Scenario
 from htm_rl.scenarios.utils import add_overwrite_attributes, get_filtered_names_for
 
 
-class StandardExperiment(Experiment):
+class DreamingConditionExperiment(Experiment):
     config: FileConfig
 
     def __init__(self, config: FileConfig):

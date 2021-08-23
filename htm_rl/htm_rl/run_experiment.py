@@ -2,7 +2,8 @@ import argparse
 from argparse import ArgumentParser
 from pathlib import Path
 
-from htm_rl.scenarios.standard.experiment import StandardExperiment
+from htm_rl.scenarios.config import FileConfig
+from htm_rl.scenarios.factories import materialize_experiment
 
 
 def register_arguments(parser: ArgumentParser):
@@ -23,8 +24,8 @@ def main():
     if not config_filename.startswith('expm_') or not config_filename.endswith('.yml'):
         config_filename = f'expm_{config_filename}.yml'
     config_path = Path(config_filename)
-    experiment = StandardExperiment(config_path)
-    config = experiment.config
+    config = FileConfig(config_path)
+    experiment = materialize_experiment(config)
 
     base_dir: Path = config.path.parent
     results_dir: Path = base_dir.joinpath('results')

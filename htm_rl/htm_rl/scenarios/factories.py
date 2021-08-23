@@ -1,5 +1,7 @@
 from htm_rl.agents.agent import Agent
 from htm_rl.envs.env import Env
+from htm_rl.scenarios.config import FileConfig
+from htm_rl.scenarios.experiment import Experiment
 from htm_rl.scenarios.utils import filter_out_non_passable_items
 
 
@@ -40,3 +42,15 @@ def materialize_agent(name: str, seed: int, agent_configs: dict[str, dict], env:
         return DreamerAgent0(seed=seed, env=env, **agent_config)
     else:
         raise NameError(agent_type)
+
+
+def materialize_experiment(config: FileConfig) -> Experiment:
+    scenario_type = config['_type_']
+    if scenario_type == 'standard':
+        from htm_rl.scenarios.standard.experiment import StandardExperiment
+        return StandardExperiment(config)
+    elif scenario_type == 'dreaming condition':
+        from htm_rl.scenarios.dream_cond.experiment import DreamingConditionExperiment
+        return DreamingConditionExperiment(config)
+    else:
+        raise NameError(scenario_type)
