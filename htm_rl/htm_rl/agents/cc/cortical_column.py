@@ -13,6 +13,7 @@ from functools import reduce
 EPS = 1e-12
 UINT_DTYPE = "uint32"
 REAL_DTYPE = "float32"
+REAL64_DTYPE = "float64"
 _TIE_BREAKER_FACTOR = 0.000001
 
 
@@ -77,6 +78,11 @@ class UnionTemporalPooler(SpatialPooler):
 
         self.seed = kwargs['seed']
 
+        if self.seed:
+            self.rng = Random(kwargs['seed'])
+        else:
+            self.rng = Random()
+
         # initialize excite/decay functions
 
         if exciteFunctionType == 'Fixed':
@@ -101,9 +107,12 @@ class UnionTemporalPooler(SpatialPooler):
         self._poolingActivation = np.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
 
         # include a small amount of tie-breaker when sorting pooling activation
-        np.random.seed(self.seed)
-        self._poolingActivation_tieBreaker = np.random.randn(self.getNumColumns()) * _TIE_BREAKER_FACTOR
-        self._basalActivation_tieBreaker = np.random.randn(self.getNumColumns()) * _TIE_BREAKER_FACTOR
+        self._poolingActivation_tieBreaker = np.empty(self.getNumColumns(), dtype=REAL64_DTYPE)
+        self._basalActivation_tieBreaker = np.empty(self.getNumColumns(), dtype=REAL64_DTYPE)
+        self.rng.initializeReal64Array(self._poolingActivation_tieBreaker)
+        self.rng.initializeReal64Array(self._basalActivation_tieBreaker)
+        self._poolingActivation_tieBreaker *= _TIE_BREAKER_FACTOR
+        self._basalActivation_tieBreaker *= _TIE_BREAKER_FACTOR
 
         # time since last pooling activation increment
         # initialized to be a large number
@@ -124,11 +133,6 @@ class UnionTemporalPooler(SpatialPooler):
         self._preActiveInput = np.zeros(self.getNumInputs(), dtype=REAL_DTYPE)
         # predicted inputs from the last n steps
         self._prePredictedActiveInput = list()
-
-        if self.seed:
-            self.rng = Random(kwargs['seed'])
-        else:
-            self.rng = Random()
 
     def reset(self, boosting=True):
         """

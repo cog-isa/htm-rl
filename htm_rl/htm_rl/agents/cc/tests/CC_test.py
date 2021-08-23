@@ -44,84 +44,7 @@ def visualize_tm(tm: GeneralFeedbackTM, feedback_shape=(1, -1), step: int = 0):
     fig.suptitle(f'step: {step}')
 
 
-n_actions = 4
-action_bucket = 10
-n_states = 40
-state_bucket = 3
-action_encoder = IntBucketEncoder(n_actions, action_bucket)
-state_encoder = IntBucketEncoder(n_states, state_bucket)
-
-seed = 323
-input_columns = action_encoder.output_sdr_size
-input_active_cells = action_bucket
-cells_per_column = 16
-output_columns = 4000
-output_union_sparsity = 0.05
-noise_tolerance_apical = 0.1
-learning_margin_apical = 0.25
-config_tm = dict(columns=input_columns,
-                 cells_per_column=cells_per_column,
-                 context_cells=state_encoder.output_sdr_size,
-                 feedback_cells=output_columns,
-                 activation_threshold_basal=state_bucket,
-                 learning_threshold_basal=state_bucket,
-                 activation_threshold_apical=int(output_union_sparsity*output_columns*(1 - noise_tolerance_apical)),
-                 learning_threshold_apical=int(output_union_sparsity*output_columns*(1 - learning_margin_apical)),
-                 connected_threshold_basal=0.5,
-                 permanence_increment_basal=0.1,
-                 permanence_decrement_basal=0.01,
-                 initial_permanence_basal=0.4,
-                 predicted_segment_decrement_basal=0.001,
-                 sample_size_basal=state_bucket,
-                 max_synapses_per_segment_basal=state_bucket,
-                 max_segments_per_cell_basal=32,
-                 connected_threshold_apical=0.5,
-                 permanence_increment_apical=0.1,
-                 permanence_decrement_apical=0.01,
-                 initial_permanence_apical=0.4,
-                 predicted_segment_decrement_apical=0.001,
-                 sample_size_apical=int(output_union_sparsity * output_columns),
-                 max_synapses_per_segment_apical=int(output_union_sparsity * output_columns),
-                 max_segments_per_cell_apical=32,
-                 prune_zero_synapses=True,
-                 timeseries=False,
-                 anomaly_window=1000,
-                 confidence_window=1000,
-                 noise_tolerance=0.0,
-                 sm_ac=0.99,
-                 seed=seed)
-config_tp = dict(
-    activeOverlapWeight=1,
-    predictedActiveOverlapWeight=2,
-    maxUnionActivity=output_union_sparsity,
-    exciteFunctionType='Fixed',
-    decayFunctionType='NoDecay',
-    decayTimeConst=40.0,
-    synPermPredActiveInc=0.1,
-    synPermPreviousPredActiveInc=0.05,
-    historyLength=20,
-    minHistory=3,
-    boostStrength=0.0,
-    columnDimensions=[output_columns],
-    inputDimensions=[input_columns*cells_per_column],
-    potentialRadius=input_columns*cells_per_column,
-    dutyCyclePeriod=1000,
-    globalInhibition=True,
-    localAreaDensity=0.01,
-    minPctOverlapDutyCycle=0.001,
-    numActiveColumnsPerInhArea=0,
-    potentialPct=0.5,
-    seed=seed,
-    spVerbosity=0,
-    stimulusThreshold=3,
-    synPermActiveInc=0.1,
-    synPermConnected=0.5,
-    synPermInactiveDec=0.01,
-    wrapAround=True
-)
-
-
-def run(tm, tp, policy, learn=True, visualize=False):
+def run(tm, tp, policy, state_encoder, action_encoder, propagate=True, learn=True, visualize=False):
     tp_input = SDR(tp.getNumInputs())
     tp_predictive = SDR(tp.getNumInputs())
     tp_prev_union = SDR(tp.getNumColumns())
@@ -150,33 +73,39 @@ def run(tm, tp, policy, learn=True, visualize=False):
 
         if visualize:
             visualize_tp(tp, 40, -1)
-    tm.set_active_feedback_cells(tp.getUnionSDR().sparse)
-    tm.activate_apical_dendrites(learn)
-    tm.propagate_feedback()
+    if propagate:
+        tm.set_active_feedback_cells(tp.getUnionSDR().sparse)
+        tm.activate_apical_dendrites(learn)
+        tm.propagate_feedback()
 
     return sum(difference)/len(difference)
 
 
-def train(tm, tp, data, epochs=5, seed=0, log=False):
+def train(tm, tp, data, state_encoder, action_encoder, diff_threshold, epochs=5, seed=0, log=False):
     codes = list()
     np.random.seed(seed)
     indices = np.arange(len(data))
+    propagate = [False] * len(indices)
     for epoch in range(epochs):
         epoch_codes = dict()
         np.random.shuffle(indices)
         differences = dict()
         for i in indices:
-            intra_diff = run(tm, tp, data[i], learn=True)
+            intra_diff = run(tm, tp, data[i], state_encoder, action_encoder, propagate=propagate[i], learn=True)
             epoch_codes[i] = tp.getUnionSDR().sparse.copy()
-            if log:
-                if epoch != 0:
-                    prev_code = codes[epoch-1][i]
-                    curr_code = epoch_codes[i]
-                    difference = np.setdiff1d(prev_code, curr_code).size
+            if epoch != 0:
+                prev_code = codes[epoch-1][i]
+                curr_code = epoch_codes[i]
+                difference = np.setdiff1d(prev_code, curr_code).size
+                if difference < diff_threshold:
+                    propagate[i] = True
                 else:
-                    difference = 0
-                differences[f'policy_code_diff{i}'] = difference
-                differences[f'policy_intra_diff{i}'] = intra_diff
+                    propagate[i] = False
+            else:
+                difference = 0
+            differences[f'policy_code_diff{i}'] = difference
+            differences[f'policy_intra_diff{i}'] = intra_diff
+            if log:
                 wandb.log({'tm_apical_segments': tm.apical_connections.numSegments(),
                            'tm_basal_segments': tm.basal_connections.numSegments()
                            })
@@ -189,8 +118,8 @@ def train(tm, tp, data, epochs=5, seed=0, log=False):
     return codes[-1]
 
 
-def test_retrieval(tm, data, codes, threshold, log=False):
-    action_codes = [action_encoder.encode(x) for x in range(n_actions)]
+def test_retrieval(tm, data, codes, threshold, state_encoder, action_encoder):
+    action_codes = [action_encoder.encode(x) for x in range(action_encoder.n_values)]
     accuracies = list()
     for i, policy in enumerate(data):
         accuracy = 0
@@ -214,10 +143,7 @@ def test_retrieval(tm, data, codes, threshold, log=False):
                     accuracy += 1
         accuracies.append(accuracy/len(policy))
         tm.reset()
-    if log:
-        wandb.log({'retrieval_accuracy': sum(accuracies)/len(accuracies)})
-    else:
-        return accuracies
+    return sum(accuracies)/len(accuracies)
 
 
 def test_coding_similarity(data, codes, n_policies, log=False):
@@ -233,6 +159,7 @@ def test_coding_similarity(data, codes, n_policies, log=False):
     if log:
         wandb.log({'raw_similarity': wandb.Image(sns.heatmap(raw_similarity, vmin=0, vmax=1)),
                    'codes_similarity': wandb.Image(sns.heatmap(codes_similarity, cbar=False, vmin=0, vmax=1))})
+        plt.close('all')
     else:
         sns.heatmap(raw_similarity)
         plt.show()
@@ -240,8 +167,9 @@ def test_coding_similarity(data, codes, n_policies, log=False):
         plt.show()
 
 
-def generate_data(n, n_actions, n_states, randomness=1.0):
+def generate_data(n, n_actions, n_states, randomness=1.0, seed=0):
     raw_data = list()
+    np.random.seed(seed)
     seed_seq = np.random.randint(0, n_actions, n_states)
     raw_data.append(seed_seq.copy())
     n_replace = int(n_states * randomness)
@@ -257,24 +185,120 @@ def generate_data(n, n_actions, n_states, randomness=1.0):
     return raw_data, data
 
 
-def main():
-    n_policies = 10
-    epochs = 20
-    threshold = 6
-    randomness = 1.0
-    wandb.init(project='test_cc', entity='hauska', config={'config_tm': config_tm, 'config_tp': config_tp,
-                                                           'n_policies': n_policies, 'n_states': n_states, 'n_actions': n_actions,
-                                                           'threshold': threshold,
-                                                           'randomness': randomness, 'seed': seed, 'learning_margin_apical': learning_margin_apical,
-                                                           'noise_tolerance_apical': noise_tolerance_apical})
-    raw_data, data = generate_data(n_policies, n_actions, n_states, randomness=randomness)
-    tm = DelayedFeedbackTM(**config_tm)
-    tp = UnionTemporalPooler(**config_tp)
-    codes = train(tm, tp, data, epochs=epochs, log=True)
+def run_config(config):
+    action_encoder = IntBucketEncoder(config['n_actions'], config['action_bucket'])
+    state_encoder = IntBucketEncoder(config['n_states'], config['state_bucket'])
+    raw_data, data = generate_data(config['n_policies'], config['n_actions'], config['n_states'], randomness=config['randomness'], seed=config['seed'])
+    tm = DelayedFeedbackTM(**config['tm'])
+    tp = UnionTemporalPooler(**config['tp'])
+    codes = train(tm, tp, data, state_encoder, action_encoder, diff_threshold=int(
+                         config['output_union_sparsity'] * config['output_columns'] * config['noise_tolerance_apical']), epochs=config['epochs'], log=config['log_train'])
 
-    test_retrieval(tm, data, codes, threshold, log=True)
-    test_coding_similarity(data, codes, n_policies, log=True)
+    retrieval_accuracy = test_retrieval(tm, data, codes, config['threshold'], state_encoder, action_encoder)
+    test_coding_similarity(data, codes, config['n_policies'], log=config['log_codes'])
+    return retrieval_accuracy
+
+
+def main(seeds: list):
+    n_policies = 20
+    epochs = 20
+    threshold = 8
+    randomness = 1.0
+
+    n_actions = 4
+    action_bucket = 10
+    n_states = 25
+    state_bucket = 3
+    action_encoder = IntBucketEncoder(n_actions, action_bucket)
+    state_encoder = IntBucketEncoder(n_states, state_bucket)
+
+    input_columns = action_encoder.output_sdr_size
+    cells_per_column = 16
+    output_columns = 4000
+    output_union_sparsity = 0.025
+    noise_tolerance_apical = 0.1
+    learning_margin_apical = 0.2
+    config_tm = dict(columns=input_columns,
+                     cells_per_column=cells_per_column,
+                     context_cells=state_encoder.output_sdr_size,
+                     feedback_cells=output_columns,
+                     activation_threshold_basal=state_bucket,
+                     learning_threshold_basal=state_bucket,
+                     activation_threshold_apical=int(
+                         output_union_sparsity * output_columns * (1 - noise_tolerance_apical)),
+                     learning_threshold_apical=int(
+                         output_union_sparsity * output_columns * (1 - learning_margin_apical)),
+                     connected_threshold_basal=0.5,
+                     permanence_increment_basal=0.1,
+                     permanence_decrement_basal=0.01,
+                     initial_permanence_basal=0.4,
+                     predicted_segment_decrement_basal=0.001,
+                     sample_size_basal=state_bucket,
+                     max_synapses_per_segment_basal=state_bucket,
+                     max_segments_per_cell_basal=32,
+                     connected_threshold_apical=0.5,
+                     permanence_increment_apical=0.1,
+                     permanence_decrement_apical=0.01,
+                     initial_permanence_apical=0.4,
+                     predicted_segment_decrement_apical=0.001,
+                     sample_size_apical=int(output_union_sparsity * output_columns),
+                     max_synapses_per_segment_apical=int(output_union_sparsity * output_columns),
+                     max_segments_per_cell_apical=32,
+                     prune_zero_synapses=True,
+                     timeseries=False,
+                     anomaly_window=1000,
+                     confidence_window=1000,
+                     noise_tolerance=0.0,
+                     sm_ac=0.99)
+    config_tp = dict(
+        activeOverlapWeight=1,
+        predictedActiveOverlapWeight=2,
+        maxUnionActivity=output_union_sparsity,
+        exciteFunctionType='Logistic',
+        decayFunctionType='Exponential',
+        decayTimeConst=10.0,
+        synPermPredActiveInc=0.1,
+        synPermPreviousPredActiveInc=0.05,
+        historyLength=10,
+        minHistory=3,
+        boostStrength=0.0,
+        columnDimensions=[output_columns],
+        inputDimensions=[input_columns * cells_per_column],
+        potentialRadius=input_columns * cells_per_column,
+        dutyCyclePeriod=1000,
+        globalInhibition=True,
+        localAreaDensity=0.005,
+        minPctOverlapDutyCycle=0.001,
+        numActiveColumnsPerInhArea=0,
+        potentialPct=0.5,
+        spVerbosity=0,
+        stimulusThreshold=3,
+        synPermActiveInc=0.1,
+        synPermConnected=0.5,
+        synPermInactiveDec=0.01,
+        wrapAround=True
+    )
+    config = {'tm': config_tm, 'tp': config_tp, 'n_policies': n_policies, 'epochs': epochs, 'threshold': threshold,
+              'randomness': randomness, 'n_actions': n_actions, 'action_bucket': action_bucket, 'n_states': n_states,
+              'state_bucket': state_bucket, 'input_columns': input_columns, 'cells_per_column': cells_per_column,
+              'output_columns': output_columns, 'output_union_sparsity': output_union_sparsity, 'noise_tolerance_apical': noise_tolerance_apical,
+              'learning_margin_apical': learning_margin_apical, 'seeds': seeds}
+    wandb.init(project='test_cc', entity='hauska', config=config)
+    config['log_codes'] = True
+    if len(seeds) > 1:
+        config['log_train'] = False
+    else:
+        config['log_train'] = True
+
+    retrieval_accuracy = list()
+    for seed in seeds:
+        config['seed'] = seed
+        config['tm']['seed'] = seed
+        config['tp']['seed'] = seed
+        retrieval_accuracy.append(run_config(config))
+    retrieval_accuracy = np.array(retrieval_accuracy)
+    wandb.log({'retrieval_accuracy': retrieval_accuracy.mean(), 'retrieval_accuracy_std': retrieval_accuracy.std()})
 
 
 if __name__ == '__main__':
-    main()
+    main(seeds=[3424, 43542, 1124, 342341, 22998])
