@@ -5,7 +5,7 @@ from htm_rl.agents.rnd.debug.env_map_provider import EnvMapProvider
 from htm_rl.agents.rnd.debug.trajectory_tracker import TrajectoryTracker
 from htm_rl.envs.biogwlab.environment import Environment
 
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 from htm_rl.scenarios.debug_output import ImageOutput
 
 
@@ -16,7 +16,7 @@ class DreamingDebugger(Debugger):
 
     waking: bool
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Scenario):
         super().__init__(experiment)
 
         self.waking = False

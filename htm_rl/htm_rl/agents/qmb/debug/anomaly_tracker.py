@@ -4,7 +4,7 @@ from htm_rl.agents.qmb.debug.anomaly_provider import AnomalyProvider
 from htm_rl.agents.rnd.debug.agent_state_provider import AgentStateProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 
 
 class AnomalyTracker(Debugger):
@@ -18,7 +18,7 @@ class AnomalyTracker(Debugger):
     anomalies: list[float]
     reward_anomalies: list[float]
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Scenario):
         super(AnomalyTracker, self).__init__(experiment)
 
         self.agent_state_provider = AgentStateProvider(experiment)

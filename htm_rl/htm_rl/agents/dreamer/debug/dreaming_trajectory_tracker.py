@@ -1,14 +1,14 @@
 from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
 from htm_rl.agents.rnd.debug.trajectory_tracker import TrajectoryTracker
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 
 
 class DreamingTrajectoryTracker(TrajectoryTracker):
     state_encoding_provider: StateEncodingProvider
     encoding_scheme: dict[tuple[int, int], SparseSdr]
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Scenario):
         super().__init__(experiment, act_method_name='_move_in_dream')
         self.state_encoding_provider = StateEncodingProvider(experiment)
         self.encoding_scheme = dict()

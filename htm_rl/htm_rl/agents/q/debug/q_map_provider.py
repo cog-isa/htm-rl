@@ -6,7 +6,7 @@ from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.agents.q.agent import QAgent
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 
 
 # noinspection PyPep8Naming
@@ -21,7 +21,7 @@ class QMapProvider(Debugger):
 
     Q: Optional[np.ndarray]
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Scenario):
         super().__init__(experiment)
         self.state_encoding_provider = StateEncodingProvider(experiment)
         self.Q = None

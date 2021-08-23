@@ -1,17 +1,17 @@
 from htm_rl.agents.agent import Agent, unwrap as agent_unwrap
 from htm_rl.common.debug import inject_debug_tools
 from htm_rl.envs.env import Env, unwrap as env_unwrap
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 from htm_rl.scenarios.utils import ProgressPoint
 
 
 class Debugger:
-    experiment: Experiment
+    experiment: Scenario
     env: Env
     agent: Agent
     progress: ProgressPoint
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Scenario):
         self.experiment = experiment
         self.env = env_unwrap(experiment.env)
         self.agent = agent_unwrap(experiment.agent)

@@ -1,4 +1,4 @@
-_type_: standard
+_type_: dreaming condition
 
 env_seeds:
 #  - 851775
@@ -13,8 +13,6 @@ agent_seeds:
 #  - 1337
 #  - 1984
 #  - 3433
-
-n_episodes: 50
 
 envs:
   - pos

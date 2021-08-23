@@ -6,7 +6,7 @@ from htm_rl.agents.q.agent import QAgent
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.module import EntityType
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 
 
 class StateEncodingProvider(Debugger):
@@ -15,7 +15,7 @@ class StateEncodingProvider(Debugger):
 
     position_provider: AgentStateProvider
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Scenario):
         super().__init__(experiment)
         self.position_provider = AgentStateProvider(experiment)
 

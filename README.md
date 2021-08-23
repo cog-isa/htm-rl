@@ -54,7 +54,8 @@ Now you can import modules from the `htm_rl` package:
 
 ```python
 from pathlib import Path
-from htm_rl.config import TestRunner, read_config
+from htm_rl.scenarios.config import TestRunner
+from htm_rl.scenarios.yaml_utils import read_config
 
 config_path = Path('./config.yml')
 config = read_config(config_path, verbose=False)

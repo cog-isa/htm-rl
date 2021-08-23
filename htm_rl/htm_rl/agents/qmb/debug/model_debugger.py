@@ -6,7 +6,7 @@ from htm_rl.agents.q.debug.q_map_provider import QMapProvider
 from htm_rl.agents.qmb.debug.anomaly_tracker import AnomalyTracker
 from htm_rl.envs.biogwlab.environment import Environment
 
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 from htm_rl.scenarios.debug_output import ImageOutput
 
 
@@ -15,7 +15,7 @@ class ModelDebugger(Debugger):
     env: Environment
     agent: QModelBasedAgent
 
-    def __init__(self, experiment: Experiment, images: bool):
+    def __init__(self, experiment: Scenario, images: bool):
         super().__init__(experiment)
 
         self.output_renderer = ImageOutput(experiment.config)

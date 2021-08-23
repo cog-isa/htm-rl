@@ -2,13 +2,13 @@ from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.agent import Agent as EnvAgent
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 
 
 class AgentStateProvider(Debugger):
     env: Environment
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Scenario):
         super(AgentStateProvider, self).__init__(experiment)
         self.origin = None
 

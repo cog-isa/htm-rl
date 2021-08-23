@@ -5,7 +5,7 @@ import numpy as np
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.common.utils import ensure_list
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 
 
 class EnvMapProvider(Debugger):
@@ -16,7 +16,7 @@ class EnvMapProvider(Debugger):
     name_str: str
     include_observation: bool
 
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Scenario):
         super().__init__(experiment)
 
         self._maps = None

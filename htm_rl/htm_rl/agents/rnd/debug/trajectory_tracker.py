@@ -3,7 +3,7 @@ import numpy as np
 from htm_rl.agents.rnd.debug.agent_state_provider import AgentStateProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.scenarios.standard.experiment import Experiment
+from htm_rl.scenarios.standard.scenario import Scenario
 
 
 class TrajectoryTracker(Debugger):
@@ -15,7 +15,7 @@ class TrajectoryTracker(Debugger):
     heatmap: np.ndarray
 
     # noinspection PyUnresolvedReferences
-    def __init__(self, experiment: Experiment, act_method_name='act'):
+    def __init__(self, experiment: Scenario, act_method_name='act'):
         super(TrajectoryTracker, self).__init__(experiment)
 
         self.agent_state_provider = AgentStateProvider(experiment)
