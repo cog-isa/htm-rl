@@ -14,7 +14,7 @@ agent_seeds:
 #  - 1984
 #  - 3433
 
-max_episodes: 10
+max_episodes: 50
 train_ep_before_eval: 1
 n_goals_before_dreaming: 5
 dreaming_test: 5

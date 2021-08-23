@@ -8,13 +8,13 @@ eligibility_traces: &e_traces
   trace_decay: [.75, .99]
   discount_factor: *discount_factor
 
-exploration_eps: [.2, .99]
+exploration_eps: [.3, .99]
 softmax_enabled: false
 im_weight: [.000, 1.]
 
 td_error_decay: .6
 dreaming:
-  enabled: true
+  enabled: false
   enter_prob_alpha: [1.2, 1.]
   enter_prob_threshold: .3
   exploration_eps: [.3, .997]

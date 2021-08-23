@@ -41,6 +41,7 @@ class DreamerAgent(Agent):
     n_prediction_rollouts: Tuple[int, int]
     dream_length: Optional[int]
 
+    _step: int
     _current_sa_sdr: Optional[SparseSdr]
     _rng: Generator
 
@@ -82,7 +83,7 @@ class DreamerAgent(Agent):
 
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
-        self._episode = 0
+        self._step = 0
 
         self.td_error_decay = td_error_decay
         self.cum_td_error = 0.
@@ -94,6 +95,7 @@ class DreamerAgent(Agent):
         return 'dreamer'
 
     def on_new_episode(self):
+        self._step = 0
         self.E_traces.reset()
         if self.train:
             self.Q.decay_learning_factors()
@@ -107,8 +109,9 @@ class DreamerAgent(Agent):
             self.dreamer.on_new_episode()
 
     def act(self, reward: float, state: SparseSdr, first: bool):
-        if first:
+        if first and self._step > 0:
             self.on_new_episode()
+            return None
 
         train = self.train
         im_reward = 0
@@ -143,6 +146,7 @@ class DreamerAgent(Agent):
             self.ucb_estimate.update(chosen_sa_sdr)
 
         self._current_sa_sdr = actions_sa_sdr[action]
+        self._step += 1
         return action
 
     def _choose_action(self, next_actions_sa_sdr):
