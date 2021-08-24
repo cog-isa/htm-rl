@@ -17,6 +17,495 @@ REAL64_DTYPE = "float64"
 _TIE_BREAKER_FACTOR = 0.000001
 
 
+class ColumnPooler(object):
+    """
+  This class constitutes a temporary implementation for a cross-column pooler.
+  The implementation goal of this class is to prove basic properties before
+  creating a cleaner implementation.
+  """
+
+    def __init__(self,
+                 inputWidth,
+                 cellCount=4096,
+                 sdrSize=40,
+                 onlineLearning=False,
+                 maxSdrSize=None,
+                 minSdrSize=None,
+                 prune_zero_synapses=True,
+
+                 # Proximal
+                 synPermProximalInc=0.1,
+                 synPermProximalDec=0.001,
+                 initialProximalPermanence=0.6,
+                 sampleSizeProximal=20,
+                 minThresholdProximal=10,
+                 connectedPermanenceProximal=0.50,
+                 predictedInhibitionThreshold=20,
+
+                 # Distal
+                 synPermDistalInc=0.1,
+                 synPermDistalDec=0.001,
+                 initialDistalPermanence=0.6,
+                 sampleSizeDistal=20,
+                 activationThresholdDistal=13,
+                 connectedPermanenceDistal=0.50,
+                 inertiaFactor=1.,
+
+                 seed=42):
+        """
+    Parameters:
+    ----------------------------
+    @param  inputWidth (int)
+            The number of bits in the feedforward input
+    @param  sdrSize (int)
+            The number of active cells in an object SDR
+    @param  onlineLearning (Bool)
+            Whether or not the column pooler should learn in online mode.
+    @param  maxSdrSize (int)
+            The maximum SDR size for learning.  If the column pooler has more
+            than this many cells active, it will refuse to learn.  This serves
+            to stop the pooler from learning when it is uncertain of what object
+            it is sensing.
+    @param  minSdrSize (int)
+            The minimum SDR size for learning.  If the column pooler has fewer
+            than this many active cells, it will create a new representation
+            and learn that instead.  This serves to create separate
+            representations for different objects and sequences.
+            If online learning is enabled, this parameter should be at least
+            inertiaFactor*sdrSize.  Otherwise, two different objects may be
+            incorrectly inferred to be the same, as SDRs may still be active
+            enough to learn even after inertial decay.
+    @param  synPermProximalInc (float)
+            Permanence increment for proximal synapses
+    @param  synPermProximalDec (float)
+            Permanence decrement for proximal synapses
+    @param  initialProximalPermanence (float)
+            Initial permanence value for proximal synapses
+    @param  sampleSizeProximal (int)
+            Number of proximal synapses a cell should grow to each feedforward
+            pattern, or -1 to connect to every active bit
+    @param  minThresholdProximal (int)
+            Number of active synapses required for a cell to have feedforward
+            support
+    @param  connectedPermanenceProximal (float)
+            Permanence required for a proximal synapse to be connected
+    @param  predictedInhibitionThreshold (int)
+            How much predicted input must be present for inhibitory behavior
+            to be triggered.  Only has effects if onlineLearning is true.
+    @param  synPermDistalInc (float)
+            Permanence increment for distal synapses
+    @param  synPermDistalDec (float)
+            Permanence decrement for distal synapses
+    @param  sampleSizeDistal (int)
+            Number of distal synapses a cell should grow to each lateral
+            pattern, or -1 to connect to every active bit
+    @param  initialDistalPermanence (float)
+            Initial permanence value for distal synapses
+    @param  activationThresholdDistal (int)
+            Number of active synapses required to activate a distal segment
+    @param  connectedPermanenceDistal (float)
+            Permanence required for a distal synapse to be connected
+    @param  inertiaFactor (float)
+            The proportion of previously active cells that remain
+            active in the next timestep due to inertia (in the absence of
+            inhibition).  If onlineLearning is enabled, should be at most
+            1 - learningTolerance, or representations may incorrectly become
+            mixed.
+    @param  seed (int)
+            Random number generator seed
+    """
+
+        assert maxSdrSize is None or maxSdrSize >= sdrSize
+        assert minSdrSize is None or minSdrSize <= sdrSize
+
+        self.inputWidth = inputWidth
+        self.cellCount = cellCount
+        self.sdrSize = sdrSize
+        self.onlineLearning = onlineLearning
+        if maxSdrSize is None:
+            self.maxSdrSize = sdrSize
+        else:
+            self.maxSdrSize = maxSdrSize
+        if minSdrSize is None:
+            self.minSdrSize = sdrSize
+        else:
+            self.minSdrSize = minSdrSize
+        self.synPermProximalInc = synPermProximalInc
+        self.synPermProximalDec = synPermProximalDec
+        self.initialProximalPermanence = initialProximalPermanence
+        self.connectedPermanenceProximal = connectedPermanenceProximal
+        self.sampleSizeProximal = sampleSizeProximal
+        self.minThresholdProximal = minThresholdProximal
+        self.predictedInhibitionThreshold = predictedInhibitionThreshold
+        self.synPermDistalInc = synPermDistalInc
+        self.synPermDistalDec = synPermDistalDec
+        self.initialDistalPermanence = initialDistalPermanence
+        self.connectedPermanenceDistal = connectedPermanenceDistal
+        self.sampleSizeDistal = sampleSizeDistal
+        self.activationThresholdDistal = activationThresholdDistal
+        self.inertiaFactor = inertiaFactor
+        self.prune_zero_synapses = prune_zero_synapses
+
+        self.activeCells = SDR(cellCount)
+        self.prevActiveCells = SDR(cellCount)
+        self.active_segments_proximal = np.empty(0, dtype=UINT_DTYPE)
+        self.active_segments_distal = np.empty(0, dtype=UINT_DTYPE)
+        self.num_potential_proximal = np.empty(0, dtype=UINT_DTYPE)
+        self.num_potential_distal = np.empty(0, dtype=UINT_DTYPE)
+        self._random = Random(seed)
+
+        # These sparse matrices will hold the synapses for each segment.
+        # Each row represents one segment on a cell, so each cell potentially has
+        # 1 proximal segment and 1+len(lateralInputWidths) distal segments.
+        self.proximal_connections = Connections(cellCount, self.connectedPermanenceProximal)
+        self.internal_distal_connections = Connections(cellCount, self.connectedPermanenceDistal)
+
+        self.useInertia = True
+
+        # initialize proximal segments
+        for cell in range(self.proximal_connections.numCells()):
+            self.proximal_connections.createSegment(cell, 1)
+
+    def compute(self, feedforwardInput=(),
+                feedforwardGrowthCandidates=None, learn=True,
+                corrPredictedInput=None):
+        """
+    Runs one time step of the column pooler algorithm.
+    @param  feedforwardInput SDR
+            Sorted indices of active feedforward input bits
+    @param  feedforwardGrowthCandidates SDR or None
+            Sorted indices of feedforward input bits that active cells may grow
+            new synapses to. If None, the entire feedforwardInput is used.
+    @param  learn (bool)
+            If True, we are learning a new object
+    @param corrPredictedInput SDR or None
+           Sorted indices of predicted cells in the TM layer.
+    """
+
+        if feedforwardGrowthCandidates is None:
+            feedforwardGrowthCandidates = feedforwardInput
+
+        # inference step
+        if not learn:
+            self._computeInferenceMode(feedforwardInput)
+
+        # learning step
+        elif not self.onlineLearning:
+            self._computeLearningMode(feedforwardInput,
+                                      feedforwardGrowthCandidates)
+        # online learning step
+        else:
+            if ((corrPredictedInput is not None) and
+                    (corrPredictedInput.sparse.size > self.predictedInhibitionThreshold)):
+                self._computeInferenceMode(corrPredictedInput)
+                self._computeLearningMode(corrPredictedInput,
+                                          feedforwardGrowthCandidates)
+            elif not self.minSdrSize <= self.activeCells.sparse.size <= self.maxSdrSize:
+                # If the pooler doesn't have a single representation, try to infer one,
+                # before actually attempting to learn.
+                self._computeInferenceMode(feedforwardInput)
+                self._computeLearningMode(feedforwardInput,
+                                          feedforwardGrowthCandidates)
+            else:
+                # If there isn't predicted input and we have a single SDR,
+                # we are extending that representation and should just learn.
+                self._computeLearningMode(feedforwardInput,
+                                          feedforwardGrowthCandidates)
+
+    def _computeLearningMode(self, feedforwardInput,
+                             feedforwardGrowthCandidates):
+        """
+    Learning mode: we are learning a new object in an online fashion. If there
+    is no prior activity, we randomly activate 'sdrSize' cells and create
+    connections to incoming input. If there was prior activity, we maintain it.
+    If we have a union, we simply do not learn at all.
+    These cells will represent the object and learn distal connections to each
+    other and to lateral cortical columns.
+    Parameters:
+    ----------------------------
+    @param  feedforwardInput SDR
+    @param  feedforwardGrowthCandidates SDR
+    """
+        # If there are not enough previously active cells, then we are no longer on
+        # a familiar object.  Either our representation decayed due to the passage
+        # of time (i.e. we moved somewhere else) or we were mistaken.  Either way,
+        # create a new SDR and learn on it.
+        # This case is the only way different object representations are created.
+        # enforce the active cells in the output layer
+        if self.activeCells.sparse.size < self.minSdrSize:
+            active_cells = self._random.sample(np.arange(0, self.numberOfCells(), dtype=UINT_DTYPE), self.sdrSize)
+            active_cells.sort()
+            self.activeCells.sparse = active_cells
+
+        self.prevActiveCells.sparse = self.activeCells.sparse
+
+        # If we have a union of cells active, don't learn.  This primarily affects
+        # online learning.
+        if self.activeCells.sparse.size > self.maxSdrSize:
+            return
+
+        # Finally, now that we have decided which cells we should be learning on, do
+        # the actual learning.
+        if feedforwardInput.sparse.size > 0:
+            # segment_id == cell_id, as we grow only one segment for cell
+            self._learn(self.proximal_connections, self.activeCells.sparse, feedforwardInput,
+                        feedforwardGrowthCandidates.sparse, self.num_potential_proximal, self.sampleSizeProximal,
+                        self.numberOfInputs(),
+                        self.initialProximalPermanence, self.synPermProximalInc, self.synPermProximalDec,
+                        self.minThresholdProximal)
+
+        if self.prevActiveCells.sparse.size > 0:
+            learning_segments_distal, cells_to_grow_segments_distal = setCompare(self.active_segments_distal,
+                                                                                 self.activeCells.sparse,
+                                                                                 aKey=self.internal_distal_connections.mapSegmentsToCells(
+                                                                                     self.active_segments_distal),
+                                                                                 rightMinusLeft=True)
+            self._learn(self.internal_distal_connections, learning_segments_distal, self.prevActiveCells,
+                        self.prevActiveCells.sparse, self.num_potential_distal, self.sampleSizeDistal,
+                        self.numberOfCells(),
+                        self.initialDistalPermanence, self.synPermDistalInc, self.synPermDistalDec,
+                        self.activationThresholdDistal)
+            self._learn_on_new_segments(self.internal_distal_connections, cells_to_grow_segments_distal,
+                                        self.prevActiveCells.sparse,
+                                        self.sampleSizeDistal, self.numberOfCells(), self.initialDistalPermanence, 1)
+
+    def _computeInferenceMode(self, feedforwardInput):
+        """
+    Inference mode: if there is some feedforward activity, perform
+    spatial pooling on it to recognize previously known objects, then use
+    lateral activity to activate a subset of the cells with feedforward
+    support. If there is no feedforward activity, use lateral activity to
+    activate a subset of the previous active cells.
+    Parameters:
+    ----------------------------
+    @param  feedforwardInput: SDR
+     """
+
+        prevActiveCells = self.activeCells
+
+        # Calculate the feedforward supported cells
+        overlaps_proximal, num_potential_proximal = self.proximal_connections.computeActivityFull(feedforwardInput,
+                                                                                                  False)
+        self.num_potential_proximal = num_potential_proximal
+        self.active_segments_proximal = np.flatnonzero(overlaps_proximal >= self.minThresholdProximal)
+        feedforwardSupportedCells = self.proximal_connections.mapSegmentsToCells(self.active_segments_proximal)
+
+        # Calculate the number of active segments on each cell
+        numActiveSegmentsByCell = np.zeros(self.cellCount, dtype=UINT_DTYPE)
+        cells_for_segments = self.proximal_connections.mapSegmentsToCells(self.active_segments_distal)
+        cells, segment_counts = np.unique(cells_for_segments, return_counts=True)
+        numActiveSegmentsByCell[cells] = segment_counts
+
+        chosenCells = []
+
+        # First, activate the FF-supported cells that have the highest number of
+        # lateral active segments (as long as it's not 0)
+        if len(feedforwardSupportedCells) == 0:
+            pass
+        else:
+            numActiveSegsForFFSuppCells = numActiveSegmentsByCell[
+                feedforwardSupportedCells]
+
+            # This loop will select the FF-supported AND laterally-active cells, in
+            # order of descending lateral activation, until we exceed the sdrSize
+            # quorum - but will exclude cells with 0 lateral active segments.
+            ttop = np.max(numActiveSegsForFFSuppCells)
+            while ttop > 0 and len(chosenCells) < self.sdrSize:
+                chosenCells = np.union1d(chosenCells,
+                                         feedforwardSupportedCells[numActiveSegsForFFSuppCells >= ttop])
+                ttop -= 1
+
+        # If we haven't filled the sdrSize quorum, add in inertial cells.
+        if len(chosenCells) < self.sdrSize:
+            if self.useInertia:
+                prevCells = np.setdiff1d(prevActiveCells.sparse, chosenCells)
+                inertialCap = int(len(prevCells) * self.inertiaFactor)
+                if inertialCap > 0:
+                    numActiveSegsForPrevCells = numActiveSegmentsByCell[prevCells]
+                    # We sort the previously-active cells by number of active lateral
+                    # segments (this really helps).  We then activate them in order of
+                    # descending lateral activation.
+                    sortIndices = np.argsort(numActiveSegsForPrevCells)[::-1]
+                    prevCells = prevCells[sortIndices]
+                    numActiveSegsForPrevCells = numActiveSegsForPrevCells[sortIndices]
+
+                    # We use inertiaFactor to limit the number of previously-active cells
+                    # which can become active, forcing decay even if we are below quota.
+                    prevCells = prevCells[:inertialCap]
+                    numActiveSegsForPrevCells = numActiveSegsForPrevCells[:inertialCap]
+
+                    # Activate groups of previously active cells by order of their lateral
+                    # support until we either meet quota or run out of cells.
+                    ttop = np.max(numActiveSegsForPrevCells)
+                    while ttop >= 0 and len(chosenCells) < self.sdrSize:
+                        chosenCells = np.union1d(chosenCells,
+                                                 prevCells[numActiveSegsForPrevCells >= ttop])
+                        ttop -= 1
+
+        # If we haven't filled the sdrSize quorum, add cells that have feedforward
+        # support and no lateral support.
+        discrepancy = self.sdrSize - len(chosenCells)
+        if discrepancy > 0:
+            remFFcells = np.setdiff1d(feedforwardSupportedCells, chosenCells)
+
+            # Inhibit cells proportionally to the number of cells that have already
+            # been chosen. If ~0 have been chosen activate ~all of the feedforward
+            # supported cells. If ~sdrSize have been chosen, activate very few of
+            # the feedforward supported cells.
+
+            # Use the discrepancy:sdrSize ratio to determine the number of cells to
+            # activate.
+            n = (len(remFFcells) * discrepancy) // self.sdrSize
+            # Activate at least 'discrepancy' cells.
+            n = max(n, discrepancy)
+            # If there aren't 'n' available, activate all of the available cells.
+            n = min(n, len(remFFcells))
+
+            if len(remFFcells) > n:
+                selected = self._random.sample(remFFcells, n)
+                chosenCells = np.append(chosenCells, selected)
+            else:
+                chosenCells = np.append(chosenCells, remFFcells)
+
+        chosenCells.sort()
+        self.activeCells.sparse = chosenCells.astype(UINT_DTYPE)
+
+    def activateDistalDendrites(self, learn):
+        overlaps_distal, num_potential_distal = self.internal_distal_connections.computeActivityFull(self.activeCells,
+                                                                                                     learn)
+        self.num_potential_distal = num_potential_distal
+        self.active_segments_distal = np.flatnonzero(overlaps_distal >= self.activationThresholdDistal)
+
+    def numberOfInputs(self):
+        """
+    Returns the number of inputs into this layer
+    """
+        return self.inputWidth
+
+    def numberOfCells(self):
+        """
+    Returns the number of cells in this layer.
+    @return (int) Number of cells
+    """
+        return self.cellCount
+
+    def getActiveCells(self):
+        """
+    Returns the indices of the active cells.
+    @return (list) Indices of active cells.
+    """
+        return self.activeCells
+
+    def reset(self):
+        """
+    Reset internal states. When learning this signifies we are to learn a
+    unique new object.
+    """
+        self.activeCells.sparse = []
+        self.prevActiveCells.sparse = []
+        self.active_segments_proximal = np.empty(0, dtype=UINT_DTYPE)
+        self.active_segments_distal = np.empty(0, dtype=UINT_DTYPE)
+        self.num_potential_proximal = np.empty(0, dtype=UINT_DTYPE)
+        self.num_potential_distal = np.empty(0, dtype=UINT_DTYPE)
+
+    def getUseInertia(self):
+        """
+    Get whether we actually use inertia  (i.e. a fraction of the
+    previously active cells remain active at the next time step unless
+    inhibited by cells with both feedforward and lateral support).
+    @return (Bool) Whether inertia is used.
+    """
+        return self.useInertia
+
+    def setUseInertia(self, useInertia):
+        """
+    Sets whether we actually use inertia (i.e. a fraction of the
+    previously active cells remain active at the next time step unless
+    inhibited by cells with both feedforward and lateral support).
+    @param useInertia (Bool) Whether inertia is used.
+    """
+        self.useInertia = useInertia
+
+    def _learn(self, connections, learning_segments, active_cells, winner_cells, num_potential, sample_size,
+               max_synapses_per_segment,
+               initial_permanence, permanence_increment, permanence_decrement, segmentThreshold):
+        """
+        Learn on specified segments
+        :param connections: exemplar of Connections class
+        :param learning_segments: list of segments' id
+        :param active_cells: SDR
+        :param winner_cells: SDR (cells to which connections will be grown)
+        :param num_potential: list of counts of potential synapses for every segment
+        :return:
+        """
+        for segment in learning_segments:
+            connections.adaptSegment(segment, active_cells, permanence_increment, permanence_decrement,
+                                     self.prune_zero_synapses, segmentThreshold)
+
+            if sample_size == -1:
+                max_new = len(winner_cells)
+            else:
+                max_new = sample_size - num_potential[segment]
+
+            if max_synapses_per_segment != -1:
+                synapse_counts = connections.numSynapses(segment)
+                num_synapses_to_reach_max = max_synapses_per_segment - synapse_counts
+                max_new = min(max_new, num_synapses_to_reach_max)
+            if max_new > 0:
+                connections.growSynapses(segment, winner_cells, initial_permanence, self._random, max_new)
+
+    def _learn(self, connections, learning_segments, active_cells, winner_cells, num_potential, sample_size,
+               max_synapses_per_segment,
+               initial_permanence, permanence_increment, permanence_decrement, segmentThreshold):
+        """
+        Learn on specified segments
+        :param connections: exemplar of Connections class
+        :param learning_segments: list of segments' id
+        :param active_cells: SDR
+        :param winner_cells: SDR (cells to which connections will be grown)
+        :param num_potential: list of counts of potential synapses for every segment
+        :return:
+        """
+        for segment in learning_segments:
+            connections.adaptSegment(segment, active_cells, permanence_increment, permanence_decrement,
+                                     self.prune_zero_synapses, segmentThreshold)
+
+            if sample_size == -1:
+                max_new = len(winner_cells)
+            else:
+                max_new = sample_size - num_potential[segment]
+
+            if max_synapses_per_segment != -1:
+                synapse_counts = connections.numSynapses(segment)
+                num_synapses_to_reach_max = max_synapses_per_segment - synapse_counts
+                max_new = min(max_new, num_synapses_to_reach_max)
+            if max_new > 0:
+                connections.growSynapses(segment, winner_cells, initial_permanence, self._random, max_new)
+
+    def _learn_on_new_segments(self, connections: Connections, new_segment_cells, growth_candidates, sample_size,
+                               max_synapses_per_segment,
+                               initial_permanence, max_segments_per_cell):
+        """
+        Grows new segments and learn on them
+        :param connections:
+        :param new_segment_cells: cells' id to grow new segments on
+        :param growth_candidates: cells' id to grow synapses to
+        :return:
+        """
+        num_new_synapses = len(growth_candidates)
+
+        if sample_size != -1:
+            num_new_synapses = min(num_new_synapses, sample_size)
+
+        if max_synapses_per_segment != -1:
+            num_new_synapses = min(num_new_synapses, max_synapses_per_segment)
+
+        for cell in new_segment_cells:
+            new_segment = connections.createSegment(cell, max_segments_per_cell)
+            connections.growSynapses(new_segment, growth_candidates, initial_permanence, self._random,
+                                     maxNew=num_new_synapses)
+
+
 class UnionTemporalPooler(SpatialPooler):
     """
   Experimental Union Temporal Pooler Python implementation. The Union Temporal
@@ -1246,7 +1735,7 @@ class DelayedFeedbackTM:
                 self.matching_segments_apical),
             leftMinusRight=True,
             rightMinusLeft=True
-            )
+        )
         learning_matching_apical_segments = self._choose_best_segment_per_cell(self.apical_connections,
                                                                                candidate_cells,
                                                                                learning_matching_apical_segments,
