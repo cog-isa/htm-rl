@@ -41,7 +41,6 @@ class Scenario:
         self.dreaming_test = config['dreaming_test']
         self.test_forward = config['test_forward']
         self.compare_vs_last_eps = config['compare_vs_last_eps']
-        self.mode = 'train'
         self.stop_dreaming_test = None
         self.agent_checkpoint = None
 
@@ -55,6 +54,7 @@ class Scenario:
         self.agent = materialize_agent(
             config['agents'][config['agent']], config['agent_seed'], self.env
         )
+        self.mode = 'train'
         self.progress = ProgressPoint()
 
     def run(self):
@@ -63,67 +63,59 @@ class Scenario:
         # compute non-dreaming version stats
         while self.progress.episode < self.max_episodes:
             self.run_episode_(train_stats, pbar=None)
-        #
-        # self.init()
-        # self.state = 'train'
-        # self.goals_found = 0
-        # self.dreaming_test_started = False
-        # dreaming_train_stats = RunStats()
-        # with tqdm(total=self.max_episodes) as pbar:
-        #     while self.progress.episode < self.max_episodes or self.finish_dreaming_test:
-        #         self.run_episode_(dreaming_train_stats, pbar)
+
+        self.init()
+        self.goals_found = 0
+        self.dreaming_test_started = False
+        dreaming_train_stats = RunStats()
+        with tqdm(total=self.max_episodes) as pbar:
+            while not self.finish_dreaming_test:
+                self.run_episode_dream_test_(dreaming_train_stats, train_stats, pbar)
+                print(self.finish_dreaming_test)
 
         plt.plot(train_stats.steps.copy())
-        #
-        # actions = np.array(self.actions.copy())
-        # self.actions = []
-        # self.init()
-        # self.state = 'train'
-        # train_stats = RunStats()
-        # while self.progress.episode < self.max_episodes:
-        #     self.run_episode_(train_stats, pbar=None)
-        #
-        # n_actions = np.array(self.actions.copy())
-        # # print(actions[:10000])
-        # # print(n_actions[:10000])
-        # print(np.where(actions != n_actions))
-        # assert np.all(actions == n_actions)
-
         # plt.show()
         return train_stats
 
     def run_episode_dream_test_(self, dreaming_train_stats, train_stats, pbar):
-        if self.mode == 'train':
-            print('1')
-            (_, r, goal_found), _ = self.run_episode_dream_test()
-            self.progress.end_episode()
+        def should_announce_progress():
+            if not self.dreaming_test_started:
+                return True
+            return self.progress.episode == self.force_dreaming_point.episode
 
-            print(goal_found, r)
-            if goal_found:
-                self.goals_found += 1
-            if self.goals_found >= self.n_goals_before_dreaming:
+        def should_start_dreaming_test():
+            if self.dreaming_test_started:
+                return False
+            return self.goals_found >= self.n_goals_before_dreaming
+
+        if self.dreaming_test_started:
+            print(self.mode)
+        if self.mode == 'train':
+            if should_start_dreaming_test():
                 self.init_dreaming_test()
 
-            if (
-                    not self.dreaming_test_started
-                    or self.progress.episode == self.force_dreaming_point.episode
-            ):
-                self.update_progress(pbar)
+            (_, _, goal_found), _ = self.run_episode_dream_test()
+            if self.dreaming_test_started:
+                print('ended')
+            self.progress.end_episode()
 
-            if self.progress.episode % self.train_ep_before_eval == 0:
-                self.mode = 'eval'
-                self.agent.train = False
+            if goal_found:
+                self.goals_found += 1
+            if should_announce_progress():
+                self.update_progress(pbar)
+            if self.should_switch_to_eval:
+                self.switch_to_state('eval')
         elif self.mode == 'eval':
-            print('2')
             (steps, reward), elapsed_time = self.run_episode()
+            self.progress.end_episode(increase_episode=False)
             dreaming_train_stats.append_stats(steps, reward, elapsed_time)
-            self.mode = 'train'
-            self.agent.train = True
+            self.switch_to_state('train')
 
         if not self.dreaming_test_started:
             return
 
         if self.force_dreaming_point.episode >= self.progress.episode + self.test_forward:
+            print('reset')
             # compare and reset back agent
             agent, pos = self.agent_checkpoint
             self.agent = pickle.loads(agent)
@@ -139,45 +131,57 @@ class Scenario:
 
         while True:
             reward, obs, first = self.env.observe()
-            if not self.dreaming_test_started and reward > .1:
-                print('!!!')
-                goal_found = True
-            if first and self.progress.step > 0:
-                if self.force_dreaming:
-                    self.force_dreaming_point.end_episode()
-                    self.force_dreaming_point.next_step()
-                break
+            episode_ended = self.episode_ended(first)
 
-            if self.force_dreaming:
+            if not self.dreaming_test_started and reward > .1:
+                goal_found = True
+
+            if episode_ended and self.should_force_dreaming_now:
+                self.force_dreaming_point.end_episode()
+                self.force_dreaming_point.next_step()
+
+            if self.dreaming_test_started:
+                print(self.progress)
+
+            if self.should_force_dreaming_now:
+                print('force')
                 self.agent.force_dreaming = True
             action = self.agent.act(reward, obs, first)
-            self.env.act(action)
 
+            if episode_ended:
+                break
+
+            self.env.act(action)
             self.progress.next_step()
             total_reward += reward
 
         return self.progress.step, total_reward, goal_found
 
     @property
-    def force_dreaming(self):
-        return (
-                self.dreaming_test_started
-                and self.progress == self.force_dreaming_point
-        )
+    def should_force_dreaming_now(self):
+        if not self.dreaming_test_started:
+            return False
+        return self.progress == self.force_dreaming_point
 
     @property
     def finish_dreaming_test(self):
-        return (
-                self.dreaming_test_started
-                and self.progress.episode >= self.stop_dreaming_test.episode
-        )
+        if self.progress.episode >= self.max_episodes:
+            return True
+
+        if not self.dreaming_test_started:
+            return False
+
+        print(self.force_dreaming_point, self.stop_dreaming_test)
+        return self.force_dreaming_point.episode >= self.stop_dreaming_test.episode
 
     def init_dreaming_test(self):
-        print('OK')
         self.dreaming_test_started = True
         self.force_dreaming_point = ProgressPoint(self.progress)
+        self.force_dreaming_point.next_step()
         self.stop_dreaming_test = ProgressPoint(self.progress)
         self.stop_dreaming_test.episode += self.dreaming_test
+
+        print('==>', self.progress, self.force_dreaming_point, self.stop_dreaming_test)
 
         env: Environment = unwrap(self.env)
         pos = env.entities['agent'].position
@@ -222,7 +226,7 @@ class Scenario:
         while True:
             reward, obs, first = self.env.observe()
             action = self.agent.act(reward, obs, first)
-            if first and self.progress.step > 0:
+            if self.episode_ended(first):
                 break
 
             self.env.act(action)
@@ -230,3 +234,6 @@ class Scenario:
             total_reward += reward
 
         return self.progress.step, total_reward
+
+    def episode_ended(self, first: bool):
+        return first and self.progress.step > 0

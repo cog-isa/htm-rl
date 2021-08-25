@@ -28,6 +28,16 @@ class ProgressPoint:
         if increase_episode:
             self.episode += 1
 
+    def __eq__(self, other):
+        if not isinstance(other, ProgressPoint):
+            return False
+        if self.episode != other.episode:
+            return False
+        return self.step == other.step
+
+    def __str__(self):
+        return f'{self.episode}.{self.step}'
+
 
 def filter_out_non_passable_items(config: dict, depth: int):
     """Recursively filters out non-passable args started with '.' and '_'."""
