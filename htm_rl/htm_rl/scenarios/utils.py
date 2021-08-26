@@ -38,6 +38,12 @@ class ProgressPoint:
     def __str__(self):
         return f'{self.episode}.{self.step}'
 
+    def __repr__(self):
+        return str(self)
+
+    def __hash__(self):
+        return hash((self.episode, self.step))
+
 
 def filter_out_non_passable_items(config: dict, depth: int):
     """Recursively filters out non-passable args started with '.' and '_'."""
