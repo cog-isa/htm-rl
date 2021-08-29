@@ -4,16 +4,16 @@
   - [Links](#links)
   - [Quick install](#quick-install)
   - [Repository structure](#repository-structure)
+  - [Working example](#working-example)
   - [Quick intro](#quick-intro)
     - [HTM](#htm)
 
 ## Links
 
 - This repo [link](https://github.com/cog-isa/htm-rl)
-- Installation [guide](./install.md) for contributors
+- Contributors setup [guide](./install.md)
 - Cumulative project's [readme](./htm_rl/htm_rl/README.md)
 - Project releases [folder](./reports) with version-specific reports.
-- Project's live [log](./log.md)
 
 ## Quick install
 
@@ -50,6 +50,20 @@ pip install -e .
 - `htm_rl/` - sources root (mark this directory in for PyCharm), it contains `setup.py`
   - `htm_rl/` - `htm_rl` package sources
     - `run_X.py` - runners, i.e. entry point to run testing scenarios
+
+## Working example
+
+```bash
+# cd to package sources root
+cd <htm_rl_project_root>/htm_rl/htm_rl/
+
+# cd to the 5x5_pos experiments
+cd experiments/5x5_pos/
+
+# runs random agent and Q-learning agent with learned model 
+# on 5x5 env with an agent position as the observation
+python ../../run_experiment.py -c debug -e pos -a rnd qmb
+```
 
 ## Quick intro
 

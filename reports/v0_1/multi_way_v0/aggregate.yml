@@ -1,6 +1,0 @@
-.run_results_processor:
-  env_name: multi_way_v0
-  optimal_len: 7
-  moving_average: 20
-seed: 1337
-verbosity: 1
