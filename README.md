@@ -5,21 +5,19 @@
   - [Quick install](#quick-install)
   - [Repository structure](#repository-structure)
   - [Working example](#working-example)
-  - [Quick intro](#quick-intro)
-    - [HTM](#htm)
 
 ## Links
 
 - This repo [link](https://github.com/cog-isa/htm-rl)
-- Contributors setup [guide](./install.md)
+- Contributors [guide](./CONTRIBUTING.md)
 - Cumulative project's [readme](./htm_rl/htm_rl/README.md)
-- Project releases [folder](./reports) with version-specific reports.
+- Introductory [materials](./intro.md)
 
 ## Quick install
 
 There're two setup guides:
 
-- [quick&short version](#quick-install) is here. It's recommended for `htm_rl` library users.
+- [quick & short version](#quick-install) is here. It's recommended for `htm_rl` library users.
 - [extended version](./install.md/#install-requirements) is for contributors or if you have troubles with this version.
 
 ```bash
@@ -64,27 +62,3 @@ cd experiments/5x5_pos/
 # on 5x5 env with an agent position as the observation
 python ../../run_experiment.py -c debug -e pos -a rnd qmb
 ```
-
-## Quick intro
-
-### HTM
-
-Ordered list of useful links to dive into the HTM theory and practice:
-
-- [HTM School](https://www.youtube.com/watch?v=XMB0ri4qgwc&list=PL3yXMgtrZmDqhsFQzwUC9V8MeeVOQ7eZ9) youtube playlist
-  - 0-12 are required, others - optional
-  - important to get used to: SDR concept and feature; concept and high level work of Spatial Pooler (SP) and Temporal Memory (TM)
-  - NB: implementation details aren't important at first, no need for grocking them from the start
-- [Optional] Short and easy to read [numenta paper](https://arxiv.org/abs/1503.07469) on the power of SDR.
-- Intro to `htm.core` package Temporal Memory class - two-part blog post series ([part1](https://3rdman.de/2020/02/hierarchical-temporal-memory-part-1-getting-started/), [part2](https://3rdman.de/2020/04/hierarchical-temporal-memory-part-2/)) on how to use it.
-  - 01-03 notebooks in `./notebooks/` are complementary, check out them.
-  - NB: it's good if you understood high level TM algo and at this point have questions regarding the low level details
-- [BAMI.TM](https://numenta.com/assets/pdf/temporal-memory-algorithm/Temporal-Memory-Algorithm-Details.pdf) - definitive guide on Temporal Memory (TM) implementation details
-  - very important for understanding HTM - how to use it and its limits
-  - 04-05 notebooks in `./notebooks/` are complementary, check out them.
-
-Additional useful links:
-
-- [BAMI.SDR](https://numenta.com/assets/pdf/biological-and-machine-intelligence/BaMI-SDR.pdf) - definitive guide on Sparse Distributed Representations (SDR)
-- [BAMI.SP](https://numenta.com/assets/pdf/spatial-pooling-algorithm/Spatial-Pooling-Algorithm-Details.pdf) - definitive guide on Spatial Pooler (SP)
-- [Optional] Another [numenta paper](https://arxiv.org/abs/1903.11257) on the power of sparse representations applied to mainstream Artificial Neural Networks.
