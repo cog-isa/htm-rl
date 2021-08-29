@@ -149,9 +149,10 @@ class DreamingDouble(Agent):
             depths.append(depth)
 
         self.dream_length += sum_depth
-        # if depths:
-        #     print(sum_depth)
-        #     print(depths)
+        if depths:
+            # print(sum_depth)
+            # print(depths)
+            ...
         self.wake()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:

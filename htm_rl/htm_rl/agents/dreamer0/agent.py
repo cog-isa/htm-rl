@@ -191,6 +191,7 @@ class DreamerAgent(Agent):
             self.force_dreaming = False
 
         if dream:
+            # print('-- dream --')
             self.dreamer.dream(s, prev_sa)
 
     def _make_random_action(self):

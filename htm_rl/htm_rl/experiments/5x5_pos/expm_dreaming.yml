@@ -1,25 +1,32 @@
 _type_: dreaming condition
 
 env_seeds:
-#  - 851775
-  - 743535
-#  - 288985
-#  - 190368
-#  - 885213
-#  - 768840
+  - 851775
+#  - 743535
+  - 288985
+  - 190368
+  - 885213
+  - 768840
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
 
 agent_seeds:
   - 42
 #  - 1337
-#  - 1984
-#  - 3433
+  - 1984
+  - 3433
 
 max_episodes: 50
 train_ep_before_eval: 1
-n_goals_before_dreaming: 5
-dreaming_test: 5
+
+n_goals_before_dreaming: 3
+dreaming_test: 15
 test_forward: 10
-compare_vs_last_eps: 5
+compare_vs_last_eps: 10
 
 envs:
   - pos
