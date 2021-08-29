@@ -2046,9 +2046,9 @@ class MovingDelayedFeedbackTM:
         :return:
         """
         # basal and apical coincidence predict first
-        predicted_cells = np.intersect1d(self.predictive_cells_basal, self.predictive_cells_apical)
-        # if there is no coincidence, predict all possible cases
-        if predicted_cells.size == 0:
+        if self.predictive_cells_apical.size > 0:
+            predicted_cells = np.intersect1d(self.predictive_cells_basal, self.predictive_cells_apical)
+        else:
             predicted_cells = self.predictive_cells_basal
 
         self.predicted_cells.sparse = predicted_cells.astype('uint32')
@@ -2137,7 +2137,7 @@ class MovingDelayedFeedbackTM:
 
     def propagate_feedback(self):
         # calculate apical learning
-        if self.active_cells_feedback.size > 0:
+        if (self.active_cells_feedback.size > 0) and (len(self.cells_to_grow_apical_segments_history) > 0):
             self.cells_to_grow_apical_segments = reduce(np.union1d, self.cells_to_grow_apical_segments_history)
             (learning_matching_apical_segments,
              cells_to_grow_apical_segments,
@@ -2167,6 +2167,10 @@ class MovingDelayedFeedbackTM:
                                         self.max_segments_per_cell_apical)
 
             self.cells_to_grow_apical_segments = np.empty(0, dtype=UINT_DTYPE)
+            self.predictive_cells_apical = np.empty(0)
+            self.active_segments_apical = np.empty(0)
+            self.matching_segments_apical = np.empty(0)
+            self.num_potential_apical = np.empty(0)
 
     def _learn(self, connections, learning_segments, active_cells, winner_cells, num_potential, sample_size,
                max_synapses_per_segment,
