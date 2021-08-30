@@ -6,62 +6,63 @@
 # 2. in experiment config file in `agents`.
 
 # Declares the type of agent. The type is just a string that helps
-# to select an agent constructor.
-_type_: svpn
+# to select an agent constructor. Your scenario should support it.
+_type_: dreamer0
 
-.default_spatial_pooler_params: &default_spatial_pooler_params
-  synapse_permanence_deltas: [ .1, .01 ]
-  connected_permanence_threshold: .5
-  min_activation_threshold: 1
+# SA encoder config. It can contain dict with the corresponding config
+# or it can contain string name of the corresponding config file without
+# "sa_encoder_" prefix, (i.e. if filename "sa_encoder_q.yml", use just "q")
+# Your agent constructor can support empty config (i.e. =None) like in
+# this example. How you will treat it is up to you. In dream_cond scenario
+# it's treated as using default CrossSaEncoder, which doesn't have any config params.
+sa_encoder:
 
-state_sp:
-  <<: *default_spatial_pooler_params
-  output_dilation_ratio: 2.
-  potential_synapses_ratio: .5
-  sparsity: .015
-  boost_strength: .2
-  boost_sliding_window: 2000
-  expected_normal_overlap_frequency: .001
+# QValueNetwork params.
+# NB: some params are set as [x, y]. These params are usually constants, which
+# we may want to slightly reduce each episode. So, x - param initial value, y -
+# decay factor. You must support it manually!
+qvn:
+  discount_factor: &discount_factor .95
+  learning_rate: [.1, .995]
 
-action_encoder:
-  bucket_size: 4
+# EligibilityTraces params
+eligibility_traces: &e_traces
+  trace_decay: [.75, .99]
+  discount_factor: *discount_factor
 
-sa_sp:
-  <<: *default_spatial_pooler_params
-  output_dilation_ratio: 3.
-  potential_synapses_ratio: .6
-  sparsity: .015
-  boost_strength: .2
-  boost_sliding_window: 4000
-  expected_normal_overlap_frequency: .001
+# exploration-related params: random exploration probability,
+# using softmax instead of greedy strategy, adding intrinsic motivation
+# reward term with the specified weight.
+exploration_eps: [.3, .99]
+softmax_enabled: false
+im_weight: [.000, 1.]
 
-sqvn:
-  trace_decay: .75
-  visit_decay: .994
-  discount_factor: .96
-  learning_rate: [.04, .995]
-  ucb_exploration_factor: [.5, .994]
-  td_error_decay: .0
+td_error_decay: .6
+dreaming:
+  enabled: false
+  enter_prob_alpha: [1.2, 1.]
+  enter_prob_threshold: .3
+  exploration_eps: [.3, .997]
+  qvn:
+    learning_rate_factor: 1.
+  eligibility_traces: *e_traces
+  nest_traces: false
+  prediction_depth: 10
+  n_prediction_rollouts: [3, 12]
 
-dreamer:
-  learning_rate: .5
-  trace_decay: 0.
+reward_model:
+  learning_rate: [1., 1.]
 
-r_learning_rate: [.05, .995]
-first_planning_episode: 0
-last_planning_episode: 2000
-prediction_depth: 10
-n_prediction_rollouts: 2
-
-tm:
-  cells_per_column: 1
-  initial_permanence: .5
-  connected_permanence: .4
-  activation_threshold: .9
-  learning_threshold: .66
-  max_new_synapse_count: 1.
-  max_synapses_per_segment: 1.2
-  predictedSegmentDecrement: .0001
-  permanenceIncrement: .1
-  permanenceDecrement: .03
-  maxSegmentsPerCell: 4
+transition_model:
+  tm:
+    cells_per_column: 1
+    initial_permanence: .35
+    connected_permanence: .3
+    activation_threshold: .7
+    learning_threshold: .4
+    max_new_synapse_count: 1.0
+    max_synapses_per_segment: 1.0
+    predictedSegmentDecrement: .001
+    permanenceIncrement: .05
+    permanenceDecrement: .01
+    maxSegmentsPerCell: 4

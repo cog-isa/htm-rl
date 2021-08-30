@@ -12,7 +12,7 @@
 
 # Declares the type of the environment. It's unsupported now as we have
 # only 1 env type. For the future use.
-_type_: ...
+_type_: biogwlab
 
 # grid dimensions
 shape_xy: [12, 12]
