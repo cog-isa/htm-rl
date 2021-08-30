@@ -90,7 +90,8 @@ class Scenario:
         # plt.show()
 
         changes = [
-            (pp, pos, ds)
+            # (pp, pos, ds)
+            ds
             for (pp, pos), ds in self.test_results_map.items()
             if ds != 0.
         ]
@@ -123,11 +124,11 @@ class Scenario:
             self.update_progress(pbar)
 
         if self.progress.episode > self.force_dreaming_point.episode + self.test_forward:
-            print('reset ==>', self.progress, self.force_dreaming_point)
+            # print('reset ==>', self.progress, self.force_dreaming_point)
             self.save_results(eval_stats, eval_stats_no_dreaming)
             self.cut_stats_to_checkpoint(train_stats, eval_stats)
             self.restore_checkpoint(train_stats_no_dreaming)
-            print('reset <==', self.progress, self.force_dreaming_point)
+            # print('reset <==', self.progress, self.force_dreaming_point)
 
     @timed
     def run_episode_with_dream_forcing(self):
@@ -142,9 +143,9 @@ class Scenario:
             episode_ended = self.episode_ended(first)
 
             if self.should_force_dreaming_now:
-                print('save checkpoint')
+                # print('save checkpoint')
                 self.save_checkpoint()
-                print('force')
+                # print('force')
                 self.agent.force_dreaming = True
             action = self.agent.act(reward, obs, first)
 
@@ -229,7 +230,7 @@ class Scenario:
         self.stop_dreaming_test = ProgressPoint(self.progress)
         self.stop_dreaming_test.episode += self.dreaming_test
 
-        print('==>', self.progress, self.force_dreaming_point, self.stop_dreaming_test)
+        # print('==>', self.progress, self.force_dreaming_point, self.stop_dreaming_test)
 
     @property
     def should_proceed_to_dreaming_test(self):
