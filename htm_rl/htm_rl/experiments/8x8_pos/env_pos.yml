@@ -1,3 +1,4 @@
+_type_: biogwlab
 shape_xy: [8, 8]
 
 actions:
@@ -8,25 +9,36 @@ actions:
   - move up
 
 action_costs:
-  action_cost: -.005
+  action_cost: -.002
   action_weight:
     stay: .5
     turn: .8
     move: 1.
 
+rendering:
+
+areas:
+  n_types: 1
+  rendering: false
+
 obstacles:
   density: .25
+  rendering: false
 
 food:
   n_items: 1
   reward: 1.
+  rendering: false
+
+agent:
+  rendering:
+    what:
+      - position
+#      - view direction
+    bucket_size: 4
 
 terminate:
   episode_max_steps: 200
   early_stop: true
 
-rendering:
-  render:
-    - position
-  bucket_size: 4
 
