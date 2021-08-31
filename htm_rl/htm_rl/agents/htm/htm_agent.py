@@ -48,7 +48,6 @@ class BioGwLabAction:
 class HTMAgent:
     def __init__(self, config, hierarchy: Hierarchy):
         self.use_intrinsic_reward = config['intrinsic_reward']
-        self.theta = config['theta']
         self.punish_reward = config['punish_reward']
         self.hierarchy = hierarchy
         self.action = BioGwLabAction(**config['action'])
@@ -97,7 +96,7 @@ class HTMAgent:
             reward = 0
         return reward
 
-    def reinforce(self, reward):
+    def reinforce(self, reward: float):
         """
         Reinforce BasalGanglia.
         :param reward: float:
@@ -107,9 +106,12 @@ class HTMAgent:
         :return:
         """
         if self.use_intrinsic_reward:
-            reward += (self.theta * self.get_intrinsic_reward())
+            reward_int = self.get_intrinsic_reward()
+        else:
+            reward_int = 0
 
-        self.hierarchy.add_rewards([reward] * len(self.hierarchy.blocks))
+        self.hierarchy.add_rewards([reward] * len(self.hierarchy.blocks),
+                                   [reward_int] * len(self.hierarchy.blocks))
 
     def reset(self):
         self.hierarchy.reset()

@@ -210,7 +210,8 @@ class Block:
         self.apical_in_size = 0
         self.basal_in_size = 0
 
-        self.reward = 0
+        self.reward_ext = 0
+        self.reward_int = 0
         self.k = 0
         self.gamma = gamma
         self.made_decision = False
@@ -286,11 +287,6 @@ class Block:
 
             self.feedback_in_pattern = feedback_active_columns
 
-            # add apical predictions, if there are no feedback predictions
-            # probably, need to define a threshold
-            # if self.tm.exec_predictive_cells.size == 0:
-            #     self.should_return_apical_predictions = True
-
             self.d_an = 0
             self.d_cn = 0
 
@@ -362,10 +358,10 @@ class Block:
 
             # Reinforce
             if (self.bg is not None) and (self.k != 0):
-                self.bg.stri.update_response(basal_active_columns)
-                self.bg.force_dopamine(self.reward, k=self.k)
+                self.bg.update_response(basal_active_columns)
+                self.bg.force_dopamine(self.reward_ext, k=self.k, reward_int=self.reward_int)
 
-                self.mean_reward = self.mean_reward * self.sm_reward + self.reward * (1 - self.sm_reward)
+                self.mean_reward = self.mean_reward * self.sm_reward + self.reward_ext * (1 - self.sm_reward)
                 if self.mean_reward > self.max_reward:
                     self.max_reward = self.max_reward * self.sm_max_reward + self.mean_reward * (1 - self.sm_max_reward)
                 else:
@@ -376,10 +372,11 @@ class Block:
                 else:
                     self.min_reward *= self.min_reward_decay
 
-                self.reward = 0
+                self.reward_ext = 0
+                self.reward_int = 0
                 self.k = 0
                 prev_da = self.da
-                self.da = self.da * self.sm_da + np.power(self.bg.stri.error, 2).flatten().sum() * (1 - self.sm_da)
+                self.da = self.da * self.sm_da + np.power(self.bg.td_error, 2).flatten().sum() * (1 - self.sm_da)
                 self.dda = self.dda * self.sm_dda + (self.da - prev_da) * (1 - self.sm_dda)
 
             # Forgetting
@@ -470,7 +467,7 @@ class Block:
                         boost_predicted_options[indices] += self.feedback_boost
 
                     option_index, option, option_values = self.bg.compute(condition.sparse, options, responses_boost=boost_predicted_options)
-                    self.bg.stri.update_stimulus(condition.sparse)
+                    self.bg.update_stimulus(condition.sparse)
                     norm_option_values = option_values - option_values.min()
                     norm_option_values /= (norm_option_values.max() + 1e-12)
 
@@ -509,9 +506,10 @@ class Block:
         self.basal_in_size = sum([block.basal_columns for block in self.basal_in])
         return self.feedback_in_size, self.apical_in_size, self.basal_in_size
 
-    def add_reward(self, reward):
+    def add_reward(self, reward_ext: float, reward_int: float = 0):
         if self.bg is not None:
-            self.reward += (self.gamma ** self.k) * reward
+            self.reward_ext += (self.gamma ** self.k) * reward_ext
+            self.reward_int += (self.gamma ** self.k) * reward_int
             self.k += 1
 
     def finish_current_option(self, flag):
@@ -533,7 +531,8 @@ class Block:
         if self.bg is not None:
             self.bg.reset()
 
-        self.reward = 0
+        self.reward_ext = 0
+        self.reward_int = 0
         self.k = 0
         self.made_decision = False
         self.current_option = None
@@ -748,9 +747,9 @@ class Hierarchy:
         # start processing input
         self.compute()
 
-    def add_rewards(self, rewards):
-        for reward, block in zip(rewards, self.blocks):
-            block.add_reward(reward)
+    def add_rewards(self, rewards_ext, rewards_int):
+        for reward_ext, reward_int, block in zip(rewards_ext, rewards_int, self.blocks):
+            block.add_reward(reward_ext, reward_int)
 
     def save_logs(self):
         if self.logs_dir is not None:
