@@ -207,7 +207,7 @@ class DreamingDouble(Agent):
         self.dream_length = 0
         if not self.enabled:
             return False
-        if not self.first_dreaming_episode <= self._episode < self.last_dreaming_episode:
+        if not (self.first_dreaming_episode <= self._episode < self.last_dreaming_episode):
             return False
         if self.Q.learning_rate[0] < 1e-3:
             return False
