@@ -37,6 +37,7 @@ exploration_eps: [.3, .99]
 softmax_enabled: false
 im_weight: [.000, 1.]
 
+# Params used for dreaming
 td_error_decay: .6
 dreaming:
   enabled: false

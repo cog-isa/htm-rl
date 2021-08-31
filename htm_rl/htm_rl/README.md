@@ -1,32 +1,20 @@
 # Project details
 
 - [Project details](#project-details)
-  - [Постановка задачи и среда](#постановка-задачи-и-среда)
+  - [Experiment setting](#experiment-setting)
   - [Configuration based building](#configuration-based-building)
     - [YAML custom tags](#yaml-custom-tags)
     - [YAML aliases - DRY](#yaml-aliases---dry)
     - [YAML merging - DRY #2](#yaml-merging---dry-2)
-  - [Run arguments](#run-arguments)
-    - [Run examples](#run-examples)
-  - [Entities](#entities)
   - [Parameters](#parameters)
     - [Currently in use](#currently-in-use)
     - [Adviced by Numenta community](#adviced-by-numenta-community)
 
-## Постановка задачи и среда
+## Experiment setting
 
-Агент играет в среде GridWorld - лабиринт на квадратной сетке. Агент начинает игру в фиксированной точке старта, и ему требуется найти единственную награду, которая находится в фиксированном месте.
+Quote from our paper:
 
-Рассматриваются два близких варианта GridWorld - с учетом направления взгляда агента и без:
-
-- В первом случае в каждый момент времени агент находится в некоторой клетке лабиринта, указывая лицом одно из 4х направлений: восток, север, запад, юг
-  - Из текущего состояния он может совершить два действия: а) шагнуть прямо (в соседнюю клетку) или б) повернуться на 90 градусов против часовой стрелки.
-  - Опционально в среде может быть разрешено третье действие - поворот на 90 градусов по часовой стрелке (по умолчанию запрещено).
-- Во втором случае агент не имеет направления взгляда и может шагать непосредственно в любом из четырех направлений (восток, север, запад, юг), т.е. в одну из четырех соседних клеток.
-
-Переходы между состояниями однозначны, т.е. среда описывается детерминированным MDP. Когда агент пытается шагнуть "в стенку", он остается на месте.
-
-На каждом невыигрышном шаге агент получает небольшую отрицательную награду (-0.01), на выигрышном - большую положительную (1.0).
+In our experiments, we used classic grid world environments, which were represented as mazes on a square grid. Each state can be defined by an agent's position; thus, the state space $S$ contains all possible agent positions. An agent begins in a fixed state $s_0$, with the goal of locating a single reward in a fixed position $s_g$. The environment's transition function is deterministic. The action space is made up of four actions that move the agent to each adjacent grid cell. However, when the agent attempts to move into a maze wall, the position of the agent remains unchanged. It is assumed that the maze is surrounded by obstacles, making it impossible for an agent to move outside. Every timestep, an agent receives an observation -- a binary image of a small square window encircling it (we used $5 \times 5$ size with an agent being at its center). The observation has six binary channels: three color channels for the floor, walls, out-of-bounds obstacles, and the goal. We use maze floor coloring to add semantic clues to observations. When an agent achieves the goal state $s_g$, it receives a large positive value $+1.0$. Each step is also slightly punished with $-0.002$, causing an agent to seek the shortest path. The optimal path from the starting point to the goal in each testing environment was between 8 and 20 steps. We also set a time limit for episodes: 200 for an 8x8 environment and 350 for a 12x12 environment.
 
 ## Configuration based building
 
@@ -212,80 +200,6 @@ You may noticed here (or in repo configs) unusual node names starting with dot. 
 
 - `xyz` - for scalars and objects that you will use at runtime in your code. That's the endpoints of the configuration process.
 - `.xyz` - for auxilary dictionaries with initialization parameters used at parsing and object construction.
-
-**NB**: too long, hard to read configs is a code smell, i.e. a good cue that underlying architecture needs refactoring.
-
-## Run arguments
-
-- `-c`, `--config` - path to the config file; e.g. `-c ./experiments/gridworld_transfer/gridworld_5x5.yml`
-  - the only **required** argument
-
-There're 3 working modes:
-
-- `-r`, `--run` - run experiments flag
-  - fallback (=default) mode if none is specified
-  - sequentially runs experiments for each agent runner specified in `agent_runners` dict in the config
-  - if you want to run experiments only for a subset of agents, additionally use `-a`, `--agent` to specify their names; e.g. `-r -a htm_0 dqn_greedy htm_2_1g`
-  - experiment results are saved to the folder with the config file
-- `-d`, `--dry` - dry (=fake) run experiments glag
-  - the real purpose is to generate environment mazes and save their map images without running experiments in these envs
-  - hence this flag makes sence only for experiments with randomly generated environments (checked by the presence of `transfer_learning_experiment_runner` in config)
-  - you can restrict the number of images to generate, e.g. `-d 5`
-  - exclusive with `-r`
-  - environment map images are saved to the folder with the config file
-- `-g`, `--aggregate` - aggregate results flag
-  - plots performance charts using all available experiment results related to the config
-  - you can specify which results to use, e.g. `-g htm_0 "dqn_*" "htm_*_1g" htm_2_4g` - yes, you can use masks here
-  - you can further specify the name prefix of the plots to make distinguishable aggregations, e.g. `-n 1g_vs_all`; by default no prefix is used
-  - you can also turn off showing the plots with `-s`, `--silent` flag
-
-### Run examples
-
-```bash
-# saves images of the first 10 different environment setups to the config folder
-python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -d 10
-
-# runs experiment for 3 agents and then generate report for them named `dqn_vs_htm`
-python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -ra htm_0 dqn htm_4_1g -g -n dqn_vs_htm
-
-# runs experiment for additional 2 agents
-python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -ra htm_2_1g htm_8_1g
-
-# silently aggregates results for htm_*_1g, i.e. saves plots without showing them
-python run_mdp_tests.py -c ./experiments/gridworld_transfer/gridworld_5x5_2_2_5.yml -g htm_0 "htm_*_1g" -n 1g -s
-```
-
-## Entities
-
-There're two agents: DQN and HTM. DQN agent is in `./baselines` folder, it's implemented in pytorch. HTM agent is in `./agent` and has more compound structure.
-
-HTM agent consists of:
-
-- memory
-  - high level wrapper over TM
-  - SA SDR Encoder/Decoder
-- planner
-  - uses memory
-  - implements planning logic
-  - has goals memory (naive circular queue of goal states)
-
-**NB** Threre're legacy counterparts for HTM agent and its parts due to recent move from SAR encoding to SA. The difference is mostly with what SDR they work. Legacy implementation will be removed soon and is kept now only for testing and comparison. Agent also has tricky _cooldown_ logic - it's still present although not used. Just ignore it, it will be removed soon too.
-
-There're two implementations of MDP:
-
-- general `Mdp`
-  - works with MDP transition graph, hence you can make non-gridworld MDPs too
-  - useful at early stages - when you need very small custom test envs for particular cases
-  - MDPs are mostly handcrafted
-  - accompanied with `PresetMdpCellTransitions` helper class with preset MDPs and simple passage generator
-- more specialized `GridworldMdp`
-  - works with gridworld map - 2d array representing empty cells and walls on a square grid.
-  - useful later to scale experiments, to validate on random env or to test transferability
-  - accompanied with `GridworldMapGenerator` helper class to generate mazes with custom density (empty cells to walls ratio)
-
-Each agent has its own runner: `AgentRunner` for HTM and `DqnAgentRunner` for DQN. They do the same and even implement the same interface. The core functionality is to run episode and collect its result. It also has functionality to run multiple episodes as an experiment and store all collected results. Agent runners were made with the static environment params in mind.
-
-Later on `TransferLearningExperimentRunner` and `TransferLearningExperimentRunner2` appeared as a hack to run experiments containing different initial and terminal states and even environment itself. `TransferLearningExperimentRunner` was made first as an extension to run experiment with a sequence of terminal states but still on a fixed preset MDP. `TransferLearningExperimentRunner2` has more freedom over experiment params. This whole running experiment part is in quite bad state right now.
 
 ## Parameters
 
