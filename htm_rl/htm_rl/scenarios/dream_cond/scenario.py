@@ -205,9 +205,9 @@ class Scenario:
         # assert len(train_stats.steps) == self.force_dreaming_point.episode
 
     def save_results(self, dreaming_stats: RunStats, no_dreaming_stats: RunStats):
-        # DO NOT CHECK WITH REWARDS, BECAUSE THERE'S A BUG WITH IT:
+        # DO NOT COMPARE WITH REWARDS, BECAUSE THERE'S A BUG WITH IT:
         # I DON'T RESTORE CUMULATIVE EPISODE REWARD FOR THE DREAMING EPISODE
-        # === but we restore episode `step` - it's enough to compare :)
+        # === but we restore episode `step`, and it's enough to compare :)
         avg_dreaming_res = np.mean(dreaming_stats.steps[-self.compare_vs_last_eps:])
         avg_no_dreaming_res = np.mean(no_dreaming_stats.steps[-self.compare_vs_last_eps:])
         # print(avg_no_dreaming_res, avg_dreaming_res)
@@ -229,7 +229,6 @@ class Scenario:
         self.force_dreaming_point = ProgressPoint(self.progress)
         self.stop_dreaming_test = ProgressPoint(self.progress)
         self.stop_dreaming_test.episode += self.dreaming_test
-
         # print('==>', self.progress, self.force_dreaming_point, self.stop_dreaming_test)
 
     @property
