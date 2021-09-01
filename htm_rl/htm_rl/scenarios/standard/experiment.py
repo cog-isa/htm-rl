@@ -2,7 +2,8 @@ from itertools import product
 
 from htm_rl.scenarios.config import FileConfig
 from htm_rl.scenarios.experiment import Experiment
-from htm_rl.scenarios.standard.scenario import RunStats, Scenario
+from htm_rl.scenarios.standard.scenario import Scenario
+from htm_rl.scenarios.standard.run_stats import RunStats
 from htm_rl.scenarios.utils import add_overwrite_attributes, get_filtered_names_for
 
 

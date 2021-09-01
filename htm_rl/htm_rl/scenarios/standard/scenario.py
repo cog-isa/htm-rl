@@ -5,6 +5,7 @@ from htm_rl.agents.agent import Agent
 from htm_rl.common.utils import timed
 from htm_rl.envs.env import Env
 from htm_rl.scenarios.factories import materialize_environment, materialize_agent
+from htm_rl.scenarios.standard.run_stats import RunStats
 from htm_rl.scenarios.utils import ProgressPoint
 
 
@@ -68,16 +69,18 @@ class Scenario:
 
         while True:
             reward, obs, first = self.env.observe()
-            if first and self.progress.step > 0:
-                break
-
             action = self.agent.act(reward, obs, first)
+            if self.episode_ended(first):
+                break
             self.env.act(action)
 
             self.progress.next_step()
             total_reward += reward
 
         return self.progress.step, total_reward
+
+    def episode_ended(self, first: bool):
+        return first and self.progress.step > 0
 
     def init_wandb_run(self):
         if not self.wandb['enabled']:
@@ -97,41 +100,3 @@ class Scenario:
             'seed': self.config['env_seed']
         }
         return run
-
-
-class RunStats:
-    steps: list[int]
-    rewards: list[float]
-    times: list[float]
-
-    def __init__(self):
-        self.steps = []
-        self.rewards = []
-        self.times = []
-
-    def append_stats(self, steps, total_reward, elapsed_time):
-        self.steps.append(steps)
-        self.rewards.append(total_reward)
-        self.times.append(elapsed_time)
-
-    def print_results(self):
-        steps = np.array(self.steps)
-        avg_len = steps.mean()
-        last_10_pct = steps.shape[0] // 10
-        last10_avg_len = steps[-last_10_pct:].mean()
-        avg_reward = np.array(self.rewards).mean()
-        avg_time = np.array(self.times).mean()
-        elapsed = np.array(self.times).sum()
-        print(
-            f'Len10: {last10_avg_len: .2f}  Len: {avg_len: .2f}  '
-            f'R: {avg_reward: .5f}  '
-            f'EpT: {avg_time: .6f}  TotT: {elapsed: .6f}'
-        )
-
-    @staticmethod
-    def aggregate_stats(agent_results):
-        results = RunStats()
-        results.steps = np.mean([res.steps for res in agent_results], axis=0)
-        results.times = np.mean([res.times for res in agent_results], axis=0)
-        results.rewards = np.mean([res.rewards for res in agent_results], axis=0)
-        return results
