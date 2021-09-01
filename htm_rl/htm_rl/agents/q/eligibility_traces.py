@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import update_exp_trace, isnone, safe_ith, exp_decay
+from htm_rl.common.utils import update_exp_trace, isnone, exp_decay
 
 
 class EligibilityTraces:

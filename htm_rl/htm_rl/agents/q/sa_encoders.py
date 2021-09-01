@@ -81,9 +81,9 @@ class CrossSaEncoder(SaEncoder):
             bucket_size = self.n_active_bits
             state = s[0] // bucket_size
 
-            l = (state * self.n_actions + action) * bucket_size
-            r = l + bucket_size
-            return np.arange(l, r)
+            lft = (state * self.n_actions + action) * bucket_size
+            rht = lft + bucket_size
+            return np.arange(lft, rht)
 
         def decode_state(self, sa_superposition):
             if not sa_superposition:
@@ -95,9 +95,9 @@ class CrossSaEncoder(SaEncoder):
                 state = x // stride
                 break
             bucket_size = self.n_active_bits
-            l = state * bucket_size
-            r = l + bucket_size
-            return np.arange(l, r)
+            lft = state * bucket_size
+            rgt = lft + bucket_size
+            return np.arange(lft, rgt)
 
     n_actions: int
     sa_encoder: CrossProductEncoder
@@ -124,3 +124,12 @@ class CrossSaEncoder(SaEncoder):
     @property
     def output_sdr_size(self):
         return self.sa_encoder.output_sdr_size
+
+
+def make_sa_encoder(
+        env: Env, seed: int, sa_encoder_config: dict
+):
+    if sa_encoder_config:
+        return SpSaEncoder(env, seed, **sa_encoder_config)
+    else:
+        return CrossSaEncoder(env)
