@@ -1,3 +1,4 @@
+from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.q.sa_encoders import SpSaEncoder, CrossSaEncoder
 from htm_rl.agents.qmb.transition_model import TransitionModel
 from htm_rl.common.sdr import SparseSdr
@@ -56,3 +57,12 @@ class SaTransitionModel(TransitionModel):
             n_active_bits=sa_encoder.sa_encoder.n_active_bits,
             **tm
         )
+
+
+def make_transition_model(sa_encoder: SaEncoder, config: dict):
+    from htm_rl.agents.q.sa_encoders import SpSaEncoder, CrossSaEncoder
+
+    if isinstance(sa_encoder, SpSaEncoder):
+        return SsaTransitionModel(sa_encoder, **config)
+    elif isinstance(sa_encoder, CrossSaEncoder):
+        return SaTransitionModel(sa_encoder, **config)
