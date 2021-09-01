@@ -53,10 +53,8 @@ class QValueNetwork:
         # in general it could be s instead sa and V instead of Q
         gamma = self.discount_factor
         R = reward
-        Q = self.cell_value
-
-        Q_sa = Q[sa].mean()
-        Q_sa_next = Q[sa_next].mean()
+        Q_sa = self.value(sa)
+        Q_sa_next = self.value(sa_next)
 
         TD_error = R + gamma * Q_sa_next - Q_sa
         return TD_error
