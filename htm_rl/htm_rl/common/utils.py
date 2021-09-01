@@ -5,6 +5,9 @@ from typing import Any, Union, Optional
 import numpy as np
 
 
+DecayingValue = tuple[float, float]
+
+
 def isnone(x, default):
     """Return x if it's not None, or default value instead."""
     return x if x is not None else default
@@ -81,16 +84,16 @@ def update_exp_trace(traces, tr, decay, val=1.):
     traces[tr] += val
 
 
-def exp_decay(factor_decay_tuple):
-    """Returns new tuple with exponentially decayed first value."""
-    factor, decay = factor_decay_tuple
-    return factor * decay, decay
+def exp_decay(value: DecayingValue) -> DecayingValue:
+    """Applies decay to specified DecayingValue."""
+    x, decay = value
+    return x * decay, decay
 
 
-def modify_factor_tuple(factor_decay_tuple, alpha):
+def multiply_decaying_value(value: DecayingValue, alpha: float) -> DecayingValue:
     """Returns new tuple with the first value multiplied by specified factor."""
-    factor, decay = factor_decay_tuple
-    return factor * alpha, decay
+    x, decay = value
+    return x * alpha, decay
 
 
 def softmax(x):
