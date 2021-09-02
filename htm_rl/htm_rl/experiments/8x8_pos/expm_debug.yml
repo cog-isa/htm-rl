@@ -24,7 +24,7 @@ agents:
   rnd: rnd
   q: q
   qmb: qmb
-  dreamer: dreamer0
+  dreamer: dreamer
 
 debug:
   # enabled can be set only by -d arg flag
