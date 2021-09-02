@@ -6,14 +6,13 @@ from numpy.random import Generator
 
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.dreamer.qvn_double import QValueNetworkDouble
-from htm_rl.agents.q.agent import softmax
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
 from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import modify_factor_tuple, exp_decay, isnone, clip
+from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, softmax
 
 
 class DreamingDouble(Agent):
@@ -40,7 +39,6 @@ class DreamingDouble(Agent):
     n_prediction_rollouts: tuple[int, int]
 
     starting_sa_sdr: Optional[SparseSdr]
-    dream_length: int
 
     _current_sa_sdr: Optional[SparseSdr]
     _rng: Generator
@@ -89,17 +87,14 @@ class DreamingDouble(Agent):
         self.last_dreaming_episode = isnone(last_dreaming_episode, 999999)
 
         self.starting_sa_sdr = None
-        self.dream_length = 0
-
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
         self._episode = 0
 
     def put_into_dream(self, starting_sa_sdr):
         self.save_tm_checkpoint()
-        self.dream_length = 0
         self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
-        self.Q.learning_rate = modify_factor_tuple(
+        self.Q.learning_rate = multiply_decaying_value(
             self.Q.origin_learning_rate, self.Q.learning_rate_factor
         )
         self.starting_sa_sdr = starting_sa_sdr.copy()
@@ -115,7 +110,7 @@ class DreamingDouble(Agent):
                 self.E_traces.reset(decay=False)
 
         if i_rollout is not None:
-            self.Q.learning_rate = modify_factor_tuple(
+            self.Q.learning_rate = multiply_decaying_value(
                 self.Q.origin_learning_rate,
                 1.0/(i_rollout + 1.)**.5
             )
@@ -148,7 +143,6 @@ class DreamingDouble(Agent):
             i_rollout += 1
             depths.append(depth)
 
-        self.dream_length += sum_depth
         # if depths:
             # print(sum_depth)
             # print(depths)
@@ -203,15 +197,19 @@ class DreamingDouble(Agent):
         next_s = self.sa_encoder.decode_state(s_sa_next_superposition)
         return next_s
 
-    def decide_to_dream(self, td_error):
-        self.dream_length = 0
+    def can_dream(self, reward):
         if not self.enabled:
             return False
         if not (self.first_dreaming_episode <= self._episode < self.last_dreaming_episode):
             return False
+        if reward > 0.1:
+            # reward condition prevents useless planning when we've already
+            # found the goal
+            return False
         if self.Q.learning_rate[0] < 1e-3:
             return False
 
+    def decide_to_dream(self, td_error):
         if self._td_error_based_dreaming(td_error):
             return True
         return False
@@ -220,7 +218,7 @@ class DreamingDouble(Agent):
         max_abs_td_error = 2.
         dreaming_prob_boost = self.enter_prob_alpha[0]
         dreaming_prob = (dreaming_prob_boost * abs(td_error) - self.enter_prob_threshold)
-        dreaming_prob = clip(dreaming_prob / max_abs_td_error, 1.)
+        dreaming_prob = np.clip(dreaming_prob / max_abs_td_error, 0., 1.)
         return self._rng.random() < dreaming_prob
 
     def on_new_episode(self):

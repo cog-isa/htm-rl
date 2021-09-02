@@ -52,7 +52,7 @@ class ModelDebugger(Debugger):
         )
         self.trajectory_tracker.reset()
 
-    # noinspection PyUnboundLocalVariable
+    # noinspection PyPep8Naming
     def _add_value_maps(self, q: bool, v: bool):
         self.q_map_provider.precompute()
         Q = self.q_map_provider.Q

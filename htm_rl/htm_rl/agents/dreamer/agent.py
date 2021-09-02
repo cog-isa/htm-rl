@@ -5,16 +5,16 @@ from numpy.random import Generator
 
 from htm_rl.agents.agent import Agent
 from htm_rl.agents.dreamer.dreaming_double import DreamingDouble
-from htm_rl.agents.q.agent import softmax, make_sa_encoder
+from htm_rl.agents.q.sa_encoders import make_sa_encoder
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.qvn import QValueNetwork
 from htm_rl.agents.q.sa_encoder import SaEncoder
-from htm_rl.agents.qmb.agent import make_transition_model
+from htm_rl.agents.qmb.transition_models import make_transition_model
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
 from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import exp_decay, exp_sum
+from htm_rl.common.utils import exp_decay, exp_sum, softmax
 from htm_rl.envs.env import Env
 
 
@@ -112,8 +112,7 @@ class DreamerAgent(Agent):
             )
             self.cum_td_error = exp_sum(self.cum_td_error, self.td_error_decay, self.Q.last_td_error)
 
-        if not first and reward <= 0.1 and self.dreamer.decide_to_dream(self.cum_td_error):
-            # condition prevents inevitable useless planning in the end
+        if not first and self.dreamer.decide_to_dream(self.cum_td_error, reward):
             self.dreamer.dream(s, self._current_sa_sdr)
             action_values = self.Q.values(actions_sa_sdr)
             greedy_action = np.argmax(action_values)

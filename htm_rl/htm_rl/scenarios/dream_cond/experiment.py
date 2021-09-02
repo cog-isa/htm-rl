@@ -2,7 +2,7 @@ from itertools import product
 
 from htm_rl.scenarios.config import FileConfig
 from htm_rl.scenarios.experiment import Experiment
-from htm_rl.scenarios.standard.scenario import RunStats
+from htm_rl.scenarios.standard.run_stats import RunStats
 from htm_rl.scenarios.dream_cond.scenario import Scenario
 from htm_rl.scenarios.utils import add_overwrite_attributes, get_filtered_names_for
 
@@ -37,7 +37,7 @@ class DreamingConditionExperiment(Experiment):
                 config['agent_seed'] = agent_seed
                 print(f'AGENT: {agent_name}     SEED: {env_seed} {agent_seed}')
 
-                results: RunStats = Scenario(config).run()
+                results: RunStats = Scenario(config, **config).run()
                 results.print_results()
                 agent_results.append(results)
 

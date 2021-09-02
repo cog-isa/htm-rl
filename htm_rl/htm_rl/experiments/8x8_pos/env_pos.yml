@@ -8,11 +8,11 @@ actions:
   - move left
   - move up
 
-action_costs:
-  action_cost: -.002
-  action_weight:
-    stay: .5
-    turn: .8
+actions_cost:
+  base_cost: -.004
+  weights:
+#    stay: .5
+    turn: 1.
     move: 1.
 
 rendering:
@@ -21,7 +21,7 @@ areas:
   n_types: 1
   rendering: false
 
-obstacles:
+obstacle:
   density: .25
   rendering: false
 
