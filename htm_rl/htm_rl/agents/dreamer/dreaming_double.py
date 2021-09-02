@@ -12,7 +12,7 @@ from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
 from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, softmax
+from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, softmax, DecayingValue
 
 
 class DreamingDouble(Agent):
@@ -27,13 +27,13 @@ class DreamingDouble(Agent):
     tm_checkpoint: Optional[bytes]
     reward_model: RewardModel
 
-    exploration_eps: Optional[tuple[float, float]]
+    exploration_eps: DecayingValue
     softmax_enabled: bool
-    im_weight: tuple[float, float]
+    im_weight: DecayingValue
     ucb_estimate: Optional[UcbEstimator]
 
     enabled: bool
-    enter_prob_alpha: tuple[float, float]
+    enter_prob_alpha: DecayingValue
     enter_prob_threshold: float
     prediction_depth: int
     n_prediction_rollouts: tuple[int, int]
@@ -48,16 +48,16 @@ class DreamingDouble(Agent):
             self,
             seed: int,
             wake_agent,
-            enter_prob_alpha: tuple[float, float],
+            enter_prob_alpha: DecayingValue,
             enter_prob_threshold: float,
-            exploration_eps: tuple[float, float],
+            exploration_eps: DecayingValue,
             qvn: dict,
             eligibility_traces: dict,
             nest_traces: bool,
             prediction_depth: int,
             n_prediction_rollouts: tuple[int, int],
             enabled: bool = True,
-            first_dreaming_episode: int = 0,
+            first_dreaming_episode: int = None,
             last_dreaming_episode: int = None,
 
     ):
@@ -83,7 +83,7 @@ class DreamingDouble(Agent):
         self.enter_prob_threshold = enter_prob_threshold
         self.prediction_depth = prediction_depth
         self.n_prediction_rollouts = n_prediction_rollouts
-        self.first_dreaming_episode = first_dreaming_episode
+        self.first_dreaming_episode = isnone(first_dreaming_episode, 0)
         self.last_dreaming_episode = isnone(last_dreaming_episode, 999999)
 
         self.starting_sa_sdr = None
@@ -93,32 +93,26 @@ class DreamingDouble(Agent):
 
     def put_into_dream(self, starting_sa_sdr):
         self.save_tm_checkpoint()
-        self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
-        self.Q.learning_rate = multiply_decaying_value(
-            self.Q.origin_learning_rate, self.Q.learning_rate_factor
-        )
         self.starting_sa_sdr = starting_sa_sdr.copy()
 
-    def reset_dreaming(self, i_rollout=None):
-        if i_rollout == 0:
-            return
-
+    def on_new_rollout(self, i_rollout):
+        if i_rollout > 0:
+            self.restore_tm_checkpoint()
+        self._current_sa_sdr = self.starting_sa_sdr.copy()
+        self.Q.learning_rate = multiply_decaying_value(
+            self.Q.origin_learning_rate,
+            self.Q.learning_rate_factor/(i_rollout + 1.)**.5
+        )
         if self.E_traces.enabled:
             if self.nest_traces and self.wake_E_traces.enabled:
                 self.E_traces.E = self.wake_E_traces.E.copy()
             else:
                 self.E_traces.reset(decay=False)
 
-        if i_rollout is not None:
-            self.Q.learning_rate = multiply_decaying_value(
-                self.Q.origin_learning_rate,
-                1.0/(i_rollout + 1.)**.5
-            )
-        self.restore_tm_checkpoint()
-        self._current_sa_sdr = self.starting_sa_sdr.copy()
-
     def wake(self):
-        self.reset_dreaming()
+        self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
+        self.restore_tm_checkpoint()
+        self.E_traces.decay_trace_decay()
 
     def dream(self, starting_state, prev_sa_sdr):
         self.put_into_dream(prev_sa_sdr)
@@ -131,7 +125,7 @@ class DreamingDouble(Agent):
                 i_rollout < self.n_prediction_rollouts[1]
                 and sum_depth * self.exploration_eps[0] >= .3 * i_rollout
         ):
-            self.reset_dreaming(i_rollout)
+            self.on_new_rollout(i_rollout)
             state = starting_state
             depth = 0
             for depth in range(self.prediction_depth):
@@ -143,9 +137,7 @@ class DreamingDouble(Agent):
             i_rollout += 1
             depths.append(depth)
 
-        # if depths:
-            # print(sum_depth)
-            # print(depths)
+        # if depths: print(depths)
         self.wake()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
@@ -186,7 +178,11 @@ class DreamingDouble(Agent):
 
     def move_in_dream(self, state: SparseSdr):
         reward = self.reward_model.rewards[state].mean()
-        _ = self.act(reward, state, False)
+        _ = self.act(reward, state, first=False)
+
+        if reward > .2:
+            # found goal ==> should stop rollout
+            return []
 
         _, s_sa_next_superposition = self.transition_model.process(
             self._current_sa_sdr, learn=False
@@ -202,12 +198,14 @@ class DreamingDouble(Agent):
             return False
         if not (self.first_dreaming_episode <= self._episode < self.last_dreaming_episode):
             return False
-        if reward > 0.1:
+        if reward > .2:
             # reward condition prevents useless planning when we've already
             # found the goal
             return False
         if self.Q.learning_rate[0] < 1e-3:
+            # there's no reason to dream when learning is almost stopped
             return False
+        return True
 
     def decide_to_dream(self, td_error):
         if self._td_error_based_dreaming(td_error):
@@ -222,11 +220,10 @@ class DreamingDouble(Agent):
         return self._rng.random() < dreaming_prob
 
     def on_new_episode(self):
-        if self.exploration_eps is not None:
-            self.exploration_eps = exp_decay(self.exploration_eps)
-        self.E_traces.reset()
-        self.im_weight = exp_decay(self.im_weight)
         self._episode += 1
+        self.exploration_eps = exp_decay(self.exploration_eps)
+        self.E_traces.decay_trace_decay()
+        self.im_weight = exp_decay(self.im_weight)
 
     def save_tm_checkpoint(self) -> bytes:
         """Saves TM state."""

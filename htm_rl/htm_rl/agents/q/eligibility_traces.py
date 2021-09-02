@@ -43,4 +43,7 @@ class EligibilityTraces:
 
         self.E.fill(0.)
         if decay:
-            self.trace_decay = exp_decay(self.trace_decay)
+            self.decay_trace_decay()
+
+    def decay_trace_decay(self):
+        self.trace_decay = exp_decay(self.trace_decay)
