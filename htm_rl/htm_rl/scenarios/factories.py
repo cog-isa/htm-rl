@@ -33,9 +33,6 @@ def materialize_agent(agent_config: dict, seed: int, env: Env) -> Agent:
     elif agent_type == 'dreamer':
         from htm_rl.agents.dreamer.agent import DreamerAgent
         return DreamerAgent(seed=seed, env=env, **agent_config)
-    elif agent_type == 'dreamer0':
-        from htm_rl.agents.dreamer0.agent import DreamerAgent as DreamerAgent0
-        return DreamerAgent0(seed=seed, env=env, **agent_config)
     else:
         raise NameError(agent_type)
 

@@ -1,4 +1,4 @@
-_type_: dreamer0
+_type_: dreamer
 
 qvn:
   discount_factor: &discount_factor .95
