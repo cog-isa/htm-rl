@@ -1,4 +1,4 @@
-_type_: dreamer0
+_type_: dreamer
 
 qvn:
   discount_factor: &discount_factor .95
@@ -8,9 +8,9 @@ eligibility_traces: &e_traces
   trace_decay: [.75, .99]
   discount_factor: *discount_factor
 
-exploration_eps: [.3, .99]
+exploration_eps: [.2, .99]
 softmax_enabled: false
-im_weight: [.000, 1.]
+im_weight: [.000, .993]
 
 td_error_decay: .6
 dreaming:
@@ -25,7 +25,7 @@ dreaming:
     trace_decay: [.75, .99]
     discount_factor: *discount_factor
   nest_traces: false
-  prediction_depth: 10
+  prediction_depth: 18
   n_prediction_rollouts: [3, 12]
 
 reward_model:
@@ -34,7 +34,7 @@ reward_model:
 transition_model:
   tm:
     cells_per_column: 1
-    initial_permanence: .35
+    initial_permanence: .3
     connected_permanence: .3
     activation_threshold: .7
     learning_threshold: .4
