@@ -15,10 +15,10 @@ agent_seeds:
 #  - 3433
 
 n_episodes: 50
+train_ep_before_eval: 1
 
 envs:
   - pos
-  - obs
 
 agents:
   rnd: rnd

@@ -13,30 +13,37 @@ class Scenario:
     config: dict
 
     n_episodes: int
+    train_ep_before_eval: int
+
     debug: dict
     debug_enabled: bool
     wandb: dict
 
+    mode: str
     env: Env
     agent: Agent
     progress: ProgressPoint
 
-    def __init__(self, config: dict):
+    def __init__(
+            self, config: dict, n_episodes: int, train_ep_before_eval: int, **_
+    ):
         self.config = config
+        self.n_episodes = n_episodes
+        self.train_ep_before_eval = train_ep_before_eval
 
-        self.n_episodes = config['n_episodes']
         self.debug = config['debug']
-        self.wandb = config['wandb']
-
         self.debug_enabled = self.debug['enabled']
 
+        self.wandb = config['wandb']
+
+        self.mode = 'train'
         self.env = materialize_environment(config['envs'][config['env']], config['env_seed'])
         self.agent = materialize_agent(config['agents'][config['agent']], config['agent_seed'], self.env)
-
         self.progress = ProgressPoint()
 
     def run(self):
         train_stats = RunStats()
+        eval_stats = RunStats()
         wandb_run = self.init_wandb_run()
 
         if self.debug_enabled:
@@ -45,9 +52,29 @@ class Scenario:
             model_debugger = ModelDebugger(self, images=print_images)
 
         for _ in trange(self.n_episodes):
+            self.run_episode_with_mode(
+                train_stats, eval_stats, wandb_run
+            )
+
+        if self.debug_enabled:
+            # noinspection PyUnboundLocalVariable
+            anomalies = np.array(model_debugger.anomaly_tracker.anomalies)
+            reward_anomalies = np.array(model_debugger.anomaly_tracker.reward_anomalies)
+            print(round(anomalies.mean(), 4), round(reward_anomalies.mean(), 4))
+
+        return eval_stats
+
+    def run_episode_with_mode(
+            self, train_stats, eval_stats, wandb_run=None
+    ):
+        (steps, reward), elapsed_time = self.run_episode()
+        train_stats.append_stats(steps, reward, elapsed_time)
+
+        if self.should_eval:
+            self.switch_to_state('eval')
+            self.progress.end_episode(increase_episode=False)
             (steps, reward), elapsed_time = self.run_episode()
-            train_stats.append_stats(steps, reward, elapsed_time)
-            self.progress.end_episode()
+            eval_stats.append_stats(steps, reward, elapsed_time)
 
             if wandb_run is not None:
                 wandb_run.log({
@@ -56,12 +83,26 @@ class Scenario:
                     'elapsed_time': elapsed_time
                 })
 
-        if self.debug_enabled:
-            anomalies = np.array(model_debugger.anomaly_tracker.anomalies)
-            reward_anomalies = np.array(model_debugger.anomaly_tracker.reward_anomalies)
-            print(round(anomalies.mean(), 4), round(reward_anomalies.mean(), 4))
+            self.switch_to_state('train')
 
-        return train_stats
+        self.progress.end_episode()
+
+    @property
+    def should_eval(self):
+        return (self.progress.episode + 1) % self.train_ep_before_eval == 0
+
+    def switch_to_state(self, new_state):
+        if new_state == 'train':
+            self.mode = 'train'
+            self.agent.train = True
+        elif new_state == 'eval':
+            self.mode = 'eval'
+            self.agent.train = False
+
+    @staticmethod
+    def update_progress(pbar=None):
+        if pbar is not None:
+            pbar.update(1)
 
     @timed
     def run_episode(self):

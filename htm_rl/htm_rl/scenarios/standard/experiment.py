@@ -37,7 +37,7 @@ class StandardExperiment(Experiment):
                 config['agent_seed'] = agent_seed
                 print(f'AGENT: {agent_name}     SEED: {env_seed} {agent_seed}')
 
-                results: RunStats = Scenario(config).run()
+                results: RunStats = Scenario(config, **config).run()
                 results.print_results()
                 agent_results.append(results)
 
