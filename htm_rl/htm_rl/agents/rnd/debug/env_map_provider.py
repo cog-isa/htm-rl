@@ -16,11 +16,11 @@ class EnvMapProvider(Debugger):
     name_str: str
     include_observation: bool
 
-    def __init__(self, experiment: Scenario):
-        super().__init__(experiment)
+    def __init__(self, scenario: Scenario):
+        super().__init__(scenario)
 
         self._maps = None
-        config = self.experiment.config
+        config = self.scenario.config
         self.name_str = f'map_{config["env"]}_{config["env_seed"]}'
         self._titles = [
             f'{config["env"]}, seed={config["env_seed"]}',

@@ -14,18 +14,23 @@ class TrajectoryTracker(Debugger):
     agent_state_provider: AgentStateProvider
     heatmap: np.ndarray
 
-    # noinspection PyUnresolvedReferences
-    def __init__(self, experiment: Scenario, act_method_name='act'):
-        super(TrajectoryTracker, self).__init__(experiment)
+    def __init__(self, scenario: Scenario, act_method_name='act'):
+        super(TrajectoryTracker, self).__init__(scenario)
 
-        self.agent_state_provider = AgentStateProvider(experiment)
+        self.agent_state_provider = AgentStateProvider(scenario)
         self.heatmap = np.full(self.env.shape, self.fill_value, dtype=np.int)
+        # noinspection PyUnresolvedReferences
         self.agent.set_breakpoint(act_method_name, self.on_act)
 
     def on_act(self, agent, act, *args, **kwargs):
         action = act(*args, **kwargs)
         if action is not None:
+            # if not agent.train:
+            #     from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
+            #     print(self.agent_state_provider.position, DIRECTIONS_ORDER[action])
             self.heatmap[self.agent_state_provider.position] += 1
+        # else:
+        #     print('===================')
         return action
 
     def reset(self):

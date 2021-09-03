@@ -13,14 +13,14 @@ class ModelDebugger(Debugger):
     env: Environment
     agent: QModelBasedAgent
 
-    def __init__(self, experiment: Scenario, images: bool):
-        super().__init__(experiment)
+    def __init__(self, scenario: Scenario, images: bool):
+        super().__init__(scenario)
 
-        self.output_renderer = ImageOutput(experiment.config)
-        self.env_map_provider = EnvMapProvider(experiment)
-        self.trajectory_tracker = TrajectoryTracker(experiment)
-        self.q_map_provider = QMapProvider(experiment)
-        self.anomaly_tracker = AnomalyTracker(experiment)
+        self.output_renderer = ImageOutput(scenario.config)
+        self.env_map_provider = EnvMapProvider(scenario)
+        self.trajectory_tracker = TrajectoryTracker(scenario)
+        self.q_map_provider = QMapProvider(scenario)
+        self.anomaly_tracker = AnomalyTracker(scenario)
         self.images = images
 
         # noinspection PyUnresolvedReferences

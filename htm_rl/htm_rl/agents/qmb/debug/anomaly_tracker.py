@@ -18,11 +18,11 @@ class AnomalyTracker(Debugger):
     anomalies: list[float]
     reward_anomalies: list[float]
 
-    def __init__(self, experiment: Scenario):
-        super(AnomalyTracker, self).__init__(experiment)
+    def __init__(self, scenario: Scenario):
+        super(AnomalyTracker, self).__init__(scenario)
 
-        self.agent_state_provider = AgentStateProvider(experiment)
-        self.anomaly_provider = AnomalyProvider(experiment)
+        self.agent_state_provider = AgentStateProvider(scenario)
+        self.anomaly_provider = AnomalyProvider(scenario)
         self.heatmap = np.full(self.env.shape, self.fill_value, dtype=np.float)
         self.anomalies = []
         self.reward_anomalies = []

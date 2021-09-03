@@ -21,9 +21,9 @@ class QMapProvider(Debugger):
 
     Q: Optional[np.ndarray]
 
-    def __init__(self, experiment: Scenario):
-        super().__init__(experiment)
-        self.state_encoding_provider = StateEncodingProvider(experiment)
+    def __init__(self, scenario: Scenario):
+        super().__init__(scenario)
+        self.state_encoding_provider = StateEncodingProvider(scenario)
         self.Q = None
 
     def precompute(self):

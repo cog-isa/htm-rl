@@ -6,13 +6,13 @@ from htm_rl.scenarios.utils import ProgressPoint
 
 
 class Debugger:
-    experiment: Scenario
+    scenario: Scenario
     env: Env
     agent: Agent
     progress: ProgressPoint
 
     def __init__(self, experiment: Scenario):
-        self.experiment = experiment
+        self.scenario = experiment
         self.env = env_unwrap(experiment.env)
         self.agent = agent_unwrap(experiment.agent)
         self.progress = experiment.progress
@@ -23,12 +23,12 @@ class Debugger:
 
     @property
     def _default_env_identifier(self):
-        config = self.experiment.config
+        config = self.scenario.config
         return f'{config["env_seed"]}'
 
     @property
     def _default_config_identifier(self) -> str:
-        config = self.experiment.config
+        config = self.scenario.config
         return f'{config["agent"]}_{config["env_seed"]}_{config["agent_seed"]}'
 
     @property
