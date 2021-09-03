@@ -27,9 +27,6 @@ def materialize_agent(agent_config: dict, seed: int, env: Env) -> Agent:
     elif agent_type == 'qmb':
         from htm_rl.agents.qmb.agent import QModelBasedAgent
         return QModelBasedAgent(seed=seed, env=env, **agent_config)
-    elif agent_type == 'ucb':
-        from htm_rl.agents.ucb.agent import UcbAgent
-        return UcbAgent(seed=seed, env=env, **agent_config)
     elif agent_type == 'dreamer':
         from htm_rl.agents.dreamer.agent import DreamerAgent
         return DreamerAgent(seed=seed, env=env, **agent_config)

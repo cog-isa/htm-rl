@@ -10,7 +10,7 @@ from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
-from htm_rl.agents.ucb.ucb_estimator import UcbEstimator
+from htm_rl.agents.q.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, softmax, DecayingValue
 
