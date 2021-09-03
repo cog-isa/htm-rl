@@ -29,6 +29,7 @@ class Obstacle(Entity):
         if self.last_seed == seed:
             return
 
+        self.initialized = False
         self.mask = self.generator.generate(seed)
         self.initialized = True
 
@@ -36,10 +37,11 @@ class Obstacle(Entity):
         return render_mask(self.mask, view_clip)
 
     def append_mask(self, mask: np.ndarray):
-        mask |= self.mask
+        if self.initialized:
+            mask |= self.mask
 
     def append_position(self, exist: bool, position):
-        return exist or self.mask[position]
+        return exist or (self.initialized and self.mask[position])
 
 
 class BorderObstacle(Entity):
