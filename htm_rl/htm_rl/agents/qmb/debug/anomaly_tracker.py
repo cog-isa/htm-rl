@@ -26,10 +26,14 @@ class AnomalyTracker(Debugger):
         self.heatmap = np.full(self.env.shape, self.fill_value, dtype=np.float)
         self.anomalies = []
         self.reward_anomalies = []
+        # noinspection PyUnresolvedReferences
         self.agent.set_breakpoint('act', self.on_act)
 
     def on_act(self, agent, act, *args, **kwargs):
         action = act(*args, **kwargs)
+        if action is None:
+            return action
+
         anomaly = 1. - self.anomaly_provider.recall
         self.heatmap[self.agent_state_provider.position] = anomaly
         self.anomalies.append(anomaly)

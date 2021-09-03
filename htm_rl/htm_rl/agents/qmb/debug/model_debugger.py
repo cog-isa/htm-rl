@@ -1,16 +1,14 @@
+from htm_rl.agents.q.debug.q_map_provider import QMapProvider
 from htm_rl.agents.qmb.agent import QModelBasedAgent
+from htm_rl.agents.qmb.debug.anomaly_tracker import AnomalyTracker
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.agents.rnd.debug.env_map_provider import EnvMapProvider
 from htm_rl.agents.rnd.debug.trajectory_tracker import TrajectoryTracker
-from htm_rl.agents.q.debug.q_map_provider import QMapProvider
-from htm_rl.agents.qmb.debug.anomaly_tracker import AnomalyTracker
 from htm_rl.envs.biogwlab.environment import Environment
-
-from htm_rl.scenarios.standard.scenario import Scenario
 from htm_rl.scenarios.debug_output import ImageOutput
+from htm_rl.scenarios.standard.scenario import Scenario
 
 
-# noinspection PyUnresolvedReferences
 class ModelDebugger(Debugger):
     env: Environment
     agent: QModelBasedAgent
@@ -25,8 +23,10 @@ class ModelDebugger(Debugger):
         self.anomaly_tracker = AnomalyTracker(experiment)
         self.images = images
 
+        # noinspection PyUnresolvedReferences
         self.progress.set_breakpoint('end_episode', self.on_end_episode)
 
+    # noinspection PyUnusedLocal
     def on_end_episode(self, agent, func, *args, **kwargs):
         if self.output_renderer.is_empty and self.images:
             self._add_env_map()

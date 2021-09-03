@@ -26,7 +26,6 @@ class QMapProvider(Debugger):
         self.state_encoding_provider = StateEncodingProvider(experiment)
         self.Q = None
 
-    # noinspection PyProtectedMember
     def precompute(self):
         encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
 

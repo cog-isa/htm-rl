@@ -23,8 +23,10 @@ class TrajectoryTracker(Debugger):
         self.agent.set_breakpoint(act_method_name, self.on_act)
 
     def on_act(self, agent, act, *args, **kwargs):
-        self.heatmap[self.agent_state_provider.position] += 1
-        return act(*args, **kwargs)
+        action = act(*args, **kwargs)
+        if action is not None:
+            self.heatmap[self.agent_state_provider.position] += 1
+        return action
 
     def reset(self):
         self.heatmap.fill(self.fill_value)
