@@ -5,11 +5,12 @@ import numpy as np
 from tqdm import tqdm
 
 from htm_rl.agents.agent import Agent
+from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
 from htm_rl.common.utils import timed
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.env import Env, unwrap
 from htm_rl.scenarios.factories import materialize_environment, materialize_agent
-from htm_rl.scenarios.standard.scenario import RunStats
+from htm_rl.scenarios.standard.run_stats import RunStats
 from htm_rl.scenarios.utils import ProgressPoint
 
 
@@ -18,7 +19,6 @@ class Scenario:
 
     max_episodes: int
     train_ep_before_eval: int
-    mode: str
     n_goals_before_dreaming: int
     goals_found: int
     dreaming_test: int
@@ -27,26 +27,37 @@ class Scenario:
     test_forward: int
     compare_vs_last_eps: int
 
+    debug: dict
+    debug_enabled: bool
+
+    mode: str
     env: Env
     agent: Agent
     progress: ProgressPoint
 
-    def __init__(self, config: dict):
+    def __init__(
+            self, config: dict, max_episodes: int, train_ep_before_eval: int,
+            n_goals_before_dreaming: int, dreaming_test: int, test_forward: int,
+            compare_vs_last_eps: int, debug: dict,
+            **_
+    ):
         self.config = config
-        self.max_episodes = config['max_episodes']
-        self.train_ep_before_eval = config['train_ep_before_eval']
-        self.n_goals_before_dreaming = config['n_goals_before_dreaming']
-        self.dreaming_test = config['dreaming_test']
-        self.test_forward = config['test_forward']
-        self.compare_vs_last_eps = config['compare_vs_last_eps']
+        self.max_episodes = max_episodes
+        self.train_ep_before_eval = train_ep_before_eval
+        self.n_goals_before_dreaming = n_goals_before_dreaming
+        self.dreaming_test = dreaming_test
+        self.test_forward = test_forward
+        self.compare_vs_last_eps = compare_vs_last_eps
+
+        self.debug = debug
+        self.debug_enabled = debug['enabled']
+
         self.stop_dreaming_test = None
         self.agent_checkpoint = None
-        self.init()
-        self.actions = []
-        self.actions_ = None
+        self.init_run(with_debug=self.debug_enabled)
         self.test_results_map = dict()
 
-    def init(self):
+    def init_run(self, with_debug=False):
         config = self.config
         self.env = materialize_environment(
             config['envs'][config['env']], config['env_seed']
@@ -57,18 +68,21 @@ class Scenario:
         self.mode = 'train'
         self.progress = ProgressPoint()
 
-    def run(self):
+        if with_debug:
+            ModelDebugger(self, self.debug['images'])
+
+    def run(self) -> tuple[RunStats, RunStats]:
         no_dreaming_train_stats = RunStats()
         no_dreaming_eval_stats = RunStats()
 
         # compute non-dreaming version stats
         while self.progress.episode < self.max_episodes:
-            self.run_episode_with_mode(no_dreaming_train_stats, no_dreaming_eval_stats)
+            self.run_episode_with_mode(
+                no_dreaming_train_stats, no_dreaming_eval_stats
+            )
 
-        self.actions_ = self.actions
-        self.actions = []
-
-        self.init()
+        # start testing dreaming
+        self.init_run()
         self.goals_found = 0
         dreaming_train_stats = RunStats()
         dreaming_eval_stats = RunStats()
@@ -98,7 +112,7 @@ class Scenario:
 
         print(f'Tested {len(self.test_results_map)} dreaming positions. Changes:')
         print(changes)
-        return no_dreaming_eval_stats
+        return no_dreaming_train_stats, no_dreaming_eval_stats
 
     def run_episode_with_mode_dreaming_test(
             self, train_stats, eval_stats,
@@ -288,11 +302,9 @@ class Scenario:
     @timed
     def run_episode(self):
         total_reward = 0.
-        actions = []
         while True:
             reward, obs, first = self.env.observe()
             action = self.agent.act(reward, obs, first)
-            actions.append(action)
             if self.episode_ended(first):
                 break
 
@@ -300,7 +312,6 @@ class Scenario:
             self.progress.next_step()
             total_reward += reward
 
-        self.actions.append(actions)
         return self.progress.step, total_reward
 
     def episode_ended(self, first: bool):
