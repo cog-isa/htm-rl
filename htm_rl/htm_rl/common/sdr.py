@@ -1,10 +1,9 @@
 from typing import Iterable, Union, Sequence
 
 import numpy as np
-import numpy.typing as npt
 
-SparseSdr = Union[Iterable[int], Sequence[int], npt.NDArray[int]]
-DenseSdr = npt.NDArray[bool]
+SparseSdr = Union[Iterable[int], Sequence[int], np.ndarray]
+DenseSdr = np.ndarray
 
 
 def sparse_to_dense(indices: SparseSdr, total_size: int) -> DenseSdr:
