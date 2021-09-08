@@ -3,11 +3,11 @@ from typing import Optional
 import numpy as np
 
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import update_exp_trace, isnone, exp_decay
+from htm_rl.common.utils import update_exp_trace, isnone, exp_decay, DecayingValue
 
 
 class EligibilityTraces:
-    trace_decay: tuple[float, float]
+    trace_decay: DecayingValue
     discount_factor: float
     E: Optional[np.ndarray]
 
@@ -15,11 +15,11 @@ class EligibilityTraces:
 
     def __init__(
             self, cells_sdr_size: int = None,
-            trace_decay: tuple[float, float] = None,
+            trace_decay: DecayingValue = (.0, .0),
             discount_factor: float = None
     ):
         self.cells_sdr_size = cells_sdr_size
-        self.trace_decay = isnone(trace_decay, [.0, .0])
+        self.trace_decay = trace_decay
         self.discount_factor = discount_factor
         self.E = None
         self.reset()

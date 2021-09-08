@@ -10,5 +10,5 @@ eligibility_traces:
   trace_decay: [.75, .99]
   discount_factor: *discount_factor
 
+softmax_temp: [.0, .0]
 exploration_eps: [.2, .99]
-softmax_enabled: false

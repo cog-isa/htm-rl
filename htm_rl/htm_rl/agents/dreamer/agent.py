@@ -72,7 +72,7 @@ class DreamerAgent(QModelBasedAgent):
                 self.transition_model.preprocess(s, chosen_sa_sdr),
                 learn=True and train
             )
-        if train and self.ucb_estimate is not None:
+        if train and self.ucb_estimate.enabled:
             self.ucb_estimate.update(chosen_sa_sdr)
 
         self._current_sa_sdr = chosen_sa_sdr

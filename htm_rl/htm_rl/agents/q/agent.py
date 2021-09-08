@@ -10,7 +10,7 @@ from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.q.sa_encoders import make_sa_encoder
 from htm_rl.agents.q.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import exp_decay, softmax, DecayingValue
+from htm_rl.common.utils import exp_decay, softmax, DecayingValue, isnone
 from htm_rl.envs.env import Env
 
 
@@ -21,9 +21,10 @@ class QAgent(Agent):
     E_traces: EligibilityTraces
 
     train: bool
+    softmax_temp: DecayingValue
+    softmax_limits = (.04, 10.)
     exploration_eps: DecayingValue
     ucb_estimate: Optional[UcbEstimator]
-    softmax_temp: float
 
     _step: int
     _current_sa_sdr: Optional[SparseSdr]
@@ -34,26 +35,26 @@ class QAgent(Agent):
             env: Env,
             seed: int,
             qvn: dict,
-            eligibility_traces: dict,
-            exploration_eps: DecayingValue,
             sa_encoder: dict = None,
+            eligibility_traces: dict = None,
+            softmax_temp: DecayingValue = (0., 0.),
+            exploration_eps: DecayingValue = (0., 0.),
             ucb_estimate: dict = None,
-            softmax_temp: float = .0,
     ):
         self.n_actions = env.n_actions
         self.sa_encoder = make_sa_encoder(env, seed, sa_encoder)
         self.Q = QValueNetwork(self.sa_encoder.output_sdr_size, seed, **qvn)
         self.E_traces = EligibilityTraces(
             self.sa_encoder.output_sdr_size,
-            **eligibility_traces
+            **isnone(eligibility_traces, {})
         )
 
         self.train = True
-        self.exploration_eps = exploration_eps
         self.softmax_temp = softmax_temp
-        self.ucb_estimate = None
-        if ucb_estimate:
-            self.ucb_estimate = UcbEstimator(self.sa_encoder.output_sdr_size, **ucb_estimate)
+        self.exploration_eps = exploration_eps
+        self.ucb_estimate = UcbEstimator(
+            self.sa_encoder.output_sdr_size, **isnone(ucb_estimate, {})
+        )
 
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
@@ -68,8 +69,9 @@ class QAgent(Agent):
         self.E_traces.reset()
         if self.train:
             self.Q.decay_learning_factors()
+            self._decay_softmax_temperature()
             self.exploration_eps = exp_decay(self.exploration_eps)
-            if self.ucb_estimate is not None:
+            if self.ucb_estimate.enabled:
                 self.ucb_estimate.decay_learning_factors()
 
     def act(self, reward: float, state: SparseSdr, first: bool) -> Optional[int]:
@@ -91,7 +93,7 @@ class QAgent(Agent):
         action = self._choose_action(actions_sa_sdr)
         chosen_sa_sdr = actions_sa_sdr[action]
 
-        if train and self.ucb_estimate is not None:
+        if train and self.ucb_estimate.enabled:
             self.ucb_estimate.update(chosen_sa_sdr)
 
         self._current_sa_sdr = chosen_sa_sdr
@@ -99,17 +101,17 @@ class QAgent(Agent):
         return action
 
     def _choose_action(self, next_actions_sa_sdr: list[SparseSdr]) -> int:
-        if self.softmax_temp > .001:
+        if self.softmax_temp[0] >= self.softmax_limits[0]:
             # SOFTMAX
             action_values = self.Q.values(next_actions_sa_sdr)
-            p = softmax(action_values, self.softmax_temp)
+            p = softmax(action_values, self.softmax_temp[0])
             return self._rng.choice(self.n_actions, p=p)
 
         if self.train and self._should_make_random_action():
             # RND
             return self._rng.integers(self.n_actions)
 
-        if self.train and self.ucb_estimate is not None:
+        if self.train and self.ucb_estimate.enabled:
             # UCB
             action_values = self.Q.values(next_actions_sa_sdr)
             ucb_values = self.ucb_estimate.ucb_terms(next_actions_sa_sdr)
@@ -134,6 +136,18 @@ class QAgent(Agent):
         )
 
     def _should_make_random_action(self) -> bool:
-        if self.exploration_eps is None:
+        if self.exploration_eps[0] < .001:
+            # === disabled
             return False
         return self._rng.random() < self.exploration_eps[0]
+
+    def _decay_softmax_temperature(self):
+        temp, decay = exp_decay(self.softmax_temp)
+        if temp < self.softmax_limits[0]:
+            # limit "hardness"
+            temp = self.softmax_limits[0]
+        elif temp > self.softmax_limits[1]:
+            # disable softmax entirely as it's too soft
+            temp = 0.
+
+        self.softmax_temp = temp, decay

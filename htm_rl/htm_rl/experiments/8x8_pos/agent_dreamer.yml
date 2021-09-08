@@ -8,8 +8,8 @@ eligibility_traces: &e_traces
   trace_decay: [.75, .99]
   discount_factor: *discount_factor
 
+softmax_temp: [.2, .95]
 exploration_eps: [.2, .99]
-softmax_temp: 10.
 im_weight: [.000, .993]
 
 td_error_decay: .6

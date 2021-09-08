@@ -1,24 +1,31 @@
+from typing import Optional
+
 import numpy as np
 
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import update_exp_trace, exp_decay
+from htm_rl.common.utils import update_exp_trace, exp_decay, DecayingValue
 
 
 class UcbEstimator:
     visit_decay: float
-    ucb_exploration_factor: tuple[float, float]
+    ucb_exploration_factor: DecayingValue
 
     # you should not read it literally cause it's affected by exp MA window
-    cell_visit_count: np.ndarray
+    cell_visit_count: Optional[np.ndarray]
 
     def __init__(
-            self, cells_sdr_size: int,
-            visit_decay: float,
-            ucb_exploration_factor: tuple[float, float]
+            self, cells_sdr_size: int = None, visit_decay: float = None,
+            ucb_exploration_factor: DecayingValue = (0., 0.)
     ):
         self.visit_decay = visit_decay
         self.ucb_exploration_factor = ucb_exploration_factor
-        self.cell_visit_count = np.full(cells_sdr_size, 1., dtype=np.float)
+        self.cell_visit_count = None
+        if self.enabled:
+            self.cell_visit_count = np.full(cells_sdr_size, 1., dtype=np.float)
+
+    @property
+    def enabled(self):
+        return self.ucb_exploration_factor[0] > 1e-5
 
     def ucb_terms(self, xs: list[SparseSdr]) -> np.ndarray:
         total_visits = self.total_visits(xs)
