@@ -28,6 +28,9 @@ class ProgressPoint:
         if increase_episode:
             self.episode += 1
 
+    def as_tuple(self):
+        return self.episode, self.step
+
     def __eq__(self, other):
         if not isinstance(other, ProgressPoint):
             return False
@@ -42,7 +45,7 @@ class ProgressPoint:
         return str(self)
 
     def __hash__(self):
-        return hash((self.episode, self.step))
+        return hash(self.as_tuple())
 
 
 def filter_out_non_passable_items(config: dict, depth: int):

@@ -46,7 +46,7 @@ class AnomalyTracker(Debugger):
 
     @property
     def title(self) -> str:
-        return self.filename
+        return self.name_prefix
 
     @property
     def filename(self) -> str:

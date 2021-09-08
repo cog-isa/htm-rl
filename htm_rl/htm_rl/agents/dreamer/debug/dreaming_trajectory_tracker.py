@@ -8,9 +8,9 @@ class DreamingTrajectoryTracker(TrajectoryTracker):
     state_encoding_provider: StateEncodingProvider
     encoding_scheme: dict[tuple[int, int], SparseSdr]
 
-    def __init__(self, experiment: Scenario):
-        super().__init__(experiment, act_method_name='_move_in_dream')
-        self.state_encoding_provider = StateEncodingProvider(experiment)
+    def __init__(self, scenario: Scenario):
+        super().__init__(scenario, act_method_name='_move_in_dream')
+        self.state_encoding_provider = StateEncodingProvider(scenario)
         self.encoding_scheme = dict()
         self.agent.set_breakpoint('_put_into_dream', self.on_act)
 

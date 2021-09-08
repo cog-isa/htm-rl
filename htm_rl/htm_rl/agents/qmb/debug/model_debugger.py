@@ -4,6 +4,7 @@ from htm_rl.agents.qmb.debug.anomaly_tracker import AnomalyTracker
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.agents.rnd.debug.env_map_provider import EnvMapProvider
 from htm_rl.agents.rnd.debug.trajectory_tracker import TrajectoryTracker
+from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
@@ -33,9 +34,10 @@ class ModelDebugger(Debugger):
             self._add_value_maps(q=True, v=True)
             self._add_anomaly()
             self._add_trajectory()
-            self.output_renderer.flush(
+            output = self.output_renderer.flush(
                 f'end_episode_{self._default_config_identifier}_{self._default_progress_identifier}'
             )
+            plot_grid_images(show=False, **output)
 
         func(*args, **kwargs)
 

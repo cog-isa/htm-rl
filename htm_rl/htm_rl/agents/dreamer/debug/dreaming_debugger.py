@@ -1,29 +1,30 @@
 from htm_rl.agents.dreamer.agent import DreamerAgent
+from htm_rl.agents.q.debug.q_map_provider import QMapProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
-from htm_rl.agents.dreamer.debug.providers import ValueMapProvider
 from htm_rl.agents.rnd.debug.env_map_provider import EnvMapProvider
 from htm_rl.agents.rnd.debug.trajectory_tracker import TrajectoryTracker
+from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.envs.biogwlab.environment import Environment
 
 from htm_rl.scenarios.standard.scenario import Scenario
 from htm_rl.scenarios.debug_output import ImageOutput
 
 
-# noinspection PyUnresolvedReferences
 class DreamingDebugger(Debugger):
     env: Environment
     agent: DreamerAgent
 
     waking: bool
 
-    def __init__(self, experiment: Scenario):
-        super().__init__(experiment)
+    # noinspection PyUnresolvedReferences
+    def __init__(self, scenario: Scenario):
+        super().__init__(scenario)
 
         self.waking = False
-        self.output_renderer = ImageOutput(experiment.config)
-        self.env_map_provider = EnvMapProvider(experiment)
-        self.trajectory_tracker = TrajectoryTracker(experiment)
-        self.value_map_provider = ValueMapProvider(experiment)
+        self.output_renderer = ImageOutput(scenario.config)
+        self.env_map_provider = EnvMapProvider(scenario)
+        self.trajectory_tracker = TrajectoryTracker(scenario)
+        self.q_map_provider = QMapProvider(scenario)
 
         self.progress.set_breakpoint('end_episode', self.on_end_episode)
         self.agent.set_breakpoint('_wake', self.on_wake)
@@ -44,11 +45,12 @@ class DreamingDebugger(Debugger):
     def on_end_episode(self, agent, func, *args, **kwargs):
         if self.output_renderer.is_empty:
             self._add_env_map()
-            self._add_value_maps(q=True, v=True, greedy=True, exploration=True, ucb=True)
+            self._add_value_maps(q=True, v=True)
             self._add_trajectory()
-            self.output_renderer.flush(
+            output = self.output_renderer.flush(
                 f'end_episode_{self._default_config_identifier}_{self._default_progress_identifier}'
             )
+            plot_grid_images(show=False, **output)
 
         func(*args, **kwargs)
 
@@ -58,33 +60,16 @@ class DreamingDebugger(Debugger):
         )
         self.trajectory_tracker.reset()
 
-    # noinspection PyUnboundLocalVariable
-    def _add_value_maps(self, q: bool, v: bool, greedy: bool, exploration: bool, ucb: bool):
-        self.value_map_provider.precompute(greedy or exploration, exploration or ucb)
-
-        if greedy or exploration:
-            Q = self.value_map_provider.Q
-            V = self.value_map_provider.V(Q)
-        if v and greedy:
+    # noinspection PyPep8Naming
+    def _add_value_maps(self, q: bool, v: bool):
+        self.q_map_provider.precompute()
+        Q = self.q_map_provider.Q
+        V = self.q_map_provider.V(Q)
+        if v:
             self.output_renderer.handle_img(V, 'V', with_value_text=True)
-        if q and greedy:
-            Q_render = self.value_map_provider.reshape_q_for_rendering(Q)
+        if q:
+            Q_render = self.q_map_provider.reshape_q_for_rendering(Q)
             self.output_renderer.handle_img(Q_render, 'Q', with_value_text=False)
-
-        if ucb or exploration:
-            UCB = self.value_map_provider.UCB
-
-        if v and exploration:
-            Q_exp = Q + UCB
-            V_exp = self.value_map_provider.V(Q_exp)
-            self.output_renderer.handle_img(V_exp, 'V exp', with_value_text=True)
-        if q and exploration:
-            Q_exp_render = self.value_map_provider.reshape_q_for_rendering(Q_exp)
-            self.output_renderer.handle_img(Q_exp_render, 'Q exp', with_value_text=False)
-
-        if ucb:
-            UCB_render = self.value_map_provider.reshape_q_for_rendering(UCB)
-            self.output_renderer.handle_img(UCB_render, 'UCB term', with_value_text=False)
 
     def _add_env_map(self):
         env_maps = self.env_map_provider.maps

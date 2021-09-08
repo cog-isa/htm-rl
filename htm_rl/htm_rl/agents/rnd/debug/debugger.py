@@ -11,11 +11,11 @@ class Debugger:
     agent: Agent
     progress: ProgressPoint
 
-    def __init__(self, experiment: Scenario):
-        self.scenario = experiment
-        self.env = env_unwrap(experiment.env)
-        self.agent = agent_unwrap(experiment.agent)
-        self.progress = experiment.progress
+    def __init__(self, scenario: Scenario):
+        self.scenario = scenario
+        self.env = env_unwrap(scenario.env)
+        self.agent = agent_unwrap(scenario.agent)
+        self.progress = scenario.progress
 
         inject_debug_tools(self.env)
         inject_debug_tools(self.agent)

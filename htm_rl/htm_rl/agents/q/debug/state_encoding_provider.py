@@ -15,9 +15,9 @@ class StateEncodingProvider(Debugger):
 
     position_provider: AgentStateProvider
 
-    def __init__(self, experiment: Scenario):
-        super().__init__(experiment)
-        self.position_provider = AgentStateProvider(experiment)
+    def __init__(self, scenario: Scenario):
+        super().__init__(scenario)
+        self.position_provider = AgentStateProvider(scenario)
 
     def get_encoding_scheme(self) -> dict[tuple[int, int], SparseSdr]:
         height, width = self.env.shape
