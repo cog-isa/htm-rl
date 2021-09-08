@@ -28,7 +28,7 @@ class DreamingDouble(Agent):
     reward_model: RewardModel
 
     exploration_eps: DecayingValue
-    softmax_enabled: bool
+    softmax_temp: bool
     im_weight: DecayingValue
     ucb_estimate: Optional[UcbEstimator]
 
@@ -74,7 +74,7 @@ class DreamingDouble(Agent):
         self.tm_checkpoint = None
         self.reward_model = wake_agent.reward_model
         self.exploration_eps = exploration_eps
-        self.softmax_enabled = wake_agent.softmax_enabled
+        self.softmax_temp = wake_agent.softmax_temp
         self.im_weight = wake_agent.im_weight
         self.ucb_estimate = wake_agent.ucb_estimate
 
@@ -123,7 +123,7 @@ class DreamingDouble(Agent):
         depths = []
         while i_rollout < self.n_prediction_rollouts[0] or (
                 i_rollout < self.n_prediction_rollouts[1]
-                and sum_depth * self.exploration_eps[0] >= .3 * i_rollout
+                and sum_depth >= 3 * i_rollout
         ):
             self.on_new_rollout(i_rollout)
             state = starting_state
@@ -133,8 +133,8 @@ class DreamingDouble(Agent):
                 if len(state) < .6 * starting_state_len:
                     break
 
-            sum_depth += depth ** .5
             i_rollout += 1
+            sum_depth += depth ** .8
             depths.append(depth)
 
         # if depths: print(depths)
@@ -157,10 +157,11 @@ class DreamingDouble(Agent):
 
         # choose action
         action = greedy_action
-        if self._make_random_action():
+        if self.softmax_temp > .001:
+            p = softmax(action_values, self.softmax_temp)
+            action = self._rng.choice(self.n_actions, p=p)
+        elif self._make_random_action():
             action = self._rng.integers(self.n_actions)
-        elif self.softmax_enabled:
-            action = self._rng.choice(self.n_actions, p=softmax(action_values))
         elif self.ucb_estimate is not None:
             ucb_values = self.ucb_estimate.ucb_terms(actions_sa_sdr)
             action = np.argmax(action_values + ucb_values)

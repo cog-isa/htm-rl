@@ -9,7 +9,7 @@ eligibility_traces: &e_traces
   discount_factor: *discount_factor
 
 exploration_eps: [.2, .99]
-softmax_enabled: false
+softmax_temp: 10.
 im_weight: [.000, .993]
 
 td_error_decay: .6

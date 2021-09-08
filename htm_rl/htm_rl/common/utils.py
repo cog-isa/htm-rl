@@ -96,7 +96,7 @@ def multiply_decaying_value(value: DecayingValue, alpha: float) -> DecayingValue
     return x * alpha, decay
 
 
-def softmax(x):
-    """Computes softmax values for a vector `x`."""
-    e_x = np.exp(x - np.max(x, axis=-1))
+def softmax(x, temp=1.):
+    """Computes softmax values for a vector `x` with a given temperature."""
+    e_x = np.exp(temp * (x - np.max(x, axis=-1)))
     return e_x / e_x.sum(axis=-1)

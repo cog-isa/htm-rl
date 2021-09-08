@@ -23,7 +23,7 @@ class QAgent(Agent):
     train: bool
     exploration_eps: DecayingValue
     ucb_estimate: Optional[UcbEstimator]
-    softmax_enabled: bool
+    softmax_temp: float
 
     _step: int
     _current_sa_sdr: Optional[SparseSdr]
@@ -38,7 +38,7 @@ class QAgent(Agent):
             exploration_eps: DecayingValue,
             sa_encoder: dict = None,
             ucb_estimate: dict = None,
-            softmax_enabled: bool = False,
+            softmax_temp: float = .0,
     ):
         self.n_actions = env.n_actions
         self.sa_encoder = make_sa_encoder(env, seed, sa_encoder)
@@ -50,7 +50,7 @@ class QAgent(Agent):
 
         self.train = True
         self.exploration_eps = exploration_eps
-        self.softmax_enabled = softmax_enabled
+        self.softmax_temp = softmax_temp
         self.ucb_estimate = None
         if ucb_estimate:
             self.ucb_estimate = UcbEstimator(self.sa_encoder.output_sdr_size, **ucb_estimate)
@@ -99,6 +99,12 @@ class QAgent(Agent):
         return action
 
     def _choose_action(self, next_actions_sa_sdr: list[SparseSdr]) -> int:
+        if self.softmax_temp > .001:
+            # SOFTMAX
+            action_values = self.Q.values(next_actions_sa_sdr)
+            p = softmax(action_values, self.softmax_temp)
+            return self._rng.choice(self.n_actions, p=p)
+
         if self.train and self._should_make_random_action():
             # RND
             return self._rng.integers(self.n_actions)
@@ -109,11 +115,6 @@ class QAgent(Agent):
             ucb_values = self.ucb_estimate.ucb_terms(next_actions_sa_sdr)
             # noinspection PyTypeChecker
             return np.argmax(action_values + ucb_values)
-
-        if self.softmax_enabled:
-            # SOFTMAX
-            action_values = self.Q.values(next_actions_sa_sdr)
-            return self._rng.choice(self.n_actions, p=softmax(action_values))
 
         # GREEDY
         action_values = self.Q.values(next_actions_sa_sdr)
