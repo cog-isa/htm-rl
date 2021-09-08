@@ -609,7 +609,7 @@ class InputBlock:
     def get_in_sizes(self):
         return 0, 0, 0
 
-    def add_reward(self, reward):
+    def add_reward(self, reward_ext, reward_int=0):
         pass
 
     def reset(self):

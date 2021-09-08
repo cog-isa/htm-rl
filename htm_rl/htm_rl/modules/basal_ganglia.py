@@ -198,7 +198,9 @@ class BasalGanglia:
         self.softmax_beta = softmax_beta
         self.epsilon_noise = epsilon_noise
 
-        self.td_error = self.stri.error
+    @property
+    def td_error(self):
+        return self.stri.error
 
     def reset(self):
         self.stri.reset()
@@ -321,7 +323,10 @@ class DualBasalGanglia:
         self.epsilon_noise = epsilon_noise
 
         self.current_max_response = None
-        self.td_error = self.stri_ext.error
+
+    @property
+    def td_error(self):
+        return self.stri_ext.error
 
     def reset(self):
         self.stri_ext.reset()
