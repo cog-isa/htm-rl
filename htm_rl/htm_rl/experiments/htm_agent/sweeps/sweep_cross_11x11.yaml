@@ -1,19 +1,19 @@
-project: cross_final
+project: cross_new_final
 entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:
   seed:
-    values: [4234, 3342, 23423]
+    values: [65464, 4321, 9054]
   environment.seed:
     values:
-      - 333937
-      - 453572
-      - 271454
-#  block_default.feedback_boost_range:
-#    values:
-#      - [0.0, 0.0]
-#      - [0.0, 0.8]
+      - 334890
+      - 459880
+      - 211123
+  block_default.feedback_boost_range:
+    values:
+      - [0.0, 0.0]
+      - [0.0, 0.8]
 
 command:
   - ${env}
