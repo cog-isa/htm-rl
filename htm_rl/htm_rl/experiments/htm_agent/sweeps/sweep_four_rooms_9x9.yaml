@@ -1,22 +1,19 @@
-project: four_room_final
+project: four_room_new_final
 entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:
   seed:
-    values: [42334, 23342, 263423]
+    values: [56543, 323231, 90456]
   environment.seed:
     values:
-      - 335363
-      - 4512341
-      - 242131
+      - 965480
+      - 543190
+      - 769821
   block_default.feedback_boost_range:
     values:
       - [0.0, 0.0]
-      - [0.0, 0.2]
-      - [0.0, 0.5]
-      - [0.0, 1.0]
-      - [0.0, 1.5]
+      - [0.0, 0.8]
 
 command:
   - ${env}
