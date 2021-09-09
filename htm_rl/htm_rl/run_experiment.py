@@ -1,180 +1,44 @@
 import argparse
-import os
 from argparse import ArgumentParser
-from itertools import product
 from pathlib import Path
 
-import numpy as np
-
-from htm_rl.agent.train_eval import RunResultsProcessor, RunStats
-from htm_rl.common.utils import isnone
-from htm_rl.config import FileConfig
-from htm_rl.experiment import Experiment
-
-
-class RunConfig(FileConfig):
-    def __init__(self, path):
-        super(RunConfig, self).__init__(path)
-
-    def run(self, agent_key: str, env_key: str, run: bool, aggregate: bool):
-        silent_run = self['silent']
-        report_name_suffix = self['report_name']
-
-        run_results_processor: RunResultsProcessor = self['run_results_processor']
-        if run_results_processor.test_dir is None:
-            run_results_processor.test_dir = self['test_dir']
-
-        experiment = Experiment(
-            base_dir=self.path.parent, use_wandb=self['wandb'],
-            **self['experiment']
-        )
-
-        dry_run = self['dry_run']
-        if experiment is not None and dry_run:
-            # doesn't work at the moment
-            n_envs_to_render = self['n_environments_to_render']
-            maps = experiment.get_environment_maps(n_envs_to_render)
-            run_results_processor.store_environment_maps(maps)
-            return
-
-        # by default, if nothing specified then at least `run`
-        if not dry_run and (run or not aggregate):
-            experiment: Experiment
-
-            seeds = self.get_seeds()
-            env_configs = self.filter_by(self.read_configs('env'), env_key)
-            agent_configs = self.filter_by(self.read_configs('agent'), agent_key)
-            agent_seeds = self.content.get('agent_seed')
-
-            store_maps = self['store_maps']
-
-            experiment_setups = list(product(env_configs, agent_configs, seeds))
-            seed_ind = 0
-            for env_config, agent_config, env_seed in experiment_setups:
-                rrp = run_results_processor if store_maps and seed_ind < len(seeds) else None
-                agent_seeds = isnone(agent_seeds, env_seed)
-                if not isinstance(agent_seeds, list):
-                    agent_seeds = [agent_seeds]
-
-                agent_results = []
-                for agent_seed in agent_seeds:
-                    results = experiment.run(
-                        env_seed=env_seed, agent_seed=agent_seed,
-                        agent_config=agent_config, env_config=env_config,
-                        run_results_processor=rrp, seed_ind=seed_ind,
-                    )
-                    run_results_processor.store_result(results)
-                    agent_results.append(results)
-
-                if len(agent_seeds) > 1:
-                    results = self.aggregate_stats(agent_results)
-                    run_results_processor.store_result(results)
-                print('')
-                seed_ind += 1
-
-        if aggregate:
-            aggregate_file_masks = self['aggregate_masks']
-            for_paper = self['paper']
-            run_results_processor.aggregate_results(
-                aggregate_file_masks, report_name_suffix, silent_run, for_paper
-            )
-
-    def get_seeds(self):
-        seeds = self['seed']
-        if isinstance(seeds, list):
-            ...
-        elif 'n_seeds' in self:
-            seed = seeds
-            n_seeds = self['n_seeds']
-            rng = np.random.default_rng(seed)
-            seeds = rng.integers(1_000_000, size=n_seeds).tolist()
-        else:
-            seeds = [seeds]
-        return seeds
-
-    def read_configs(self, key):
-        names = self[key]
-
-        if not isinstance(names, list):
-            names = [names]
-
-        configs = []
-        for name in names:
-            config_path = self.path.with_name(f'{key}_{name}.yml')
-            config = FileConfig(config_path, name=name)
-            configs.append(config)
-
-        return configs
-
-    @staticmethod
-    def filter_by(origin_list, names):
-        if names is None:
-            return origin_list
-
-        if isinstance(names, str):
-            names = [names]
-
-        return [
-            agent
-            for agent in origin_list
-            if agent.name in names
-        ]
-
-    def aggregate_stats(self, agent_results):
-        results = RunStats(agent_results[-1].name)
-        results.steps = np.mean([res.steps for res in agent_results], axis=0)
-        results.times = np.mean([res.times for res in agent_results], axis=0)
-        results.rewards = np.mean([res.rewards for res in agent_results], axis=0)
-        return results
+from htm_rl.scenarios.config import FileConfig
+from htm_rl.scenarios.factories import materialize_experiment
 
 
 def register_arguments(parser: ArgumentParser):
     # todo: comment arguments with examples
     parser.add_argument('-c', '--config', dest='config', required=True)
-    parser.add_argument('-a', '--agent', dest='agent', default=None, nargs='+')
-    parser.add_argument('-e', '--env', dest='env', default=None, nargs='+')
-    parser.add_argument('-r', '--run', dest='run', action='store_true', default=False)
-    parser.add_argument('-g', '--aggregate', dest='aggregate', default=None, nargs='*')
-    parser.add_argument('-n', '--name', dest='report_name', default='')
-    parser.add_argument('-d', '--dry', dest='dry', default=None, type=int)
-    parser.add_argument('-s', '--silent', dest='silent', action='store_true', default=False)
-    parser.add_argument('-p', '--paper', dest='paper', action='store_true', default=False)
-    parser.add_argument('-w', '--wandb', dest='wandb', action='store_true', default=False)
-    parser.add_argument('-W', '--wandb-dry-silent', dest='wandb_dry_silent', action='store_true', default=False)
-    parser.add_argument('-m', '--store_maps', dest='store_maps', action='store_true', default=False)
+    parser.add_argument('-e', '--envs_filter', dest='envs_filter', default=None, nargs='+')
+    parser.add_argument('-a', '--agents_filter', dest='agents_filter', default=None, nargs='+')
+    parser.add_argument('-d', '--print_debug', dest='debug_enabled', action='store_true', default=False)
+    parser.add_argument('-w', '--wandb_enabled', dest='wandb_enabled', action='store_true', default=False)
 
 
 def main():
     parser = argparse.ArgumentParser()
     register_arguments(parser)
-    args = parser.parse_args()
+    args, overwrites = parser.parse_known_args()
 
-    config_path = Path(args.config)
-    config = RunConfig(config_path)
+    config_filename: str = args.config
+    if not config_filename.startswith('expm_') or not config_filename.endswith('.yml'):
+        config_filename = f'expm_{config_filename}.yml'
+    config_path = Path(config_filename)
+    config = FileConfig(config_path)
+    experiment = materialize_experiment(config)
 
-    test_dir = os.path.dirname(config_path)
-    config['test_dir'] = test_dir
+    base_dir: Path = config.path.parent
+    results_dir: Path = base_dir.joinpath('results')
+    results_dir.mkdir(exist_ok=True)
 
-    config['silent'] = args.silent
-    config['paper'] = args.paper
-    config['store_maps'] = args.store_maps
-
-    dry_run = args.dry is not None
-    config['dry_run'] = dry_run
-    if dry_run:
-        config['n_environments_to_render'] = args.dry
-    config['report_name'] = args.report_name
-
-    aggregate = args.aggregate is not None
-    if aggregate:
-        config['aggregate_masks'] = args.aggregate
-
-    config['wandb'] = args.wandb
-    if args.wandb_dry_silent:
-        os.environ['WANDB_MODE'] = 'dryrun'
-        os.environ['WANDB_SILENT'] = 'true'
-
-    config.run(args.agent, args.env, args.run, aggregate)
+    config['base_dir'] = base_dir
+    config['results_dir'] = results_dir
+    config['envs_filter'] = args.envs_filter
+    config['agents_filter'] = args.agents_filter
+    config['debug.enabled'] = args.debug_enabled
+    config['wandb.enabled'] = args.wandb_enabled
+    config['overwrites'] = overwrites
+    experiment.run()
 
 
 if __name__ == '__main__':

@@ -1,53 +1,94 @@
-# Development setup
+# Installation
 
-- [Development setup](#development-setup)
-  - [Python package requirements](#python-package-requirements)
-  - [Working with Jupyter Notebooks](#working-with-jupyter-notebooks)
-    - [Using `htm_rl` package in Jupyter Notebooks](#using-htm_rl-package-in-jupyter-notebooks)
-    - [Jupyter Notebooks stripping](#jupyter-notebooks-stripping)
-  - [Working with data files](#working-with-data-files)
-    - [Git LFS](#git-lfs)
-  - [Project structure](#project-structure)
-  - [What's next](#whats-next)
-  - [Additional notes](#additional-notes)
-    - [Jupyter Notebooks trusting and stripping setup details](#jupyter-notebooks-trusting-and-stripping-setup-details)
+- [Installation](#installation)
+  - [Install requirements](#install-requirements)
+    - [[Optional] Install conda](#optional-install-conda)
+    - [Requirements.txt structure](#requirementstxt-structure)
+    - [Install requirements to dedicated python environment](#install-requirements-to-dedicated-python-environment)
+    - [Install `htm.core`](#install-htmcore)
+    - [[Optional] Install `htm_rl` package](#optional-install-htm_rl-package)
+  - [Contributors setup](#contributors-setup)
+    - [Working with Jupyter Notebooks](#working-with-jupyter-notebooks)
+      - [Using `htm_rl` package in Jupyter Notebooks](#using-htm_rl-package-in-jupyter-notebooks)
+      - [Jupyter Notebooks stripping](#jupyter-notebooks-stripping)
+    - [Working with data files](#working-with-data-files)
+      - [Git LFS](#git-lfs)
+    - [Project structure](#project-structure)
+    - [What's next](#whats-next)
+    - [Additional notes](#additional-notes)
+      - [Jupyter Notebooks trusting and stripping setup details](#jupyter-notebooks-trusting-and-stripping-setup-details)
 
-This guide mostly aims the developers who wants to join us and contribute to the project.
+This guide mostly aimed for contributors of our project. Besides general [Install requirements](#install-requirements) section, in [Contributors setup](#contributors-setup) it covers some additional topics regarding developers setup with the rationale behind it.
 
-It also covers some additional topics regarding development setup in order to easily reproduce them and rationale behind it.
+## Install requirements
 
-## Python package requirements
+### [Optional] Install conda
 
-1. `[Optional]` Create new environment (e.g. *htm_rl*) with _conda_ or any alternative like _pipenv_ or _virtualenv_:
-  
-    ```bash
-    conda create --name htm_rl
-    conda activate htm_rl
-    ```
+Using conda as an environment and package manager is optional. Using pip as a package manager and  _pipenv_/_virtualenv_/etc. as Python environment managers is a valid option too.
 
-2. Install requirements specified in _requirements.txt_:
+However, we recommend to prioritize using conda over pip, because it allows managing not only python packages, as pip does, and also resolves package dependencies smarter, ensuring that the environment has no version conflicts (see [understanding pip and conda](https://www.anaconda.com/blog/understanding-conda-and-pip) for details). Having said that, we recommend trying to install as much packages as you can with conda first, and use pip only as the last resort (sadly, not everything is available in conda channels).
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+If you are new to conda, we recommend getting conda with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a minimal console version of conda) instead of Anaconda (see [the difference](https://stackoverflow.com/a/45421527/1094048)).
 
-We recommend prioritize using conda as a package and environments manager, because it allows managing not only python packages as pip does. Also it resolves package dependencies smarter, ensuring that the environment has no version conflicts.
+*If you brave enough, you may also consider [Miniforge](https://github.com/conda-forge/miniforge) as alternative to Miniconda - the difference from Miniconda is only that it sets default conda package channel to [conda-forge](https://github.com/conda-forge/miniforge), which is community-driven so it gets updates faster in general and contains more packages. Another alternative is to use [Mamba](https://github.com/mamba-org/mamba) instead of conda - Mamba mimics conda API, even uses it and fully backward compatible with it, so you can use both together; Mamba has enhanced dependency-resolving performance and async package installation, and also extends conda functionality. Last two options combined, [Mamba + Miniforge = Mambaforge](https://github.com/conda-forge/miniforge#mambaforge), are distributed by Miniforge community.*
 
-**NB**: So in the second step you could try to install as much packages as you can with conda and only after that use pip as a last resort. Unfortunately, at the moment of writing this guide this way gives a lot more pain :(
+### Requirements.txt structure
 
-## Working with Jupyter Notebooks
+File `requirements.txt` contains all required dependencies. Dependencies are grouped by what you can install with conda or pip and what is exclusive to pip.
 
-### Using `htm_rl` package in Jupyter Notebooks
+Unfortunately, even if you are going to use pip exclusively, it's unlikely that you can install the requirements with the simple `pip install -r requirements.txt` as at the time of writing (Sep 2021), `htm.core` pip package is broken and has to be installed manually from sources (see below).
 
-To have an ability to import and use `htm_rl` package in Jupyter Notebooks, install it with _development mode_ `-e` flag:
+### Install requirements to dedicated python environment
+
+Create a new environment with the packages from conda section ("conda requirements") in `requirements.txt`, then activate this environment. The name of the environment is up to you, we use `htm` for this guide. Please, check that the package list below matches `requirements.txt` before running the command below:
 
 ```bash
-cd <project_root>/htm_rl
+conda create --name htm python=3.9 numpy matplotlib jupyterlab ruamel.yaml tqdm wandb mock
+conda activate htm
+```
 
+Install packages from pip requirements group in `requirements.txt` with pip except `htm.core`. Again, check that the package list below matches `requirements.txt`:
+
+```bash
+pip install hexy prettytable pytest>=4.6.5
+```
+
+### Install `htm.core`
+
+From sources (the only working option, Sep 2021):
+
+```bash
+git clone https://github.com/htm-community/htm.core
+cd htm.core
+pip install --use-feature=in-tree-build .
+```
+
+From test-PyPi (broken, Sep 2021):
+
+```bash
+pip install -i https://test.pypi.org/simple/ htm.core
+```
+
+### [Optional] Install `htm_rl` package
+
+To have an ability to import and use `htm_rl` package outside of the package root folder, e.g. in Jupyter Notebooks or in another packages, install it with _development mode_ flag. This flag means that package sources aren't copied to index, but the symlink is created meaning that the edits are "visible" immediately and don't require you to reinstall/update package manually:
+
+```bash
+cd <htm_rl_project_root>/htm_rl
 pip install -e .
 ```
 
-### Jupyter Notebooks stripping
+Now you can import modules from the `htm_rl` package.
+
+## Contributors setup
+
+### Working with Jupyter Notebooks
+
+#### Using `htm_rl` package in Jupyter Notebooks
+
+See [[Optional] Install `htm_rl` package](#optional-install-htm_rl-package).
+
+#### Jupyter Notebooks stripping
 
 Most of the time it's useful to cut metadata and output from Jupyter Notebooks. Hence we use git filters as mentioned [here](https://stackoverflow.com/a/60859698/1094048). All sctipts are taken from [fastai-nbstripout](https://github.com/fastai/fastai-nbstripout).
 
@@ -68,7 +109,7 @@ Also notebooks can be included in reports, hence the folder dedicated for report
 
 - `./reports/`: output retained
 
-## Working with data files
+### Working with data files
 
 Storing binary or any other "data" files in a repository can quickly bloat its size. They rarely change, and if so, mostly as a whole file (i.e they are added or deleted, not edited). But git still treats them as text files and tries to track their content, putting it to the index.
 
@@ -78,12 +119,12 @@ Fortunately, that's exactly what Git[hub] LFS, which stands for Large File Stora
 
 > Git Large File Storage (LFS) replaces large files such as audio samples, videos, datasets, and graphics with text pointers inside Git, while storing the file contents on a remote server like GitHub.com or GitHub Enterprise.
 
-### Git LFS
+#### Git LFS
 
-To setup Git LFS you need to [download and install](https://github.com/git-lfs/git-lfs#downloading) `git-lfs` first. As an example for Linux it's just a:
+To setup Git LFS you need to [download and install](https://github.com/git-lfs/git-lfs#downloading) `git-lfs` first. For example, on Linux:
 
 ```bash
-apt-get install git-lfs
+apt install git-lfs
 ```
 
 Then "link" git and git-lfs together by:
@@ -94,27 +135,23 @@ git lfs install
 
 After that you just work as usual :)
 
-## Project structure
+### Project structure
 
-Project structure:
+- `notebooks/` - Jupyter Notebooks
+- `reports/` - any [markdown, tex, Jupyter Notebooks] reports
+- `tools/` - any 3rd party tools and scripts
+- `watcher/` - visualization tool for HTM SP and TM.
+- `htm_rl/` - sources root (mark this directory for PyCharm), it contains `setup.py`
+  - `htm_rl/` - `htm_rl` package sources
+    - `run_X.py` - runners, i.e. entry point to run testing scenarios
 
-- `./notebooks/` - Jupyter Notebooks
-- `./reports/` - any [markdown, tex, Jupyter Notebooks] reports
-- `./tools/` - any 3rd party tools and scripts
-- `./htm_rl/htm_rl/` - package src code
-  - `./experiments/` - configs and results of experiments
-  - `run_mdp_test.py` - common entry point with usage example
-- __NB__: the following files are added to _.gitignore_ so you can use them as a local temporal scratchpad
-  - `./notebooks/00_scratchpad.ipynb`
-  - `./htm_rl/htm_rl/scratch.py`
-
-## What's next
+### What's next
 
 If you're new to the HTM, check out [this](./README.md#quick-intro) quick intro list. After that proceed to the project's [readme](htm_rl/htm_rl/README.md).
 
-## Additional notes
+### Additional notes
 
-### Jupyter Notebooks trusting and stripping setup details
+#### Jupyter Notebooks trusting and stripping setup details
 
 This section consists of details about how it was done, in case it has to be re-done again. It's not a part of the common setup process! This setup should be done by the repo admin just once. After that everyone else follow the common installation process.
 

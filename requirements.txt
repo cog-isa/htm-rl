@@ -1,18 +1,27 @@
+# >>>>>>>>> conda requirements
+python>=3.8
 numpy
 matplotlib
 jupyterlab
+ruamel.yaml
+tqdm
+wandb
 
-hexy
+#   htm.core dependencies
 mock
+
+# <<<<<<<<< conda requirements
+
+
+# >>>>>>>>> pip requirements
+#   htm.core dependencies
+hexy
 prettytable
-pytest==4.6.5
-htm.core==2.0.18
+pytest>=4.6.5
 
-gym==0.17.2
-gym-minigrid==1.0.1
+# <<<<<<<<< pip requirements
 
-ruamel.yaml==0.16.10
 
-imageio
-PyYAML
-setuptools
+# >>>>>>>>> install from sources
+#   install htm.core from sources until they fix pip package
+htm.core

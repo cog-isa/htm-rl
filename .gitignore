@@ -3,6 +3,9 @@
 # pycharm project-specific settings
 .idea/
 
+# VS Code project-specific settings
+.vscode/
+
 # additional auto-generated git config
 .gitconfig
 
@@ -19,6 +22,7 @@ notebooks/**/_*.ipynb
 /htm_rl/**/*.pkl
 /htm_rl/**/*.png
 /htm_rl/**/*.svg
+/htm_rl/**/*.gif
 /htm_rl/**/*.csv.tar.gz
 
 # LaTeX
@@ -36,6 +40,9 @@ wandb/
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # please, place all project specific rules above this line
 # =====================================================
+
+# OSX aux files
+.DS_Store
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

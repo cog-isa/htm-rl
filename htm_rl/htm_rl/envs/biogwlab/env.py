@@ -3,31 +3,29 @@ from typing import Tuple, Dict, Any
 from htm_rl.envs.biogwlab.agent import Agent
 from htm_rl.envs.biogwlab.area import MultiAreaGenerator
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.envs.biogwlab.episode_terminator import EpisodeTerminator
+from htm_rl.envs.biogwlab.modules.episode_terminator import EpisodeTerminator
 from htm_rl.envs.biogwlab.food import Food
 from htm_rl.envs.biogwlab.modules.actions_cost import ActionsCost
 from htm_rl.envs.biogwlab.obstacle import Obstacle, BorderObstacle
-from htm_rl.envs.biogwlab.regenerator import Regenerator
+from htm_rl.envs.biogwlab.modules.regenerator import Regenerator
 from htm_rl.envs.biogwlab.renderer import Renderer
-from htm_rl.envs.wrapper import Wrapper
+from htm_rl.envs.env import Wrapper
 
 registry = {
     'areas': MultiAreaGenerator,
-    'obstacle': Obstacle,
-    'food': Food,
     'rendering': Renderer,
     'terminate': EpisodeTerminator,
     'regenerate': Regenerator,
     'actions_cost': ActionsCost,
 
-    Agent.family: Agent,
+    Obstacle.family: Obstacle,
     BorderObstacle.family: BorderObstacle,
+    Food.family: Food,
+    Agent.family: Agent,
 }
 
 
 class BioGwLabEnvironment(Wrapper):
-    output_sdr_size: int
-
     def __init__(
             self, shape_xy: Tuple[int, int], seed: int, rendering: Dict = None, actions=None,
             **modules

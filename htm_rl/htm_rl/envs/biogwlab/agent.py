@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Tuple, Optional, List, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 import numpy as np
 
@@ -17,7 +17,7 @@ class AgentRenderer:
     position_encoder: Optional[IntBucketEncoder]
     view_direction_encoder: Optional[IntBucketEncoder]
 
-    def __init__(self, env_shape: Tuple[int, int], what: List[str], **encoder):
+    def __init__(self, env_shape: tuple[int, int], what: list[str], **encoder):
         n_cells = env_shape[0] * env_shape[1]
         self.position_encoder = None
         self.view_direction_encoder = None
@@ -46,7 +46,7 @@ class Agent(Entity):
     family = 'agent'
     type = EntityType.Agent
 
-    position: Tuple[int, int]
+    position: tuple[int, int]
     view_direction: Optional[int]
 
     renderer: AgentRenderer
@@ -100,7 +100,6 @@ class Agent(Entity):
 
     def move(self, direction):
         obstacles = self.env.aggregated_mask[EntityType.Obstacle]
-
         self.position, success = MoveDynamics.try_move(
             self.position, direction, self.env.shape, obstacles
         )
@@ -113,10 +112,11 @@ class Agent(Entity):
         return self.renderer.render(position_fl, self.view_direction)
 
     def append_mask(self, mask: np.ndarray):
-        mask[self.position] = 1
+        if self.initialized:
+            mask[self.position] = 1
 
     def append_position(self, exist: bool, position):
-        return exist or self.position == position
+        return exist or (self.initialized and self.position == position)
 
     def _unflatten_position(self, flatten_position):
         return divmod(flatten_position, self.env.shape[1])

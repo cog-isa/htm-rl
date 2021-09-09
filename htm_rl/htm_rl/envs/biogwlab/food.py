@@ -54,6 +54,10 @@ class Food(Entity):
         self.env = env
 
     def generate(self, seeds):
+        # we should not take this entity into account
+        # in aggregated masks during generation
+        self.initialized = False
+
         seed = seeds['food']
         empty_mask = ~self.env.aggregated_mask[EntityType.Obstacle]
         areas = self.env.entity_slices[EntityType.Area]
@@ -93,12 +97,18 @@ class Food(Entity):
         return np.array(indices), view_clip.shape[0] * view_clip.shape[1]
 
     def append_mask(self, mask: np.ndarray):
+        if not self.initialized:
+            return
+
         for position_fl in self.positions_fl:
             pos = self._unflatten_position(position_fl)
             mask[pos] = 1
 
     def append_position(self, exist: bool, position):
-        return exist or self._flatten_position(position) in self.positions_fl
+        return exist or (
+            self.initialized
+            and self._flatten_position(position) in self.positions_fl
+        )
 
     def _flatten_position(self, position):
         return position[0] * self.env.shape[1] + position[1]

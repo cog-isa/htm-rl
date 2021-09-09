@@ -1,0 +1,14 @@
+_type_: q
+
+sa_encoder:
+
+qvn:
+  discount_factor: &discount_factor .95
+  learning_rate: [.1, .995]
+
+eligibility_traces:
+  trace_decay: [.75, .99]
+  discount_factor: *discount_factor
+
+exploration_eps: [.2, .99]
+softmax_enabled: false

@@ -50,6 +50,9 @@ class MultiAreaGenerator(Module):
         if self.last_seed == seed:
             return
 
+        # Removing previously generated areas is handled by
+        # `add_module` - new areas will have the same names
+        # and therefore overwrite them.
         self.last_seed = seed
         areas_map = self.generator.generate(seed)
         for i in range(self.generator.n_types):

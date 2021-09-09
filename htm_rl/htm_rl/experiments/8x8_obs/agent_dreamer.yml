@@ -1,0 +1,46 @@
+_type_: dreamer
+
+sa_encoder: q
+
+qvn:
+  discount_factor: &discount_factor .97
+  learning_rate: [.1, .995]
+
+eligibility_traces:
+  trace_decay: .75
+  discount_factor: *discount_factor
+
+exploration_eps: [.3, .995]
+softmax_enabled: false
+im_weight: [.002, 1.]
+
+td_error_decay: .6
+dreaming:
+  enabled: true
+  enter_prob_alpha: [1.2, 1.]
+  enter_prob_threshold: .3
+  exploration_eps: [.3, .997]
+  qvn:
+    learning_rate_factor: .75
+  eligibility_traces:
+    trace_decay:
+  nest_traces: true
+  prediction_depth: 10
+  n_prediction_rollouts: [1, 5]
+
+reward_model:
+  learning_rate: [1., 1.]
+
+transition_model:
+  tm:
+    cells_per_column: 1
+    initial_permanence: .35
+    connected_permanence: .3
+    activation_threshold: .7
+    learning_threshold: .4
+    max_new_synapse_count: 1.1
+    max_synapses_per_segment: 1.1
+    predictedSegmentDecrement: .001
+    permanenceIncrement: .05
+    permanenceDecrement: .01
+    maxSegmentsPerCell: 6

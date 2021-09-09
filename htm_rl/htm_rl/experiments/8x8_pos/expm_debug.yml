@@ -1,22 +1,36 @@
-#seed: [453572, 798166, 906342]
-seed: 8713
-n_seeds: 12
+_type_: standard
 
-experiment:
-  project:
-  n_episodes: 300
+env_seeds:
+#  - 851775
+  - 743535
+#  - 288985
+#  - 190368
+#  - 885213
+#  - 768840
 
-env:
+agent_seeds:
+  - 42
+#  - 1337
+#  - 1984
+#  - 3433
+
+n_episodes: 50
+train_ep_before_eval: 1
+
+envs:
   - pos
-  - dir
-  - obs
 
-agent:
-  - rnd
-  - ucb
+agents:
+  rnd: rnd
+  q: q
+  qmb: qmb
+  dreamer: dreamer
 
-run_results_processor: !RunResultsProcessor
-  env_name: biogwlab
-  moving_average: 4
-  verbosity: 1
-  test_dir: # leave empty for default behavior - output to the config's dir
+debug:
+  # enabled can be set only by -d arg flag
+  enabled: false
+  images: false
+
+wandb:
+  project: test
+

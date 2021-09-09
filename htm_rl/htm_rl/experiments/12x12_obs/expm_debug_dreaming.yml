@@ -1,0 +1,38 @@
+env_seeds:
+  - 92165
+  - 711072
+  - 482614
+  - 743535
+  - 190368
+#  - 583
+# use it
+#  - 885213
+#  - 666373
+
+#agent_seeds: !generate_seeds
+#  base: 42
+#  n_seeds: 10
+
+agent_seeds:
+  ## better
+  - 773956
+  - 654571
+# use it
+  - 697368
+  ## worse
+#  - 433015
+#  - 858597
+
+n_episodes: 100
+
+envs:
+  - obs
+
+agents:
+  q: q
+  ucb: ucb
+  svpn: svpn
+  svpn_nd: svpn
+
+wandb:
+  project: test

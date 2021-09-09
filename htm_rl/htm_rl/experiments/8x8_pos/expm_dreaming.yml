@@ -1,0 +1,40 @@
+_type_: dreaming condition
+
+env_seeds:
+#  - 851775
+  - 743535
+#  - 288985
+#  - 190368
+#  - 885213
+#  - 768840
+
+agent_seeds:
+#  - 42
+  - 1337
+#  - 1984
+#  - 3433
+
+max_episodes: 200
+train_ep_before_eval: 1
+n_goals_before_dreaming: 1
+dreaming_test: 1
+test_forward: 10
+compare_vs_last_eps: 10
+
+envs:
+  - pos
+
+agents:
+  rnd: rnd
+  q: q
+  qmb: qmb
+  dreamer: dreamer
+
+debug:
+  # enabled can be set only by -d arg flag
+  enabled: false
+  images: false
+
+wandb:
+  project: test
+

@@ -1,7 +1,7 @@
 from typing import Tuple
 
 import numpy as np
-from htm.bindings.algorithms import SpatialPooler as HtmSpatialPooler
+from htm.algorithms import SpatialPooler as HtmSpatialPooler
 from htm.bindings.sdr import SDR
 
 

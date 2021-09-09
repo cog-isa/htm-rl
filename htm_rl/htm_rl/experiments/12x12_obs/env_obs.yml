@@ -1,3 +1,4 @@
+_type_: biogwlab
 shape_xy: [12, 12]
 
 actions:
@@ -25,6 +26,11 @@ obstacle:
 food:
   n_items: 1
   reward: 1.
+
+#regenerate:
+#  agent:
+#  food: 200
+#  map:
 
 terminate:
   episode_max_steps: 350

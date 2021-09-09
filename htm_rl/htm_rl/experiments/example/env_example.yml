@@ -1,0 +1,71 @@
+# ========= Environment config =========
+# Sets all environment-related config variables.
+
+# Config content may be placed where an env config dictionary is expected:
+# 1. in a separate .yml file prefixed with `env_`
+# 2. in an experiment config file in `envs` attribute.
+
+# Several first sections are the direct environment initialization args,
+# the following declare variable number of optional modules. The order of modules
+# declaration is important, e.g. food module makes use of areas/obstacles map
+# to restrict the set of available cells.
+
+# Declares the type of the environment. It's unsupported now as we have
+# only 1 env type. For the future use.
+_type_: biogwlab
+
+# grid dimensions
+shape_xy: [12, 12]
+
+# allowed actions. They must be supported by the env
+actions:
+#  - stay
+  - move right
+  - move down
+  - move left
+  - move up
+
+# agent is slightly penalized each step.
+# we define it by adding penalty to making actions.
+# action cost = base_cost * weight
+actions_cost:
+  base_cost: -.0015
+  weights:
+    turn: 1.
+    move: 1.
+
+# if view_rectangle is set, then agent will observe only a window around it
+# view rectangle is defined relative to an agent (as if it's at [0,0])
+rendering:
+  view_rectangle: [[-2, -2], [2, 2]]
+
+# areas can be seen as the floor colors
+areas:
+  n_types: 4
+
+# density is for obstacle generator
+obstacle:
+  density: .25
+
+# how many food items are spawned and their reward
+food:
+  n_items: 1
+  reward: 1.
+
+# we can specify, whether we want or not to render
+# agent position and/or view direction
+# if rendering is not specified, then the default -
+# don't render.
+agent:
+  rendering:
+    what:
+      - position
+      - view direction
+    bucket_size: 3
+
+# defines episode terminator:
+# max steps or should it stop an episode
+# when no food is left
+terminate:
+  episode_max_steps: 350
+  early_stop: true

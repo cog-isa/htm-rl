@@ -1,31 +1,25 @@
-seed:
+env_seeds:
 #  - 711072
-#  - 482614
+  - 482614
 #  - 743535
 #  - 190368
-  - 583
-  - 885213
-  - 666373
-#seed: 8713
-#n_seeds: 40
-agent_seed:
-  - 42
-  - 1337
-  - 1984
+#  - 583
+#  - 885213
+#  - 666373
 
-experiment:
-  project:
-  n_episodes: 300
+agent_seeds: !generate_seeds
+  base: 42
+  n_seeds: 1
 
-env:
+n_episodes: 100
+
+envs:
   - obs
 
-agent:
-  - rnd
-  - ucb
+agents:
+#  rnd: rnd
+  ucb: ucb
+  svpn: svpn
 
-run_results_processor: !RunResultsProcessor
-  env_name: biogwlab
-  moving_average: 4
-  verbosity: 1
-  test_dir: # leave empty for default behavior - output to the config's dir
+wandb:
+  project: test

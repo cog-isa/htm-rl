@@ -1,6 +1,7 @@
 from typing import Union
 
-from htm.bindings.algorithms import TemporalMemory as HtmTemporalMemory
+from htm.algorithms import TemporalMemory as HtmTemporalMemory
+from htm.bindings.algorithms import ANMode
 
 
 class TemporalMemory(HtmTemporalMemory):
@@ -36,7 +37,7 @@ class TemporalMemory(HtmTemporalMemory):
             connectedPermanence=connected_permanence,
             maxNewSynapseCount=max_new_synapse_count,
             maxSynapsesPerSegment=max_synapses_per_segment,
-            # anomalyMode=ANMode.DISABLED,
+            anomalyMode=ANMode.DISABLED,
             **kwargs
         )
         self.n_columns = n_columns
