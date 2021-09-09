@@ -1,6 +1,0 @@
-- condition: ['episode', 1999]
-  action: 'set_food_positions'
-  params:
-    positions: [[7, 8], [8, 5], [6, 7]]
-    rand: true
-    sample_size: 1

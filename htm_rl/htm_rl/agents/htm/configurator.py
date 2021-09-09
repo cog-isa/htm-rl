@@ -19,12 +19,14 @@ def configure(config):
     # other blocks
     input_blocks = config['hierarchy']['input_blocks']
     output_block = config['hierarchy']['output_block']
+    visual_block = config['hierarchy']['visual_block']
     connections = config['hierarchy']['block_connections'][len(input_blocks):]
 
     config['spatial_pooler_default']['seed'] = config['seed']
     config['temporal_memory_default']['seed'] = config['seed']
     config['basal_ganglia_default']['seed'] = config['seed']
     config['cagent']['muscles']['seed'] = config['seed']
+    config['cagent']['empowerment']['seed'] = config['seed']
 
     blocks = [{'block': deepcopy(config['block_default']),
                'tm': deepcopy(config['temporal_memory_default'])} for _ in range(len(config['blocks']))]
@@ -134,6 +136,26 @@ def configure(config):
             sample_size=n_active_bits
              )
     )
+
+    noise_tolerance = config['cagent']['empowerment']['tm_config']['noise_tolerance']
+    learning_margin = config['cagent']['empowerment']['tm_config']['learning_margin']
+    input_size = blocks[visual_block]['sp']['columnDimensions'][0]
+    input_sparsity = blocks[visual_block]['sp']['localAreaDensity']
+
+    new_config['agent']['empowerment'] = deepcopy(config['cagent']['empowerment'])
+    new_config['agent']['empowerment']['tm_config'].pop('noise_tolerance')
+    new_config['agent']['empowerment']['tm_config'].pop('learning_margin')
+    new_config['agent']['empowerment']['encode_size'] = input_size
+    new_config['agent']['empowerment']['sparsity'] = input_sparsity
+    new_config['agent']['empowerment']['tm_config'].update(
+        dict(
+            activationThreshold=int((1-noise_tolerance)*input_size*input_sparsity),
+            minThreshold=int((1-learning_margin)*input_size*input_sparsity),
+            maxNewSynapseCount=int((1+noise_tolerance)*input_size*input_sparsity),
+            maxSynapsesPerSegment=int((1+noise_tolerance)*input_size*input_sparsity)
+        )
+    )
+
     new_config['seed'] = config['seed']
     new_config['levels'] = config['levels']
     return new_config

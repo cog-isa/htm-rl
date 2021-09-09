@@ -1,16 +1,41 @@
-seed: &seed 3122
+seed: &seed 3121
 levels: 2
-agent: htm
+agent: hima
+project: cross_empoverment
+entity: hauska
+
+scenario: '../../experiments/htm_agent/scenarios/cross_11x11.yaml'
 
 vis_options:
   size: 21
   max_options: 50
-  action_displace: [[-1, 0], [0, 0], [0, 0]]
-  action_rotation: [0, -1, 1]
+  action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
+  action_rotation: [0, 0, 0, 0]
+
+log: true
+
+run_options:
+  n_episodes: 2000
+  log_every_episode: 249
+  log_values: True
+  log_policy: True
+  log_option_values: True
+  log_option_policy: True
+  log_options_usage: True
+  log_td_error: True
+  log_anomaly: False
+  log_confidence: False
+  log_boost_modulation: False
+  train_patterns: True
+  log_segments: True
+  draw_options: True
+  log_terminal_stat: False
+  draw_options_stats: True
+  opt_threshold: 4
 
 environment:
   seed: 2151
-  shape_xy: [9, 9]
+  shape_xy: [11, 11]
 
   actions_cost:
     base_cost: -0.005
@@ -19,37 +44,36 @@ environment:
       turn: 1.0
       move: 1.0
   actions:
-    - move forward
-    - turn right
-    - turn left
+    - move right
+    - move down
+    - move left
+    - move up
     - stay
 
   rendering:
-      view_rectangle: [[-1, -1], [1, 1]]
+    view_rectangle: [[-1, -1], [1, 1]]
 
   areas:
     n_types: 4
-#    rendering: false
 
   obstacle:
     density: 0.1
-    map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
-#    rendering: false
+    map_name: '../../experiments/htm_agent/maps/cross_11x11.map'
 
   food:
     n_items: 1
     reward: 1.
-    positions: [[4, 6]]
-#    rendering: false
+    positions: [ [ 5, 5 ] ]
 
   agent:
+    positions: [ [ 5, 0 ], [ 0, 5 ], [ 5, 10 ], [ 10, 5 ] ]
     change_position: true
     direction: up
-#    rendering:
-#      what:
-#        - position
-#        - view direction
-#      bucket_size: 3
+  #  rendering:
+  #    what:
+  #      - position
+  ##      - view direction
+  #    bucket_size: 3
 
   terminate:
     episode_max_steps: 200
@@ -57,15 +81,15 @@ environment:
     n_items_to_collect: 1
 
 cagent:
-  intrinsic_reward: false
-  theta: 0.005
+  intrinsic_reward: true
   action:
-    do_nothing_action: 3
+    do_nothing_action: 4
     noise_tolerance: 0.1
     patterns:
-    - [1, 1, 1, 0, 0, 0, 0, 0, 0]
-    - [0, 0, 0, 1, 1, 1, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 1, 1, 1]
+    - [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
+    - [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
+    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
   alpha: 1.0
   muscles:
     connected_permanence: 0.5
@@ -78,6 +102,22 @@ cagent:
     sample_size: 1.0
     seed: *seed
   punish_reward: -0.05
+  empowerment:
+    horizon: 3
+    similarity_threshold: 0.6
+    memory: true
+    evaluate: true
+    tm_config:
+      noise_tolerance: 0.25
+      learning_margin: 0.35
+      cellsPerColumn: 20
+      initialPermanence: 0.5
+      connectedPermanence: 0.5
+      permanenceIncrement: 0.02
+      permanenceDecrement: 0.001
+      predictedSegmentDecrement: 0.001
+      maxSegmentsPerCell: 5
+    seed: *seed
 
 blocks:
   0:
@@ -95,6 +135,9 @@ blocks:
     bg:
       alpha: 0.01
       beta: 0.01
+      off_policy: true
+      softmax_beta: 1.0
+      epsilon_noise: 0.0
     block:
       level: 1
     sm: {}
@@ -120,12 +163,12 @@ blocks:
     bg:
       alpha: 0.1
       beta: 0.1
+      off_policy: true
+      softmax_beta: 1.0
+      epsilon_noise: 0.0
     block:
       level: 2
-    sm:
-      permanence_decrement: 0.0
-      permanence_forgetting_decrement: 0.01
-      permanence_increment: 0.1
+    sm: { }
     sp:
       boostStrength: 0.0
       localAreaDensity: 0.02
@@ -133,7 +176,7 @@ blocks:
     tm:
       basal_columns: 1000
 
-cells_per_column: &cells_per_column 25
+cells_per_column: &cells_per_column 15
 
 hierarchy:
   block_connections: [
@@ -195,20 +238,21 @@ hierarchy:
   - 0
   - 1
   output_block: 3
+  visual_block: 2
 
 input_block_default:
   columns: 0
   level: 0
 
-muscles_size: 9
+muscles_size: 12
 
 spatial_memory_default:
   activation_threshold: 1
   initial_permanence: 1.0
   overlap_threshold: 0.9
   permanence_decrement: 0.0
-  permanence_forgetting_decrement: 0.01
-  permanence_increment: 0.01
+  permanence_forgetting_decrement: 0.0
+  permanence_increment: 0.0
   permanence_threshold: 0.0
 spatial_pooler_default:
   boostStrength: 0.0
@@ -231,32 +275,32 @@ temporal_memory_default:
   apical_cells_per_column: *cells_per_column
   basal_cells_per_column: *cells_per_column
   noise_tolerance: 0.1
-  max_segments_per_cell: 32
+  max_segments_per_cell: 8
   max_segments_per_cell_apical: 8
-  max_segments_per_cell_exec: 32
+  max_segments_per_cell_exec: 8
   max_segments_per_cell_inhib: 8
   anomaly_window: 500
   confidence_window: 500
-  initial_permanence: 0.25
+  initial_permanence: 0.1
   connected_threshold: 0.5
   permanence_increment: 0.1
   permanence_decrement: 0.01
   predicted_segment_decrement: 0.001
-  initial_permanence_apical: 0.25
+  initial_permanence_apical: 0.1
   connected_threshold_apical: 0.5
   permanence_increment_apical: 0.1
   permanence_decrement_apical: 0.01
   predicted_segment_decrement_apical: 0.001
-  initial_permanence_exec: 0.4
+  initial_permanence_exec: 0.1
   connected_threshold_exec: 0.5
-  permanence_decrement_exec: 0.01
-  permanence_increment_exec: 0.1
-  predicted_segment_decrement_exec: 0.001
-  initial_permanence_inhib: 0.75
+  permanence_increment_exec: 0.01
+  permanence_decrement_exec: 0.001
+  predicted_segment_decrement_exec: 0.0001
+  initial_permanence_inhib: 0.1
   connected_threshold_inhib: 0.5
-  permanence_decrement_inhib: 0.1
-  permanence_increment_inhib: 0.01
-  predicted_segment_decrement_inhib: 0.1
+  permanence_increment_inhib: 0.1
+  permanence_decrement_inhib: 0.001
+  predicted_segment_decrement_inhib: 0.0001
   enable_pruning_basal: False
   enable_pruning_apical: False
   enable_pruning_exec: False
@@ -267,15 +311,34 @@ temporal_memory_default:
   pruning_period_inhib: 2000
   prune_zero_synapses: True
   seed: *seed
+  timeseries: True
 
 basal_ganglia_default:
   alpha: 0.01
   beta: 0.01
   discount_factor: 0.997
+  off_policy: false
+  softmax_beta: 1
+  epsilon_noise: 0
+  priority_ext: 1.0
+  priority_int: 0.001
+  td_error_threshold: 0.01
+  priority_inc_factor: 1.2
+  priority_dec_factor: 0.9
   seed: *seed
 
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
-  min_feedback_boost: 0.8
-  max_feedback_boost: 1.5
+  feedback_boost_range: [0.0, 0.8]
+  modulation: false
+  sm_da: 0.9
+  sm_dda: 0.995
+  d_an_th: 0.1
+  d_cn_th: 0.1
+  sm_reward: 0.995
+  sm_max_reward: 0.997
+  max_reward_decay: 0.999
+  min_reward_decay: 0.999
+  sm_bm_inc: 0.9
+  sm_bm_dec: 0.998

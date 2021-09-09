@@ -22,7 +22,7 @@ class Striatum:
         self.alpha = alpha
         self.beta = beta
 
-        self.error = 0
+        self.error = np.empty(0)
         self.values = None
         self.previous_stimulus = None
         self.previous_response = None

@@ -628,6 +628,7 @@ class Hierarchy:
     :param blocks: list(Block)
     :param input_blocks: list of indices of blocks
     :param output_block: index of output block
+    :param visual_block: index of visual block
     :param block_connections: list
     List of dicts. Every dict corresponds to block and describes its connections.
     block id corresponds to dict position in block_connections
@@ -647,11 +648,12 @@ class Hierarchy:
     """
     output_block: Block
 
-    def __init__(self, blocks: list, input_blocks: list, output_block: int, block_connections: list, logs_dir=None):
+    def __init__(self, blocks: list, input_blocks: list, output_block: int, visual_block: int, block_connections: list, logs_dir=None):
         self.queue = list()
         self.blocks = blocks
         self.input_blocks = [blocks[i] for i in input_blocks]
         self.output_block = blocks[output_block]
+        self.visual_block = blocks[visual_block]
         self.block_connections = block_connections
         self.block_sizes = list()
         self.block_levels = list()

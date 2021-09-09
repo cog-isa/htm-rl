@@ -1,6 +1,7 @@
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.muscles import Muscles
-from htm_rl.modules.basal_ganglia import BasalGanglia
+from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
+from htm_rl.modules.empowerment import Empowerment
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
@@ -50,9 +51,17 @@ class HTMAgent:
         self.use_intrinsic_reward = config['intrinsic_reward']
         self.punish_reward = config['punish_reward']
         self.hierarchy = hierarchy
+
         self.action = BioGwLabAction(**config['action'])
 
         self.muscles = Muscles(**config['muscles'])
+
+        if self.use_intrinsic_reward:
+            self.empowerment_horizon = config['empowerment'].pop('horizon')
+            self.empowerment = Empowerment(**config['empowerment'])
+        else:
+            self.empowerment_horizon = 0
+            self.empowerment = None
 
         self.total_patterns = 2 ** self.action.muscles_size
         # there is no first action
@@ -64,6 +73,7 @@ class HTMAgent:
 
         self.sp_output = SDR(self.hierarchy.output_block.basal_columns)
         self.sp_input = SDR(self.hierarchy.output_block.get_in_sizes()[-1])
+        self.previous_obs = np.empty(0)
 
     def make_action(self, state_pattern):
         self.state_pattern.sparse = state_pattern
@@ -83,17 +93,19 @@ class HTMAgent:
         self.action_pattern = action_pattern
         # convert muscles activation pattern to environment action
         action = self.action.get_action(action_pattern)
+
+        # train empowerment tm
+        if self.use_intrinsic_reward:
+            current_obs = self.hierarchy.output_block.get_output('basal')
+            if (self.previous_obs.size > 0) and (current_obs.size > 0):
+                self.empowerment.learn(self.previous_obs, current_obs)
+            self.previous_obs = current_obs
         return action
 
     def get_intrinsic_reward(self):
-        confidence = self.hierarchy.blocks[2].tm.confidence[-2]
-        conf_threshold = self.hierarchy.blocks[2].confidence_threshold
-        anomaly = self.hierarchy.blocks[2].tm.anomaly[-1]
-        anomaly_threshold = self.hierarchy.blocks[2].tm.anomaly_threshold
-        if (anomaly > anomaly_threshold) and (confidence > conf_threshold):
-            reward = anomaly - anomaly_threshold
-        else:
-            reward = 0
+        state = self.hierarchy.visual_block.get_output('basal')
+        reward = self.empowerment.eval_state(state, self.empowerment_horizon,
+                                             use_memory=True)[0]
         return reward
 
     def reinforce(self, reward: float):
@@ -117,6 +129,7 @@ class HTMAgent:
         self.hierarchy.reset()
         self.action_pattern = np.empty(0)
         self.state_pattern.sparse = np.empty(0)
+        self.previous_obs = np.empty(0)
 
     def generate_patterns(self):
         """
@@ -165,6 +178,8 @@ class HTMAgentRunner:
         block_configs = config['blocks']
         input_block_configs = config['input_blocks']
 
+        use_intrinsic_reward = config['agent']['intrinsic_reward']
+
         blocks = list()
 
         for block_conf in input_block_configs:
@@ -184,7 +199,10 @@ class HTMAgentRunner:
                 sp = None
 
             if block_conf['bg'] is not None:
-                bg = BasalGanglia(**block_conf['bg'])
+                if use_intrinsic_reward:
+                    bg = DualBasalGanglia(**block_conf['bg'])
+                else:
+                    bg = BasalGanglia(**block_conf['bg'])
             else:
                 bg = None
 
@@ -609,7 +627,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'cross_11x11_best'
+        default_config_name = 'cross_11x11_empowerment'
     with open(f'../../experiments/htm_agent/configs/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
