@@ -200,8 +200,8 @@ def run_config(config):
 
 
 def main(seeds: list):
-    n_policies = 20
-    epochs = 20
+    n_policies = 5
+    epochs = 50
     threshold = 8
     randomness = 1.0
 
@@ -215,7 +215,7 @@ def main(seeds: list):
     input_columns = action_encoder.output_sdr_size
     cells_per_column = 16
     output_columns = 4000
-    output_union_sparsity = 0.025
+    output_union_sparsity = 0.01
     noise_tolerance_apical = 0.1
     learning_margin_apical = 0.2
     config_tm = dict(columns=input_columns,
@@ -256,7 +256,7 @@ def main(seeds: list):
         maxUnionActivity=output_union_sparsity,
         exciteFunctionType='Logistic',
         decayFunctionType='Exponential',
-        decayTimeConst=20.0,
+        decayTimeConst=10.0,
         synPermPredActiveInc=0.1,
         synPermPreviousPredActiveInc=0.05,
         historyLength=20,
@@ -273,8 +273,8 @@ def main(seeds: list):
         potentialPct=0.5,
         spVerbosity=0,
         stimulusThreshold=3,
-        synPermActiveInc=0.1,
         synPermConnected=0.5,
+        synPermActiveInc=0.1,
         synPermInactiveDec=0.01,
         wrapAround=True
     )
@@ -302,4 +302,4 @@ def main(seeds: list):
 
 
 if __name__ == '__main__':
-    main(seeds=[3424, 43542, 1124, 342341, 22998])
+    main(seeds=[32443, 43422, 19875, 31341, 94827])
