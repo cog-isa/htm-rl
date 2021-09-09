@@ -123,7 +123,7 @@ class DreamingDouble(QModelBasedAgent):
             sum_depth += depth ** .8
             depths.append(depth)
 
-        if depths: print(depths)
+        # if depths: print(depths)
         self.wake()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:

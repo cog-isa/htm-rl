@@ -8,23 +8,24 @@ eligibility_traces: &e_traces
   trace_decay: [.75, .99]
   discount_factor: *discount_factor
 
+softmax_temp: [.2, .93]
 exploration_eps: [.3, .99]
-softmax_enabled: false
 im_weight: [.000, 1.]
 
 td_error_decay: .6
 dreaming:
-  enabled: false
+  enabled: true
   enter_prob_alpha: [1.2, 1.]
   enter_prob_threshold: .3
-  exploration_eps: [.3, .997]
+
   qvn:
     learning_rate_factor: 1.
-#  eligibility_traces: *e_traces
-  eligibility_traces:
-    trace_decay: [.75, .99]
-    discount_factor: *discount_factor
+  eligibility_traces: *e_traces
   nest_traces: false
+
+  softmax_temp: [ .2, .93 ]
+  exploration_eps: [.3, .997]
+
   prediction_depth: 10
   n_prediction_rollouts: [3, 12]
 
