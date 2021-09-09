@@ -4,33 +4,19 @@ from typing import Optional
 import numpy as np
 from numpy.random import Generator
 
-from htm_rl.agents.agent import Agent
 from htm_rl.agents.dreamer.qvn_double import QValueNetworkDouble
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
-from htm_rl.agents.q.sa_encoder import SaEncoder
-from htm_rl.agents.qmb.reward_model import RewardModel
-from htm_rl.agents.qmb.transition_model import TransitionModel
-from htm_rl.agents.q.ucb_estimator import UcbEstimator
+from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, softmax, DecayingValue
 
 
-class DreamingDouble(Agent):
-    n_actions: int
-    sa_encoder: SaEncoder
+class DreamingDouble(QModelBasedAgent):
     Q: QValueNetworkDouble
-    E_traces: EligibilityTraces
     wake_E_traces: EligibilityTraces
     nest_traces: bool
 
-    transition_model: TransitionModel
     tm_checkpoint: Optional[bytes]
-    reward_model: RewardModel
-
-    exploration_eps: DecayingValue
-    softmax_temp: bool
-    im_weight: DecayingValue
-    ucb_estimate: Optional[UcbEstimator]
 
     enabled: bool
     enter_prob_alpha: DecayingValue
@@ -39,18 +25,15 @@ class DreamingDouble(Agent):
     n_prediction_rollouts: tuple[int, int]
 
     starting_sa_sdr: Optional[SparseSdr]
-
-    _current_sa_sdr: Optional[SparseSdr]
-    _rng: Generator
     _episode: int
 
+    # noinspection PyMissingConstructor
     def __init__(
             self,
             seed: int,
             wake_agent,
             enter_prob_alpha: DecayingValue,
             enter_prob_threshold: float,
-            exploration_eps: DecayingValue,
             qvn: dict,
             eligibility_traces: dict,
             nest_traces: bool,
@@ -59,7 +42,8 @@ class DreamingDouble(Agent):
             enabled: bool = True,
             first_dreaming_episode: int = None,
             last_dreaming_episode: int = None,
-
+            softmax_temp: DecayingValue = (0., 0.),
+            exploration_eps: DecayingValue = (0., 0.),
     ):
         self.n_actions = wake_agent.n_actions
         self.sa_encoder = wake_agent.sa_encoder
@@ -72,9 +56,10 @@ class DreamingDouble(Agent):
 
         self.transition_model = wake_agent.transition_model
         self.tm_checkpoint = None
+
         self.reward_model = wake_agent.reward_model
+        self.softmax_temp = softmax_temp
         self.exploration_eps = exploration_eps
-        self.softmax_temp = wake_agent.softmax_temp
         self.im_weight = wake_agent.im_weight
         self.ucb_estimate = wake_agent.ucb_estimate
 
@@ -89,6 +74,7 @@ class DreamingDouble(Agent):
         self.starting_sa_sdr = None
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
+        self._step = 0
         self._episode = 0
 
     def put_into_dream(self, starting_sa_sdr):
@@ -137,45 +123,28 @@ class DreamingDouble(Agent):
             sum_depth += depth ** .8
             depths.append(depth)
 
-        # if depths: print(depths)
+        if depths: print(depths)
         self.wake()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
+        prev_sa_sdr = self._current_sa_sdr
         actions_sa_sdr = self.sa_encoder.encode_actions(s, learn=False)
 
-        action_values = self.Q.values(actions_sa_sdr)
-        greedy_action = np.argmax(action_values)
         if not first:
             # Q-learning step
-            greedy_sa_sdr = actions_sa_sdr[greedy_action]
-            self.E_traces.update(self._current_sa_sdr)
-            self.Q.update(
-                sa=self._current_sa_sdr, reward=reward,
-                sa_next=greedy_sa_sdr,
-                E_traces=self.E_traces.E
+            self.E_traces.update(prev_sa_sdr)
+            self._make_q_learning_step(
+                sa=prev_sa_sdr, r=reward, next_actions_sa_sdr=actions_sa_sdr
             )
 
-        # choose action
-        action = greedy_action
-        if self.softmax_temp > .001:
-            p = softmax(action_values, self.softmax_temp)
-            action = self._rng.choice(self.n_actions, p=p)
-        elif self._make_random_action():
-            action = self._rng.integers(self.n_actions)
-        elif self.ucb_estimate is not None:
-            ucb_values = self.ucb_estimate.ucb_terms(actions_sa_sdr)
-            action = np.argmax(action_values + ucb_values)
+        action = self._choose_action(actions_sa_sdr)
+        chosen_sa_sdr = actions_sa_sdr[action]
 
-        self._current_sa_sdr = actions_sa_sdr[action]
-        if self.ucb_estimate is not None:
-            self.ucb_estimate.update(self._current_sa_sdr)
+        if self.ucb_estimate.enabled:
+            self.ucb_estimate.update(chosen_sa_sdr)
 
+        self._current_sa_sdr = chosen_sa_sdr
         return action
-
-    def _make_random_action(self):
-        if self.exploration_eps is not None:
-            return self._rng.random() < self.exploration_eps[0]
-        return False
 
     def move_in_dream(self, state: SparseSdr):
         reward = self.reward_model.rewards[state].mean()
@@ -183,7 +152,8 @@ class DreamingDouble(Agent):
 
         if reward > .2:
             # found goal ==> should stop rollout
-            return []
+            next_s = []
+            return next_s
 
         _, s_sa_next_superposition = self.transition_model.process(
             self._current_sa_sdr, learn=False
@@ -222,9 +192,9 @@ class DreamingDouble(Agent):
 
     def on_new_episode(self):
         self._episode += 1
-        self.exploration_eps = exp_decay(self.exploration_eps)
         self.E_traces.decay_trace_decay()
-        self.im_weight = exp_decay(self.im_weight)
+        self.exploration_eps = exp_decay(self.exploration_eps)
+        self._decay_softmax_temperature()
 
     def save_tm_checkpoint(self) -> bytes:
         """Saves TM state."""

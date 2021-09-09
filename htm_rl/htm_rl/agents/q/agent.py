@@ -22,9 +22,9 @@ class QAgent(Agent):
 
     train: bool
     softmax_temp: DecayingValue
-    softmax_limits = (.04, 10.)
+    softmax_limit = .04
     exploration_eps: DecayingValue
-    ucb_estimate: Optional[UcbEstimator]
+    ucb_estimate: UcbEstimator
 
     _step: int
     _current_sa_sdr: Optional[SparseSdr]
@@ -101,7 +101,7 @@ class QAgent(Agent):
         return action
 
     def _choose_action(self, next_actions_sa_sdr: list[SparseSdr]) -> int:
-        if self.softmax_temp[0] >= self.softmax_limits[0]:
+        if self.softmax_temp[0] >= self.softmax_limit:
             # SOFTMAX
             action_values = self.Q.values(next_actions_sa_sdr)
             p = softmax(action_values, self.softmax_temp[0])
@@ -143,11 +143,8 @@ class QAgent(Agent):
 
     def _decay_softmax_temperature(self):
         temp, decay = exp_decay(self.softmax_temp)
-        if temp < self.softmax_limits[0]:
-            # limit "hardness"
-            temp = self.softmax_limits[0]
-        elif temp > self.softmax_limits[1]:
-            # disable softmax entirely as it's too soft
-            temp = 0.
+        if temp < self.softmax_limit:
+            # limit the "hardness"
+            temp = self.softmax_limit
 
         self.softmax_temp = temp, decay
