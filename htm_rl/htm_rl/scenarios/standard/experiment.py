@@ -37,9 +37,10 @@ class StandardExperiment(Experiment):
                 config['agent_seed'] = agent_seed
                 print(f'AGENT: {agent_name}     SEED: {env_seed} {agent_seed}')
 
-                results: RunStats = Scenario(config, **config).run()
-                results.print_results()
-                agent_results.append(results)
+                train_results, test_results = Scenario(config, **config).run()
+                train_results.print_results()
+                test_results.print_results()
+                agent_results.append(test_results)
 
             if len(agent_seeds) > 1:
                 results = RunStats.aggregate_stats(agent_results)

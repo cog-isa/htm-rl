@@ -62,7 +62,7 @@ class Scenario:
             reward_anomalies = np.array(model_debugger.anomaly_tracker.reward_anomalies)
             print(round(anomalies.mean(), 4), round(reward_anomalies.mean(), 4))
 
-        return eval_stats
+        return train_stats, eval_stats
 
     def run_episode_with_mode(
             self, train_stats, eval_stats, wandb_run=None
