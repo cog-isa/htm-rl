@@ -28,6 +28,10 @@ class DreamingPointTestTracker(Debugger):
         res = -int(result)
         if res > 0:
             res *= 100
+
+        if not self.dreaming_test_results.mask[position]:
+            # keep max value on a map
+            res = ma.max((self.dreaming_test_results[position], res))
         self.dreaming_test_results[position] = res
 
     def reset(self):
