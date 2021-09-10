@@ -20,11 +20,14 @@ dreaming:
 
   qvn:
     learning_rate_factor: 1.
+  rollout_q_lr_decay_power: .0
+
   eligibility_traces: *e_traces
-  nest_traces: false
+  derive_e_traces: false
 
   softmax_temp: [ .2, .93 ]
   exploration_eps: [.3, .997]
+  trajectory_exploration_eps_decay: 1.
 
   prediction_depth: 18
   n_prediction_rollouts: [3, 12]

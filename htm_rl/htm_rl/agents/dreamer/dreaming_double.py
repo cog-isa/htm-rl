@@ -15,6 +15,8 @@ class DreamingDouble(QModelBasedAgent):
     Q: QValueNetworkDouble
     wake_E_traces: EligibilityTraces
     derive_E_traces: bool
+    rollout_q_lr_decay_power: float
+    trajectory_exploration_eps_decay: float
 
     tm_checkpoint: Optional[bytes]
 
@@ -25,6 +27,7 @@ class DreamingDouble(QModelBasedAgent):
     n_prediction_rollouts: tuple[int, int]
 
     starting_sa_sdr: Optional[SparseSdr]
+    exploration_eps_backup: Optional[DecayingValue]
     _episode: int
 
     # noinspection PyMissingConstructor,PyPep8Naming
@@ -36,23 +39,26 @@ class DreamingDouble(QModelBasedAgent):
             enter_prob_threshold: float,
             qvn: dict,
             eligibility_traces: dict,
-            derive_E_traces: bool,
+            derive_e_traces: bool,
             prediction_depth: int,
             n_prediction_rollouts: tuple[int, int],
             enabled: bool = True,
             first_dreaming_episode: int = None,
             last_dreaming_episode: int = None,
+            rollout_q_lr_decay_power: float = 0.,
             softmax_temp: DecayingValue = (0., 0.),
             exploration_eps: DecayingValue = (0., 0.),
+            trajectory_exploration_eps_decay: float = 1.,
     ):
         self.n_actions = wake_agent.n_actions
         self.sa_encoder = wake_agent.sa_encoder
         self.Q = QValueNetworkDouble(wake_agent.Q, **qvn)
+        self.rollout_q_lr_decay_power = rollout_q_lr_decay_power
         self.E_traces = EligibilityTraces(
             self.sa_encoder.output_sdr_size, **eligibility_traces
         )
         self.wake_E_traces = wake_agent.E_traces
-        self.derive_E_traces = derive_E_traces
+        self.derive_E_traces = derive_e_traces
 
         self.transition_model = wake_agent.transition_model
         self.tm_checkpoint = None
@@ -60,6 +66,7 @@ class DreamingDouble(QModelBasedAgent):
         self.reward_model = wake_agent.reward_model
         self.softmax_temp = softmax_temp
         self.exploration_eps = exploration_eps
+        self.trajectory_exploration_eps_decay = trajectory_exploration_eps_decay
         self.im_weight = wake_agent.im_weight
         self.ucb_estimate = wake_agent.ucb_estimate
 
@@ -73,6 +80,7 @@ class DreamingDouble(QModelBasedAgent):
 
         self.train = True
         self.starting_sa_sdr = None
+        self.exploration_eps_backup = None
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
         self._step = 0
@@ -81,13 +89,14 @@ class DreamingDouble(QModelBasedAgent):
     def put_into_dream(self, starting_sa_sdr):
         self.save_tm_checkpoint()
         self.starting_sa_sdr = starting_sa_sdr.copy()
+        self.exploration_eps_backup = self.exploration_eps
 
     def on_new_rollout(self, i_rollout):
         if i_rollout > 0:
             self.restore_tm_checkpoint()
         self._current_sa_sdr = self.starting_sa_sdr.copy()
         # noinspection PyPep8Naming
-        Q_lr_decay = 1 / (i_rollout + 1.)**.8
+        Q_lr_decay = 1. / (i_rollout + 1.)**self.rollout_q_lr_decay_power
         self.Q.learning_rate = multiply_decaying_value(
             self.Q.origin_learning_rate,
             self.Q.learning_rate_factor * Q_lr_decay
@@ -99,6 +108,7 @@ class DreamingDouble(QModelBasedAgent):
                 self.E_traces.reset(decay=False)
 
     def wake(self):
+        self.exploration_eps = self.exploration_eps_backup
         self.restore_tm_checkpoint()
 
     def dream(self, starting_state, prev_sa_sdr):
@@ -140,6 +150,11 @@ class DreamingDouble(QModelBasedAgent):
 
         action = self._choose_action(actions_sa_sdr)
         chosen_sa_sdr = actions_sa_sdr[action]
+
+        # reduce eps-based exploration on later dreaming trajectory steps
+        self.exploration_eps = multiply_decaying_value(
+            self.exploration_eps, self.trajectory_exploration_eps_decay
+        )
 
         if self.ucb_estimate.enabled:
             self.ucb_estimate.update(chosen_sa_sdr)
