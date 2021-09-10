@@ -13,6 +13,7 @@ def register_arguments(parser: ArgumentParser):
     parser.add_argument('-a', '--agents_filter', dest='agents_filter', default=None, nargs='+')
     parser.add_argument('-d', '--print_debug', dest='debug_enabled', action='store_true', default=False)
     parser.add_argument('-w', '--wandb_enabled', dest='wandb_enabled', action='store_true', default=False)
+    parser.add_argument('-o', '--output', dest='results_dir', default='results')
 
 
 def main():
@@ -28,7 +29,7 @@ def main():
     experiment = materialize_experiment(config)
 
     base_dir: Path = config.path.parent
-    results_dir: Path = base_dir.joinpath('results')
+    results_dir: Path = base_dir.joinpath(args.results_dir)
     results_dir.mkdir(exist_ok=True)
 
     config['base_dir'] = base_dir
