@@ -26,8 +26,7 @@ class QValueNetwork:
         self.discount_factor = discount_factor
         self.learning_rate = learning_rate
 
-        # self.cell_value = np.full(cells_sdr_size, 0., dtype=np.float)
-        self.cell_value = self._rng.uniform(-1e-4, 1e-4, size=cells_sdr_size)
+        self.cell_value = self._rng.uniform(-1e-5, 1e-5, size=cells_sdr_size)
         self.last_td_error = 0.
 
     def values(self, xs: List[SparseSdr]) -> np.ndarray:
@@ -50,14 +49,11 @@ class QValueNetwork:
 
     # noinspection PyPep8Naming
     def td_error(self, sa: SparseSdr, reward: float, sa_next: SparseSdr):
-        # in general it could be s instead sa and V instead of Q
         gamma = self.discount_factor
         R = reward
         Q_sa = self.value(sa)
         Q_sa_next = self.value(sa_next)
-
-        TD_error = R + gamma * Q_sa_next - Q_sa
-        return TD_error
+        return R + gamma * Q_sa_next - Q_sa
 
     def value(self, x) -> float:
         if len(x) == 0:

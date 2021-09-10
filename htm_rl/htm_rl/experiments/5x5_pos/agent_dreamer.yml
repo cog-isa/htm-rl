@@ -21,7 +21,7 @@ dreaming:
   qvn:
     learning_rate_factor: 1.
   eligibility_traces: *e_traces
-  nest_traces: false
+  derive_E_traces: false
 
   softmax_temp: [ .2, .93 ]
   exploration_eps: [.3, .997]

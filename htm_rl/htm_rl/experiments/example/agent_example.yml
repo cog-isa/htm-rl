@@ -47,7 +47,7 @@ dreaming:
   qvn:
     learning_rate_factor: 1.
   eligibility_traces: *e_traces
-  nest_traces: false
+  derive_E_traces: false
   prediction_depth: 10
   n_prediction_rollouts: [3, 12]
 

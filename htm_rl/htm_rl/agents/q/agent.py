@@ -142,9 +142,10 @@ class QAgent(Agent):
         return self._rng.random() < self.exploration_eps[0]
 
     def _decay_softmax_temperature(self):
-        temp, decay = exp_decay(self.softmax_temp)
-        if temp < self.softmax_limit:
-            # limit the "hardness"
-            temp = self.softmax_limit
+        if self.softmax_temp[0] == 0.:
+            return
 
+        temp, decay = exp_decay(self.softmax_temp)
+        # limit the "hardness"
+        temp = max(temp, self.softmax_limit)
         self.softmax_temp = temp, decay

@@ -8,13 +8,13 @@ from htm_rl.agents.dreamer.qvn_double import QValueNetworkDouble
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, softmax, DecayingValue
+from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, DecayingValue
 
 
 class DreamingDouble(QModelBasedAgent):
     Q: QValueNetworkDouble
     wake_E_traces: EligibilityTraces
-    nest_traces: bool
+    derive_E_traces: bool
 
     tm_checkpoint: Optional[bytes]
 
@@ -27,7 +27,7 @@ class DreamingDouble(QModelBasedAgent):
     starting_sa_sdr: Optional[SparseSdr]
     _episode: int
 
-    # noinspection PyMissingConstructor
+    # noinspection PyMissingConstructor,PyPep8Naming
     def __init__(
             self,
             seed: int,
@@ -36,7 +36,7 @@ class DreamingDouble(QModelBasedAgent):
             enter_prob_threshold: float,
             qvn: dict,
             eligibility_traces: dict,
-            nest_traces: bool,
+            derive_E_traces: bool,
             prediction_depth: int,
             n_prediction_rollouts: tuple[int, int],
             enabled: bool = True,
@@ -52,7 +52,7 @@ class DreamingDouble(QModelBasedAgent):
             self.sa_encoder.output_sdr_size, **eligibility_traces
         )
         self.wake_E_traces = wake_agent.E_traces
-        self.nest_traces = nest_traces
+        self.derive_E_traces = derive_E_traces
 
         self.transition_model = wake_agent.transition_model
         self.tm_checkpoint = None
@@ -71,6 +71,7 @@ class DreamingDouble(QModelBasedAgent):
         self.first_dreaming_episode = isnone(first_dreaming_episode, 0)
         self.last_dreaming_episode = isnone(last_dreaming_episode, 999999)
 
+        self.train = True
         self.starting_sa_sdr = None
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
@@ -85,20 +86,20 @@ class DreamingDouble(QModelBasedAgent):
         if i_rollout > 0:
             self.restore_tm_checkpoint()
         self._current_sa_sdr = self.starting_sa_sdr.copy()
+        # noinspection PyPep8Naming
+        Q_lr_decay = 1 / (i_rollout + 1.)**.8
         self.Q.learning_rate = multiply_decaying_value(
             self.Q.origin_learning_rate,
-            self.Q.learning_rate_factor/(i_rollout + 1.)**.5
+            self.Q.learning_rate_factor * Q_lr_decay
         )
         if self.E_traces.enabled:
-            if self.nest_traces and self.wake_E_traces.enabled:
+            if self.derive_E_traces and self.wake_E_traces.enabled:
                 self.E_traces.E = self.wake_E_traces.E.copy()
             else:
                 self.E_traces.reset(decay=False)
 
     def wake(self):
-        self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
         self.restore_tm_checkpoint()
-        self.E_traces.decay_trace_decay()
 
     def dream(self, starting_state, prev_sa_sdr):
         self.put_into_dream(prev_sa_sdr)
@@ -109,18 +110,18 @@ class DreamingDouble(QModelBasedAgent):
         depths = []
         while i_rollout < self.n_prediction_rollouts[0] or (
                 i_rollout < self.n_prediction_rollouts[1]
-                and sum_depth >= 3 * i_rollout
+                and sum_depth >= 2.2 * i_rollout
         ):
             self.on_new_rollout(i_rollout)
             state = starting_state
             depth = 0
             for depth in range(self.prediction_depth):
-                state = self.move_in_dream(state)
                 if len(state) < .6 * starting_state_len:
                     break
+                state, a = self.move_in_dream(state)
 
             i_rollout += 1
-            sum_depth += depth ** .8
+            sum_depth += depth ** .6
             depths.append(depth)
 
         # if depths: print(depths)
@@ -148,12 +149,12 @@ class DreamingDouble(QModelBasedAgent):
 
     def move_in_dream(self, state: SparseSdr):
         reward = self.reward_model.rewards[state].mean()
-        _ = self.act(reward, state, first=False)
+        a = self.act(reward, state, first=False)
 
         if reward > .2:
             # found goal ==> should stop rollout
             next_s = []
-            return next_s
+            return next_s, a
 
         _, s_sa_next_superposition = self.transition_model.process(
             self._current_sa_sdr, learn=False
@@ -162,7 +163,7 @@ class DreamingDouble(QModelBasedAgent):
             s_sa_next_superposition
         )
         next_s = self.sa_encoder.decode_state(s_sa_next_superposition)
-        return next_s
+        return next_s, a
 
     def can_dream(self, reward):
         if not self.enabled:
@@ -192,6 +193,7 @@ class DreamingDouble(QModelBasedAgent):
 
     def on_new_episode(self):
         self._episode += 1
+        self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
         self.E_traces.decay_trace_decay()
         self.exploration_eps = exp_decay(self.exploration_eps)
         self._decay_softmax_temperature()

@@ -24,7 +24,7 @@ dreaming:
     learning_rate_factor: .75
   eligibility_traces:
     trace_decay:
-  nest_traces: true
+  derive_E_traces: true
   prediction_depth: 10
   n_prediction_rollouts: [1, 5]
 

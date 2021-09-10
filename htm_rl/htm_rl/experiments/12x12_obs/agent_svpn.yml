@@ -17,7 +17,7 @@ dreamer:
   rnd_move_prob: .3
   learning_rate_factor: .75
   trace_decay:
-  nest_traces: true
+  derive_E_traces: true
 
 r_learning_rate: [.2, 1.]
 prediction_depth: 40
