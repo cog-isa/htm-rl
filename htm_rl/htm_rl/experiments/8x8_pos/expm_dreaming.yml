@@ -1,25 +1,35 @@
 _type_: dreaming condition
 
-env_seeds:
-#  - 851775
-  - 743535
-#  - 288985
-#  - 190368
-#  - 885213
-#  - 768840
+env_seeds: !generate_seeds
+  base: 8989
+  n_seeds: 5
 
-agent_seeds:
-#  - 42
-  - 1337
-#  - 1984
-#  - 3433
+agent_seeds: !generate_seeds
+  base: 89
+  n_seeds: 1
 
-max_episodes: 200
+#env_seeds:
+#  - 385025
+###  - 851775
+###  - 743535
+###  - 288985
+###  - 190368
+##  - 885213
+###  - 768840
+##
+#agent_seeds:
+#  - 858445
+###  - 42
+##  - 1337
+###  - 1984
+###  - 3433
+
+max_episodes: 60
 train_ep_before_eval: 1
-n_goals_before_dreaming: 1
-dreaming_test: 1
-test_forward: 10
-compare_vs_last_eps: 10
+n_goals_before_dreaming: 8
+dreaming_test: 15
+test_forward: 15
+compare_vs_last_eps: 15
 
 envs:
   - pos
@@ -33,7 +43,7 @@ agents:
 debug:
   # enabled can be set only by -d arg flag
   enabled: false
-  images: false
+  images: true
 
 wandb:
   project: test
