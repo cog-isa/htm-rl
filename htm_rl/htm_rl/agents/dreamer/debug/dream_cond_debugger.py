@@ -30,7 +30,7 @@ class DreamingConditionsDebugger(Debugger):
         self.env_map_provider = EnvMapProvider(scenario)
         self.trajectory_tracker = TrajectoryTracker(scenario)
         self.q_map_provider = QMapProvider(scenario)
-        self.anomaly_tracker = AnomalyTracker(scenario)
+        self.anomaly_tracker = AnomalyTracker(scenario, keep_anomalies=False)
         self.dreaming_point_test_tracker: Optional[DreamingPointTestTracker] = None
         self.images = images
         self.output_data = {}
@@ -135,8 +135,8 @@ class DreamingConditionsDebugger(Debugger):
         if v:
             self.output_renderer.handle_img(V, 'V', with_value_text=True)
         if q:
-            Q_render = self.q_map_provider.reshape_q_for_rendering(Q)
-            self.output_renderer.handle_img(Q_render, 'Q', with_value_text=False)
+            # Q = self.q_map_provider.reshape_q_for_rendering(Q)
+            self.output_renderer.handle_img(Q, 'Q', with_value_text=False)
 
     def _add_env_map(self):
         env_maps = self.env_map_provider.maps
