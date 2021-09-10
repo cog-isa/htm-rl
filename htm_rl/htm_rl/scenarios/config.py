@@ -1,7 +1,10 @@
 from pathlib import Path
 
+import numpy as np
+import yaml
+
 from htm_rl.common.utils import isnone, ensure_list
-from htm_rl.scenarios.yaml_utils import read_config
+from htm_rl.scenarios.yaml_utils import read_config, save_config
 
 
 class Config(dict):
@@ -91,6 +94,17 @@ class FileConfig(Config):
         config = FileConfig(config_path, name=name)
 
         self[key] = config
+
+    def autosave(self):
+        autosave_dir: Path = self['autosave_dir']
+        rng = np.random.default_rng()
+        for _ in range(10):
+            name = f'_autosave_{rng.integers(10000):05d}.yml'
+            autosave = autosave_dir.joinpath(name)
+            if not autosave.exists():
+                save_config(autosave, self)
+                print(f'Autosave config to {autosave}')
+                break
 
     def _ensure_dict(self, key):
         if not isinstance(self[key], dict):

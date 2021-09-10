@@ -21,6 +21,7 @@ class DreamingConditionExperiment(Experiment):
         for key, agent in config['agents'].items():
             agent.read_subconfig('sa_encoder', 'sa_encoder')
         add_overwrite_attributes(config, config['overwrites'])
+        self.config.autosave()
 
         env_seeds = config['env_seeds']
         agent_seeds = config['agent_seeds']

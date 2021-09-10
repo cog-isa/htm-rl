@@ -37,6 +37,10 @@ reports/**/assets/
 # wandb folders
 wandb/
 
+# config auto-backups
+/htm_rl/**/_*.yml
+
+
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # please, place all project specific rules above this line
 # =====================================================
