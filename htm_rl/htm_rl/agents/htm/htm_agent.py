@@ -625,6 +625,56 @@ class HTMAgentRunner:
     def set_feedback_boost_range(self, boost):
         self.agent.hierarchy.output_block.feedback_boost_range = boost
 
+    def set_agent_positions(self, positions, rand=False, sample_size=1):
+        if rand:
+            positions = self.rng.sample(positions, sample_size)
+        self.environment.env.modules['agent'].positions = positions
+
+    def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None):
+        """
+        Room numbers:
+        |1|2|
+        |3|4|
+        :param agent_fixed_positions:
+        :param food_fixed_positions:
+        :return:
+        """
+        def ranges(room, width):
+            if room < 3:
+                row_range = [0, width-1]
+                if room == 1:
+                    col_range = [0, width-1]
+                else:
+                    col_range = [width + 1, width*2]
+            else:
+                row_range = [width + 1, 2*width]
+                if room == 3:
+                    col_range = [0, width-1]
+                else:
+                    col_range = [width + 1, width*2]
+            return row_range, col_range
+
+        agent_room, food_room = self.rng.sample(list(range(1, 5)), k=2)
+        room_width = (self.environment.env.shape[0] - 1) // 2
+        if agent_fixed_positions is not None:
+            agent_pos = agent_fixed_positions[agent_room-1]
+        else:
+            row_range, col_range = ranges(agent_room, room_width)
+            row = self.rng.randint(*row_range)
+            col = self.rng.randint(*col_range)
+            agent_pos = (row, col)
+
+        if food_fixed_positions is not None:
+            food_pos = food_fixed_positions[food_room-1]
+        else:
+            row_range, col_range = ranges(food_room, room_width)
+            row = self.rng.randint(*row_range)
+            col = self.rng.randint(*col_range)
+            food_pos = (row, col)
+
+        self.set_agent_positions([agent_pos])
+        self.set_food_positions([food_pos])
+
 
 class Scenario:
     def __init__(self, path, runner: HTMAgentRunner):
@@ -634,20 +684,35 @@ class Scenario:
             events = yaml.load(file, Loader=yaml.Loader)
             for event in events:
                 condition = event['condition']
+                check_step = event['check_every']
                 action = event['action']
                 params = event['params']
-                self.events.append({'condition': condition, 'action': action, 'params': params, 'done': False})
+                self.events.append({'condition': condition, 'check_step': check_step, 'action': action, 'params': params,
+                                    'done': False, 'last_check': None})
 
     def check_conditions(self):
         for event in self.events:
-            attr_name, val = event['condition']
-            attr = self.get_attr(attr_name)
-            if (attr == val) and (not event['done']):
-                method_name = event['action']
-                params = event['params']
-                f = self.get_attr(method_name)
-                f(**params)
-                event['done'] = True
+            step = self.get_attr(event['check_step'])
+            if (event['last_check'] != step) and not event['done']:
+                event['last_check'] = step
+                attr_name, operator, val, repeat = event['condition']
+                attr = self.get_attr(attr_name)
+                if operator == 'equal':
+                    if attr == val:
+                        self.execute(event)
+                elif operator == 'mod':
+                    if (attr % val) == 0:
+                        self.execute(event)
+                else:
+                    raise NotImplemented(f'Operator "{operator}" is not implemented!')
+
+    def execute(self, event):
+        method_name = event['action']
+        params = event['params']
+        f = self.get_attr(method_name)
+        f(**params)
+        if event['condition'][-1] == 'norepeat':
+            event['done'] = True
 
     def get_attr(self, attr):
         obj = self.runner
@@ -663,7 +728,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'cross_11x11_empowerment'
+        default_config_name = 'four_rooms_9x9_swap_empowered'
     with open(f'../../experiments/htm_agent/configs/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
