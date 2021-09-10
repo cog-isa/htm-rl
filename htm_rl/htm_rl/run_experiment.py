@@ -1,4 +1,5 @@
 import argparse
+import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -31,9 +32,14 @@ def main():
     base_dir: Path = config.path.parent
     results_dir: Path = base_dir.joinpath(args.results_dir)
     results_dir.mkdir(exist_ok=True)
+    autosave_dir: Path = base_dir.joinpath('autosaves')
+    autosave_dir.mkdir(exist_ok=True)
+    # Add auto cleaning old entries
 
+    config['argv'] = sys.argv[1:]
     config['base_dir'] = base_dir
     config['results_dir'] = results_dir
+    config['autosave_dir'] = autosave_dir
     config['envs_filter'] = args.envs_filter
     config['agents_filter'] = args.agents_filter
     config['debug.enabled'] = args.debug_enabled
