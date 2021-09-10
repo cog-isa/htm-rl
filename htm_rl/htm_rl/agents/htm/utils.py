@@ -93,7 +93,7 @@ class OptionVis:
                 image[:self.map_size[0], self.size + 3 + self.map_size[1]:] = value['term']
                 plt.imsave(f'/tmp/option_{logger.run.id}_{episode}_{key}.png', image / max_n_uses, vmax=1,
                            cmap='inferno')
-                logger.log({f'option {key}': logger.Image(f'/tmp/option_{logger.run.id}_{episode}_{key}.png')},
+                logger.log({f'options/option_{key}': logger.Image(f'/tmp/option_{logger.run.id}_{episode}_{key}.png')},
                            step=episode)
 
     def clear_stats(self):
@@ -117,7 +117,7 @@ class OptionVis:
 def compute_q_policy(env: Environment, agent, directions: dict = None):
     q = dict()
     policy = dict()
-    visual_block = agent.hierarchy.blocks[2]
+    visual_block = agent.hierarchy.visual_block
     output_block = agent.hierarchy.output_block
     options = output_block.sm.get_sparse_patterns()
     actions = list()
@@ -154,6 +154,35 @@ def compute_q_policy(env: Environment, agent, directions: dict = None):
             q[env.agent.position][i] = option_values
             policy[env.agent.position][i] = softmax(output_block.bg.tha.response_activity)
     return q, policy, actions
+
+
+def compute_dual_values(env: Environment, agent):
+    values_ext = np.zeros(env.shape)
+    values_int = np.zeros(env.shape)
+    visual_block = agent.hierarchy.visual_block
+    output_block = agent.hierarchy.output_block
+    options = output_block.sm.get_sparse_patterns()
+
+    state_pattern = SDR(env.output_sdr_size)
+    sp_output = SDR(visual_block.tm.basal_columns)
+
+    # пройти по всем состояниям и вычилить для каждого состояния Q
+    for i_flat in np.flatnonzero(~env.aggregated_mask[EntityType.Obstacle]):
+        env.agent.position = env.agent._unflatten_position(i_flat)
+        _, observation, _ = env.observe()
+        state_pattern.sparse = observation
+        visual_block.sp.compute(state_pattern, False, sp_output)
+        (option_index,
+         option,
+         option_values_ext,
+         option_values_int) = output_block.bg.compute(sp_output.sparse,
+                                                      options,
+                                                      responses_boost=None,
+                                                      learn=False)
+        row, column = env.agent.position
+        values_ext[row][column] = option_values_ext.max()
+        values_int[row][column] = option_values_int.max()
+    return values_ext, values_int
 
 
 def compute_mu_policy(env: Environment, agent, directions: dict = None):
@@ -208,12 +237,12 @@ def draw_values(path: str, env_shape, q, policy, directions: dict = None):
     rows, cols = env_shape
     if n_directions == 4:
         vd = list(directions.values())
-        flat_values = np.zeros((rows*2, cols*2))
+        flat_values = np.zeros((rows * 2, cols * 2))
         for pos in q.keys():
-            flat_values[pos[0]*2, pos[1]*2] = values[pos[0], pos[1], vd.index(directions['up'])]
-            flat_values[pos[0]*2, pos[1]*2 + 1] = values[pos[0], pos[1], vd.index(directions['right'])]
-            flat_values[pos[0]*2 + 1, pos[1]*2] = values[pos[0], pos[1], vd.index(directions['left'])]
-            flat_values[pos[0]*2 + 1, pos[1]*2 + 1] = values[pos[0], pos[1], vd.index(directions['down'])]
+            flat_values[pos[0] * 2, pos[1] * 2] = values[pos[0], pos[1], vd.index(directions['up'])]
+            flat_values[pos[0] * 2, pos[1] * 2 + 1] = values[pos[0], pos[1], vd.index(directions['right'])]
+            flat_values[pos[0] * 2 + 1, pos[1] * 2] = values[pos[0], pos[1], vd.index(directions['left'])]
+            flat_values[pos[0] * 2 + 1, pos[1] * 2 + 1] = values[pos[0], pos[1], vd.index(directions['down'])]
     elif n_directions == 1:
         flat_values = values.reshape(env_shape)
     else:
@@ -221,8 +250,8 @@ def draw_values(path: str, env_shape, q, policy, directions: dict = None):
 
     plt.figure(figsize=(13, 13))
     ax = sns.heatmap(flat_values, annot=True, fmt=".1g", cbar=False)
-    ax.hlines(np.arange(0, flat_values.shape[0], 1+n_directions//4), xmin=0, xmax=flat_values.shape[1])
-    ax.vlines(np.arange(0, flat_values.shape[1], 1+n_directions//4), ymin=0, ymax=flat_values.shape[0])
+    ax.hlines(np.arange(0, flat_values.shape[0], 1 + n_directions // 4), xmin=0, xmax=flat_values.shape[1])
+    ax.vlines(np.arange(0, flat_values.shape[1], 1 + n_directions // 4), ymin=0, ymax=flat_values.shape[0])
     figure = ax.get_figure()
     figure.savefig(path)
     plt.close(figure)
@@ -245,18 +274,18 @@ def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = No
     rows, cols = env_shape
     if n_directions == 4:
         vd = list(directions.values())
-        flat_probs = np.zeros((rows*2, cols*2))
-        flat_actions = np.zeros((rows*2, cols*2))
+        flat_probs = np.zeros((rows * 2, cols * 2))
+        flat_actions = np.zeros((rows * 2, cols * 2))
         for pos in policy.keys():
-            flat_probs[pos[0]*2, pos[1]*2] = probs[pos[0], pos[1], vd.index(directions['up'])]
-            flat_probs[pos[0]*2, pos[1]*2 + 1] = probs[pos[0], pos[1], vd.index(directions['right'])]
-            flat_probs[pos[0]*2 + 1, pos[1]*2] = probs[pos[0], pos[1], vd.index(directions['left'])]
-            flat_probs[pos[0]*2 + 1, pos[1]*2 + 1] = probs[pos[0], pos[1], vd.index(directions['down'])]
-            
-            flat_actions[pos[0]*2, pos[1]*2] = actions[pos[0], pos[1], vd.index(directions['up'])]
-            flat_actions[pos[0]*2, pos[1]*2 + 1] = actions[pos[0], pos[1], vd.index(directions['right'])]
-            flat_actions[pos[0]*2 + 1, pos[1]*2] = actions[pos[0], pos[1], vd.index(directions['left'])]
-            flat_actions[pos[0]*2 + 1, pos[1]*2 + 1] = actions[pos[0], pos[1], vd.index(directions['down'])]
+            flat_probs[pos[0] * 2, pos[1] * 2] = probs[pos[0], pos[1], vd.index(directions['up'])]
+            flat_probs[pos[0] * 2, pos[1] * 2 + 1] = probs[pos[0], pos[1], vd.index(directions['right'])]
+            flat_probs[pos[0] * 2 + 1, pos[1] * 2] = probs[pos[0], pos[1], vd.index(directions['left'])]
+            flat_probs[pos[0] * 2 + 1, pos[1] * 2 + 1] = probs[pos[0], pos[1], vd.index(directions['down'])]
+
+            flat_actions[pos[0] * 2, pos[1] * 2] = actions[pos[0], pos[1], vd.index(directions['up'])]
+            flat_actions[pos[0] * 2, pos[1] * 2 + 1] = actions[pos[0], pos[1], vd.index(directions['right'])]
+            flat_actions[pos[0] * 2 + 1, pos[1] * 2] = actions[pos[0], pos[1], vd.index(directions['left'])]
+            flat_actions[pos[0] * 2 + 1, pos[1] * 2 + 1] = actions[pos[0], pos[1], vd.index(directions['down'])]
     elif n_directions == 1:
         flat_probs = probs.reshape(env_shape)
         flat_actions = actions.reshape(env_shape)
@@ -265,8 +294,8 @@ def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = No
     # draw probabilities
     plt.figure(figsize=(13, 11))
     ax = sns.heatmap(flat_probs, cbar=True, vmin=0, vmax=1)
-    ax.hlines(np.arange(0, flat_probs.shape[0], 1+n_directions//4), xmin=0, xmax=flat_probs.shape[1])
-    ax.vlines(np.arange(0, flat_probs.shape[1], 1+n_directions//4), ymin=0, ymax=flat_probs.shape[0])
+    ax.hlines(np.arange(0, flat_probs.shape[0], 1 + n_directions // 4), xmin=0, xmax=flat_probs.shape[1])
+    ax.vlines(np.arange(0, flat_probs.shape[1], 1 + n_directions // 4), ymin=0, ymax=flat_probs.shape[0])
     # draw action labels
     for i in range(flat_actions.shape[0]):
         for j in range(flat_actions.shape[1]):
@@ -277,11 +306,11 @@ def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = No
                 direction = get_direction_from_flat((i, j))
             if actions_map is not None:
                 row, col, drow, dcol = get_arrow(actions_map[action], direction)
-                ax.arrow(j+col, i+row, dcol, drow, length_includes_head=True,
+                ax.arrow(j + col, i + row, dcol, drow, length_includes_head=True,
                          head_width=0.2,
                          head_length=0.2)
             else:
-                ax.text(j+0.5, i+0.5, str(action), fontsize=12)
+                ax.text(j + 0.5, i + 0.5, str(action), fontsize=12)
 
     figure = ax.get_figure()
     figure.savefig(path)
@@ -388,6 +417,3 @@ def get_direction_from_flat(pos):
         return 'left'
     else:
         return 'down'
-
-
-

@@ -6,8 +6,9 @@ from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
-from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy
+from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, compute_dual_values
 from htm.bindings.sdr import SDR
+import seaborn as sns
 import imageio
 import numpy as np
 import random
@@ -247,7 +248,11 @@ class HTMAgentRunner:
                               'da_1lvl': 0,
                               'dda_1lvl': 0,
                               'da_2lvl': 0,
-                              'dda_2lvl': 0}
+                              'dda_2lvl': 0,
+                              'priority_ext_1lvl': 0,
+                              'priority_int_1lvl': 0,
+                              'priority_ext_2lvl': 0,
+                              'priority_int_2lvl': 0}
         self.seed = seed
         self.rng = random.Random(self.seed)
 
@@ -255,7 +260,8 @@ class HTMAgentRunner:
                      log_every_episode=50,
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
                      opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
-                     log_td_error=False, log_anomaly=False, log_confidence=False, log_boost_modulation=False):
+                     log_td_error=False, log_anomaly=False, log_confidence=False, log_boost_modulation=False,
+                     log_values_int=True, log_values_ext=True, log_priorities=True):
         self.total_reward = 0
         self.steps = 0
         self.episode = 0
@@ -284,37 +290,36 @@ class HTMAgentRunner:
                                                            format='gif')}, step=self.episode)
 
                 if (logger is not None) and (self.episode > 0):
-                    logger.log({'steps': self.steps, 'reward': self.total_reward, 'episode': self.episode}, step=self.episode)
+                    logger.log({'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode}, step=self.episode)
                     if log_segments:
                         logger.log(
-                            {'basal_segments': self.agent.hierarchy.output_block.tm.basal_connections.numSegments(),
-                             'apical_segments': self.agent.hierarchy.output_block.tm.apical_connections.numSegments(),
-                             'exec_segments': self.agent.hierarchy.output_block.tm.exec_feedback_connections.numSegments(),
-                             'inhib_segments': self.agent.hierarchy.output_block.tm.inhib_connections.numSegments(),
-                             'basal_syn': self.agent.hierarchy.output_block.tm.basal_connections.numSynapses(),
-                             'apical_syn': self.agent.hierarchy.output_block.tm.apical_connections.numSynapses(),
-                             'exec_syn': self.agent.hierarchy.output_block.tm.exec_feedback_connections.numSynapses(),
-                             'inhib_syn': self.agent.hierarchy.output_block.tm.inhib_connections.numSynapses()
+                            {'connections/basal_segments': self.agent.hierarchy.output_block.tm.basal_connections.numSegments(),
+                             'connections/apical_segments': self.agent.hierarchy.output_block.tm.apical_connections.numSegments(),
+                             'connections/exec_segments': self.agent.hierarchy.output_block.tm.exec_feedback_connections.numSegments(),
+                             'connections/inhib_segments': self.agent.hierarchy.output_block.tm.inhib_connections.numSegments()
                              },
                             step=self.episode)
 
                     if log_options_usage:
                         options_usage_gain = self.get_options_usage_gain()
-                        logger.log({f"option_{key}_usage": value for key, value in options_usage_gain.items()}, step=self.episode)
-                        logger.log({'total_options_usage': sum(options_usage_gain.values())}, step=self.episode)
+                        logger.log({f"options/option_{key}_usage": value for key, value in options_usage_gain.items()}, step=self.episode)
+                        logger.log({'main_metrics/total_options_usage': sum(options_usage_gain.values())}, step=self.episode)
                         self.update_options_usage()
 
                     if log_td_error:
-                        logger.log({'da_1lvl': self.block_metrics['da_1lvl'], 'da_2lvl': self.block_metrics['da_2lvl'],
-                                    'dda_1lvl': self.block_metrics['dda_1lvl'], 'dda_2lvl': self.block_metrics['dda_2lvl']}, step=self.episode)
+                        logger.log({'main_metrics/da_1lvl': self.block_metrics['da_1lvl'], 'basal_ganglia/da_2lvl': self.block_metrics['da_2lvl'],
+                                    'basal_ganglia/dda_1lvl': self.block_metrics['dda_1lvl'], 'basal_ganglia/dda_2lvl': self.block_metrics['dda_2lvl']}, step=self.episode)
+                    if log_priorities and self.agent.use_intrinsic_reward:
+                        logger.log({'main_metrics/priority_ext_1lvl': self.block_metrics['priority_ext_1lvl'], 'basal_ganglia/priority_ext_2lvl': self.block_metrics['priority_ext_2lvl'],
+                                    'basal_ganglia/priority_int_1lvl': self.block_metrics['priority_int_1lvl'], 'basal_ganglia/priority_int_2lvl': self.block_metrics['priority_int_2lvl']}, step=self.episode)
                     if log_anomaly:
-                        anomaly_th = {f"anomaly_th_block{block_id}": an for block_id, an in enumerate(self.block_metrics['anomaly_threshold'])}
+                        anomaly_th = {f"blocks/anomaly_th_block{block_id}": an for block_id, an in enumerate(self.block_metrics['anomaly_threshold'])}
                         logger.log(anomaly_th, step=self.episode)
                     if log_confidence:
-                        confidence_th = {f"confidence_th_block{block_id}": an for block_id, an in enumerate(self.block_metrics['confidence_threshold'])}
+                        confidence_th = {f"blocks/confidence_th_block{block_id}": an for block_id, an in enumerate(self.block_metrics['confidence_threshold'])}
                         logger.log(confidence_th, step=self.episode)
                     if log_boost_modulation:
-                        boost_modulation = {f"boost_modulation_block{block_id}": x for block_id, x in
+                        boost_modulation = {f"blocks/boost_modulation_block{block_id}": x for block_id, x in
                                                 enumerate(self.block_metrics['boost_modulation'])}
                         logger.log(boost_modulation, step=self.episode)
 
@@ -328,6 +333,28 @@ class HTMAgentRunner:
                         self.last_options_usage = dict()
                     if log_terminal_stat and (self.terminal_pos_stat is not None):
                         logger.log(dict([(str(x[0]), x[1]) for x in self.terminal_pos_stat.items()]), step=self.episode)
+                    if log_values_ext or log_values_int:
+                        values_ext, values_int = compute_dual_values(self.environment.env, self.agent)
+                        if log_values_ext:
+                            plt.figure(figsize=(13, 13))
+                            ax = sns.heatmap(values_ext, annot=True, fmt=".1g", cbar=False, linewidths=3)
+                            figure = ax.get_figure()
+                            figure.savefig(f'/tmp/values_ext_{logger.run.id}_{self.episode}.png')
+                            plt.close(figure)
+                            logger.log(
+                                {'values/state_values_ext': logger.Image(f'/tmp/values_ext_{logger.run.id}_{self.episode}.png')},
+                                step=self.episode)
+                        if log_values_int:
+                            plt.figure(figsize=(13, 13))
+                            ax = sns.heatmap(values_int, annot=True, fmt=".1g", cbar=False, linewidths=3)
+                            figure = ax.get_figure()
+                            figure.savefig(f'/tmp/values_int_{logger.run.id}_{self.episode}.png')
+                            plt.close(figure)
+                            logger.log(
+                                {'values/state_values_int': logger.Image(
+                                    f'/tmp/values_int_{logger.run.id}_{self.episode}.png')},
+                                step=self.episode)
+
                     if log_values or log_policy:
                         if len(self.option_stat.action_displace) == 3:
                             directions = {'right': 0, 'down': 1, 'left': 2, 'up': 3}
@@ -344,7 +371,7 @@ class HTMAgentRunner:
                                         q,
                                         policy,
                                         directions=directions)
-                            logger.log({'state_values': wandb.Image(f'/tmp/values_{logger.run.id}_{self.episode}.png')},
+                            logger.log({'values/state_values': logger.Image(f'/tmp/values_{logger.run.id}_{self.episode}.png')},
                                        step=self.episode)
                         if log_policy:
                             draw_policy(f'/tmp/policy_{logger.run.id}_{self.episode}.png',
@@ -353,7 +380,7 @@ class HTMAgentRunner:
                                         actions,
                                         directions=directions,
                                         actions_map=actions_map)
-                            logger.log({'policy': wandb.Image(f'/tmp/policy_{logger.run.id}_{self.episode}.png')},
+                            logger.log({'values/policy': wandb.Image(f'/tmp/policy_{logger.run.id}_{self.episode}.png')},
                                        step=self.episode)
 
                     if log_option_values or log_option_policy:
@@ -370,7 +397,7 @@ class HTMAgentRunner:
                                         q,
                                         policy,
                                         directions=directions)
-                            logger.log({'option_state_values': wandb.Image(f'/tmp/option_values_{logger.run.id}_{self.episode}.png')},
+                            logger.log({'values/option_state_values': wandb.Image(f'/tmp/option_values_{logger.run.id}_{self.episode}.png')},
                                        step=self.episode)
                         if log_option_policy:
                             draw_policy(f'/tmp/option_policy_{logger.run.id}_{self.episode}.png',
@@ -378,7 +405,7 @@ class HTMAgentRunner:
                                         policy,
                                         option_ids,
                                         directions=directions)
-                            logger.log({'option_policy': wandb.Image(f'/tmp/option_policy_{logger.run.id}_{self.episode}.png')},
+                            logger.log({'values/option_policy': wandb.Image(f'/tmp/option_policy_{logger.run.id}_{self.episode}.png')},
                                        step=self.episode)
 
                 if ((((self.episode + 1) % log_every_episode) == 0) or (self.episode == 0)) and (logger is not None):
@@ -571,6 +598,11 @@ class HTMAgentRunner:
         self.block_metrics['dda_1lvl'] = self.block_metrics['dda_1lvl'] + (self.agent.hierarchy.output_block.dda - self.block_metrics['dda_1lvl']) / (self.steps + 1)
         self.block_metrics['da_2lvl'] = self.block_metrics['da_2lvl'] + (self.agent.hierarchy.blocks[5].da - self.block_metrics['da_2lvl']) / (self.steps + 1)
         self.block_metrics['dda_2lvl'] = self.block_metrics['dda_2lvl'] + (self.agent.hierarchy.blocks[5].dda - self.block_metrics['dda_2lvl']) / (self.steps + 1)
+        if self.agent.use_intrinsic_reward:
+            self.block_metrics['priority_ext_1lvl'] = self.block_metrics['priority_ext_1lvl'] + (self.agent.hierarchy.output_block.bg.priority_ext - self.block_metrics['priority_ext_1lvl']) / (self.steps + 1)
+            self.block_metrics['priority_int_1lvl'] = self.block_metrics['priority_int_1lvl'] + (self.agent.hierarchy.output_block.bg.priority_int - self.block_metrics['priority_int_1lvl']) / (self.steps + 1)
+            self.block_metrics['priority_ext_2lvl'] = self.block_metrics['priority_ext_2lvl'] + (self.agent.hierarchy.blocks[5].bg.priority_ext - self.block_metrics['priority_ext_2lvl']) / (self.steps + 1)
+            self.block_metrics['priority_int_2lvl'] = self.block_metrics['priority_int_2lvl'] + (self.agent.hierarchy.blocks[5].bg.priority_int - self.block_metrics['priority_int_2lvl']) / (self.steps + 1)
 
     def reset_block_metrics(self):
         self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
@@ -579,7 +611,11 @@ class HTMAgentRunner:
                               'da_1lvl': 0,
                               'dda_1lvl': 0,
                               'da_2lvl': 0,
-                              'dda_2lvl': 0}
+                              'dda_2lvl': 0,
+                              'priority_ext_1lvl': 0,
+                              'priority_int_1lvl': 0,
+                              'priority_ext_2lvl': 0,
+                              'priority_int_2lvl': 0}
 
     def set_food_positions(self, positions, rand=False, sample_size=1):
         if rand:

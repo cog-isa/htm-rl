@@ -49,18 +49,17 @@ class Striatum:
         self.previous_stimulus = copy.deepcopy(self.current_stimulus)
         self.current_stimulus = copy.deepcopy(stimulus)
 
-    def learn(self, reward, k: int = 1, external_value: float = 0, off_policy=False):
+    def learn(self, reward, k: int = 1, off_policy=False):
         """
         main Striatum learning function
         :param reward: accumulated reward since previous response (for elementary actions it's just immediate reward)
         :param k: number of steps taken after previous response (>=1 for non-elementary actions)
-        :param external_value: value from lower level BG (may be !=0 for non-elementary actions)
         :param off_policy: if true, then max_response is used instead of current response
         :return:
         """
         if (self.previous_response is not None) and (len(self.previous_response) > 0) and (self.previous_stimulus is not None) and (
                 len(self.previous_stimulus) > 0):
-            value = external_value
+            value = 0
             prev_values = np.mean(
                 (self.w_d1[self.previous_response] - self.w_d2[self.previous_response])[:, self.previous_stimulus],
                 axis=-1)
@@ -222,10 +221,10 @@ class BasalGanglia:
         for ind, resp in enumerate(responses):
             responses_values[ind] = np.median(self.stri.values[resp])
 
-        return response_index, response, responses_values
+        return response_index, response, responses_values, np.zeros(len(responses))
 
-    def force_dopamine(self, reward: float, k: int = 0, external_value: float = 0, reward_int: float = 0):
-        self.stri.learn(reward, k, external_value, self.off_policy)
+    def force_dopamine(self, reward: float, k: int = 0, reward_int: float = 0):
+        self.stri.learn(reward, k, self.off_policy)
 
     def update_response(self, response):
         """
@@ -361,25 +360,25 @@ class DualBasalGanglia:
                                                     self.epsilon_noise)
         self.current_max_response = self.tha.max_response
 
-        responses_values = np.zeros(len(responses))
+        responses_values_ext = np.zeros(len(responses))
+        responses_values_int = np.zeros(len(responses))
         for ind, resp in enumerate(responses):
-            responses_values[ind] = np.median(self.priority_ext_init * self.priority_ext * self.stri_ext.values[resp] +
-                                              self.priority_int_init * self.priority_int * self.stri_int.values[resp])
+            responses_values_ext[ind] = np.median(self.stri_ext.values[resp])
+            responses_values_int[ind] = np.median(self.stri_int.values[resp])
 
-        return response_index, response, responses_values
+        return response_index, response, responses_values_ext, responses_values_int
 
-    def force_dopamine(self, reward_ext: float, k: int = 0, external_value: float = 0, reward_int: float = 0.0):
+    def force_dopamine(self, reward_ext: float, k: int = 0, reward_int: float = 0.0):
         """
         Aggregates rewards.
 
         :param reward_ext: external reward
         :param reward_int: internal reward
         :param k: step (for n-step learning)
-        :param external_value: used, when reward estimation by striatum is not available
         :return:
         """
-        self.stri_ext.learn(reward_ext, k, external_value, self.off_policy)
-        self.stri_int.learn(reward_int, k, external_value, self.off_policy)
+        self.stri_ext.learn(reward_ext, k, self.off_policy)
+        self.stri_int.learn(reward_int, k, self.off_policy)
 
         # update priorities
         td_err = self.stri_ext.error.sum()

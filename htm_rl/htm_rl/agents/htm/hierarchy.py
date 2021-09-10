@@ -6,6 +6,8 @@ from htm_rl.modules.basal_ganglia import BasalGanglia
 import os
 import pickle
 
+EPS = 1e-12
+
 
 class SpatialMemory:
     def __init__(self,
@@ -41,7 +43,7 @@ class SpatialMemory:
                 self.id_counter += 1
             else:
                 pattern_sizes = self.patterns.sum(axis=1)
-                overlaps = 1 - np.sum(np.abs(self.patterns - dense_pattern), axis=1) / (pattern_sizes + 1e-15)
+                overlaps = 1 - np.sum(np.abs(self.patterns - dense_pattern), axis=1) / (pattern_sizes + EPS)
 
                 if np.any(overlaps >= self.overlap_threshold):
                     best_index = np.argmax(overlaps)
@@ -60,7 +62,7 @@ class SpatialMemory:
         :return:
         """
         values -= values.mean()
-        values /= (values.std() + 1e-12)
+        values /= (values.std() + EPS)
         positive = values > 0
         values[positive] *= self.permanence_increment
         values[~positive] *= self.permanence_decrement
@@ -265,17 +267,21 @@ class Block:
             self.should_return_exec_predictions = True
             feedback_active_columns = list()
             shift = 0
-            total_value = 0
+            total_value_ext = 0
+            total_value_int = 0
 
             for block in self.feedback_in:
-                pattern, value = block.get_output('feedback', return_value=True)
+                pattern, value_ext, value_int = block.get_output('feedback', return_value=True)
                 feedback_active_columns.append(pattern + shift)
                 shift += block.basal_columns
-                if value is not None:
-                    total_value += value
+                if value_ext is not None:
+                    total_value_ext += value_ext
+                if value_int is not None:
+                    total_value_int += value_int
 
             if len(self.feedback_in) > 1:
-                total_value /= len(self.feedback_in)
+                total_value_ext /= len(self.feedback_in)
+                total_value_int /= len(self.feedback_in)
 
             if len(feedback_active_columns) > 0:
                 feedback_active_columns = np.concatenate(feedback_active_columns)
@@ -296,7 +302,7 @@ class Block:
             else:
                 boost_modulation = 1
 
-            self.feedback_boost = self.feedback_boost_range[0] + total_value * boost_modulation * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
+            self.feedback_boost = self.feedback_boost_range[0] + max(total_value_ext, total_value_int) * boost_modulation * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
         else:
             basal_active_columns = list()
             shift = 0
@@ -390,7 +396,7 @@ class Block:
             self.anomaly = self.tm.anomaly[-1]
             self.anomaly_threshold = self.tm.anomaly_threshold
 
-            self.d_an = (self.anomaly - self.anomaly_threshold)/(self.anomaly_threshold + 1e-12)
+            self.d_an = (self.anomaly - self.anomaly_threshold)/(self.anomaly_threshold + EPS)
 
             self.tm.set_active_apical_cells(apical_active_cells)
             self.tm.set_winner_apical_cells(apical_winner_cells)
@@ -405,9 +411,9 @@ class Block:
             self.confidence = self.tm.confidence[-1]
             self.confidence_threshold = self.tm.confidence_threshold
 
-            self.d_cn = (self.confidence - self.confidence_threshold)/(self.confidence_threshold + 1e-12)
+            self.d_cn = (self.confidence - self.confidence_threshold)/(self.confidence_threshold + EPS)
 
-            boost_modulation = 1 - min((self.mean_reward - self.min_reward) / (self.max_reward + 1e-12), 1.0)
+            boost_modulation = 1 - min((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 1.0)
             if boost_modulation > self.boost_modulation:
                 self.boost_modulation = self.sm_bm_inc * self.boost_modulation + (1 - self.sm_bm_inc) * boost_modulation
             else:
@@ -466,10 +472,14 @@ class Block:
                         # feedback boost
                         boost_predicted_options[indices] += self.feedback_boost
 
-                    option_index, option, option_values = self.bg.compute(condition.sparse, options, responses_boost=boost_predicted_options)
+                    option_index, option, option_values_ext, option_values_int = self.bg.compute(condition.sparse, options, responses_boost=boost_predicted_options)
                     self.bg.update_stimulus(condition.sparse)
-                    norm_option_values = option_values - option_values.min()
-                    norm_option_values /= (norm_option_values.max() + 1e-12)
+
+                    norm_option_values_ext = option_values_ext - option_values_ext.min()
+                    norm_option_values_ext /= (norm_option_values_ext.max() + EPS)
+
+                    norm_option_values_int = option_values_int - option_values_int.min()
+                    norm_option_values_int /= (norm_option_values_int.max() + EPS)
 
                     self.made_decision = True
                     self.current_option = self.sm.unique_id[option_index]
@@ -484,17 +494,17 @@ class Block:
                             block.finish_current_option('failed')
 
                     if return_value:
-                        return option, norm_option_values[option_index]
+                        return option, norm_option_values_ext[option_index], norm_option_values_int[option_index]
                     else:
                         return option
                 else:
                     if return_value:
-                        return np.empty(0), None
+                        return np.empty(0), None, None
                     else:
                         return np.empty(0)
             else:
                 if return_value:
-                    return predicted_columns, None
+                    return predicted_columns, None, None
                 else:
                     return predicted_columns
         else:

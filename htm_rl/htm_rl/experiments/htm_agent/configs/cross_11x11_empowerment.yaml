@@ -16,22 +16,25 @@ log: true
 
 run_options:
   n_episodes: 2000
-  log_every_episode: 249
-  log_values: True
-  log_policy: True
-  log_option_values: True
-  log_option_policy: True
+  log_every_episode: 100
+  log_values_int: True
+  log_values_ext: True
+  log_priorities: True
+  log_values: False
+  log_policy: False
+  log_option_values: False
+  log_option_policy: False
   log_options_usage: True
   log_td_error: True
   log_anomaly: False
   log_confidence: False
   log_boost_modulation: False
-  train_patterns: True
   log_segments: True
-  draw_options: True
   log_terminal_stat: False
+  draw_options: True
   draw_options_stats: True
   opt_threshold: 4
+  train_patterns: True
 
 environment:
   seed: 2151
