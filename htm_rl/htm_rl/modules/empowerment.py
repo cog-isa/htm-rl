@@ -122,7 +122,7 @@ class Empowerment:
     seed: int
         The seed for random generator.
     encode_size: int
-        The size of SDR representations which are used in the TemporalMemory algorithm to create the model.
+        The size of SDR representations which is taken by model.
     tm_config: dict
         It contains all parameters for initialisation of the TemporalMemory without the columnDimensions.
         columnDimensions is defined inside Empowerment.
