@@ -97,7 +97,7 @@ class HTMAgent:
 
         # train empowerment tm
         if self.use_intrinsic_reward:
-            current_obs = self.hierarchy.output_block.get_output('basal')
+            current_obs = self.hierarchy.visual_block.get_output('basal')
             if (self.previous_obs.size > 0) and (current_obs.size > 0):
                 self.empowerment.learn(self.previous_obs, current_obs)
             self.previous_obs = current_obs

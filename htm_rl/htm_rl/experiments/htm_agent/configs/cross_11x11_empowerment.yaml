@@ -109,7 +109,7 @@ cagent:
     horizon: 3
     similarity_threshold: 0.6
     memory: true
-    evaluate: true
+    evaluate: false
     tm_config:
       noise_tolerance: 0.25
       learning_margin: 0.35
