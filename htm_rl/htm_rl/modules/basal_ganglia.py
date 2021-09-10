@@ -183,7 +183,8 @@ class BasalGanglia:
                  off_policy: bool,
                  softmax_beta: float,
                  epsilon_noise: float,
-                 seed: int):
+                 seed: int,
+                 **kwargs):
         self._input_size = input_size
         self._output_size = output_size
 

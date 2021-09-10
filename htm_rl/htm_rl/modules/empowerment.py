@@ -11,7 +11,7 @@ EPS = 1e-12
 
 
 class Memory:
-    '''
+    """
     The Memory object saves SDR representations of states and clusterizes them using the similarity measure.
     The SDR representation must have fixed sparsity of active cells for correct working.
 
@@ -33,7 +33,8 @@ class Memory:
         This is the list of representations amount for each cluster. Its shape: (munber of clusters, 1)
     threshold: float
         It stores threshold argument.
-    '''
+    """
+
     def __init__(self, size, threshold=0.5):
         self.kernels = None
         self.norms = None
@@ -41,7 +42,7 @@ class Memory:
         self.size = size
 
     def add(self, state):
-        ''' Add a new SDR representation (store and clusterize).
+        """ Add a new SDR representation (store and clusterize).
 
         Parameters
         ----------
@@ -50,7 +51,7 @@ class Memory:
 
         Returns
         -------
-        '''
+        """
         state_dense = np.zeros(self.size)
         state_dense[state] = 1
         sims = self.similarity(state_dense)
@@ -66,7 +67,7 @@ class Memory:
             self.norms[np.argmax(sims)] += 1
 
     def similarity(self, state):
-        '''This function evaluate similarity measure between stored clusters and new state.
+        """This function evaluate similarity measure between stored clusters and new state.
 
         Parameters
         ----------
@@ -80,7 +81,7 @@ class Memory:
             array is returned, else returned array contained similarities between the state and each cluster.
             Its shape: (number of kernels, 1).
 
-        '''
+        """
         if self.kernels is None:
             return np.array([])
         else:
@@ -91,7 +92,7 @@ class Memory:
             return similarities
 
     def adopted_kernels(self, sparsity):
-        '''This function normalises stored representations and cuts them by sparsity threshold.
+        """This function normalises stored representations and cuts them by sparsity threshold.
 
         Parameters
         ----------
@@ -104,7 +105,7 @@ class Memory:
             Normalised and cutted representations of each cluster. The cutting is done by choosing the most frequent
             active cells (their number is defined by sparsity) in kernels attribute. All elements of array are
             in [0, 1]. The shape is (number of clusters, 1).
-        '''
+        """
         data = np.copy(self.kernels)
         data[data < np.quantile(data, 1 - sparsity, axis=1).reshape((-1, 1))] = 0
         clusters_representations = data / self.norms
@@ -112,7 +113,7 @@ class Memory:
 
 
 class Empowerment:
-    '''
+    """
     The Empowerment object contains all necessary things to evaluate 'empowerment' using the model of environment. This
     model creates and learns also here.
 
@@ -159,7 +160,8 @@ class Empowerment:
         It stores the encode_size parameter.
     memory: Memory
         It contains the Memory object if memory parameter is True, else None.
-    '''
+    """
+
     def __init__(self, seed, encode_size, tm_config, sparsity,
                  sp_config=None,
                  memory=False,
@@ -201,7 +203,7 @@ class Empowerment:
             self.memory = None
 
     def eval_state(self, state, horizon, use_segments=False, use_memory=False):
-        '''This function evaluates empowerment for given state.
+        """This function evaluates empowerment for given state.
 
         Parameters
         ----------
@@ -224,7 +226,7 @@ class Empowerment:
         start_state: np.array
             The SDR representation of given state that is used in TM. (Only if sp is defined it differs from parameter
             state).
-        '''
+        """
         if self.sp is not None:
             self.sdr_0.sparse = state
             self.sp.compute(self.sdr_0, learn=False, output=self.sdr_sp)
@@ -262,7 +264,7 @@ class Empowerment:
         return empowerment, p, start_state
 
     def eval_env(self, environment, horizon, use_segments=False, use_memory=False):
-        '''This function evaluate empowerment for every state in gridworld environment.
+        """This function evaluate empowerment for every state in gridworld environment.
 
         Parameters
         ----------
@@ -280,7 +282,7 @@ class Empowerment:
         -------
         empowerment_map: np.array
             This is the map of the environment with values of empowerment for each state.
-        '''
+        """
         env = deepcopy(environment)
         empowerment_map = np.zeros(env.env.shape)
 
@@ -295,7 +297,7 @@ class Empowerment:
         return empowerment_map
 
     def learn(self, state_0, state_1):
-        '''This function realize learning of TM.
+        """This function realize learning of TM.
 
         Parameters
         ----------
@@ -306,7 +308,7 @@ class Empowerment:
 
         Returns
         -------
-        '''
+        """
         self.sdr_0.sparse = state_0
         self.sdr_1.sparse = state_1
         self.tm.reset()
@@ -343,8 +345,8 @@ class Empowerment:
             self.anomalies.append(self.tm.anomaly)
         self.tm.reset()
 
-    def detailed_evaluate(self, env, horizon, use_segments=False, use_memory = False):
-        '''This function evaluate TM and real empowerment and confusion matrix for every state in gridworld environment.
+    def detailed_evaluate(self, env, horizon, use_segments=False, use_memory=False):
+        """This function evaluate TM and real empowerment and confusion matrix for every state in gridworld environment.
 
         Parameters
         ----------
@@ -361,7 +363,7 @@ class Empowerment:
         Returns
         -------
         plot normalised maps with TM and real empowerment. Also plot confusion matrix in map style.
-        '''
+        """
         confusion_data = np.zeros((env.env.shape[0] * env.env.shape[1], self.tm.getColumnDimensions()[0]))
         empowerment_map = np.zeros(env.env.shape)
         real_empowerment_map = np.zeros(env.env.shape)
@@ -473,6 +475,7 @@ def real_empowerment(env, position, horizon):
         data[env.env.agent.position] += 1
     return np.sum(-data / data.sum() * np.log(data / data.sum(), where=data != 0), where=data != 0), data
 
+
 def learn(seed,
           empowerment,
           env,
@@ -521,8 +524,3 @@ def learn(seed,
     plt.plot(moving_average(encode_sizes, 100))
     plt.title('Number of active columns')
     plt.show()
-
-
-
-
-
