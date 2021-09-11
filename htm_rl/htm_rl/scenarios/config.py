@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import numpy as np
-import yaml
 
 from htm_rl.common.utils import isnone, ensure_list
 from htm_rl.scenarios.yaml_utils import read_config, save_config
