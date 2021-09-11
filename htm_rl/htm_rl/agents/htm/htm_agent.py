@@ -16,8 +16,6 @@ import random
 import yaml
 import matplotlib.pyplot as plt
 import wandb
-# import os
-# os.environ['OMP_NUM_THREADS'] = '1'
 
 
 class BioGwLabAction:

@@ -222,7 +222,7 @@ class BasalGanglia:
         for ind, resp in enumerate(responses):
             responses_values[ind] = np.median(self.stri.values[resp])
 
-        return response_index, response, responses_values, np.zeros(len(responses))
+        return response_index, response, responses_values
 
     def force_dopamine(self, reward: float, k: int = 0, reward_int: float = 0):
         self.stri.learn(reward, k, self.off_policy)
@@ -327,6 +327,8 @@ class DualBasalGanglia:
         self.softmax_beta = softmax_beta
         self.epsilon_noise = epsilon_noise
 
+        self.responses_values_ext = np.empty(0)
+        self.responses_values_int = np.empty(0)
         self.current_max_response = None
 
     @property
@@ -366,13 +368,14 @@ class DualBasalGanglia:
                                                     self.epsilon_noise)
         self.current_max_response = self.tha.max_response
 
-        responses_values_ext = np.zeros(len(responses))
-        responses_values_int = np.zeros(len(responses))
+        self.responses_values_ext = np.zeros(len(responses))
+        self.responses_values_int = np.zeros(len(responses))
         for ind, resp in enumerate(responses):
-            responses_values_ext[ind] = np.median(self.stri_ext.values[resp])
-            responses_values_int[ind] = np.median(self.stri_int.values[resp])
-
-        return response_index, response, responses_values_ext, responses_values_int
+            self.responses_values_ext[ind] = np.median(self.stri_ext.values[resp])
+            self.responses_values_int[ind] = np.median(self.stri_int.values[resp])
+        responses_values = (self.responses_values_ext * self.priority_ext_init * self.priority_ext +
+                            self.responses_values_int * self.priority_int_init * self.priority_int)
+        return response_index, response, responses_values
 
     def force_dopamine(self, reward_ext: float, k: int = 0, reward_int: float = 0.0):
         """

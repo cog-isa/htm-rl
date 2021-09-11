@@ -172,16 +172,13 @@ def compute_dual_values(env: Environment, agent):
         _, observation, _ = env.observe()
         state_pattern.sparse = observation
         visual_block.sp.compute(state_pattern, False, sp_output)
-        (option_index,
-         option,
-         option_values_ext,
-         option_values_int) = output_block.bg.compute(sp_output.sparse,
-                                                      options,
-                                                      responses_boost=None,
-                                                      learn=False)
+        _ = output_block.bg.compute(sp_output.sparse,
+                                    options,
+                                    responses_boost=None,
+                                    learn=False)
         row, column = env.agent.position
-        values_ext[row][column] = option_values_ext.max()
-        values_int[row][column] = option_values_int.max()
+        values_ext[row][column] = output_block.bg.responses_values_ext.max()
+        values_int[row][column] = output_block.bg.responses_values_int.max()
     return values_ext, values_int
 
 
