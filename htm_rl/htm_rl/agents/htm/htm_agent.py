@@ -219,16 +219,14 @@ class HTMAgentRunner:
         self.agent = HTMAgent(config['agent'], hierarchy)
         self.env_config = config['environment']
         self.environment = BioGwLabEnvironment(**config['environment'])
-        if 'positions' in config['environment']['food'].keys():
-            self.terminal_positions = [tuple(x) for x in config['environment']['food']['positions']]
-            self.terminal_pos_stat = dict(zip(self.terminal_positions, [0] * len(self.terminal_positions)))
-        else:
-            self.terminal_positions = None
-            self.terminal_pos_stat = None
+        self.terminal_pos_stat = dict()
+        self.last_terminal_stat = 0
+        self.total_terminals = 0
         self.logger = logger
         self.total_reward = 0
         self.animation = False
         self.agent_pos = list()
+        self.level = 0
         self.steps = 0
         self.episode = 0
         self.option_actions = list()
@@ -294,7 +292,7 @@ class HTMAgentRunner:
 
                 if (self.logger is not None) and (self.episode > 0):
                     self.logger.log(
-                        {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode},
+                        {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode, 'level': self.level},
                         step=self.episode)
                     if log_segments:
                         self.logger.log(
@@ -347,8 +345,8 @@ class HTMAgentRunner:
                                                       obstacle_mask=self.environment.env.entities['obstacle'].mask)
                         self.option_stat.clear_stats()
                         self.last_options_usage = dict()
-                    if log_terminal_stat and (self.terminal_pos_stat is not None):
-                        self.logger.log(dict([(str(x[0]), x[1]) for x in self.terminal_pos_stat.items()]),
+                    if log_terminal_stat:
+                        self.logger.log(dict([(f'terminal_stats/{x[0]}', x[1]) for x in self.terminal_pos_stat.items()]),
                                         step=self.episode)
                     if log_values_ext or log_values_int:
                         values_ext, values_int = compute_dual_values(self.environment.env, self.agent)
@@ -466,11 +464,14 @@ class HTMAgentRunner:
             self.environment.act(self.current_action)
 
             # ///logging///
-            if self.terminal_pos_stat is not None:
-                if self.environment.callmethod('is_terminal'):
-                    pos = self.environment.env.agent.position
-                    if pos in self.terminal_pos_stat:
-                        self.terminal_pos_stat[pos] += 1
+            if self.environment.callmethod('is_terminal'):
+                pos = self.environment.env.agent.position
+                if pos in self.terminal_pos_stat:
+                    self.terminal_pos_stat[pos] += 1
+                else:
+                    self.terminal_pos_stat[pos] = 1
+                self.last_terminal_stat = self.terminal_pos_stat[pos]
+                self.total_terminals += 1
             # \\\logging\\\
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
@@ -671,13 +672,14 @@ class HTMAgentRunner:
             positions = self.rng.sample(positions, sample_size)
         self.environment.env.modules['agent'].positions = positions
 
-    def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None):
+    def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None, door_positions=None):
         """
         Room numbers:
         |1|2|
         |3|4|
         :param agent_fixed_positions:
         :param food_fixed_positions:
+        :param door_positions
         :return:
         """
 
@@ -696,7 +698,26 @@ class HTMAgentRunner:
                     col_range = [width + 1, width * 2]
             return row_range, col_range
 
-        agent_room, food_room = self.rng.sample(list(range(1, 5)), k=2)
+        def get_adjacent_rooms(room):
+            if (room == 2) or (room == 3):
+                return [1, 4]
+            else:
+                return [2, 3]
+
+        adjacent_doors = {1: [1, 2], 2: [2, 3], 3: [1, 4], 4: [3, 4]}
+
+        if self.level < 2:
+            agent_room = self.rng.randint(1, 5)
+            if self.level < 1:
+                food_room = None
+                food_door = self.rng.sample(adjacent_doors[agent_room], k=1)[0]
+            else:
+                food_room = self.rng.sample(get_adjacent_rooms(agent_room), k=1)[0]
+                food_door = None
+        else:
+            agent_room, food_room = self.rng.sample(list(range(1, 5)), k=2)
+            food_door = None
+
         room_width = (self.environment.env.shape[0] - 1) // 2
         if agent_fixed_positions is not None:
             agent_pos = tuple(agent_fixed_positions[agent_room - 1])
@@ -706,7 +727,9 @@ class HTMAgentRunner:
             col = self.rng.randint(*col_range)
             agent_pos = (row, col)
 
-        if food_fixed_positions is not None:
+        if food_door is not None:
+            food_pos = tuple(door_positions[food_door - 1])
+        elif food_fixed_positions is not None:
             food_pos = tuple(food_fixed_positions[food_room - 1])
         else:
             row_range, col_range = ranges(food_room, room_width)
@@ -719,6 +742,9 @@ class HTMAgentRunner:
         self.environment.callmethod('reset')
         if self.logger is not None:
             self.draw_map(self.logger)
+
+    def level_up(self):
+        self.level += 1
 
     def draw_map(self, logger):
         map_image = self.environment.callmethod('render_rgb')

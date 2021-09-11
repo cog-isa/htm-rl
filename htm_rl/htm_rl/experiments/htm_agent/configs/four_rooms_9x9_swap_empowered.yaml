@@ -30,7 +30,7 @@ run_options:
   log_confidence: False
   log_boost_modulation: False
   log_segments: True
-  log_terminal_stat: False
+  log_terminal_stat: True
   draw_options: True
   draw_options_stats: True
   opt_threshold: 4
@@ -139,7 +139,7 @@ blocks:
       alpha: 0.01
       beta: 0.01
       off_policy: true
-      softmax_beta: 1.0
+      softmax_beta: 0.7
       epsilon_noise: 0.0
     block:
       level: 1
@@ -318,11 +318,11 @@ temporal_memory_default:
 
 basal_ganglia_default:
   alpha: 0.01
-  alpha_int: 0.01
+  alpha_int: 0.1
   beta: 0.01
-  beta_int: 0.01
-  discount_factor: 0.997
-  discount_factor_int: 0
+  beta_int: 0.1
+  discount_factor: 0.99
+  discount_factor_int: 0.9
   off_policy: true
   off_policy_int: true
   softmax_beta: 1
