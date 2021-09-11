@@ -267,21 +267,17 @@ class Block:
             self.should_return_exec_predictions = True
             feedback_active_columns = list()
             shift = 0
-            total_value_ext = 0
-            total_value_int = 0
+            total_value = 0
 
             for block in self.feedback_in:
-                pattern, value_ext, value_int = block.get_output('feedback', return_value=True)
+                pattern, value = block.get_output('feedback', return_value=True)
                 feedback_active_columns.append(pattern + shift)
                 shift += block.basal_columns
-                if value_ext is not None:
-                    total_value_ext += value_ext
-                if value_int is not None:
-                    total_value_int += value_int
+                if value is not None:
+                    total_value += value
 
             if len(self.feedback_in) > 1:
-                total_value_ext /= len(self.feedback_in)
-                total_value_int /= len(self.feedback_in)
+                total_value /= len(self.feedback_in)
 
             if len(feedback_active_columns) > 0:
                 feedback_active_columns = np.concatenate(feedback_active_columns)
@@ -302,7 +298,7 @@ class Block:
             else:
                 boost_modulation = 1
 
-            self.feedback_boost = self.feedback_boost_range[0] + max(total_value_ext, total_value_int) * boost_modulation * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
+            self.feedback_boost = self.feedback_boost_range[0] + total_value * boost_modulation * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
         else:
             basal_active_columns = list()
             shift = 0
@@ -472,14 +468,11 @@ class Block:
                         # feedback boost
                         boost_predicted_options[indices] += self.feedback_boost
 
-                    option_index, option, option_values_ext, option_values_int = self.bg.compute(condition.sparse, options, responses_boost=boost_predicted_options)
+                    option_index, option, option_values = self.bg.compute(condition.sparse, options, responses_boost=boost_predicted_options)
                     self.bg.update_stimulus(condition.sparse)
 
-                    norm_option_values_ext = option_values_ext - option_values_ext.min()
-                    norm_option_values_ext /= (norm_option_values_ext.max() + EPS)
-
-                    norm_option_values_int = option_values_int - option_values_int.min()
-                    norm_option_values_int /= (norm_option_values_int.max() + EPS)
+                    norm_option_values = option_values - option_values.min()
+                    norm_option_values /= (norm_option_values.max() + EPS)
 
                     self.made_decision = True
                     self.current_option = self.sm.unique_id[option_index]
@@ -494,17 +487,17 @@ class Block:
                             block.finish_current_option('failed')
 
                     if return_value:
-                        return option, norm_option_values_ext[option_index], norm_option_values_int[option_index]
+                        return option, norm_option_values[option_index]
                     else:
                         return option
                 else:
                     if return_value:
-                        return np.empty(0), None, None
+                        return np.empty(0), None
                     else:
                         return np.empty(0)
             else:
                 if return_value:
-                    return predicted_columns, None, None
+                    return predicted_columns, None
                 else:
                     return predicted_columns
         else:
