@@ -1,4 +1,4 @@
-- condition: ['episode', 'mod', 10, 'repeat']
+- condition: ['episode', 'mod', 200, 'repeat']
   check_every: 'episode'
   action: 'set_pos_rand_rooms'
   params:

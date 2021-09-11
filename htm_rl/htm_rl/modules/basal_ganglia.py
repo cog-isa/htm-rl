@@ -257,8 +257,12 @@ class DualBasalGanglia:
                  output_size: int,
                  alpha: float = 0.1,
                  beta: float = 0.1,
+                 alpha_int: float = 0.1,
+                 beta_int: float = 0.1,
                  discount_factor: float = 0.997,
-                 off_policy: bool = False,
+                 discount_factor_int: float = 0.997,
+                 off_policy: bool = True,
+                 off_policy_int: bool = True,
                  softmax_beta: float = 1.0,
                  epsilon_noise: float = 0.0,
                  priority_ext: float = 1.0,
@@ -304,7 +308,7 @@ class DualBasalGanglia:
         self._output_size = output_size
 
         self.stri_ext = Striatum(input_size, output_size, discount_factor, alpha, beta)
-        self.stri_int = Striatum(input_size, output_size, discount_factor, alpha, beta)
+        self.stri_int = Striatum(input_size, output_size, discount_factor_int, alpha_int, beta_int)
         self.priority_ext_init = priority_ext
         self.priority_int_init = priority_int
         self.priority_ext = 1
@@ -319,6 +323,7 @@ class DualBasalGanglia:
         self.tha = Thalamus(output_size, output_size, seed)
 
         self.off_policy = off_policy
+        self.off_policy_int = off_policy_int
         self.softmax_beta = softmax_beta
         self.epsilon_noise = epsilon_noise
 
@@ -379,7 +384,7 @@ class DualBasalGanglia:
         :return:
         """
         self.stri_ext.learn(reward_ext, k, self.off_policy)
-        self.stri_int.learn(reward_int, k, self.off_policy)
+        self.stri_int.learn(reward_int, k, self.off_policy_int)
 
         # update priorities
         td_err = self.stri_ext.error.sum()
