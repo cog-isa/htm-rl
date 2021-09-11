@@ -73,10 +73,15 @@ class Environment(Env):
 
         self.episode_step = 0
         self.step_reward = 0
+        self.items_collected = 0
 
     def reset(self):
         self.episode_step = 0
         self.step_reward = 0
+        self.items_collected = 0
+
+        self.entity_slices.clear()
+        self.aggregated_mask.clear()
 
         self.entity_slices.clear()
         self.aggregated_mask.clear()
@@ -175,6 +180,7 @@ class Environment(Env):
             reward, success = handler(agent.position, agent.view_direction)
             if success:
                 self.step_reward += reward
+                self.items_collected += 1
                 self.collected()
 
     def collected(self):

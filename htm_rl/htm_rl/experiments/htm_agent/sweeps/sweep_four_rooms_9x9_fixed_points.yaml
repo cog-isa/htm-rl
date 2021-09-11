@@ -1,0 +1,24 @@
+project: four_rooms_fixed_points_new_final
+entity: hauska
+program: ../../agents/htm/htm_agent.py
+method: grid
+parameters:
+  seed:
+    values: [46504, 990958, 453238]
+  environment.seed:
+    values:
+      - 99078
+      - 87546
+      - 58763
+  block_default.feedback_boost_range:
+    values:
+      - [0.0, 0.0]
+      - [0.0, 0.8]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_fixed_points
+  - ${args}
+

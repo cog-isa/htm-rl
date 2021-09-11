@@ -17,7 +17,7 @@ class EpisodeTerminator(Module):
 
     def __init__(
             self, env: Environment, episode_max_steps: Union[int, str] = None,
-            early_stop: bool = False,
+            early_stop: bool = False, n_items_to_collect: int = None,
             **module
     ):
         super().__init__(**module)
@@ -30,6 +30,7 @@ class EpisodeTerminator(Module):
         self.max_steps = episode_max_steps
         self.early_stop = early_stop
         self.terminated = False
+        self.n_items_to_collect = n_items_to_collect
 
     def reset(self):
         self.terminated = False
@@ -39,6 +40,9 @@ class EpisodeTerminator(Module):
             # WARN: ugly workaround
             food = self.env.aggregated_mask[EntityType.Consumable]
             self.terminated = not np.any(food)
+
+            if self.n_items_to_collect is not None:
+                self.terminated = self.env.items_collected == self.n_items_to_collect
 
     def is_terminal(self, episode_step):
         if episode_step >= self.max_steps:

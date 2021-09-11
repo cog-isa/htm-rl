@@ -7,7 +7,12 @@ from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.common.utils import isnone
 
 
-class FoodPositionsGenerator:
+class FoodPositions:
+    def generate(self, *args, **kwargs):
+        raise NotImplemented
+
+
+class FoodPositionsGenerator(FoodPositions):
     shape: Tuple[int, int]
     n_items: int
     area_weights: Optional[np.ndarray]
@@ -35,6 +40,20 @@ class FoodPositionsGenerator:
             indices_fl = rng.choice(empty_indices_fl, size=self.n_items, replace=False)
 
         # indices = list(zip(*np.divmod(indices_fl, self.shape[1])))
+        return indices_fl
+
+
+class FoodPositionsManual(FoodPositions):
+    shape: Tuple[int, int]
+    n_items: int
+    positions: List[Tuple[int, int]]
+
+    def __init__(self, shape: Tuple[int, int], positions: List[Tuple[int, int]], *args, **kwargs):
+        self.shape = shape
+        self.positions = [tuple(x) for x in positions]
+
+    def generate(self, *args, **kwargs):
+        indices_fl = [x[0]*self.shape[0] + x[1] for x in self.positions]
         return indices_fl
 
 

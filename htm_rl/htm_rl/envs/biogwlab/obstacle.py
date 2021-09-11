@@ -4,7 +4,7 @@ import numpy as np
 
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.module import Entity, EntityType
-from htm_rl.envs.biogwlab.generation.obstacles import ObstacleMaskGenerator
+from htm_rl.envs.biogwlab.generation.obstacles import ObstacleMaskGenerator, ObstacleMask, ObstacleMaskManual
 from htm_rl.envs.biogwlab.renderer import render_mask
 from htm_rl.envs.biogwlab.view_clipper import ViewClip
 
@@ -13,14 +13,18 @@ class Obstacle(Entity):
     family = 'obstacle'
     type = EntityType.Obstacle
 
-    generator: ObstacleMaskGenerator
+    generator: ObstacleMask
     mask: np.ndarray
     last_seed: Optional[int]
 
-    def __init__(self, env: Environment, density, **entity):
+    def __init__(self, env: Environment, density, map_name=None, **entity):
         super(Obstacle, self).__init__(**entity)
 
-        self.generator = ObstacleMaskGenerator(shape=env.shape, density=density)
+        if map_name is not None:
+            self.generator = ObstacleMaskManual(shape=env.shape, map_name=map_name)
+        else:
+            self.generator = ObstacleMaskGenerator(shape=env.shape, density=density)
+
         self.mask = np.zeros(env.shape, dtype=np.bool)
         self.last_seed = None
 
