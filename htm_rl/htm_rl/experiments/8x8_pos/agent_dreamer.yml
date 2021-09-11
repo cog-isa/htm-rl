@@ -10,7 +10,7 @@ eligibility_traces: &e_traces
 
 softmax_temp: [.2, .93]
 exploration_eps: [.2, .99]
-im_weight: [.000, .993]
+im_weight: [.001, .99]
 
 td_error_decay: .6
 dreaming:
@@ -22,10 +22,12 @@ dreaming:
     learning_rate_factor: 1.
   rollout_q_lr_decay_power: .0
 
-  eligibility_traces: *e_traces
-  derive_e_traces: false
+  eligibility_traces:
+    trace_decay: [.75, .99]
+    discount_factor: *discount_factor
+  derive_e_traces: true
 
-  softmax_temp: [ .2, .93 ]
+  softmax_temp: [.0, .93]
   exploration_eps: [.3, .997]
   trajectory_exploration_eps_decay: 1.
 
