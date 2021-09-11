@@ -13,7 +13,7 @@ class SaEncoder:
     def encode_sa(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
         raise NotImplementedError()
 
-    def decode_state(self, sdr) -> SparseSdr:
+    def decode_state(self, sdr: SparseSdr) -> SparseSdr:
         raise NotImplementedError()
 
     @property

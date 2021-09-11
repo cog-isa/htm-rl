@@ -65,3 +65,13 @@ class SpatialPooler:
     def n_active_bits(self):
         sparsity = self._spatial_pooler.getLocalAreaDensity()
         return int(self.output_sdr_size * sparsity)
+
+
+class SpatialPoolerWrapper(SpatialPooler):
+    # noinspection PyMissingConstructor
+    def __init__(self, htm_spatial_pooler: HtmSpatialPooler):
+        self._spatial_pooler = htm_spatial_pooler
+        self.output_sdr_size = self._spatial_pooler.getColumnDimensions()[0]
+
+        self._cached_input_sdr = SDR(self._spatial_pooler.getInputDimensions())
+        self._cached_output_sdr = SDR(self._spatial_pooler.getColumnDimensions())
