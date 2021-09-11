@@ -252,15 +252,15 @@ class Empowerment:
             data[i] += 1
         if self.memory is not None and use_memory:
             if (self.memory.kernels is not None) and (self.memory.kernels.size > 0):
-                p = np.round(self.memory.adopted_kernels(self.sparsity) @ data.T / (self.sparsity * self.size))
+                p = np.round(np.dot(self.memory.adopted_kernels(self.sparsity), data.T) / (self.sparsity * self.size))
                 total_p = p.sum()
                 empowerment = np.sum(-p / (total_p + EPS) * np.log(p / (total_p + EPS), where=p != 0), where=p != 0)
                 p = p / (total_p + EPS)
                 return empowerment, p, start_state
             else:
                 return 0, None, start_state
-        empowerment = np.sum(-data / data.sum() * np.log(data / data.sum(), where=data != 0), where=data != 0)
-        p = data / data.sum()
+        empowerment = np.sum(-data / (data.sum() + EPS) * np.log(data / (data.sum() + EPS), where=data != 0), where=data != 0)
+        p = data / (data.sum() + EPS)
         return empowerment, p, start_state
 
     def eval_env(self, environment, horizon, use_segments=False, use_memory=False):

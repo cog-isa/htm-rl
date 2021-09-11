@@ -108,7 +108,7 @@ cagent:
   empowerment:
     horizon: 3
     similarity_threshold: 0.6
-    memory: true
+    memory: false
     evaluate: false
     tm_config:
       noise_tolerance: 0.25
