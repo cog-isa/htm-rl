@@ -86,14 +86,66 @@ class DreamingDouble(QModelBasedAgent):
         self._step = 0
         self._episode = 0
 
-    def put_into_dream(self, starting_sa_sdr):
-        self.save_tm_checkpoint()
+    def on_new_episode(self):
+        self._episode += 1
+        self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
+        self.E_traces.decay_trace_decay()
+        self.exploration_eps = exp_decay(self.exploration_eps)
+        self._decay_softmax_temperature()
+
+    def can_dream(self, reward):
+        if not self.enabled:
+            return False
+        if not (self.first_dreaming_episode <= self._episode < self.last_dreaming_episode):
+            return False
+        if reward > .2:
+            # reward condition prevents useless planning when we've already
+            # found the goal
+            return False
+        if self.Q.learning_rate[0] < 1e-3:
+            # there's no reason to dream when learning is almost stopped
+            return False
+        return True
+
+    def decide_to_dream(self, td_error):
+        if self._td_error_based_dreaming(td_error):
+            return True
+        return False
+
+    def dream(self, starting_state, prev_sa_sdr):
+        self._put_into_dream(prev_sa_sdr)
+
+        starting_state_len = len(starting_state)
+        i_rollout = 0
+        sum_depth = 0
+        depths = []
+        while i_rollout < self.n_prediction_rollouts[0] or (
+                i_rollout < self.n_prediction_rollouts[1]
+                and sum_depth >= 2.2 * i_rollout
+        ):
+            self._on_new_rollout(i_rollout)
+            state = starting_state
+            depth = 0
+            for depth in range(self.prediction_depth):
+                if len(state) < .6 * starting_state_len:
+                    break
+                state, a = self._move_in_dream(state)
+
+            i_rollout += 1
+            sum_depth += depth ** .6
+            depths.append(depth)
+
+        # if depths: print(depths)
+        self._wake()
+
+    def _put_into_dream(self, starting_sa_sdr):
+        self._save_tm_checkpoint()
         self.starting_sa_sdr = starting_sa_sdr.copy()
         self.exploration_eps_backup = self.exploration_eps
 
-    def on_new_rollout(self, i_rollout):
+    def _on_new_rollout(self, i_rollout):
         if i_rollout > 0:
-            self.restore_tm_checkpoint()
+            self._restore_tm_checkpoint()
         self._current_sa_sdr = self.starting_sa_sdr.copy()
         # noinspection PyPep8Naming
         Q_lr_decay = 1. / (i_rollout + 1.)**self.rollout_q_lr_decay_power
@@ -107,35 +159,9 @@ class DreamingDouble(QModelBasedAgent):
             else:
                 self.E_traces.reset(decay=False)
 
-    def wake(self):
+    def _wake(self):
         self.exploration_eps = self.exploration_eps_backup
-        self.restore_tm_checkpoint()
-
-    def dream(self, starting_state, prev_sa_sdr):
-        self.put_into_dream(prev_sa_sdr)
-
-        starting_state_len = len(starting_state)
-        i_rollout = 0
-        sum_depth = 0
-        depths = []
-        while i_rollout < self.n_prediction_rollouts[0] or (
-                i_rollout < self.n_prediction_rollouts[1]
-                and sum_depth >= 2.2 * i_rollout
-        ):
-            self.on_new_rollout(i_rollout)
-            state = starting_state
-            depth = 0
-            for depth in range(self.prediction_depth):
-                if len(state) < .6 * starting_state_len:
-                    break
-                state, a = self.move_in_dream(state)
-
-            i_rollout += 1
-            sum_depth += depth ** .6
-            depths.append(depth)
-
-        # if depths: print(depths)
-        self.wake()
+        self._restore_tm_checkpoint()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
         prev_sa_sdr = self._current_sa_sdr
@@ -162,7 +188,7 @@ class DreamingDouble(QModelBasedAgent):
         self._current_sa_sdr = chosen_sa_sdr
         return action
 
-    def move_in_dream(self, state: SparseSdr):
+    def _move_in_dream(self, state: SparseSdr):
         reward = self.reward_model.rewards[state].mean()
         a = self.act(reward, state, first=False)
 
@@ -180,25 +206,6 @@ class DreamingDouble(QModelBasedAgent):
         next_s = self.sa_encoder.decode_state(s_sa_next_superposition)
         return next_s, a
 
-    def can_dream(self, reward):
-        if not self.enabled:
-            return False
-        if not (self.first_dreaming_episode <= self._episode < self.last_dreaming_episode):
-            return False
-        if reward > .2:
-            # reward condition prevents useless planning when we've already
-            # found the goal
-            return False
-        if self.Q.learning_rate[0] < 1e-3:
-            # there's no reason to dream when learning is almost stopped
-            return False
-        return True
-
-    def decide_to_dream(self, td_error):
-        if self._td_error_based_dreaming(td_error):
-            return True
-        return False
-
     def _td_error_based_dreaming(self, td_error):
         max_abs_td_error = 2.
         dreaming_prob_boost = self.enter_prob_alpha[0]
@@ -206,19 +213,12 @@ class DreamingDouble(QModelBasedAgent):
         dreaming_prob = np.clip(dreaming_prob / max_abs_td_error, 0., 1.)
         return self._rng.random() < dreaming_prob
 
-    def on_new_episode(self):
-        self._episode += 1
-        self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
-        self.E_traces.decay_trace_decay()
-        self.exploration_eps = exp_decay(self.exploration_eps)
-        self._decay_softmax_temperature()
-
-    def save_tm_checkpoint(self) -> bytes:
+    def _save_tm_checkpoint(self) -> bytes:
         """Saves TM state."""
         self.tm_checkpoint = pickle.dumps(self.transition_model)
         return self.tm_checkpoint
 
-    def restore_tm_checkpoint(self, tm_checkpoint: bytes = None):
+    def _restore_tm_checkpoint(self, tm_checkpoint: bytes = None):
         """Restores saved TM state."""
         tm_checkpoint = isnone(tm_checkpoint, self.tm_checkpoint)
         self.transition_model = pickle.loads(tm_checkpoint)
