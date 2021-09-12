@@ -120,7 +120,7 @@ class HTMAgent:
         :return:
         """
         if self.use_intrinsic_reward:
-            reward_int = self.get_intrinsic_reward()
+            reward_int = self.get_intrinsic_reward() - self.punish_reward
         else:
             reward_int = 0
 
@@ -226,7 +226,7 @@ class HTMAgentRunner:
         self.total_reward = 0
         self.animation = False
         self.agent_pos = list()
-        self.level = 0
+        self.level = -1
         self.steps = 0
         self.episode = 0
         self.option_actions = list()
@@ -292,7 +292,8 @@ class HTMAgentRunner:
 
                 if (self.logger is not None) and (self.episode > 0):
                     self.logger.log(
-                        {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode, 'level': self.level},
+                        {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode, 'main_metrics/level': self.level,
+                         'main_metrics/total_terminals': self.total_terminals},
                         step=self.episode)
                     if log_segments:
                         self.logger.log(
@@ -707,7 +708,7 @@ class HTMAgentRunner:
         adjacent_doors = {1: [1, 2], 2: [2, 3], 3: [1, 4], 4: [3, 4]}
 
         if self.level < 2:
-            agent_room = self.rng.randint(1, 5)
+            agent_room = self.rng.randint(1, 4)
             if self.level < 1:
                 food_room = None
                 food_door = self.rng.sample(adjacent_doors[agent_room], k=1)[0]
