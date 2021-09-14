@@ -1,4 +1,4 @@
-seed: &seed 54532
+seed: &seed 76984
 levels: 2
 agent: hima
 project: four_rooms_swap_empowered
@@ -15,7 +15,7 @@ vis_options:
 log: true
 
 run_options:
-  n_episodes: 2000
+  n_episodes: 100000
   log_every_episode: 50
   log_values_int: True
   log_values_ext: True
@@ -104,7 +104,7 @@ cagent:
     permanence_increment: 0.1
     sample_size: 1.0
     seed: *seed
-  punish_reward: -0.05
+  punish_reward: -1
   empowerment:
     horizon: 3
     similarity_threshold: 0.6
@@ -329,8 +329,8 @@ basal_ganglia_default:
   epsilon_noise: 0
   priority_ext: 1.0
   priority_int: 1.0
-  td_error_threshold: 0.05
-  priority_inc_factor: 1.002
+  td_error_threshold: 0.01
+  priority_inc_factor: 1.1
   priority_dec_factor: 0.1
   seed: *seed
 
