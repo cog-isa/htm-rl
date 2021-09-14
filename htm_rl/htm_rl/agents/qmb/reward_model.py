@@ -5,6 +5,9 @@ from htm_rl.common.utils import update_slice_lin_sum, exp_decay
 
 
 class RewardModel:
+    """
+    Represents learned reward model on columns-level.
+    """
     rewards: np.ndarray
     learning_rate: tuple[float, float]
     reward_anomaly: float

@@ -6,6 +6,10 @@ from htm_rl.htm_plugins.temporal_memory import TemporalMemory
 
 
 class TransitionModel:
+    """
+    Wrapper for Temporal Memory that provides handy API and also collects
+    activation/prediction stats like anomaly.
+    """
     tm: TemporalMemory
 
     anomaly: float
@@ -32,7 +36,7 @@ class TransitionModel:
     def process(self, proximal_input: SparseSdr, learn: bool) -> tuple[SparseSdr, SparseSdr]:
         """
         Given new piece of proximal input data, processes it by sequentially activating cells
-        and then depolarizes them, making prediction about next proximal input.
+        and then depolarizes them, making prediction about the next proximal input.
 
         :param proximal_input: sparse SDR of column activations.
         :param learn: whether or not to force learning.
@@ -44,9 +48,11 @@ class TransitionModel:
 
     def _activate_cells(self, proximal_input: SparseSdr, learn: bool) -> SparseSdr:
         """
-        Given proximal input SDR, activates TM cells and [optionally] applies learning step.
+        Given proximal input SDR, activates TM cells and [optionally]
+        applies learning step.
 
-        Learning is applied to already made predictions - to active segments of depolarized cells.
+        Learning is applied to already made predictions - to active
+        segments of the depolarized cells.
 
         :param proximal_input: sparse SDR of active columns.
         :param learn: whether or not to force learning.

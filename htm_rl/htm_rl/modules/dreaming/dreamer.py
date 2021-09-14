@@ -13,20 +13,31 @@ from htm_rl.modules.dreaming.sa_encoder import DreamerSaEncoder
 
 
 class Dreamer:
+    """
+    Dreamer object, that can substitute with itself the environment for an agent,
+    such that the agent <--> env interaction is replaced with the
+    agent <--> imaginary env (learned transition + reward models).
+    """
     n_actions: int
     sa_encoder: DreamerSaEncoder
 
+    # working mode (turning it off disables learning rates decay)
     train: bool
 
-    # TM learns s, a -> s'
+    # TM learns s_a -> s'
     transition_model: TransitionModel
     tm_checkpoint: Optional[bytes]
     reward_model: RewardModel
 
+    # turning it off disables possibility of dreaming
     enabled: bool
+    # affects entering the dreaming mode decision making
     enter_prob_alpha: DecayingValue
     enter_prob_threshold: float
+
+    # max prediction depth
     prediction_depth: int
+    # min, max number of rollouts
     n_prediction_rollouts: tuple[int, int]
 
     _episode: int
@@ -34,11 +45,14 @@ class Dreamer:
 
     def __init__(
             self,
+            # --- specify this
             seed: int,
-            n_actions: int,
-            agent,
-            state_encoder,
-            action_encoder,
+            n_actions: int,  # env.n_actions
+            agent,           # HIMA agent
+            state_encoder,   # state --> s encoder
+            action_encoder,  # action --> a encoder
+            # ----------------
+            # --- from config
             sa_encoder: dict,
             transition_model: dict,
             reward_model: dict,
@@ -78,22 +92,41 @@ class Dreamer:
         self._step = 0
         self._episode = 0
 
-    def on_wake_step(self, state, action, reward):
+    def on_wake_step(self, state: SparseSdr, reward: float, action: int):
+        """
+        Callback that should be called after each agent's step.
+        It's used to learn transition and reward models.
+
+        # TODO: you can pass already encoded state (s) and/or action (a)
+        # I'd just need to adapt this code to remove unnecessary encoding steps.
+
+        :param state: raw state (observation) sparse sdr
+        :param reward: reward value given for getting to the state `state`
+        :param action: action index
+        """
         s = self.sa_encoder.encode_state(state, learn=False)
         self.reward_model.update(s, reward)
 
-        s_a = self.sa_encoder.encode_s_a(s, action)
+        s_a = self.sa_encoder.encode_s_action(s, action, learn=False)
         self.transition_model.process(s, learn=True)
         self.transition_model.process(s_a, learn=False)
 
     def on_new_episode(self):
+        """
+        Callback that should be called after the end of the episode.
+        It's used to reset transition memory, increment episodes counter
+        and decay some hyperparams.
+        """
         self._episode += 1
+        self.transition_model.reset()
         if self.train:
-            self.transition_model.reset()
             self.reward_model.decay_learning_factors()
             self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
 
-    def can_dream(self, reward):
+    def can_dream(self, reward: float) -> bool:
+        """
+        Checks whether the dreaming is possible.
+        """
         if not self.enabled:
             return False
         if not (self.first_dreaming_episode <= self._episode < self.last_dreaming_episode):
@@ -104,12 +137,26 @@ class Dreamer:
             return False
         return True
 
-    def decide_to_dream(self, td_error):
-        if self._td_error_based_dreaming(td_error):
+    def decide_to_dream(self) -> bool:
+        """
+        Informs whether the dreaming should be activated.
+
+        # TODO: add anomaly-based decision
+        """
+        if self._random_based_dreaming():
             return True
         return False
 
-    def dream(self, starting_state):
+    def dream(self, starting_state: SparseSdr):
+        """
+        Switches to dreaming mode and performs several imaginary trajectory
+        rollouts. Dreaming starts from `starting_state`, which is the current
+        raw observation, for which the agent isn't acted yet.
+
+        # TODO: you probably want to support callback that should be called
+        # after each rollout to reset agent's state to the initial starting state
+        """
+
         self._put_into_dream()
 
         starting_s = self.sa_encoder.encode_state(starting_state, learn=False)
@@ -117,6 +164,7 @@ class Dreamer:
         i_rollout = 0
         sum_depth = 0
         depths = []
+        # loop over separate rollouts
         while i_rollout < self.n_prediction_rollouts[0] or (
                 i_rollout < self.n_prediction_rollouts[1]
                 and sum_depth >= 2.2 * i_rollout
@@ -124,8 +172,10 @@ class Dreamer:
             self._on_new_rollout(i_rollout)
             state, s = starting_state, starting_s
             depth = 0
+            # loop over one rollout's trajectory states
             for depth in range(self.prediction_depth):
-                if len(s) < .6 * starting_s_len:
+                if len(s) < .7 * starting_s_len:
+                    # predicted pattern is too vague
                     break
                 state, s, a = self._move_in_dream(state, s)
 
@@ -164,11 +214,8 @@ class Dreamer:
         next_state = self.sa_encoder.decode_s_to_state(s_next)
         return next_state, s_next, action
 
-    def _td_error_based_dreaming(self, td_error):
-        max_abs_td_error = 2.
-        dreaming_prob_boost = self.enter_prob_alpha[0]
-        dreaming_prob = (dreaming_prob_boost * abs(td_error) - self.enter_prob_threshold)
-        dreaming_prob = np.clip(dreaming_prob / max_abs_td_error, 0., 1.)
+    def _random_based_dreaming(self):
+        dreaming_prob = self.enter_prob_alpha[0]
         return self._rng.random() < dreaming_prob
 
     def _save_tm_checkpoint(self) -> bytes:
