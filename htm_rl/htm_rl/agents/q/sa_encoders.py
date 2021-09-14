@@ -1,5 +1,3 @@
-from typing import Dict, List
-
 import numpy as np
 
 from htm_rl.agents.q.sa_encoder import SaEncoder
@@ -13,16 +11,16 @@ class SpSaEncoder(SaEncoder):
     n_actions: int
     state_sp: SpatialPooler
     action_encoder: IntBucketEncoder
-    sa_concatenator: SdrConcatenator
+    s_a_concatenator: SdrConcatenator
     sa_sp: SpatialPooler
 
     def __init__(
             self,
             env: Env,
             seed: int,
-            state_sp: Dict,
-            action_encoder: Dict,
-            sa_sp: Dict
+            state_sp: dict,
+            action_encoder: dict,
+            sa_sp: dict
     ):
         self.state_sp = SpatialPooler(input_source=env, seed=seed, **state_sp)
         action_encoder['bucket_size'] = max(
@@ -30,36 +28,42 @@ class SpSaEncoder(SaEncoder):
             action_encoder.get('bucket_size', 0)
         )
         self.action_encoder = IntBucketEncoder(n_values=env.n_actions, **action_encoder)
-        self.sa_concatenator = SdrConcatenator(input_sources=[
+        self.s_a_concatenator = SdrConcatenator(input_sources=[
             self.state_sp,
             self.action_encoder
         ])
-        self.sa_sp = SpatialPooler(input_source=self.sa_concatenator, seed=seed, **sa_sp)
+        self.sa_sp = SpatialPooler(input_source=self.s_a_concatenator, seed=seed, **sa_sp)
         self.n_actions = env.n_actions
 
     def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
         return self.state_sp.compute(state, learn=learn)
 
-    def encode_actions(self, s: SparseSdr, learn: bool) -> List[SparseSdr]:
-        actions = []
-        for action in range(self.n_actions):
-            sa_sdr = self.encode_sa(s, action, learn=learn)
-            actions.append(sa_sdr)
-        return actions
+    def encode_action(self, action: int, learn: bool) -> SparseSdr:
+        return self.action_encoder.encode(action)
 
-    def encode_sa(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        a = self.action_encoder.encode(action)
-        s_a = self.sa_concatenator.concatenate(s, a)
-        sa = self.sa_sp.compute(s_a, learn=learn)
-        return sa
+    def concat_s_a(self, s: SparseSdr, a: SparseSdr, learn: bool) -> SparseSdr:
+        return self.s_a_concatenator.concatenate(s, a)
 
-    def decode_state(self, sdr) -> SparseSdr:
-        # assumes concatenation of (state, ...)
+    def cut_s(self, s_a) -> SparseSdr:
+        # assumes concatenation of (s, ...)
         # it doesn't matter what goes after state
         state_part_size = self.state_sp.output_sdr_size
-        if not isinstance(sdr, np.ndarray):
-            sdr = np.array(list(sdr))
-        return sdr[sdr < state_part_size].copy()
+        if not isinstance(s_a, np.ndarray):
+            s_a = np.array(list(s_a))
+        return s_a[s_a < state_part_size].copy()
+
+    def encode_s_a(self, s_a: SparseSdr, learn: bool) -> SparseSdr:
+        return self.sa_sp.compute(s_a, learn=learn)
+
+    def concat_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
+        a = self.action_encoder.encode(action)
+        s_a = self.s_a_concatenator.concatenate(s, a)
+        return s_a
+
+    def encode_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
+        s_a = self.concat_s_action(s, action, learn=learn)
+        sa = self.sa_sp.compute(s_a, learn=learn)
+        return sa
 
     @property
     def output_sdr_size(self):
@@ -77,7 +81,7 @@ class CrossSaEncoder(SaEncoder):
             self.output_sdr_size = env.output_sdr_size * env.n_actions
             self.n_active_bits = len(env.observe())
 
-        def encode(self, s, action):
+        def encode(self, s: SparseSdr, action: int):
             bucket_size = self.n_active_bits
             state = s[0] // bucket_size
 
@@ -85,7 +89,10 @@ class CrossSaEncoder(SaEncoder):
             rht = lft + bucket_size
             return np.arange(lft, rht)
 
-        def decode_state(self, sa_superposition):
+        def decode_action(self, a: SparseSdr) -> int:
+            return a[0] // self.n_active_bits
+
+        def decode_s(self, sa_superposition):
             if not sa_superposition:
                 return []
 
@@ -100,26 +107,40 @@ class CrossSaEncoder(SaEncoder):
             return np.arange(lft, rgt)
 
     n_actions: int
+    action_encoder: IntBucketEncoder
+
     sa_encoder: CrossProductEncoder
 
     def __init__(self, env: Env):
         self.n_actions = env.n_actions
         self.sa_encoder = self.CrossProductEncoder(env)
+        self.action_encoder = IntBucketEncoder(
+            n_values=self.n_actions, bucket_size=self.sa_encoder.n_active_bits
+        )
 
     def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
         return state
 
-    def encode_actions(self, s: SparseSdr, learn: bool) -> List[SparseSdr]:
-        return [
-            self.encode_sa(s, action, learn=learn)
-            for action in range(self.n_actions)
-        ]
+    def encode_action(self, action: int, learn: bool) -> SparseSdr:
+        return self.action_encoder.encode(action)
 
-    def encode_sa(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
+    def concat_s_a(self, s: SparseSdr, a: SparseSdr, learn: bool) -> SparseSdr:
+        action = self.sa_encoder.decode_action(a)
         return self.sa_encoder.encode(s, action)
 
-    def decode_state(self, sdr) -> SparseSdr:
-        return self.sa_encoder.decode_state(sdr)
+    def cut_s(self, sa_superposition: SparseSdr) -> SparseSdr:
+        return self.sa_encoder.decode_s(sa_superposition)
+
+    def encode_s_a(self, s_a: SparseSdr, learn: bool) -> SparseSdr:
+        return s_a
+
+    def concat_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
+        s_a = self.sa_encoder.encode(s, action)
+        return s_a
+
+    def encode_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
+        sa = s_a = self.concat_s_action(s, action, learn=learn)
+        return sa
 
     @property
     def output_sdr_size(self):

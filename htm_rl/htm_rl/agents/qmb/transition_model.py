@@ -1,3 +1,4 @@
+import numpy as np
 from htm.bindings.sdr import SDR
 
 from htm_rl.common.sdr import SparseSdr
@@ -27,11 +28,6 @@ class TransitionModel:
     def reset(self):
         self.tm.reset()
         self._predicted_columns_sdr.sparse = []
-
-    def preprocess(self, *data) -> SparseSdr:
-        if len(data) == 1 and isinstance(data[0], SparseSdr):
-            return data[0]
-        raise NotImplementedError()
 
     def process(self, proximal_input: SparseSdr, learn: bool) -> tuple[SparseSdr, SparseSdr]:
         """
@@ -86,7 +82,11 @@ class TransitionModel:
         :return: columns sparse SDR
         """
         cpc = self.tm.cells_per_column
-        return set(cell_ind // cpc for cell_ind in cells_sparse_sdr)
+        if cpc > 1:
+            cols = set(cell_ind // cpc for cell_ind in cells_sparse_sdr)
+            return np.array(list(cols))
+        else:
+            return cells_sparse_sdr
 
     def _compute_prediction_quality(self):
         n_predicted = self._predicted_columns_sdr.getSum()

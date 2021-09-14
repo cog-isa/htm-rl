@@ -33,7 +33,8 @@ class QMapProvider(Debugger):
         self.Q = np.full(shape, self.fill_value, dtype=np.float)
 
         for position, s in encoding_scheme.items():
-            actions_sa_sdr = self.agent.sa_encoder.encode_actions(s, learn=False)
+            # noinspection PyProtectedMember
+            actions_sa_sdr = self.agent._encode_state_actions(s, learn=False)
             self.Q[position] = self.agent.Q.values(actions_sa_sdr)
 
     @staticmethod

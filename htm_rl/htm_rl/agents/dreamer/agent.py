@@ -14,10 +14,6 @@ class DreamerAgent(QModelBasedAgent):
     force_dreaming: bool
     dreamer: DreamingDouble
 
-    prediction_depth: int
-    n_prediction_rollouts: Tuple[int, int]
-    dream_length: Optional[int]
-
     def __init__(
             self,
             seed: int,
@@ -51,7 +47,7 @@ class DreamerAgent(QModelBasedAgent):
 
         prev_sa_sdr = self._current_sa_sdr
         s = self.sa_encoder.encode_state(state, learn=True and train)
-        actions_sa_sdr = self.sa_encoder.encode_actions(s, learn=True and train)
+        actions_sa_sdr = self._encode_state_actions(s, learn=True and train)
 
         if train and not first:
             self.reward_model.update(s, reward)
@@ -68,10 +64,7 @@ class DreamerAgent(QModelBasedAgent):
         action = self._choose_action(actions_sa_sdr)
         chosen_sa_sdr = actions_sa_sdr[action]
         if train:
-            self.transition_model.process(
-                self.transition_model.preprocess(s, chosen_sa_sdr),
-                learn=True and train
-            )
+            self._update_transition_model(s, action, learn=True and train)
         if train and self.ucb_estimate.enabled:
             self.ucb_estimate.update(chosen_sa_sdr)
 

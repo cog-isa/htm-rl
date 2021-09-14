@@ -34,7 +34,7 @@ class DreamingDouble(QModelBasedAgent):
     def __init__(
             self,
             seed: int,
-            wake_agent,
+            wake_agent: QModelBasedAgent,
             enter_prob_alpha: DecayingValue,
             enter_prob_threshold: float,
             qvn: dict,
@@ -165,7 +165,7 @@ class DreamingDouble(QModelBasedAgent):
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
         prev_sa_sdr = self._current_sa_sdr
-        actions_sa_sdr = self.sa_encoder.encode_actions(s, learn=False)
+        actions_sa_sdr = self._encode_state_actions(s, learn=False)
 
         if not first:
             # Q-learning step
@@ -190,21 +190,20 @@ class DreamingDouble(QModelBasedAgent):
 
     def _move_in_dream(self, state: SparseSdr):
         reward = self.reward_model.rewards[state].mean()
-        a = self.act(reward, state, first=False)
+        action = self.act(reward, state, first=False)
 
         if reward > .2:
             # found goal ==> should stop rollout
-            next_s = []
-            return next_s, a
+            s_next = []
+            return s_next, action
 
-        _, s_sa_next_superposition = self.transition_model.process(
-            self._current_sa_sdr, learn=False
-        )
-        s_sa_next_superposition = self.transition_model.columns_from_cells(
-            s_sa_next_superposition
-        )
-        next_s = self.sa_encoder.decode_state(s_sa_next_superposition)
-        return next_s, a
+        s = state
+        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
+        self.transition_model.process(s, learn=False)
+        _, s_next_cells = self.transition_model.process(s_a, learn=False)
+
+        s_next = self.transition_model.columns_from_cells(s_next_cells)
+        return s_next, action
 
     def _td_error_based_dreaming(self, td_error):
         max_abs_td_error = 2.

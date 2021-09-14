@@ -50,7 +50,7 @@ class QModelBasedAgent(QAgent):
 
         prev_sa_sdr = self._current_sa_sdr
         s = self.sa_encoder.encode_state(state, learn=True and train)
-        actions_sa_sdr = self.sa_encoder.encode_actions(s, learn=True and train)
+        actions_sa_sdr = self._encode_state_actions(s, learn=True and train)
 
         if train and not first:
             self.reward_model.update(s, reward)
@@ -63,10 +63,7 @@ class QModelBasedAgent(QAgent):
         action = self._choose_action(actions_sa_sdr)
         chosen_sa_sdr = actions_sa_sdr[action]
         if train:
-            self.transition_model.process(
-                self.transition_model.preprocess(s, chosen_sa_sdr),
-                learn=True and train
-            )
+            self._update_transition_model(s, action, learn=True and train)
         if train and self.ucb_estimate.enabled:
             self.ucb_estimate.update(chosen_sa_sdr)
 
@@ -79,3 +76,10 @@ class QModelBasedAgent(QAgent):
             x = (1 - self.transition_model.recall) ** 2
             return self.im_weight[0] * x
         return 0.
+
+    def _update_transition_model(self, s: SparseSdr, action: int, learn: bool):
+        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
+        # learn (s,a) -> s'
+        self.transition_model.process(s, learn=learn)
+        # activate (s',a')
+        self.transition_model.process(s_a, learn=False)
