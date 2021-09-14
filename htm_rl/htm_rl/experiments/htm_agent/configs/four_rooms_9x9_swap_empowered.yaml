@@ -31,6 +31,7 @@ run_options:
   log_boost_modulation: False
   log_segments: True
   log_terminal_stat: True
+  log_empowerment: True
   draw_options: True
   draw_options_stats: True
   opt_threshold: 4
@@ -104,7 +105,7 @@ cagent:
     permanence_increment: 0.1
     sample_size: 1.0
     seed: *seed
-  punish_reward: -1
+  punish_reward: -10
   empowerment:
     horizon: 3
     similarity_threshold: 0.6
@@ -328,10 +329,10 @@ basal_ganglia_default:
   softmax_beta: 1
   epsilon_noise: 0
   priority_ext: 1.0
-  priority_int: 1.0
+  priority_int: 0.01
   td_error_threshold: 0.01
   priority_inc_factor: 1.1
-  priority_dec_factor: 0.1
+  priority_dec_factor: 0.9
   seed: *seed
 
 block_default:

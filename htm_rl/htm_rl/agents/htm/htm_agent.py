@@ -7,7 +7,7 @@ from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, \
-    compute_dual_values
+    compute_dual_values, EmpowermentVis
 from htm.bindings.sdr import SDR
 import seaborn as sns
 import imageio
@@ -120,7 +120,7 @@ class HTMAgent:
         :return:
         """
         if self.use_intrinsic_reward:
-            reward_int = self.get_intrinsic_reward() - self.punish_reward
+            reward_int = self.get_intrinsic_reward() + self.punish_reward
         else:
             reward_int = 0
 
@@ -236,6 +236,10 @@ class HTMAgentRunner:
         self.current_action = None
 
         self.option_stat = OptionVis(self.environment.env.shape, **config['vis_options'])
+        self.empowerment_vis = EmpowermentVis(self.agent.empowerment,
+                                              self.environment,
+                                              self.agent.empowerment_horizon,
+                                              self.agent.hierarchy.visual_block.sp)
         self.option_start_pos = None
         self.option_end_pos = None
         self.last_options_usage = dict()
@@ -260,7 +264,7 @@ class HTMAgentRunner:
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
                      opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
                      log_td_error=False, log_anomaly=False, log_confidence=False, log_boost_modulation=False,
-                     log_values_int=True, log_values_ext=True, log_priorities=True):
+                     log_values_int=True, log_values_ext=True, log_priorities=True, log_empowerment=False):
         self.total_reward = 0
         self.steps = 0
         self.episode = 0
@@ -349,6 +353,13 @@ class HTMAgentRunner:
                     if log_terminal_stat:
                         self.logger.log(dict([(f'terminal_stats/{x[0]}', x[1]) for x in self.terminal_pos_stat.items()]),
                                         step=self.episode)
+                    if log_empowerment:
+                        self.empowerment_vis.draw(f'/tmp/empowerment_real_{self.logger.run.id}.png',
+                                                  f'/tmp/empowerment_learned_{self.logger.run.id}.png')
+                        self.logger.log({
+                            'empowerment/real': self.logger.Image(f'/tmp/empowerment_real_{self.logger.run.id}.png'),
+                            'empowerment/learned': self.logger.Image(f'/tmp/empowerment_learned_{self.logger.run.id}.png')
+                        }, step=self.episode)
                     if log_values_ext or log_values_int:
                         values_ext, values_int = compute_dual_values(self.environment.env, self.agent)
                         if log_values_ext:
