@@ -3,9 +3,54 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from math import cos, sin, pi
 from htm_rl.envs.biogwlab.environment import Environment
+from htm_rl.modules.empowerment import Empowerment, real_empowerment
 from htm_rl.envs.biogwlab.module import EntityType
 from htm.bindings.sdr import SDR
+from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.basal_ganglia import softmax
+
+
+class EmpowermentVis:
+    def __init__(self, empowerment: Empowerment, environment: Environment,
+                 horizon: int, visual_block_sp: SpatialPooler):
+        self.empowerment = empowerment
+        self.environment = environment
+        self.visual_block_sp = visual_block_sp
+        self.horizon = horizon
+
+    def draw(self, path_real, path_learned):
+        input_state = SDR(self.environment.output_sdr_size)
+        output_state = SDR(self.visual_block_sp.getColumnDimensions())
+
+        real_emp = np.zeros(self.environment.env.shape)
+        learned_emp = np.zeros(self.environment.env.shape)
+
+        for i_flat in np.flatnonzero(~self.environment.env.aggregated_mask[EntityType.Obstacle]):
+            pos = self.environment.env.agent._unflatten_position(i_flat)
+            assert isinstance(pos, tuple)
+
+            real_emp[pos] = real_empowerment(self.environment,
+                                             pos,
+                                             self.horizon)[0]
+
+            self.environment.env.agent.pos = pos
+            _, observation, _ = self.environment.observe()
+            input_state.sparse = observation
+            self.visual_block_sp.compute(input_state, False, output_state)
+
+            learned_emp[pos] = self.empowerment.eval_state(output_state.sparse,
+                                                           self.horizon,
+                                                           use_memory=True)[0]
+
+        figure = plt.figure(figsize=(13, 13))
+        sns.heatmap(real_emp, annot=True, fmt=".1g", cbar=False, annot_kws={"size": 24})
+        figure.savefig(path_real)
+        plt.close(figure)
+
+        figure = plt.figure(figsize=(13, 13))
+        sns.heatmap(learned_emp, annot=True, fmt=".1g", cbar=False, annot_kws={"size": 24})
+        figure.savefig(path_learned)
+        plt.close(figure)
 
 
 class OptionVis:
