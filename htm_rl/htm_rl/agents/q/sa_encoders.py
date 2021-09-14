@@ -8,7 +8,6 @@ from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
 
 
 class SpSaEncoder(SaEncoder):
-    n_actions: int
     state_sp: SpatialPooler
     action_encoder: IntBucketEncoder
     s_a_concatenator: SdrConcatenator
@@ -33,7 +32,6 @@ class SpSaEncoder(SaEncoder):
             self.action_encoder
         ])
         self.sa_sp = SpatialPooler(input_source=self.s_a_concatenator, seed=seed, **sa_sp)
-        self.n_actions = env.n_actions
 
     def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
         return self.state_sp.compute(state, learn=learn)
@@ -106,16 +104,14 @@ class CrossSaEncoder(SaEncoder):
             rgt = lft + bucket_size
             return np.arange(lft, rgt)
 
-    n_actions: int
     action_encoder: IntBucketEncoder
 
     sa_encoder: CrossProductEncoder
 
     def __init__(self, env: Env):
-        self.n_actions = env.n_actions
         self.sa_encoder = self.CrossProductEncoder(env)
         self.action_encoder = IntBucketEncoder(
-            n_values=self.n_actions, bucket_size=self.sa_encoder.n_active_bits
+            n_values=env.n_actions, bucket_size=self.sa_encoder.n_active_bits
         )
 
     def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:

@@ -4,69 +4,12 @@ from typing import Optional
 import numpy as np
 from numpy.random import Generator
 
-from htm_rl.agents.q.sa_encoders import SpSaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
 from htm_rl.agents.qmb.transition_models import make_transition_model
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.common.utils import exp_decay, isnone, DecayingValue
-from htm_rl.htm_plugins.spatial_pooler import SpatialPoolerWrapper
-from htm_rl.modules.empowerment import Memory
-
-
-class DreamerSaEncoder(SpSaEncoder):
-    sa_sp: None
-
-    state_clusters: Memory
-    state_decoder: list[SparseSdr]
-
-    # noinspection PyMissingConstructor
-    def __init__(
-            self, state_encoder, action_encoder: IntBucketEncoder,
-            clusters_similarity_threshold: float
-    ):
-        self.state_encoder = SpatialPoolerWrapper(state_encoder)
-        self.state_clusters = Memory(
-            size=self.state_encoder.output_sdr_size,
-            threshold=clusters_similarity_threshold
-        )
-        self.state_decoder = []
-
-        self.action_encoder = action_encoder
-        self.s_a_concatenator = SdrConcatenator(input_sources=[
-            self.state_encoder,
-            self.action_encoder
-        ])
-        self.sa_sp = None  # it isn't needed for a Dreamer
-
-    def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
-        if not isinstance(state, np.ndarray):
-            state = np.array(list(state))
-        s = super(DreamerSaEncoder, self).encode_state(state, learn=learn)
-
-        self._add_to_decoder(state, s)
-        return s
-
-    def encode_action(self, action: int, learn: bool) -> SparseSdr:
-        return super(DreamerSaEncoder, self).encode_action(action, learn=learn)
-
-    def decode_s_to_state(self, s: SparseSdr) -> SparseSdr:
-        similarity_with_clusters = self.state_clusters.similarity(s)
-        i_state_cluster = np.argmax(similarity_with_clusters)
-        return self.state_decoder[i_state_cluster]
-
-    @property
-    def output_sdr_size(self):
-        return self.s_a_concatenator.output_sdr_size
-
-    def _add_to_decoder(self, state: SparseSdr, s: SparseSdr):
-        similarity_with_clusters = self.state_clusters.similarity(s)
-        i_state_cluster = np.argmax(similarity_with_clusters)
-        if i_state_cluster < len(self.state_decoder):
-            assert np.all(state == self.state_decoder[i_state_cluster])
-        else:
-            self.state_decoder.append(state.copy())
+from htm_rl.modules.dreaming.sa_encoder import DreamerSaEncoder
 
 
 class Dreamer:
@@ -89,7 +32,6 @@ class Dreamer:
     _episode: int
     _rng: Generator
 
-    # noinspection PyMissingConstructor,PyPep8Naming
     def __init__(
             self,
             seed: int,
