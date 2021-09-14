@@ -37,6 +37,9 @@ dreaming:
 reward_model:
   learning_rate: [1., 1.]
 
+anomaly_model:
+  learning_rate: [.1, 1.]
+
 transition_model:
   tm:
     cells_per_column: 1

@@ -78,3 +78,10 @@ class SaEncoder:
         representation (sa).
         """
         raise NotImplementedError()
+
+    @property
+    def s_output_sdr_size(self):
+        """
+        Represent the size of the encoded state sparse sdr
+        """
+        raise NotImplementedError()
