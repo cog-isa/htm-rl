@@ -1,24 +1,81 @@
 import pickle
-from typing import Optional, List
+from typing import Optional
 
 import numpy as np
 from numpy.random import Generator
 
-from htm_rl.agents.q.sa_encoder import SaEncoder
+from htm_rl.agents.q.sa_encoders import SpSaEncoder
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
+from htm_rl.agents.qmb.transition_models import make_transition_model
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.common.utils import exp_decay, isnone, DecayingValue
-from htm_rl.htm_plugins.spatial_pooler import SpatialPooler, SpatialPoolerWrapper
+from htm_rl.htm_plugins.spatial_pooler import SpatialPoolerWrapper
+from htm_rl.modules.empowerment import Memory
+
+
+class DreamerSaEncoder(SpSaEncoder):
+    sa_sp: None
+
+    state_clusters: Memory
+    state_decoder: list[SparseSdr]
+
+    # noinspection PyMissingConstructor
+    def __init__(
+            self, state_encoder, action_encoder: IntBucketEncoder,
+            clusters_similarity_threshold: float
+    ):
+        self.state_encoder = SpatialPoolerWrapper(state_encoder)
+        self.state_clusters = Memory(
+            size=self.state_encoder.output_sdr_size,
+            threshold=clusters_similarity_threshold
+        )
+        self.state_decoder = []
+
+        self.action_encoder = action_encoder
+        self.s_a_concatenator = SdrConcatenator(input_sources=[
+            self.state_encoder,
+            self.action_encoder
+        ])
+        self.sa_sp = None  # it isn't needed for a Dreamer
+
+    def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
+        if not isinstance(state, np.ndarray):
+            state = np.array(list(state))
+        s = super(DreamerSaEncoder, self).encode_state(state, learn=learn)
+
+        self._add_to_decoder(state, s)
+        return s
+
+    def encode_action(self, action: int, learn: bool) -> SparseSdr:
+        return super(DreamerSaEncoder, self).encode_action(action, learn=learn)
+
+    def decode_s_to_state(self, s: SparseSdr) -> SparseSdr:
+        similarity_with_clusters = self.state_clusters.similarity(s)
+        i_state_cluster = np.argmax(similarity_with_clusters)
+        return self.state_decoder[i_state_cluster]
+
+    @property
+    def output_sdr_size(self):
+        return self.s_a_concatenator.output_sdr_size
+
+    def _add_to_decoder(self, state: SparseSdr, s: SparseSdr):
+        similarity_with_clusters = self.state_clusters.similarity(s)
+        i_state_cluster = np.argmax(similarity_with_clusters)
+        if i_state_cluster < len(self.state_decoder):
+            assert np.all(state == self.state_decoder[i_state_cluster])
+        else:
+            self.state_decoder.append(state.copy())
 
 
 class Dreamer:
     n_actions: int
-    sa_encoder: SaEncoder
+    sa_encoder: DreamerSaEncoder
 
     train: bool
 
+    # TM learns s, a -> s'
     transition_model: TransitionModel
     tm_checkpoint: Optional[bytes]
     reward_model: RewardModel
@@ -53,11 +110,18 @@ class Dreamer:
     ):
         self.n_actions = n_actions
         self.agent = agent
-        self.sa_encoder = sa_encoder
+        self.sa_encoder = DreamerSaEncoder(
+            state_encoder, action_encoder, **sa_encoder
+        )
 
-        self.transition_model = transition_model
+        self.transition_model = make_transition_model(
+            sa_encoder=self.sa_encoder,
+            transition_model_config=transition_model
+        )
         self.tm_checkpoint = None
-        self.reward_model = reward_model
+        self.reward_model = RewardModel(
+            self.sa_encoder.output_sdr_size, **reward_model
+        )
 
         self.enabled = enabled
         self.enter_prob_alpha = enter_prob_alpha
@@ -72,14 +136,13 @@ class Dreamer:
         self._step = 0
         self._episode = 0
 
-    def on_wake_step(self, state, s, action, reward):
-        s = self.sa_encoder.encode_state(state, learn=True)
+    def on_wake_step(self, state, action, reward):
+        s = self.sa_encoder.encode_state(state, learn=False)
         self.reward_model.update(s, reward)
 
-        sa = self.sa_encoder.encode_sa(s, action, learn=True)
-        self.transition_model.process(
-            self.transition_model.preprocess(s, sa), learn=True
-        )
+        s_a = self.sa_encoder.encode_s_a(s, action)
+        self.transition_model.process(s, learn=True)
+        self.transition_model.process(s_a, learn=False)
 
     def on_new_episode(self):
         self._episode += 1
@@ -107,7 +170,8 @@ class Dreamer:
     def dream(self, starting_state):
         self._put_into_dream()
 
-        starting_state_len = len(starting_state)
+        starting_s = self.sa_encoder.encode_state(starting_state, learn=False)
+        starting_s_len = len(starting_s)
         i_rollout = 0
         sum_depth = 0
         depths = []
@@ -116,12 +180,12 @@ class Dreamer:
                 and sum_depth >= 2.2 * i_rollout
         ):
             self._on_new_rollout(i_rollout)
-            state = starting_state
+            state, s = starting_state, starting_s
             depth = 0
             for depth in range(self.prediction_depth):
-                if len(state) < .6 * starting_state_len:
+                if len(s) < .6 * starting_s_len:
                     break
-                state, a = self._move_in_dream(state)
+                state, s, a = self._move_in_dream(state, s)
 
             i_rollout += 1
             sum_depth += depth ** .6
@@ -140,25 +204,23 @@ class Dreamer:
     def _wake(self):
         self._restore_tm_checkpoint()
 
-    def _move_in_dream(self, state: SparseSdr):
-        reward = self.reward_model.rewards[state].mean()
-        a = self.agent.make_action(state)
+    def _move_in_dream(self, state: SparseSdr, s: SparseSdr):
+        action = self.agent.make_action(state)
+        reward = self.reward_model.rewards[s].mean()
         self.agent.reinforce(reward)
 
         if reward > .2:
             # found goal ==> should stop rollout
-            next_s = []
-            return next_s, a
+            next_state, s_next = [], []
+            return next_state, s_next, action
 
-        # encode (s,a)
-        _, s_sa_next_superposition = self.transition_model.process(
-            self._current_sa_sdr, learn=False
-        )
-        s_sa_next_superposition = self.transition_model.columns_from_cells(
-            s_sa_next_superposition
-        )
-        next_s = self.sa_encoder.decode_state(s_sa_next_superposition)
-        return next_s, a
+        s_a = self.sa_encoder.encode_s_action(s, action, learn=False)
+        self.transition_model.process(s, learn=False)
+        _, s_next_cells = self.transition_model.process(s_a, learn=False)
+        s_next = self.transition_model.columns_from_cells(s_next_cells)
+
+        next_state = self.sa_encoder.decode_s_to_state(s_next)
+        return next_state, s_next, action
 
     def _td_error_based_dreaming(self, td_error):
         max_abs_td_error = 2.
@@ -180,38 +242,3 @@ class Dreamer:
     @property
     def name(self):
         return 'dreaming_double'
-
-
-class DreamerSaEncoder:
-    state_encoder: SpatialPooler
-    state_decoder: list
-
-    action_encoder: IntBucketEncoder
-    sa_concatenator: SdrConcatenator
-
-    def __init__(self, state_encoder, action_encoder):
-        self.state_encoder = SpatialPoolerWrapper(state_encoder)
-        self.state_decoder = []
-        self.action_encoder = action_encoder
-        self.sa_concatenator = SdrConcatenator(input_sources=[
-            self.state_encoder,
-            self.action_encoder
-        ])
-
-    def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
-        s = self.state_encoder.compute(state, learn=learn)
-        self.state_decoder.append((state, s))
-        return s
-
-    def encode_action(self, action: int) -> SparseSdr:
-        return self.action_encoder.encode(action)
-
-    def encode_sa(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        pass
-
-    def decode_state(self, s: SparseSdr) -> SparseSdr:
-        pass
-
-    @property
-    def output_sdr_size(self):
-        return self.sa_concatenator.output_sdr_size
