@@ -31,9 +31,8 @@ class Dreamer:
 
     # turning it off disables possibility of dreaming
     enabled: bool
-    # affects entering the dreaming mode decision making
+    # the probability of entering the dreaming mode
     enter_prob_alpha: DecayingValue
-    enter_prob_threshold: float
 
     # max prediction depth
     prediction_depth: int
@@ -57,7 +56,6 @@ class Dreamer:
             transition_model: dict,
             reward_model: dict,
             enter_prob_alpha: DecayingValue,
-            enter_prob_threshold: float,
             prediction_depth: int,
             n_prediction_rollouts: tuple[int, int],
             enabled: bool = True,
@@ -81,7 +79,6 @@ class Dreamer:
 
         self.enabled = enabled
         self.enter_prob_alpha = enter_prob_alpha
-        self.enter_prob_threshold = enter_prob_threshold
         self.prediction_depth = prediction_depth
         self.n_prediction_rollouts = n_prediction_rollouts
         self.first_dreaming_episode = isnone(first_dreaming_episode, 0)
