@@ -2,6 +2,7 @@ from typing import List, Any, Sequence, Tuple
 
 import numpy as np
 
+from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import isnone
 
 
@@ -40,7 +41,11 @@ class IntBucketEncoder:
         max_value = self.n_values - 1
         self.output_sdr_size = self._bucket_starting_pos(max_value) + self._bucket_size
 
-    def encode(self, x: int):
+    @property
+    def n_active_bits(self) -> int:
+        return self._bucket_size
+
+    def encode(self, x: int) -> SparseSdr:
         """Encodes value x to sparse SDR format using bucket-based non-overlapping encoding."""
         assert x is None or x == self.ALL or 0 <= x < self.n_values, \
             f'Value must be in [0, {self.n_values}] or {self.ALL} or None; got {x}'
@@ -54,7 +59,7 @@ class IntBucketEncoder:
         right = left + self._bucket_size
         return np.arange(left, right, dtype=np.int)
 
-    def decode_bit(self, bit_int: int):
+    def decode_bit(self, bit_int: int) -> int:
         bucket_ind = bit_int // self._buckets_step
         if bucket_ind >= self.n_values:
             bucket_ind = self.n_values - 1
@@ -94,13 +99,17 @@ class IntRandomEncoder:
 
         self._encoding_map = np.empty(shape=(n_values, value_bits), dtype=np.int)
         for x in range(n_values):
-            self._encoding_map[x, :] = rng_generator.choice(total_bits, size=n_values, replace=False)
+            self._encoding_map[x, :] = rng_generator.choice(total_bits, size=value_bits, replace=False)
 
     @property
-    def n_values(self):
+    def n_values(self) -> int:
         return self._encoding_map.shape[0]
 
-    def encode(self, x: int):
+    @property
+    def n_active_bits(self):
+        return self._encoding_map.shape[1]
+
+    def encode(self, x: int) -> SparseSdr:
         """Encodes value x to sparse SDR format using random overlapping encoding."""
         return self._encoding_map[x]
 
@@ -110,7 +119,7 @@ class IntArrayEncoder:
     output_sdr_size: int
 
     def __init__(
-            self, shape: Tuple[int,...], n_types: int,
+            self, shape: tuple[int, ...], n_types: int,
             # Keep for init interface compatibility with IntBucketEncoder
             bucket_size: int = None, buckets_step: int = None
     ):
@@ -136,7 +145,7 @@ class SdrConcatenator:
 
     _shifts: Sequence[int]
 
-    def __init__(self, input_sources: List[Any]):
+    def __init__(self, input_sources: list[Any]):
         if input_sources and isinstance(input_sources[0], int):
             input_sizes = input_sources
         else:
