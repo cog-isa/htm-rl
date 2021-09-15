@@ -14,15 +14,20 @@ class StateEncodingProvider(Debugger):
     env: Environment
 
     position_provider: AgentStateProvider
+    encoding_scheme: Optional[dict]
 
     def __init__(self, scenario: Scenario):
         super().__init__(scenario)
         self.position_provider = AgentStateProvider(scenario)
+        self.encoding_scheme = None
 
     def get_encoding_scheme(self) -> dict[tuple[int, int], SparseSdr]:
+        if self.encoding_scheme is not None:
+            return self.encoding_scheme
+
         height, width = self.env.shape
         obstacle_mask = self.env.aggregated_mask[EntityType.Obstacle]
-        encoding_scheme = dict()
+        encoding_scheme = {}
 
         for i in range(height):
             for j in range(width):
@@ -35,6 +40,7 @@ class StateEncodingProvider(Debugger):
                 encoding_scheme[position] = s
 
         self.position_provider.restore()
+        self.encoding_scheme = encoding_scheme
         return encoding_scheme
 
     @staticmethod

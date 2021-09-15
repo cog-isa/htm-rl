@@ -5,6 +5,7 @@ import numpy as np
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.common.utils import ensure_list
 from htm_rl.envs.biogwlab.environment import Environment
+from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
 
 
@@ -43,3 +44,9 @@ class EnvMapProvider(Debugger):
     @property
     def has_observation(self):
         return len(self.maps) > 1
+
+    def print_map(self, renderer: ImageOutput, n: int = 1):
+        if n > 1 and not self.has_observation:
+            n = 1
+        for i in range(n):
+            renderer.handle_img(self.maps[i], self.titles[i])

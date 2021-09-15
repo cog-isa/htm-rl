@@ -1,4 +1,5 @@
 from htm_rl.agents.q.debug.q_map_provider import QMapProvider
+from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
 from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.agents.qmb.debug.anomaly_tracker import AnomalyTracker
 from htm_rl.agents.rnd.debug.debugger import Debugger
@@ -8,6 +9,7 @@ from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
+from htm_rl.scenarios.utils import ProgressPoint
 
 
 class ModelDebugger(Debugger):
@@ -20,53 +22,25 @@ class ModelDebugger(Debugger):
         self.output_renderer = ImageOutput(scenario.config)
         self.env_map_provider = EnvMapProvider(scenario)
         self.trajectory_tracker = TrajectoryTracker(scenario)
-        self.q_map_provider = QMapProvider(scenario)
-        self.anomaly_tracker = AnomalyTracker(scenario)
-        self.images = images
+        self.state_encoding_provider = StateEncodingProvider(scenario)
+        self.q_map_provider = QMapProvider(scenario, self.state_encoding_provider)
+        self.anomaly_tracker = AnomalyTracker(scenario, self.state_encoding_provider)
+        self.print_images = images
 
         # noinspection PyUnresolvedReferences
         self.progress.set_breakpoint('end_episode', self.on_end_episode)
 
     # noinspection PyUnusedLocal
-    def on_end_episode(self, agent, func, *args, **kwargs):
-        if self.output_renderer.is_empty and self.images:
-            self._add_env_map()
-            self._add_value_maps(q=True, v=True)
-            self._add_anomaly()
-            self._add_trajectory()
-            output = self.output_renderer.flush(
-                f'end_episode_{self._default_config_identifier}_{self._default_progress_identifier}'
-            )
-            plot_grid_images(show=False, **output)
+    def on_end_episode(self, pp: ProgressPoint, func, *args, **kwargs):
+        if self.print_images:
+            self.state_encoding_provider.encoding_scheme = None
+            self.env_map_provider.print_map(self.output_renderer)
+            self.q_map_provider.print_maps(self.output_renderer, q=True, v=True)
+            self.anomaly_tracker.print_map(self.output_renderer)
+            self.trajectory_tracker.print_map(self.output_renderer)
+
+            output_filename = self.get_episode_filename(pp, self.train_eval_mark)
+            output = self.output_renderer.flush(output_filename)
+            plot_grid_images(show=False, cols_per_row=3, **output)
 
         func(*args, **kwargs)
-
-    def _add_anomaly(self):
-        an_tr = self.anomaly_tracker
-        self.output_renderer.handle_img(
-            an_tr.heatmap, an_tr.title, with_value_text=True
-        )
-        an_tr.reset()
-
-    def _add_trajectory(self):
-        self.output_renderer.handle_img(
-            self.trajectory_tracker.heatmap, self.trajectory_tracker.title, with_value_text=True
-        )
-        self.trajectory_tracker.reset()
-
-    # noinspection PyPep8Naming
-    def _add_value_maps(self, q: bool, v: bool):
-        self.q_map_provider.precompute()
-        Q = self.q_map_provider.Q
-        V = self.q_map_provider.V(Q)
-        if v:
-            self.output_renderer.handle_img(V, 'V', with_value_text=True)
-        if q:
-            Q_render = self.q_map_provider.reshape_q_for_rendering(Q)
-            self.output_renderer.handle_img(Q_render, 'Q', with_value_text=False)
-
-    def _add_env_map(self):
-        env_maps = self.env_map_provider.maps
-        env_map_titles = self.env_map_provider.titles
-        for i in range(1):
-            self.output_renderer.handle_img(env_maps[i], env_map_titles[i])

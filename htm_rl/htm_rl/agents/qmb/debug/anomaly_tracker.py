@@ -1,10 +1,12 @@
 import numpy as np
 from numpy import ma
 
-from htm_rl.agents.qmb.debug.anomaly_provider import AnomalyProvider
+from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
+from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.agents.rnd.debug.agent_state_provider import AgentStateProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.envs.biogwlab.environment import Environment
+from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
 
 
@@ -13,46 +15,33 @@ class AnomalyTracker(Debugger):
     name_prefix: str = 'anomaly'
 
     env: Environment
+    agent: QModelBasedAgent
     agent_state_provider: AgentStateProvider
-    anomaly_provider: AnomalyProvider
-    heatmap: ma.MaskedArray
+    state_encoding_provider: StateEncodingProvider
 
-    keep_anomalies: bool
-
-    def __init__(self, scenario: Scenario, keep_anomalies=True):
+    def __init__(
+            self, scenario: Scenario,
+            state_encoding_provider: StateEncodingProvider = None
+    ):
         super(AnomalyTracker, self).__init__(scenario)
 
         self.agent_state_provider = AgentStateProvider(scenario)
-        self.anomaly_provider = AnomalyProvider(scenario)
-        # self.heatmap = np.full(self.env.shape, self.fill_value, dtype=np.float)
-        self.heatmap = ma.masked_all(self.env.shape, dtype=np.float)
-        self.keep_anomalies = keep_anomalies
-        if self.keep_anomalies:
-            self.anomalies = []
-            self.reward_anomalies = []
-        # noinspection PyUnresolvedReferences
-        self.agent.set_breakpoint('act', self.on_act)
+        if state_encoding_provider is None:
+            state_encoding_provider = StateEncodingProvider(scenario)
+        self.state_encoding_provider = state_encoding_provider
 
-    def on_act(self, agent, act, *args, **kwargs):
-        action = act(*args, **kwargs)
-        if action is None:
-            return action
+    def anomaly(self):
+        anomaly_s = self.agent.anomaly_model.anomaly
+        anomaly_pos = ma.masked_all(self.env.shape, dtype=np.float)
 
-        anomaly = 1. - self.anomaly_provider.recall
-        self.heatmap[self.agent_state_provider.position] = anomaly
-
-        if self.keep_anomalies:
-            self.anomalies.append(anomaly)
-            self.reward_anomalies.append(self.anomaly_provider.reward_anomaly)
-        return action
-
-    def reset(self):
-        self.heatmap.mask[:] = True
+        encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
+        for position, s in encoding_scheme.items():
+            anomaly_pos[position] = anomaly_s[s].mean()
+        return anomaly_pos
 
     @property
     def title(self) -> str:
         return self.name_prefix
 
-    @property
-    def filename(self) -> str:
-        return f'{self.name_prefix}_{self._default_config_identifier}_{self._default_progress_identifier}'
+    def print_map(self, renderer: ImageOutput):
+        renderer.handle_img(self.anomaly(), self.title, with_value_text=True)

@@ -1,17 +1,18 @@
 from typing import Optional
 
 import numpy as np
+from numpy import ma
 
 from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.agents.q.agent import QAgent
 from htm_rl.envs.biogwlab.environment import Environment
+from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
 
 
 # noinspection PyPep8Naming
 class QMapProvider(Debugger):
-    fill_value: float = 0.
     name_prefix: str = 'Q'
 
     agent: QAgent
@@ -19,27 +20,30 @@ class QMapProvider(Debugger):
 
     state_encoding_provider: StateEncodingProvider
 
-    Q: Optional[np.ndarray]
+    def __init__(
+            self, scenario: Scenario,
+            state_encoding_provider: StateEncodingProvider = None
+    ):
+        super(QMapProvider, self).__init__(scenario)
+        if state_encoding_provider is None:
+            state_encoding_provider = StateEncodingProvider(scenario)
+        self.state_encoding_provider = state_encoding_provider
 
-    def __init__(self, scenario: Scenario):
-        super().__init__(scenario)
-        self.state_encoding_provider = StateEncodingProvider(scenario)
-        self.Q = None
-
-    def precompute(self):
-        encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
-
+    def Q(self) -> ma.MaskedArray:
         shape = self.env.shape + (self.env.n_actions,)
-        self.Q = np.full(shape, self.fill_value, dtype=np.float)
+        Q = ma.masked_all(shape, dtype=np.float)
 
+        encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
         for position, s in encoding_scheme.items():
             # noinspection PyProtectedMember
-            actions_sa_sdr = self.agent._encode_state_actions(s, learn=False)
-            self.Q[position] = self.agent.Q.values(actions_sa_sdr)
+            actions_sa_sdr = self.agent._encode_s_actions(s, learn=False)
+            Q[position] = self.agent.Q.values(actions_sa_sdr)
+
+        return Q
 
     @staticmethod
-    def V(Q) -> np.ndarray:
-        return np.max(Q, axis=-1)
+    def V(Q: ma.MaskedArray):
+        return Q.max(axis=-1)
 
     def reshape_q_for_rendering(self, Q):
         assert self.env.n_actions == 4
@@ -51,3 +55,13 @@ class QMapProvider(Debugger):
         Qr[1::2, 1::2] = Q[..., 1]
         Qr[1::2, 0::2] = Q[..., 2]
         return Qr
+
+    # noinspection PyPep8Naming
+    def print_maps(self, renderer: ImageOutput, q: bool, v: bool):
+        Q = self.Q()
+        V = self.V(Q)
+        if v:
+            renderer.handle_img(V, 'V', with_value_text=True)
+        if q:
+            Q = Q.filled(.0)
+            renderer.handle_img(Q, 'Q', with_value_text=False)

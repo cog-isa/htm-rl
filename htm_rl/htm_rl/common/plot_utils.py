@@ -101,7 +101,8 @@ def plot_triangled(data, ax):
     h, w = data.shape[:2]
     x = np.linspace(0, w, 2 * w + 1) - .5
     y = np.linspace(0, h, 2 * h + 1) - .5
-    points = np.meshgrid(x, y)
+    # noinspection PyTypeChecker
+    points: tuple[np.ndarray, np.ndarray] = np.meshgrid(x, y)
     pxs, pys = points[0].ravel(), points[1].ravel()
 
     x_data, y_data = [], []
