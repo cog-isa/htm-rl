@@ -59,7 +59,7 @@ class QModelBasedAgent(QAgent):
 
         prev_sa_sdr = self._current_sa_sdr
         s = self.sa_encoder.encode_state(state, learn=True and train)
-        actions_sa_sdr = self._encode_state_actions(s, learn=True and train)
+        actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
 
         if train and not first:
             self.reward_model.update(s, reward)

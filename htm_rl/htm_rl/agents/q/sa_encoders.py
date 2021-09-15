@@ -141,16 +141,16 @@ class CrossSaEncoder(SaEncoder):
         return s_a
 
     def encode_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        sa = s_a = self.concat_s_action(s, action, learn=learn)
+        sa = s_a = self.sa_encoder.encode(s, action)
         return sa
-
-    @property
-    def output_sdr_size(self):
-        return self.sa_encoder.output_sdr_size
 
     @property
     def s_output_sdr_size(self):
         return self.sa_encoder.input_sdr_size
+
+    @property
+    def output_sdr_size(self):
+        return self.sa_encoder.output_sdr_size
 
 
 def make_sa_encoder(

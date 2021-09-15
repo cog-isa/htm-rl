@@ -165,7 +165,7 @@ class DreamingDouble(QModelBasedAgent):
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
         prev_sa_sdr = self._current_sa_sdr
-        actions_sa_sdr = self._encode_state_actions(s, learn=False)
+        actions_sa_sdr = self._encode_s_actions(s, learn=False)
 
         if not first:
             # Q-learning step
