@@ -10,7 +10,7 @@ from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
 
 
-class AnomalyTracker(Debugger):
+class AnomalyMapProvider(Debugger):
     fill_value: float = 1.
     name_prefix: str = 'anomaly'
 
@@ -23,7 +23,7 @@ class AnomalyTracker(Debugger):
             self, scenario: Scenario,
             state_encoding_provider: StateEncodingProvider = None
     ):
-        super(AnomalyTracker, self).__init__(scenario)
+        super(AnomalyMapProvider, self).__init__(scenario)
 
         self.agent_state_provider = AgentStateProvider(scenario)
         if state_encoding_provider is None:

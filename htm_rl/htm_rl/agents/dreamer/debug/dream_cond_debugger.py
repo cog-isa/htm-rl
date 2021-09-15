@@ -4,7 +4,7 @@ from htm_rl.agents.dreamer.agent import DreamerAgent
 from htm_rl.agents.dreamer.debug.dreaming_point_test_tracker import DreamingPointTestTracker
 from htm_rl.agents.q.debug.q_map_provider import QMapProvider
 from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
-from htm_rl.agents.qmb.debug.anomaly_tracker import AnomalyTracker
+from htm_rl.agents.qmb.debug.anomaly_map_provider import AnomalyMapProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.agents.rnd.debug.env_map_provider import EnvMapProvider
 from htm_rl.agents.rnd.debug.trajectory_tracker import TrajectoryTracker
@@ -31,7 +31,7 @@ class DreamingConditionsDebugger(Debugger):
         self.trajectory_tracker = TrajectoryTracker(scenario)
         self.state_encoding_provider = StateEncodingProvider(scenario)
         self.q_map_provider = QMapProvider(scenario, self.state_encoding_provider)
-        self.anomaly_tracker = AnomalyTracker(scenario, self.state_encoding_provider)
+        self.anomaly_map_provider = AnomalyMapProvider(scenario, self.state_encoding_provider)
         self.dreaming_point_test_tracker: Optional[DreamingPointTestTracker] = None
         self.images = images
         self.output_data = {}
@@ -74,7 +74,7 @@ class DreamingConditionsDebugger(Debugger):
             self.state_encoding_provider.encoding_scheme = None
             self.env_map_provider.print_map(self.output_renderer)
             self.q_map_provider.print_maps(self.output_renderer, q=True, v=True)
-            self.anomaly_tracker.print_map(self.output_renderer)
+            self.anomaly_map_provider.print_map(self.output_renderer)
             self.trajectory_tracker.print_map(self.output_renderer)
 
             output_filename = self.get_episode_filename(pp, self.train_eval_mark)
