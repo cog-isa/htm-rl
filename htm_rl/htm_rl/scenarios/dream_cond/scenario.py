@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 
 from htm_rl.agents.agent import Agent
-from htm_rl.agents.dreamer.debug.dream_cond_debugger import DreamingConditionsDebugger
+from htm_rl.agents.dreamer.debug.dreaming_conditions_debugger import DreamingConditionsDebugger
 from htm_rl.common.utils import timed
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.env import Env, unwrap
