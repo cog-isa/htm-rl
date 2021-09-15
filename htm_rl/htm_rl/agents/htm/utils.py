@@ -8,13 +8,24 @@ from htm_rl.envs.biogwlab.module import EntityType
 from htm.bindings.sdr import SDR
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.basal_ganglia import softmax
+from copy import deepcopy
+
+style = dict(
+    annotation_format=".1e",
+    font_size=12,
+    figure_size=(9, 9),
+    linewidth=1
+)
 
 
 class EmpowermentVis:
     def __init__(self, empowerment: Empowerment, environment: Environment,
                  horizon: int, visual_block_sp: SpatialPooler):
         self.empowerment = empowerment
-        self.environment = environment
+
+        self.environment = deepcopy(environment)
+        self.environment.env.modules['terminate'].early_stop = False
+
         self.visual_block_sp = visual_block_sp
         self.horizon = horizon
 
@@ -42,13 +53,16 @@ class EmpowermentVis:
                                                            self.horizon,
                                                            use_memory=True)[0]
 
-        figure = plt.figure(figsize=(13, 13))
-        sns.heatmap(real_emp, annot=True, fmt=".1g", cbar=False, annot_kws={"size": 24})
+        figure = plt.figure(figsize=style['figure_size'])
+        sns.heatmap(real_emp, annot=True, fmt=style['annotation_format'], cbar=False, annot_kws={"size": style['font_size']},
+                    linewidths=style['linewidth']
+        )
         figure.savefig(path_real)
         plt.close(figure)
 
-        figure = plt.figure(figsize=(13, 13))
-        sns.heatmap(learned_emp, annot=True, fmt=".1g", cbar=False, annot_kws={"size": 24})
+        figure = plt.figure(figsize=style['figure_size'])
+        sns.heatmap(learned_emp, annot=True, fmt=style['annotation_format'], cbar=False, annot_kws={"size": style['font_size']},
+                    linewidths=style['linewidth'])
         figure.savefig(path_learned)
         plt.close(figure)
 
@@ -201,7 +215,7 @@ def compute_q_policy(env: Environment, agent, directions: dict = None):
     return q, policy, actions
 
 
-def compute_dual_values(env: Environment, agent):
+def draw_dual_values(env: Environment, agent, path_ext, path_int):
     values_ext = np.zeros(env.shape)
     values_int = np.zeros(env.shape)
     visual_block = agent.hierarchy.visual_block
@@ -224,7 +238,20 @@ def compute_dual_values(env: Environment, agent):
         row, column = env.agent.position
         values_ext[row][column] = output_block.bg.responses_values_ext.max()
         values_int[row][column] = output_block.bg.responses_values_int.max()
-    return values_ext, values_int
+
+    plt.figure(figsize=style['figure_size'])
+    ax = sns.heatmap(values_ext, annot=True, fmt=style['annotation_format'], cbar=False, linewidths=style['linewidth'],
+                     annot_kws={"size": style['font_size']})
+    figure = ax.get_figure()
+    figure.savefig(path_ext)
+    plt.close(figure)
+
+    plt.figure(figsize=style['figure_size'])
+    ax = sns.heatmap(values_int, annot=True, fmt=style['annotation_format'], cbar=False, linewidths=style['linewidth'],
+                     annot_kws={"size": style['font_size']})
+    figure = ax.get_figure()
+    figure.savefig(path_int)
+    plt.close(figure)
 
 
 def compute_mu_policy(env: Environment, agent, directions: dict = None):
@@ -290,8 +317,9 @@ def draw_values(path: str, env_shape, q, policy, directions: dict = None):
     else:
         raise NotImplemented(f'Not implemented for n_directions = {n_directions}')
 
-    plt.figure(figsize=(13, 13))
-    ax = sns.heatmap(flat_values, annot=True, fmt=".1g", cbar=False)
+    plt.figure(figsize=style['figure_size'])
+    ax = sns.heatmap(flat_values, annot=True, fmt=style['annotation_format'], cbar=False, annot_kws={"size": style['font_size']},
+                     linewidths=style['linewidth'])
     ax.hlines(np.arange(0, flat_values.shape[0], 1 + n_directions // 4), xmin=0, xmax=flat_values.shape[1])
     ax.vlines(np.arange(0, flat_values.shape[1], 1 + n_directions // 4), ymin=0, ymax=flat_values.shape[0])
     figure = ax.get_figure()
