@@ -8,6 +8,7 @@ import wandb
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.muscles import Muscles
 from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
+from htm_rl.modules.dreaming.dreamer import Dreamer
 from htm_rl.modules.empowerment import Empowerment
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.agents.htm.configurator import configure
@@ -50,8 +51,9 @@ class BioGwLabAction:
 
 class HTMAgent:
     def __init__(self, config, hierarchy: Hierarchy):
-        self.use_intrinsic_reward = config['intrinsic_reward']
-        self.punish_reward = config['punish_reward']
+        self.use_intrinsic_reward = config['use_intrinsic_reward']
+        self.use_dreaming = config['use_dreaming']
+        self.punish_intrinsic_reward = config['punish_intrinsic_reward']
         self.hierarchy = hierarchy
 
         self.action = BioGwLabAction(**config['action'])
@@ -65,6 +67,17 @@ class HTMAgent:
             self.empowerment_horizon = 0
             self.empowerment = None
 
+        if self.use_dreaming:
+            self.dreamer = Dreamer(
+                n_actions=self.action.n_actions,
+                agent=self,
+                state_encoder=self.hierarchy.visual_block.sp,
+                action_encoder=self.hierarchy.output_block.sp,
+                **config['dreaming']
+                                   )
+        else:
+            self.dreamer = None
+
         self.total_patterns = 2 ** self.action.muscles_size
         # there is no first action
         self.action_pattern = np.empty(0)
@@ -76,6 +89,7 @@ class HTMAgent:
         self.sp_output = SDR(self.hierarchy.output_block.basal_columns)
         self.sp_input = SDR(self.hierarchy.output_block.get_in_sizes()[-1])
         self.previous_obs = np.empty(0)
+        self.backup = None
 
     def make_action(self, state_pattern):
         self.state_pattern.sparse = state_pattern
@@ -120,7 +134,7 @@ class HTMAgent:
         :return:
         """
         if self.use_intrinsic_reward:
-            reward_int = self.get_intrinsic_reward() + self.punish_reward
+            reward_int = self.get_intrinsic_reward() + self.punish_intrinsic_reward
         else:
             reward_int = 0
 
@@ -170,6 +184,12 @@ class HTMAgent:
 
             self.hierarchy.output_block.sm.forget()
 
+    def backup_agent(self):
+        pass
+
+    def restore_agent(self):
+        pass
+
 
 class HTMAgentRunner:
     def __init__(self, config, logger=None):
@@ -180,7 +200,7 @@ class HTMAgentRunner:
         block_configs = config['blocks']
         input_block_configs = config['input_blocks']
 
-        use_intrinsic_reward = config['agent']['intrinsic_reward']
+        use_intrinsic_reward = config['agent']['use_intrinsic_reward']
 
         blocks = list()
 
@@ -452,6 +472,7 @@ class HTMAgentRunner:
                 self.current_action = self.agent.make_action(obs)
 
                 self.agent.reset()
+                self.agent.dreamer.on_new_episode()
 
                 self.episode += 1
                 self.steps = 0
@@ -460,9 +481,13 @@ class HTMAgentRunner:
                 self.steps += 1
                 self.total_reward += reward
 
+            if self.agent.dreamer.can_dream() and self.agent.dreamer.decide_to_dream(obs):
+                self.agent.dreamer.dream(obs)
+
             self.current_action = self.agent.make_action(obs)
 
             self.agent.reinforce(reward)
+            self.agent.dreamer.on_wake_step(obs, reward, self.current_action)
 
             # ///logging///
             if self.logger is not None:
@@ -828,7 +853,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_rooms_9x9_swap_empowered'
+        default_config_name = 'four_rooms_9x9_swap_empowered_dreaming'
     with open(f'../../experiments/htm_agent/configs/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 

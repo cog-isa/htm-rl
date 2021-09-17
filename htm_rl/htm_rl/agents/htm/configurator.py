@@ -156,6 +156,8 @@ def configure(config):
         )
     )
 
+    new_config['agent']['dreaming'] = deepcopy(config['cagent']['dreaming'])
+
     new_config['seed'] = config['seed']
     new_config['levels'] = config['levels']
     return new_config
