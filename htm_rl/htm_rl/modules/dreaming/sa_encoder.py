@@ -54,6 +54,10 @@ class DreamerSaEncoder(SpSaEncoder):
         return self.state_decoder[i_state_cluster]
 
     @property
+    def s_output_sdr_size(self):
+        return self.state_encoder.output_sdr_size
+
+    @property
     def output_sdr_size(self):
         return self.s_a_concatenator.output_sdr_size
 

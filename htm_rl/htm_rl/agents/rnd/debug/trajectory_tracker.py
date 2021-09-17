@@ -4,6 +4,7 @@ from numpy import ma
 from htm_rl.agents.rnd.debug.agent_state_provider import AgentStateProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.envs.biogwlab.environment import Environment
+from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
 
 
@@ -46,3 +47,7 @@ class TrajectoryTracker(Debugger):
     @property
     def filename(self) -> str:
         return f'{self.name_prefix}_{self._default_config_identifier}_{self._default_progress_identifier}'
+
+    def print_map(self, renderer: ImageOutput):
+        renderer.handle_img(self.heatmap, self.title, with_value_text=True)
+        self.reset()

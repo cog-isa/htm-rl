@@ -36,3 +36,14 @@ class Debugger:
         if self.progress.is_new_episode:
             return f'{self.progress.episode}'
         return f'{self.progress.episode}_{self.progress.step}'
+
+    @property
+    def train_eval_mark(self):
+        is_train = self.scenario.mode == 'train'
+        train_eval_mark = 'A' if is_train else 'Z'
+        return train_eval_mark
+
+    def get_episode_filename(self, pp: ProgressPoint, train_eval_mark: str):
+        config_id = self._default_config_identifier
+        pp_id = f'{pp.episode}_{train_eval_mark}_{pp.step}'
+        return f'end_episode_{config_id}_{pp_id}'

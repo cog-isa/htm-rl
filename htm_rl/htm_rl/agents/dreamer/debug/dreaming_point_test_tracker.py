@@ -3,6 +3,7 @@ from numpy import ma
 
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.envs.env import unwrap as env_unwrap
+from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
 
 
@@ -41,6 +42,8 @@ class DreamingPointTestTracker(Debugger):
     def title(self) -> str:
         return self.name_prefix
 
-    @property
-    def filename(self) -> str:
-        return f'{self.name_prefix}_{self._default_config_identifier}_{self._default_progress_identifier}'
+    def print_map(self, renderer: ImageOutput):
+        renderer.handle_img(
+            self.dreaming_test_results, self.title, with_value_text=True
+        )
+        self.reset()

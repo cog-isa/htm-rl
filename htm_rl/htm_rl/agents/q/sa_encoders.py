@@ -67,15 +67,21 @@ class SpSaEncoder(SaEncoder):
     def output_sdr_size(self):
         return self.sa_sp.output_sdr_size
 
+    @property
+    def s_output_sdr_size(self):
+        return self.state_sp.output_sdr_size
+
 
 class CrossSaEncoder(SaEncoder):
     class CrossProductEncoder:
         n_actions: int
         n_active_bits: int
+        input_sdr_size: int
         output_sdr_size: int
 
         def __init__(self, env):
             self.n_actions = env.n_actions
+            self.input_sdr_size = env.output_sdr_size
             self.output_sdr_size = env.output_sdr_size * env.n_actions
             self.n_active_bits = len(env.observe())
 
@@ -135,8 +141,12 @@ class CrossSaEncoder(SaEncoder):
         return s_a
 
     def encode_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        sa = s_a = self.concat_s_action(s, action, learn=learn)
+        sa = s_a = self.sa_encoder.encode(s, action)
         return sa
+
+    @property
+    def s_output_sdr_size(self):
+        return self.sa_encoder.input_sdr_size
 
     @property
     def output_sdr_size(self):

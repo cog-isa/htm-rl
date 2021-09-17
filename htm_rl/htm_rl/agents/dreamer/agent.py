@@ -47,7 +47,7 @@ class DreamerAgent(QModelBasedAgent):
 
         prev_sa_sdr = self._current_sa_sdr
         s = self.sa_encoder.encode_state(state, learn=True and train)
-        actions_sa_sdr = self._encode_state_actions(s, learn=True and train)
+        actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
 
         if train and not first:
             self.reward_model.update(s, reward)
@@ -77,13 +77,21 @@ class DreamerAgent(QModelBasedAgent):
             dream = True
             self.force_dreaming = False
         elif self.dreamer.can_dream(eval_r):
-            action_values = self.Q.values(next_actions_sa_sdr)
-            greedy_action = np.argmax(action_values)
-            greedy_sa_sdr = next_actions_sa_sdr[greedy_action]
-            td_error = self.Q.td_error(prev_sa, r, greedy_sa_sdr)
+            td_error, anomaly = None, None
+            if self.dreamer.falling_asleep_strategy == 'td_error':
+                action_values = self.Q.values(next_actions_sa_sdr)
+                greedy_action = np.argmax(action_values)
+                greedy_sa_sdr = next_actions_sa_sdr[greedy_action]
+                td_error = self.Q.td_error(prev_sa, r, greedy_sa_sdr)
 
-            self.cum_td_error = exp_sum(self.cum_td_error, self.td_error_decay, td_error)
-            dream = self.dreamer.decide_to_dream(self.cum_td_error)
+                self.cum_td_error = exp_sum(self.cum_td_error, self.td_error_decay, td_error)
+                td_error = self.cum_td_error
+            elif self.dreamer.falling_asleep_strategy == 'anomaly':
+                anomaly = self.anomaly_model.anomaly[s].mean()
+
+            dream = self.dreamer.decide_to_dream(
+                td_error=td_error, anomaly=anomaly
+            )
         else:
             dream = False
 

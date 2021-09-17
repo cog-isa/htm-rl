@@ -82,7 +82,7 @@ class QAgent(Agent):
         train = self.train
         prev_sa_sdr = self._current_sa_sdr
         s = self.sa_encoder.encode_state(state, learn=True and train)
-        actions_sa_sdr = self._encode_state_actions(s, learn=True and train)
+        actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
 
         if train and not first:
             self.E_traces.update(prev_sa_sdr)
@@ -150,7 +150,7 @@ class QAgent(Agent):
         temp = max(temp, self.softmax_limit)
         self.softmax_temp = temp, decay
 
-    def _encode_state_actions(self, s: SparseSdr, learn: bool) -> list[SparseSdr]:
+    def _encode_s_actions(self, s: SparseSdr, learn: bool) -> list[SparseSdr]:
         return [
             self.sa_encoder.encode_s_action(s, action, learn=learn)
             for action in range(self.n_actions)

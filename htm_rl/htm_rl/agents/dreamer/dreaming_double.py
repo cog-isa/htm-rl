@@ -11,6 +11,33 @@ from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, DecayingValue
 
 
+class TdErrorBasedFallingAsleep:
+    boost_prob_alpha: DecayingValue
+    prob_threshold: float
+
+    def __init__(
+            self, boost_prob_alpha: DecayingValue, prob_threshold: float
+    ):
+        self.boost_prob_alpha = boost_prob_alpha
+        self.prob_threshold = prob_threshold
+
+
+class AnomalyBasedFallingAsleep:
+    anomaly_threshold: float
+    alpha: float
+    beta: float
+    max_prob: float
+
+    def __init__(
+            self, anomaly_threshold: float, alpha: float,
+            beta: float, max_prob: float,
+    ):
+        self.anomaly_threshold = anomaly_threshold
+        self.alpha = alpha
+        self.beta = beta
+        self.max_prob = max_prob
+
+
 class DreamingDouble(QModelBasedAgent):
     Q: QValueNetworkDouble
     wake_E_traces: EligibilityTraces
@@ -21,8 +48,9 @@ class DreamingDouble(QModelBasedAgent):
     tm_checkpoint: Optional[bytes]
 
     enabled: bool
-    enter_prob_alpha: DecayingValue
-    enter_prob_threshold: float
+    falling_asleep_strategy: str
+    td_error_based_falling_asleep: Optional[TdErrorBasedFallingAsleep]
+    anomaly_based_falling_asleep: Optional[AnomalyBasedFallingAsleep]
     prediction_depth: int
     n_prediction_rollouts: tuple[int, int]
 
@@ -35,8 +63,7 @@ class DreamingDouble(QModelBasedAgent):
             self,
             seed: int,
             wake_agent: QModelBasedAgent,
-            enter_prob_alpha: DecayingValue,
-            enter_prob_threshold: float,
+            falling_asleep_strategy: str,
             qvn: dict,
             eligibility_traces: dict,
             derive_e_traces: bool,
@@ -49,6 +76,8 @@ class DreamingDouble(QModelBasedAgent):
             softmax_temp: DecayingValue = (0., 0.),
             exploration_eps: DecayingValue = (0., 0.),
             trajectory_exploration_eps_decay: float = 1.,
+            td_error_based_falling_asleep: dict = None,
+            anomaly_based_falling_asleep: dict = None,
     ):
         self.n_actions = wake_agent.n_actions
         self.sa_encoder = wake_agent.sa_encoder
@@ -71,8 +100,13 @@ class DreamingDouble(QModelBasedAgent):
         self.ucb_estimate = wake_agent.ucb_estimate
 
         self.enabled = enabled
-        self.enter_prob_alpha = enter_prob_alpha
-        self.enter_prob_threshold = enter_prob_threshold
+        self.falling_asleep_strategy = falling_asleep_strategy
+        self.td_error_based_falling_asleep = TdErrorBasedFallingAsleep(
+            **td_error_based_falling_asleep
+        )
+        self.anomaly_based_falling_asleep = AnomalyBasedFallingAsleep(
+            **anomaly_based_falling_asleep
+        )
         self.prediction_depth = prediction_depth
         self.n_prediction_rollouts = n_prediction_rollouts
         self.first_dreaming_episode = isnone(first_dreaming_episode, 0)
@@ -88,7 +122,9 @@ class DreamingDouble(QModelBasedAgent):
 
     def on_new_episode(self):
         self._episode += 1
-        self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
+        self.td_error_based_falling_asleep.boost_prob_alpha = exp_decay(
+            self.td_error_based_falling_asleep.boost_prob_alpha
+        )
         self.E_traces.decay_trace_decay()
         self.exploration_eps = exp_decay(self.exploration_eps)
         self._decay_softmax_temperature()
@@ -107,9 +143,12 @@ class DreamingDouble(QModelBasedAgent):
             return False
         return True
 
-    def decide_to_dream(self, td_error):
-        if self._td_error_based_dreaming(td_error):
-            return True
+    def decide_to_dream(self, td_error: float = None, anomaly: float = None):
+        strategy = self.falling_asleep_strategy
+        if strategy == 'td_error':
+            return self._td_error_based_dreaming(td_error)
+        elif strategy == 'anomaly':
+            return self._anomaly_based_dreaming(anomaly)
         return False
 
     def dream(self, starting_state, prev_sa_sdr):
@@ -165,7 +204,7 @@ class DreamingDouble(QModelBasedAgent):
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
         prev_sa_sdr = self._current_sa_sdr
-        actions_sa_sdr = self._encode_state_actions(s, learn=False)
+        actions_sa_sdr = self._encode_s_actions(s, learn=False)
 
         if not first:
             # Q-learning step
@@ -206,11 +245,29 @@ class DreamingDouble(QModelBasedAgent):
         return s_next, action
 
     def _td_error_based_dreaming(self, td_error):
+        boost_prob_alpha = self.td_error_based_falling_asleep.boost_prob_alpha[0]
+        prob_threshold = self.td_error_based_falling_asleep.prob_threshold
         max_abs_td_error = 2.
-        dreaming_prob_boost = self.enter_prob_alpha[0]
-        dreaming_prob = (dreaming_prob_boost * abs(td_error) - self.enter_prob_threshold)
-        dreaming_prob = np.clip(dreaming_prob / max_abs_td_error, 0., 1.)
-        return self._rng.random() < dreaming_prob
+        p = (boost_prob_alpha * abs(td_error) - prob_threshold)
+        p = np.clip(p / max_abs_td_error, 0., 1.)
+        return self._rng.random() < p
+
+    def _anomaly_based_dreaming(self, anomaly):
+        params = self.anomaly_based_falling_asleep
+
+        if anomaly > params.anomaly_threshold:
+            return False
+
+        p = 1 - anomaly
+
+        # --> [0, >1] --> [0, 1]
+        alpha, beta = params.alpha, params.beta
+        p = (p / alpha)**beta
+        p /= (1 / alpha)**beta
+
+        # --> [0, max_prob]
+        p *= params.max_prob        # [0, max_prob]
+        return self._rng.random() < p
 
     def _save_tm_checkpoint(self) -> bytes:
         """Saves TM state."""

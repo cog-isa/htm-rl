@@ -1,6 +1,7 @@
 from typing import Optional
 
 from htm_rl.agents.q.agent import QAgent
+from htm_rl.agents.qmb.anomaly_model import AnomalyModel
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
 from htm_rl.agents.qmb.transition_models import make_transition_model
@@ -11,6 +12,7 @@ from htm_rl.common.utils import exp_decay, DecayingValue
 class QModelBasedAgent(QAgent):
     transition_model: TransitionModel
     reward_model: RewardModel
+    anomaly_model: AnomalyModel
 
     im_weight: DecayingValue
 
@@ -18,6 +20,7 @@ class QModelBasedAgent(QAgent):
             self,
             reward_model: dict,
             transition_model: dict,
+            anomaly_model: dict,
             im_weight: DecayingValue,
             **q_agent_config,
     ):
@@ -27,6 +30,11 @@ class QModelBasedAgent(QAgent):
             self.sa_encoder, transition_model
         )
         self.reward_model = RewardModel(self.sa_encoder.output_sdr_size, **reward_model)
+        self.anomaly_model = AnomalyModel(
+            cells_sdr_size=self.sa_encoder.s_output_sdr_size,
+            n_actions=self.n_actions,
+            **anomaly_model
+        )
         self.im_weight = im_weight
 
     @property
@@ -38,6 +46,7 @@ class QModelBasedAgent(QAgent):
         if self.train:
             self.transition_model.reset()
             self.reward_model.decay_learning_factors()
+            self.anomaly_model.decay_learning_factors()
             self.im_weight = exp_decay(self.im_weight)
 
     def act(self, reward: float, state: SparseSdr, first: bool) -> Optional[int]:
@@ -50,7 +59,7 @@ class QModelBasedAgent(QAgent):
 
         prev_sa_sdr = self._current_sa_sdr
         s = self.sa_encoder.encode_state(state, learn=True and train)
-        actions_sa_sdr = self._encode_state_actions(s, learn=True and train)
+        actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
 
         if train and not first:
             self.reward_model.update(s, reward)
@@ -78,8 +87,11 @@ class QModelBasedAgent(QAgent):
         return 0.
 
     def _update_transition_model(self, s: SparseSdr, action: int, learn: bool):
-        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
         # learn (s,a) -> s'
         self.transition_model.process(s, learn=learn)
+        anomaly = self.transition_model.anomaly
+        self.anomaly_model.update(action, s, anomaly)
+
         # activate (s',a')
+        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
         self.transition_model.process(s_a, learn=False)

@@ -4,11 +4,13 @@ from typing import Optional
 import numpy as np
 from numpy.random import Generator
 
+from htm_rl.agents.dreamer.dreaming_double import AnomalyBasedFallingAsleep
+from htm_rl.agents.qmb.anomaly_model import AnomalyModel
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
 from htm_rl.agents.qmb.transition_models import make_transition_model
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import exp_decay, isnone, DecayingValue
+from htm_rl.common.utils import isnone
 from htm_rl.modules.dreaming.sa_encoder import DreamerSaEncoder
 
 
@@ -28,11 +30,11 @@ class Dreamer:
     transition_model: TransitionModel
     tm_checkpoint: Optional[bytes]
     reward_model: RewardModel
+    anomaly_model: AnomalyModel
 
     # turning it off disables possibility of dreaming
     enabled: bool
-    # the probability of entering the dreaming mode
-    enter_prob_alpha: DecayingValue
+    anomaly_based_falling_asleep: AnomalyBasedFallingAsleep
 
     # max prediction depth
     prediction_depth: int
@@ -55,7 +57,8 @@ class Dreamer:
             sa_encoder: dict,
             transition_model: dict,
             reward_model: dict,
-            enter_prob_alpha: DecayingValue,
+            anomaly_model: dict,
+            anomaly_based_falling_asleep: dict,
             prediction_depth: int,
             n_prediction_rollouts: tuple[int, int],
             enabled: bool = True,
@@ -76,9 +79,16 @@ class Dreamer:
         self.reward_model = RewardModel(
             self.sa_encoder.output_sdr_size, **reward_model
         )
+        self.anomaly_model = AnomalyModel(
+            cells_sdr_size=self.sa_encoder.s_output_sdr_size,
+            n_actions=self.n_actions,
+            **anomaly_model
+        )
 
         self.enabled = enabled
-        self.enter_prob_alpha = enter_prob_alpha
+        self.anomaly_based_falling_asleep = AnomalyBasedFallingAsleep(
+            **anomaly_based_falling_asleep
+        )
         self.prediction_depth = prediction_depth
         self.n_prediction_rollouts = n_prediction_rollouts
         self.first_dreaming_episode = isnone(first_dreaming_episode, 0)
@@ -118,7 +128,6 @@ class Dreamer:
         self.transition_model.reset()
         if self.train:
             self.reward_model.decay_learning_factors()
-            self.enter_prob_alpha = exp_decay(self.enter_prob_alpha)
 
     def can_dream(self, reward: float) -> bool:
         """
@@ -134,15 +143,13 @@ class Dreamer:
             return False
         return True
 
-    def decide_to_dream(self) -> bool:
+    def decide_to_dream(self, state: SparseSdr) -> bool:
         """
         Informs whether the dreaming should be activated.
-
-        # TODO: add anomaly-based decision
         """
-        if self._random_based_dreaming():
-            return True
-        return False
+        s = self.sa_encoder.encode_state(state, learn=False)
+        anomaly = self.anomaly_model.anomaly[s].mean()
+        return self._anomaly_based_dreaming(anomaly)
 
     def dream(self, starting_state: SparseSdr):
         """
@@ -211,9 +218,22 @@ class Dreamer:
         next_state = self.sa_encoder.decode_s_to_state(s_next)
         return next_state, s_next, action
 
-    def _random_based_dreaming(self):
-        dreaming_prob = self.enter_prob_alpha[0]
-        return self._rng.random() < dreaming_prob
+    def _anomaly_based_dreaming(self, anomaly):
+        params = self.anomaly_based_falling_asleep
+
+        if anomaly > params.anomaly_threshold:
+            return False
+
+        p = 1 - anomaly
+
+        # --> [0, >1] --> [0, 1]
+        alpha, beta = params.alpha, params.beta
+        p = (p / alpha)**beta
+        p /= (1 / alpha)**beta
+
+        # --> [0, max_prob]
+        p *= params.max_prob        # [0, max_prob]
+        return self._rng.random() < p
 
     def _save_tm_checkpoint(self) -> bytes:
         """Saves TM state."""
