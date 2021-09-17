@@ -20,7 +20,7 @@ class DreamerSaEncoder(SpSaEncoder):
 
     # noinspection PyMissingConstructor
     def __init__(
-            self, state_encoder, action_encoder: IntBucketEncoder,
+            self, state_encoder, n_actions: int,
             clusters_similarity_threshold: float
     ):
         self.state_encoder = SpatialPoolerWrapper(state_encoder)
@@ -30,7 +30,9 @@ class DreamerSaEncoder(SpSaEncoder):
         )
         self.state_decoder = []
 
-        self.action_encoder = action_encoder
+        self.action_encoder = IntBucketEncoder(
+            n_actions, self.state_encoder.n_active_bits
+        )
         self.s_a_concatenator = SdrConcatenator(input_sources=[
             self.state_encoder,
             self.action_encoder
@@ -45,9 +47,6 @@ class DreamerSaEncoder(SpSaEncoder):
         self._add_to_decoder(state, s)
         return s
 
-    def encode_action(self, action: int, learn: bool) -> SparseSdr:
-        return super(DreamerSaEncoder, self).encode_action(action, learn=learn)
-
     def decode_s_to_state(self, s: SparseSdr) -> SparseSdr:
         similarity_with_clusters = self.state_clusters.similarity(s)
         i_state_cluster = np.argmax(similarity_with_clusters)
@@ -56,10 +55,6 @@ class DreamerSaEncoder(SpSaEncoder):
     @property
     def s_output_sdr_size(self):
         return self.state_encoder.output_sdr_size
-
-    @property
-    def output_sdr_size(self):
-        return self.s_a_concatenator.output_sdr_size
 
     def _add_to_decoder(self, state: SparseSdr, s: SparseSdr):
         similarity_with_clusters = self.state_clusters.similarity(s)

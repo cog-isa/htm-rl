@@ -65,8 +65,8 @@ class Scenario:
         train_stats.append_stats(steps, reward, elapsed_time)
 
         if self.should_eval:
-            self.switch_to_state('eval')
             self.progress.end_episode(increase_episode=False)
+            self.switch_to_state('eval')
             (steps, reward), elapsed_time = self.run_episode()
             eval_stats.append_stats(steps, reward, elapsed_time)
 
@@ -76,10 +76,10 @@ class Scenario:
                     'reward': reward,
                     'elapsed_time': elapsed_time
                 })
-
+            self.progress.end_episode()
             self.switch_to_state('train')
-
-        self.progress.end_episode()
+        else:
+            self.progress.end_episode()
 
     @property
     def should_eval(self):

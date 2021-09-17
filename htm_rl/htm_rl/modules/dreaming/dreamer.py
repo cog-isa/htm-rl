@@ -51,7 +51,6 @@ class Dreamer:
             n_actions: int,  # env.n_actions
             agent,           # HIMA agent
             state_encoder,   # state --> s encoder
-            action_encoder,  # action --> a encoder
             # ----------------
             # --- from config
             sa_encoder: dict,
@@ -68,7 +67,7 @@ class Dreamer:
         self.n_actions = n_actions
         self.agent = agent
         self.sa_encoder = DreamerSaEncoder(
-            state_encoder, action_encoder, **sa_encoder
+            state_encoder, n_actions, **sa_encoder
         )
 
         self.transition_model = make_transition_model(
