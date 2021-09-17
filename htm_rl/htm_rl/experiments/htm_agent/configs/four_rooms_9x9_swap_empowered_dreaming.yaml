@@ -1,4 +1,4 @@
-seed: &seed 76980
+seed: &seed 3426980
 levels: 2
 agent: hima
 project: four_rooms_swap_empowered
@@ -125,7 +125,7 @@ cagent:
       maxSegmentsPerCell: 5
     seed: *seed
   dreaming:
-    enabled: false
+    enabled: true
     anomaly_based_falling_asleep:
       anomaly_threshold: .6
       alpha: .8

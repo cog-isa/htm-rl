@@ -290,6 +290,8 @@ class HTMAgentRunner:
         self.episode = 0
         self.animation = False
         self.agent_pos = list()
+        map_change_indicator = 0
+        dreaming_time = 0
 
         while self.episode < n_episodes:
             if self.scenario is not None:
@@ -319,7 +321,10 @@ class HTMAgentRunner:
                     self.logger.log(
                         {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode,
                          'main_metrics/level': self.level,
-                         'main_metrics/total_terminals': self.total_terminals},
+                         'main_metrics/total_terminals': self.total_terminals,
+                         'main_metrics/map_change_indicator': map_change_indicator,
+                         'main_metrics/dreaming_time': dreaming_time
+                         },
                         step=self.episode)
                     if log_segments:
                         self.logger.log(
@@ -476,12 +481,14 @@ class HTMAgentRunner:
                 self.episode += 1
                 self.steps = 0
                 self.total_reward = 0
+                dreaming_time = 0
             else:
                 self.steps += 1
                 self.total_reward += reward
 
             if self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
+                dreaming_time += 1
 
             self.current_action = self.agent.make_action(obs)
 
@@ -513,9 +520,6 @@ class HTMAgentRunner:
                 map_change_indicator = 1
             else:
                 map_change_indicator = 0
-
-            if self.logger is not None:
-                self.logger.log({'main_metrics/map_change_indicator': map_change_indicator}, step=self.episode)
             # \\\logging\\\
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
