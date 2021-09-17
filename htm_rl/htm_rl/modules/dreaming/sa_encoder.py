@@ -23,18 +23,18 @@ class DreamerSaEncoder(SpSaEncoder):
             self, state_encoder, n_actions: int,
             clusters_similarity_threshold: float
     ):
-        self.state_encoder = SpatialPoolerWrapper(state_encoder)
+        self.state_sp = SpatialPoolerWrapper(state_encoder)
         self.state_clusters = Memory(
-            size=self.state_encoder.output_sdr_size,
+            size=self.state_sp.output_sdr_size,
             threshold=clusters_similarity_threshold
         )
         self.state_decoder = []
 
         self.action_encoder = IntBucketEncoder(
-            n_actions, self.state_encoder.n_active_bits
+            n_actions, self.state_sp.n_active_bits
         )
         self.s_a_concatenator = SdrConcatenator(input_sources=[
-            self.state_encoder,
+            self.state_sp,
             self.action_encoder
         ])
         self.sa_sp = None  # it isn't needed for a Dreamer
@@ -54,7 +54,7 @@ class DreamerSaEncoder(SpSaEncoder):
 
     @property
     def s_output_sdr_size(self):
-        return self.state_encoder.output_sdr_size
+        return self.state_sp.output_sdr_size
 
     def _add_to_decoder(self, state: SparseSdr, s: SparseSdr):
         similarity_with_clusters = self.state_clusters.similarity(s)
