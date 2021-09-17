@@ -72,7 +72,6 @@ class HTMAgent:
                 n_actions=self.action.n_actions,
                 agent=self,
                 state_encoder=self.hierarchy.visual_block.sp,
-                action_encoder=self.hierarchy.output_block.sp,
                 **config['dreaming']
                                    )
         else:
