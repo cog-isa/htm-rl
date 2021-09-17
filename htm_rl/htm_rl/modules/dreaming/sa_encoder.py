@@ -58,8 +58,9 @@ class DreamerSaEncoder(SpSaEncoder):
 
     def _add_to_decoder(self, state: SparseSdr, s: SparseSdr):
         similarity_with_clusters = self.state_clusters.similarity(s)
-        i_state_cluster = np.argmax(similarity_with_clusters)
-        if i_state_cluster < len(self.state_decoder):
-            assert np.all(state == self.state_decoder[i_state_cluster])
-        else:
-            self.state_decoder.append(state.copy())
+        if similarity_with_clusters.size > 0:
+            i_state_cluster = np.argmax(similarity_with_clusters)
+            if i_state_cluster < len(self.state_decoder):
+                assert np.all(state == self.state_decoder[i_state_cluster])
+            else:
+                self.state_decoder.append(state.copy())

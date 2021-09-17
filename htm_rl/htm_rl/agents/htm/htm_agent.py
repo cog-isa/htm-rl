@@ -480,7 +480,7 @@ class HTMAgentRunner:
                 self.steps += 1
                 self.total_reward += reward
 
-            if self.agent.dreamer.can_dream() and self.agent.dreamer.decide_to_dream(obs):
+            if self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
 
             self.current_action = self.agent.make_action(obs)
