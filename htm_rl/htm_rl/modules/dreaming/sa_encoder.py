@@ -53,8 +53,8 @@ class DreamerSaEncoder(SpSaEncoder):
         return self.state_decoder[i_state_cluster]
 
     @property
-    def s_output_sdr_size(self):
-        return self.state_sp.output_sdr_size
+    def output_sdr_size(self):
+        return self.s_a_concatenator.output_sdr_size
 
     def _add_to_decoder(self, state: SparseSdr, s: SparseSdr):
         similarity_with_clusters = self.state_clusters.similarity(s)
