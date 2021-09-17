@@ -109,7 +109,7 @@ cagent:
   empowerment:
     horizon: 3
     similarity_threshold: 0.6
-    memory: false
+    memory: true
     evaluate: false
     tm_config:
       noise_tolerance: 0.25
@@ -322,14 +322,14 @@ basal_ganglia_default:
   alpha_int: 0.1
   beta: 0.01
   beta_int: 0.1
-  discount_factor: 0.99
-  discount_factor_int: 0.9
+  discount_factor: 0.997
+  discount_factor_int: 0.1
   off_policy: true
   off_policy_int: true
   softmax_beta: 1
   epsilon_noise: 0
   priority_ext: 1.0
-  priority_int: 0.01
+  priority_int: 0.1
   td_error_threshold: 0.01
   priority_inc_factor: 1.1
   priority_dec_factor: 0.9

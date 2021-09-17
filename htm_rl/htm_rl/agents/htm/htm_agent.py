@@ -7,9 +7,8 @@ from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, \
-    compute_dual_values, EmpowermentVis
+    draw_dual_values, EmpowermentVis
 from htm.bindings.sdr import SDR
-import seaborn as sns
 import imageio
 import numpy as np
 import random
@@ -286,12 +285,12 @@ class HTMAgentRunner:
                     # log all saved frames for this episode
                     self.animation = False
                     with imageio.get_writer(f'/tmp/{self.logger.run.id}_episode_{self.episode}.gif', mode='I',
-                                            fps=2) as writer:
+                                            fps=3) as writer:
                         for i in range(self.steps):
                             image = imageio.imread(f'/tmp/{self.logger.run.id}_episode_{self.episode}_step_{i}.png')
                             writer.append_data(image)
                     self.logger.log(
-                        {f'behavior_samples/animation': self.logger.Video(f'/tmp/{self.logger.run.id}_episode_{self.episode}.gif', fps=2,
+                        {f'behavior_samples/animation': self.logger.Video(f'/tmp/{self.logger.run.id}_episode_{self.episode}.gif', fps=3,
                                                          format='gif')}, step=self.episode)
 
                 if (self.logger is not None) and (self.episode > 0):
@@ -361,23 +360,14 @@ class HTMAgentRunner:
                             'empowerment/learned': self.logger.Image(f'/tmp/empowerment_learned_{self.logger.run.id}.png')
                         }, step=self.episode)
                     if log_values_ext or log_values_int:
-                        values_ext, values_int = compute_dual_values(self.environment.env, self.agent)
+                        draw_dual_values(self.environment.env, self.agent, f'/tmp/values_ext_{self.logger.run.id}_{self.episode}.png',
+                                                                           f'/tmp/values_int_{self.logger.run.id}_{self.episode}.png')
                         if log_values_ext:
-                            plt.figure(figsize=(13, 13))
-                            ax = sns.heatmap(values_ext, annot=True, fmt=".1g", cbar=False, linewidths=3)
-                            figure = ax.get_figure()
-                            figure.savefig(f'/tmp/values_ext_{self.logger.run.id}_{self.episode}.png')
-                            plt.close(figure)
                             self.logger.log(
                                 {'values/state_values_ext': self.logger.Image(
                                     f'/tmp/values_ext_{self.logger.run.id}_{self.episode}.png')},
                                 step=self.episode)
                         if log_values_int:
-                            plt.figure(figsize=(13, 13))
-                            ax = sns.heatmap(values_int, annot=True, fmt=".1g", cbar=False, linewidths=3)
-                            figure = ax.get_figure()
-                            figure.savefig(f'/tmp/values_int_{self.logger.run.id}_{self.episode}.png')
-                            plt.close(figure)
                             self.logger.log(
                                 {'values/state_values_int': self.logger.Image(
                                     f'/tmp/values_int_{self.logger.run.id}_{self.episode}.png')},
@@ -476,7 +466,7 @@ class HTMAgentRunner:
             self.environment.act(self.current_action)
 
             # ///logging///
-            if self.environment.callmethod('is_terminal'):
+            if self.environment.callmethod('is_terminal') and (self.environment.env.items_collected > 0):
                 pos = self.environment.env.agent.position
                 if pos in self.terminal_pos_stat:
                     self.terminal_pos_stat[pos] += 1
@@ -484,6 +474,12 @@ class HTMAgentRunner:
                     self.terminal_pos_stat[pos] = 1
                 self.last_terminal_stat = self.terminal_pos_stat[pos]
                 self.total_terminals += 1
+                map_change_indicator = 1
+            else:
+                map_change_indicator = 0
+
+            if self.logger is not None:
+                self.logger.log({'main_metrics/map_change_indicator': map_change_indicator}, step=self.episode)
             # \\\logging\\\
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
