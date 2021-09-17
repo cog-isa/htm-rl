@@ -1,7 +1,11 @@
 _type_: dreamer
 
 enabled: false
-enter_prob_alpha: [.25, 1.]
+anomaly_based_falling_asleep:
+  anomaly_threshold: .6
+  alpha: .8
+  beta: 2.
+  max_prob: .15
 
 prediction_depth: 18
 n_prediction_rollouts: [3, 12]
@@ -11,6 +15,9 @@ sa_encoder:
 
 reward_model:
   learning_rate: [1., 1.]
+
+anomaly_model:
+  learning_rate: [.1, 1.]
 
 transition_model:
   tm:
