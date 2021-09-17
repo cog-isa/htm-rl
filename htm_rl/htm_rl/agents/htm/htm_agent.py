@@ -266,7 +266,7 @@ class HTMAgentRunner:
         self.n_blocks = len(self.agent.hierarchy.blocks)
         self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
                               'confidence_threshold': [0] * self.n_blocks,
-                              'boost_modulation': [0] * self.n_blocks,
+                              'reward_modulation': [0] * self.n_blocks,
                               'da_1lvl': 0,
                               'dda_1lvl': 0,
                               'da_2lvl': 0,
@@ -282,7 +282,7 @@ class HTMAgentRunner:
                      log_every_episode=50,
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
                      opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
-                     log_td_error=False, log_anomaly=False, log_confidence=False, log_boost_modulation=False,
+                     log_td_error=False, log_anomaly=False, log_confidence=False, log_modulation=False,
                      log_values_int=True, log_values_ext=True, log_priorities=True, log_empowerment=False,
                      log_number_of_clusters=False):
         self.total_reward = 0
@@ -364,10 +364,10 @@ class HTMAgentRunner:
                         confidence_th = {f"blocks/confidence_th_block{block_id}": an for block_id, an in
                                          enumerate(self.block_metrics['confidence_threshold'])}
                         self.logger.log(confidence_th, step=self.episode)
-                    if log_boost_modulation:
-                        boost_modulation = {f"blocks/boost_modulation_block{block_id}": x for block_id, x in
-                                            enumerate(self.block_metrics['boost_modulation'])}
-                        self.logger.log(boost_modulation, step=self.episode)
+                    if log_modulation:
+                        modulation = {f"blocks/modulation_block{block_id}": x for block_id, x in
+                                            enumerate(self.block_metrics['reward_modulation'])}
+                        self.logger.log(modulation, step=self.episode)
 
                     if log_number_of_clusters:
                         self.logger.log(
@@ -669,8 +669,8 @@ class HTMAgentRunner:
                     block.anomaly_threshold - self.block_metrics['anomaly_threshold'][i]) / (self.steps + 1)
             self.block_metrics['confidence_threshold'][i] = self.block_metrics['confidence_threshold'][i] + (
                     block.confidence_threshold - self.block_metrics['confidence_threshold'][i]) / (self.steps + 1)
-            self.block_metrics['boost_modulation'][i] = self.block_metrics['boost_modulation'][i] + (
-                    block.boost_modulation - self.block_metrics['boost_modulation'][i]) / (self.steps + 1)
+            self.block_metrics['reward_modulation'][i] = self.block_metrics['reward_modulation'][i] + (
+                    block.reward_modulation_signal - self.block_metrics['reward_modulation'][i]) / (self.steps + 1)
 
         self.block_metrics['da_1lvl'] = self.block_metrics['da_1lvl'] + (
                 self.agent.hierarchy.output_block.da - self.block_metrics['da_1lvl']) / (self.steps + 1)
@@ -697,7 +697,7 @@ class HTMAgentRunner:
     def reset_block_metrics(self):
         self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
                               'confidence_threshold': [0] * self.n_blocks,
-                              'boost_modulation': [0] * self.n_blocks,
+                              'reward_modulation': [0] * self.n_blocks,
                               'da_1lvl': 0,
                               'dda_1lvl': 0,
                               'da_2lvl': 0,

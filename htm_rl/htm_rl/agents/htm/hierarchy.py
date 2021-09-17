@@ -138,9 +138,9 @@ class Block:
                  max_reward_decay: float = 0.99,
                  sm_max_reward: float = 0.95,
                  min_reward_decay: float = 0.99,
-                 sm_bm_inc: float = 0.9,
-                 sm_bm_dec: float = 0.999,
-                 modulation: bool = True):
+                 sm_rm_inc: float = 0.9,
+                 sm_rm_dec: float = 0.999,
+                 use_reward_modulation: bool = True):
         
         self.tm = tm
         self.sp = sp
@@ -194,10 +194,10 @@ class Block:
         self.max_reward_decay = max_reward_decay
         self.sm_max_reward = sm_max_reward
 
-        self.modulation = modulation
-        self.boost_modulation = 1
-        self.sm_bm_inc = sm_bm_inc
-        self.sm_bm_dec = sm_bm_dec
+        self.use_reward_modulation = use_reward_modulation
+        self.reward_modulation_signal = 1
+        self.sm_rm_inc = sm_rm_inc
+        self.sm_rm_dec = sm_rm_dec
 
         self.should_return_exec_predictions = False
         self.should_return_apical_predictions = False
@@ -293,12 +293,7 @@ class Block:
             self.d_cn = 0
 
             # Evaluate feedback boost
-            if self.modulation:
-                boost_modulation = self.boost_modulation
-            else:
-                boost_modulation = 1
-
-            self.feedback_boost = self.feedback_boost_range[0] + total_value * boost_modulation * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
+            self.feedback_boost = self.feedback_boost_range[0] + total_value * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
         else:
             basal_active_columns = list()
             shift = 0
@@ -385,6 +380,17 @@ class Block:
             if (self.sm is not None) and self.learn_sm:
                 self.sm.forget()
 
+            # Modulation
+            if self.use_reward_modulation:
+                reward_modulation = min((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 1.0)
+                if reward_modulation > self.reward_modulation_signal:
+                    self.reward_modulation_signal = self.sm_rm_inc * self.reward_modulation_signal + (
+                                1 - self.sm_rm_inc) * reward_modulation
+                else:
+                    self.reward_modulation_signal = self.sm_rm_dec * self.reward_modulation_signal + (
+                                1 - self.sm_rm_dec) * reward_modulation
+
+                self.tm.set_learning_rate(self.reward_modulation_signal)
             # TM
             self.tm.set_active_columns(basal_active_columns)
             self.tm.activate_cells(self.learn_tm)
@@ -408,12 +414,6 @@ class Block:
             self.confidence_threshold = self.tm.confidence_threshold
 
             self.d_cn = (self.confidence - self.confidence_threshold)/(self.confidence_threshold + EPS)
-
-            boost_modulation = 1 - min((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 1.0)
-            if boost_modulation > self.boost_modulation:
-                self.boost_modulation = self.sm_bm_inc * self.boost_modulation + (1 - self.sm_bm_inc) * boost_modulation
-            else:
-                self.boost_modulation = self.sm_bm_dec * self.boost_modulation + (1 - self.sm_bm_dec) * boost_modulation
 
             self.feedback_in_pattern = feedback_active_columns
             self.apical_in_pattern = apical_active_cells
@@ -595,7 +595,7 @@ class InputBlock:
         self.d_an_th = 0
         self.d_cn_th = 0
         self.freq = 0
-        self.boost_modulation = 1
+        self.reward_modulation_signal = 1
 
     def __str__(self):
         return f"InputBlock_{self.id}"

@@ -28,7 +28,7 @@ run_options:
   log_td_error: True
   log_anomaly: False
   log_confidence: False
-  log_boost_modulation: False
+  log_modulation: True
   log_segments: True
   log_terminal_stat: True
   log_empowerment: True
@@ -179,6 +179,7 @@ blocks:
       softmax_beta: 0.7
       epsilon_noise: 0.0
     block:
+      use_reward_modulation: true
       level: 1
     sm: {}
     sp:
@@ -375,7 +376,7 @@ block_default:
   gamma: 0.997
   predicted_boost: 0.0
   feedback_boost_range: [0.0, 0.8]
-  modulation: false
+  use_reward_modulation: false
   sm_da: 0.9
   sm_dda: 0.995
   d_an_th: 0.1
@@ -384,5 +385,5 @@ block_default:
   sm_max_reward: 0.997
   max_reward_decay: 0.999
   min_reward_decay: 0.999
-  sm_bm_inc: 0.9
-  sm_bm_dec: 0.998
+  sm_rm_inc: 0.9
+  sm_rm_dec: 0.998

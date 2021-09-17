@@ -96,27 +96,39 @@ class ApicalBasalFeedbackTM:
 
         self.connected_threshold = connected_threshold
         self.permanence_increment = permanence_increment
+        self.permanence_increment_init = permanence_increment
         self.permanence_decrement = permanence_decrement
+        self.permanence_decrement_init = permanence_decrement
         self.initial_permanence = initial_permanence
         self.predicted_segment_decrement = predicted_segment_decrement
+        self.predicted_segment_decrement_init = predicted_segment_decrement
 
         self.connected_threshold_apical = connected_threshold_apical
         self.permanence_increment_apical = permanence_increment_apical
+        self.permanence_increment_apical_init = permanence_increment_apical
         self.permanence_decrement_apical = permanence_decrement_apical
+        self.permanence_decrement_apical_init = permanence_decrement_apical
         self.initial_permanence_apical = initial_permanence_apical
         self.predicted_segment_decrement_apical = predicted_segment_decrement_apical
+        self.predicted_segment_decrement_apical_init = predicted_segment_decrement_apical
 
         self.connected_threshold_inhib = connected_threshold_inhib
         self.permanence_increment_inhib = permanence_increment_inhib
+        self.permanence_increment_inhib_init = permanence_increment_inhib
         self.permanence_decrement_inhib = permanence_decrement_inhib
+        self.permanence_decrement_inhib_init = permanence_decrement_inhib
         self.initial_permanence_inhib = initial_permanence_inhib
         self.predicted_segment_decrement_inhib = predicted_segment_decrement_inhib
+        self.predicted_segment_decrement_inhib_init = predicted_segment_decrement_inhib
 
         self.connected_threshold_exec = connected_threshold_exec
         self.permanence_increment_exec = permanence_increment_exec
+        self.permanence_increment_exec_init = permanence_increment_exec
         self.permanence_decrement_exec = permanence_decrement_exec
+        self.permanence_decrement_exec_init = permanence_decrement_exec
         self.initial_permanence_exec = initial_permanence_exec
         self.predicted_segment_decrement_exec = predicted_segment_decrement_exec
+        self.predicted_segment_decrement_exec_init = predicted_segment_decrement_exec
 
         self.sample_size = sample_size
         self.sample_inhib_basal_size = sample_inhib_basal_size
@@ -280,6 +292,17 @@ class ApicalBasalFeedbackTM:
 
     def set_winner_apical_cells(self, cells_id):
         self.winner_apical_cells.sparse = np.array(cells_id) + self.apical_range[0]
+
+    def set_learning_rate(self, learning_rate_factor):
+        self.permanence_increment = self.permanence_increment_init * learning_rate_factor
+        self.permanence_decrement = self.permanence_decrement_init * learning_rate_factor
+        self.permanence_increment_apical = self.permanence_increment_apical_init * learning_rate_factor
+        self.permanence_increment_exec = self.permanence_increment_exec_init * learning_rate_factor
+        self.permanence_increment_inhib = self.permanence_increment_inhib_init * learning_rate_factor
+        self.predicted_segment_decrement = self.predicted_segment_decrement_init * learning_rate_factor
+        self.predicted_segment_decrement_apical = self.predicted_segment_decrement_apical_init * learning_rate_factor
+        self.predicted_segment_decrement_exec = self.predicted_segment_decrement_exec_init * learning_rate_factor
+        self.predicted_segment_decrement_inhib = self.predicted_segment_decrement_inhib_init * learning_rate_factor
 
     # output
     def get_active_columns(self):
