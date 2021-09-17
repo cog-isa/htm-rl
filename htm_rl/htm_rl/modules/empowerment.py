@@ -41,6 +41,13 @@ class Memory:
         self.threshold = threshold
         self.size = size
 
+    @property
+    def number_of_clusters(self):
+        if (self.kernels is not None) and (self.kernels.ndim == 2):
+            return self.kernels.shape[0]
+        else:
+            return 0
+
     def add(self, state):
         """ Add a new SDR representation (store and clusterize).
 

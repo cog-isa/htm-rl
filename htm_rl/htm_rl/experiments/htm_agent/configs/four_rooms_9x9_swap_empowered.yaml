@@ -1,4 +1,4 @@
-seed: &seed 76984
+seed: &seed 76980
 levels: 2
 agent: hima
 project: four_rooms_swap_empowered
@@ -32,6 +32,7 @@ run_options:
   log_segments: True
   log_terminal_stat: True
   log_empowerment: True
+  log_number_of_clusters: True
   draw_options: True
   draw_options_stats: True
   opt_threshold: 4

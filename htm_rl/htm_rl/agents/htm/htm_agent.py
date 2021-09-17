@@ -1,3 +1,10 @@
+import numpy as np
+import imageio
+import random
+import yaml
+import matplotlib.pyplot as plt
+import wandb
+
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.muscles import Muscles
 from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
@@ -9,12 +16,6 @@ from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, \
     draw_dual_values, EmpowermentVis
 from htm.bindings.sdr import SDR
-import imageio
-import numpy as np
-import random
-import yaml
-import matplotlib.pyplot as plt
-import wandb
 
 
 class BioGwLabAction:
@@ -263,7 +264,8 @@ class HTMAgentRunner:
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
                      opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
                      log_td_error=False, log_anomaly=False, log_confidence=False, log_boost_modulation=False,
-                     log_values_int=True, log_values_ext=True, log_priorities=True, log_empowerment=False):
+                     log_values_int=True, log_values_ext=True, log_priorities=True, log_empowerment=False,
+                     log_number_of_clusters=False):
         self.total_reward = 0
         self.steps = 0
         self.episode = 0
@@ -290,12 +292,14 @@ class HTMAgentRunner:
                             image = imageio.imread(f'/tmp/{self.logger.run.id}_episode_{self.episode}_step_{i}.png')
                             writer.append_data(image)
                     self.logger.log(
-                        {f'behavior_samples/animation': self.logger.Video(f'/tmp/{self.logger.run.id}_episode_{self.episode}.gif', fps=3,
-                                                         format='gif')}, step=self.episode)
+                        {f'behavior_samples/animation': self.logger.Video(
+                            f'/tmp/{self.logger.run.id}_episode_{self.episode}.gif', fps=3,
+                            format='gif')}, step=self.episode)
 
                 if (self.logger is not None) and (self.episode > 0):
                     self.logger.log(
-                        {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode, 'main_metrics/level': self.level,
+                        {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode,
+                         'main_metrics/level': self.level,
                          'main_metrics/total_terminals': self.total_terminals},
                         step=self.episode)
                     if log_segments:
@@ -305,7 +309,7 @@ class HTMAgentRunner:
                                 'connections/apical_segments': self.agent.hierarchy.output_block.tm.apical_connections.numSegments(),
                                 'connections/exec_segments': self.agent.hierarchy.output_block.tm.exec_feedback_connections.numSegments(),
                                 'connections/inhib_segments': self.agent.hierarchy.output_block.tm.inhib_connections.numSegments()
-                                },
+                            },
                             step=self.episode)
 
                     if log_options_usage:
@@ -341,6 +345,11 @@ class HTMAgentRunner:
                                             enumerate(self.block_metrics['boost_modulation'])}
                         self.logger.log(boost_modulation, step=self.episode)
 
+                    if log_number_of_clusters:
+                        self.logger.log(
+                            {'empowerment/number_of_clusters': self.agent.empowerment.memory.number_of_clusters},
+                            step=self.episode)
+
                     self.reset_block_metrics()
 
                 if ((self.episode % log_every_episode) == 0) and (self.logger is not None) and (self.episode > 0):
@@ -350,18 +359,21 @@ class HTMAgentRunner:
                         self.option_stat.clear_stats()
                         self.last_options_usage = dict()
                     if log_terminal_stat:
-                        self.logger.log(dict([(f'terminal_stats/{x[0]}', x[1]) for x in self.terminal_pos_stat.items()]),
-                                        step=self.episode)
+                        self.logger.log(
+                            dict([(f'terminal_stats/{x[0]}', x[1]) for x in self.terminal_pos_stat.items()]),
+                            step=self.episode)
                     if log_empowerment:
                         self.empowerment_vis.draw(f'/tmp/empowerment_real_{self.logger.run.id}.png',
                                                   f'/tmp/empowerment_learned_{self.logger.run.id}.png')
                         self.logger.log({
                             'empowerment/real': self.logger.Image(f'/tmp/empowerment_real_{self.logger.run.id}.png'),
-                            'empowerment/learned': self.logger.Image(f'/tmp/empowerment_learned_{self.logger.run.id}.png')
+                            'empowerment/learned': self.logger.Image(
+                                f'/tmp/empowerment_learned_{self.logger.run.id}.png')
                         }, step=self.episode)
                     if log_values_ext or log_values_int:
-                        draw_dual_values(self.environment.env, self.agent, f'/tmp/values_ext_{self.logger.run.id}_{self.episode}.png',
-                                                                           f'/tmp/values_int_{self.logger.run.id}_{self.episode}.png')
+                        draw_dual_values(self.environment.env, self.agent,
+                                         f'/tmp/values_ext_{self.logger.run.id}_{self.episode}.png',
+                                         f'/tmp/values_int_{self.logger.run.id}_{self.episode}.png')
                         if log_values_ext:
                             self.logger.log(
                                 {'values/state_values_ext': self.logger.Image(
@@ -391,7 +403,7 @@ class HTMAgentRunner:
                                         directions=directions)
                             self.logger.log({'values/state_values': self.logger.Image(
                                 f'/tmp/values_{self.logger.run.id}_{self.episode}.png')},
-                                            step=self.episode)
+                                step=self.episode)
                         if log_policy:
                             draw_policy(f'/tmp/policy_{self.logger.run.id}_{self.episode}.png',
                                         self.environment.env.shape,
@@ -419,7 +431,7 @@ class HTMAgentRunner:
                                         directions=directions)
                             self.logger.log({'values/option_state_values': wandb.Image(
                                 f'/tmp/option_values_{self.logger.run.id}_{self.episode}.png')},
-                                            step=self.episode)
+                                step=self.episode)
                         if log_option_policy:
                             draw_policy(f'/tmp/option_policy_{self.logger.run.id}_{self.episode}.png',
                                         self.environment.env.shape,
@@ -428,7 +440,7 @@ class HTMAgentRunner:
                                         directions=directions)
                             self.logger.log({'values/option_policy': wandb.Image(
                                 f'/tmp/option_policy_{self.logger.run.id}_{self.episode}.png')},
-                                            step=self.episode)
+                                step=self.episode)
 
                 if ((((self.episode + 1) % log_every_episode) == 0) or (self.episode == 0)) and (
                         self.logger is not None):
@@ -538,7 +550,7 @@ class HTMAgentRunner:
                     else:
                         direction %= 4
                     if (len(self.option_stat.action_displace) == 4) or (
-                    np.all(self.option_stat.action_displace[p_action] == 0)):
+                            np.all(self.option_stat.action_displace[p_action] == 0)):
                         displacement = self.option_stat.action_displace[p_action]
                     else:
                         displacement = self.option_stat.transform_displacement((0, 1), direction)
@@ -626,33 +638,33 @@ class HTMAgentRunner:
     def update_block_metrics(self):
         for i, block in enumerate(self.agent.hierarchy.blocks):
             self.block_metrics['anomaly_threshold'][i] = self.block_metrics['anomaly_threshold'][i] + (
-                        block.anomaly_threshold - self.block_metrics['anomaly_threshold'][i]) / (self.steps + 1)
+                    block.anomaly_threshold - self.block_metrics['anomaly_threshold'][i]) / (self.steps + 1)
             self.block_metrics['confidence_threshold'][i] = self.block_metrics['confidence_threshold'][i] + (
-                        block.confidence_threshold - self.block_metrics['confidence_threshold'][i]) / (self.steps + 1)
+                    block.confidence_threshold - self.block_metrics['confidence_threshold'][i]) / (self.steps + 1)
             self.block_metrics['boost_modulation'][i] = self.block_metrics['boost_modulation'][i] + (
-                        block.boost_modulation - self.block_metrics['boost_modulation'][i]) / (self.steps + 1)
+                    block.boost_modulation - self.block_metrics['boost_modulation'][i]) / (self.steps + 1)
 
         self.block_metrics['da_1lvl'] = self.block_metrics['da_1lvl'] + (
-                    self.agent.hierarchy.output_block.da - self.block_metrics['da_1lvl']) / (self.steps + 1)
+                self.agent.hierarchy.output_block.da - self.block_metrics['da_1lvl']) / (self.steps + 1)
         self.block_metrics['dda_1lvl'] = self.block_metrics['dda_1lvl'] + (
-                    self.agent.hierarchy.output_block.dda - self.block_metrics['dda_1lvl']) / (self.steps + 1)
+                self.agent.hierarchy.output_block.dda - self.block_metrics['dda_1lvl']) / (self.steps + 1)
         self.block_metrics['da_2lvl'] = self.block_metrics['da_2lvl'] + (
-                    self.agent.hierarchy.blocks[5].da - self.block_metrics['da_2lvl']) / (self.steps + 1)
+                self.agent.hierarchy.blocks[5].da - self.block_metrics['da_2lvl']) / (self.steps + 1)
         self.block_metrics['dda_2lvl'] = self.block_metrics['dda_2lvl'] + (
-                    self.agent.hierarchy.blocks[5].dda - self.block_metrics['dda_2lvl']) / (self.steps + 1)
+                self.agent.hierarchy.blocks[5].dda - self.block_metrics['dda_2lvl']) / (self.steps + 1)
         if self.agent.use_intrinsic_reward:
             self.block_metrics['priority_ext_1lvl'] = self.block_metrics['priority_ext_1lvl'] + (
-                        self.agent.hierarchy.output_block.bg.priority_ext - self.block_metrics['priority_ext_1lvl']) / (
-                                                                  self.steps + 1)
+                    self.agent.hierarchy.output_block.bg.priority_ext - self.block_metrics['priority_ext_1lvl']) / (
+                                                              self.steps + 1)
             self.block_metrics['priority_int_1lvl'] = self.block_metrics['priority_int_1lvl'] + (
-                        self.agent.hierarchy.output_block.bg.priority_int - self.block_metrics['priority_int_1lvl']) / (
-                                                                  self.steps + 1)
+                    self.agent.hierarchy.output_block.bg.priority_int - self.block_metrics['priority_int_1lvl']) / (
+                                                              self.steps + 1)
             self.block_metrics['priority_ext_2lvl'] = self.block_metrics['priority_ext_2lvl'] + (
-                        self.agent.hierarchy.blocks[5].bg.priority_ext - self.block_metrics['priority_ext_2lvl']) / (
-                                                                  self.steps + 1)
+                    self.agent.hierarchy.blocks[5].bg.priority_ext - self.block_metrics['priority_ext_2lvl']) / (
+                                                              self.steps + 1)
             self.block_metrics['priority_int_2lvl'] = self.block_metrics['priority_int_2lvl'] + (
-                        self.agent.hierarchy.blocks[5].bg.priority_int - self.block_metrics['priority_int_2lvl']) / (
-                                                                  self.steps + 1)
+                    self.agent.hierarchy.blocks[5].bg.priority_int - self.block_metrics['priority_int_2lvl']) / (
+                                                              self.steps + 1)
 
     def reset_block_metrics(self):
         self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
@@ -759,7 +771,8 @@ class HTMAgentRunner:
         if isinstance(map_image, list):
             map_image = map_image[0]
         plt.imsave(f'/tmp/map_{config["environment"]["seed"]}_{self.episode}.png', map_image.astype('uint8'))
-        logger.log({'maps/map': logger.Image(f'/tmp/map_{config["environment"]["seed"]}_{self.episode}.png', )}, step=self.episode)
+        logger.log({'maps/map': logger.Image(f'/tmp/map_{config["environment"]["seed"]}_{self.episode}.png', )},
+                   step=self.episode)
 
 
 class Scenario:
