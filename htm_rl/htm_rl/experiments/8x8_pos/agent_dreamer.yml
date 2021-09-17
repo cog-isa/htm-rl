@@ -21,10 +21,10 @@ dreaming:
     boost_prob_alpha: [2.5, 1.]
     prob_threshold: .3
   anomaly_based_falling_asleep:
-    anomaly_threshold: .6
-    alpha: .8
-    beta: 2.
-    max_prob: .15
+    anomaly_threshold: .8
+    alpha: .75
+    beta: 1.5
+    max_prob: .2
 
   qvn:
     learning_rate_factor: 1.
