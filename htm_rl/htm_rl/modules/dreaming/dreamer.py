@@ -113,7 +113,7 @@ class Dreamer:
         s = self.sa_encoder.encode_state(state, learn=False)
         self.reward_model.update(s, reward)
 
-        s_a = self.sa_encoder.encode_s_action(s, action, learn=False)
+        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
         self.transition_model.process(s, learn=True)
         self.transition_model.process(s_a, learn=False)
 
@@ -209,7 +209,7 @@ class Dreamer:
             next_state, s_next = [], []
             return next_state, s_next, action
 
-        s_a = self.sa_encoder.encode_s_action(s, action, learn=False)
+        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
         self.transition_model.process(s, learn=False)
         _, s_next_cells = self.transition_model.process(s_a, learn=False)
         s_next = self.transition_model.columns_from_cells(s_next_cells)

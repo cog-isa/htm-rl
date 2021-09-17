@@ -12,7 +12,7 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: false
+log: true
 
 run_options:
   n_episodes: 100000
