@@ -266,7 +266,7 @@ class HTMAgentRunner:
         self.n_blocks = len(self.agent.hierarchy.blocks)
         self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
                               'confidence_threshold': [0] * self.n_blocks,
-                              'boost_modulation': [0] * self.n_blocks,
+                              'reward_modulation': [0] * self.n_blocks,
                               'da_1lvl': 0,
                               'dda_1lvl': 0,
                               'da_2lvl': 0,
@@ -282,7 +282,7 @@ class HTMAgentRunner:
                      log_every_episode=50,
                      log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
                      opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
-                     log_td_error=False, log_anomaly=False, log_confidence=False, log_boost_modulation=False,
+                     log_td_error=False, log_anomaly=False, log_confidence=False, log_modulation=False,
                      log_values_int=True, log_values_ext=True, log_priorities=True, log_empowerment=False,
                      log_number_of_clusters=False):
         self.total_reward = 0
@@ -290,6 +290,8 @@ class HTMAgentRunner:
         self.episode = 0
         self.animation = False
         self.agent_pos = list()
+        map_change_indicator = 0
+        dreaming_time = 0
 
         while self.episode < n_episodes:
             if self.scenario is not None:
@@ -319,7 +321,10 @@ class HTMAgentRunner:
                     self.logger.log(
                         {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode,
                          'main_metrics/level': self.level,
-                         'main_metrics/total_terminals': self.total_terminals},
+                         'main_metrics/total_terminals': self.total_terminals,
+                         'main_metrics/map_change_indicator': map_change_indicator,
+                         'main_metrics/dreaming_time': dreaming_time
+                         },
                         step=self.episode)
                     if log_segments:
                         self.logger.log(
@@ -359,10 +364,10 @@ class HTMAgentRunner:
                         confidence_th = {f"blocks/confidence_th_block{block_id}": an for block_id, an in
                                          enumerate(self.block_metrics['confidence_threshold'])}
                         self.logger.log(confidence_th, step=self.episode)
-                    if log_boost_modulation:
-                        boost_modulation = {f"blocks/boost_modulation_block{block_id}": x for block_id, x in
-                                            enumerate(self.block_metrics['boost_modulation'])}
-                        self.logger.log(boost_modulation, step=self.episode)
+                    if log_modulation:
+                        modulation = {f"blocks/modulation_block{block_id}": x for block_id, x in
+                                            enumerate(self.block_metrics['reward_modulation'])}
+                        self.logger.log(modulation, step=self.episode)
 
                     if log_number_of_clusters:
                         self.logger.log(
@@ -375,7 +380,7 @@ class HTMAgentRunner:
                     if draw_options_stats:
                         self.option_stat.draw_options(self.logger, self.episode, threshold=opt_threshold,
                                                       obstacle_mask=self.environment.env.entities['obstacle'].mask)
-                        self.option_stat.clear_stats()
+                        self.option_stat.clear_stats(opt_threshold)
                         self.last_options_usage = dict()
                     if log_terminal_stat:
                         self.logger.log(
@@ -476,12 +481,14 @@ class HTMAgentRunner:
                 self.episode += 1
                 self.steps = 0
                 self.total_reward = 0
+                dreaming_time = 0
             else:
                 self.steps += 1
                 self.total_reward += reward
 
             if self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
+                dreaming_time += 1
 
             self.current_action = self.agent.make_action(obs)
 
@@ -513,9 +520,6 @@ class HTMAgentRunner:
                 map_change_indicator = 1
             else:
                 map_change_indicator = 0
-
-            if self.logger is not None:
-                self.logger.log({'main_metrics/map_change_indicator': map_change_indicator}, step=self.episode)
             # \\\logging\\\
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
@@ -665,8 +669,8 @@ class HTMAgentRunner:
                     block.anomaly_threshold - self.block_metrics['anomaly_threshold'][i]) / (self.steps + 1)
             self.block_metrics['confidence_threshold'][i] = self.block_metrics['confidence_threshold'][i] + (
                     block.confidence_threshold - self.block_metrics['confidence_threshold'][i]) / (self.steps + 1)
-            self.block_metrics['boost_modulation'][i] = self.block_metrics['boost_modulation'][i] + (
-                    block.boost_modulation - self.block_metrics['boost_modulation'][i]) / (self.steps + 1)
+            self.block_metrics['reward_modulation'][i] = self.block_metrics['reward_modulation'][i] + (
+                    block.reward_modulation_signal - self.block_metrics['reward_modulation'][i]) / (self.steps + 1)
 
         self.block_metrics['da_1lvl'] = self.block_metrics['da_1lvl'] + (
                 self.agent.hierarchy.output_block.da - self.block_metrics['da_1lvl']) / (self.steps + 1)
@@ -693,7 +697,7 @@ class HTMAgentRunner:
     def reset_block_metrics(self):
         self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
                               'confidence_threshold': [0] * self.n_blocks,
-                              'boost_modulation': [0] * self.n_blocks,
+                              'reward_modulation': [0] * self.n_blocks,
                               'da_1lvl': 0,
                               'dda_1lvl': 0,
                               'da_2lvl': 0,

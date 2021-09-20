@@ -6,7 +6,9 @@ jupyterlab
 ruamel.yaml
 tqdm
 wandb
-
+imageio
+seaborn
+ast
 #   htm.core dependencies
 mock
 

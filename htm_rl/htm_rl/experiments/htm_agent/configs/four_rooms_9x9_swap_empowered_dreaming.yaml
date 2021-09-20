@@ -1,4 +1,4 @@
-seed: &seed 76980
+seed: &seed 99853
 levels: 2
 agent: hima
 project: four_rooms_swap_empowered
@@ -12,11 +12,11 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: true
+log: false
 
 run_options:
   n_episodes: 100000
-  log_every_episode: 50
+  log_every_episode: 25
   log_values_int: True
   log_values_ext: True
   log_priorities: True
@@ -28,14 +28,14 @@ run_options:
   log_td_error: True
   log_anomaly: False
   log_confidence: False
-  log_boost_modulation: False
+  log_modulation: True
   log_segments: True
   log_terminal_stat: True
   log_empowerment: True
   log_number_of_clusters: True
   draw_options: True
   draw_options_stats: True
-  opt_threshold: 4
+  opt_threshold: 50
   train_patterns: True
 
 environment:
@@ -125,9 +125,9 @@ cagent:
       maxSegmentsPerCell: 5
     seed: *seed
   dreaming:
-    enabled: false
+    enabled: true
     anomaly_based_falling_asleep:
-      anomaly_threshold: .6
+      anomaly_threshold: 1.0
       alpha: .8
       beta: 2.
       max_prob: .15
@@ -173,12 +173,15 @@ blocks:
       basal_columns: 1000
   1:
     bg:
-      alpha: 0.01
-      beta: 0.01
+      alpha: 0.1
+      beta: 0.1
+      alpha_int: 0.01
+      beta_int: 0.01
       off_policy: true
-      softmax_beta: 0.7
+      softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
+      use_reward_modulation: true
       level: 1
     sm: {}
     sp:
@@ -358,24 +361,25 @@ basal_ganglia_default:
   alpha_int: 0.1
   beta: 0.01
   beta_int: 0.1
-  discount_factor: 0.997
-  discount_factor_int: 0.1
+  discount_factor: 0.95
+  discount_factor_int: 0.5
   off_policy: true
   off_policy_int: true
-  softmax_beta: 1
-  epsilon_noise: 0
+  softmax_beta: 1.0
+  epsilon_noise: 0.0
   priority_ext: 1.0
   priority_int: 0.1
   td_error_threshold: 0.01
   priority_inc_factor: 1.1
   priority_dec_factor: 0.9
+  use_external_modulatory_signal: true
   seed: *seed
 
 block_default:
   gamma: 0.997
   predicted_boost: 0.0
   feedback_boost_range: [0.0, 0.8]
-  modulation: false
+  use_reward_modulation: false
   sm_da: 0.9
   sm_dda: 0.995
   d_an_th: 0.1
@@ -384,5 +388,5 @@ block_default:
   sm_max_reward: 0.997
   max_reward_decay: 0.999
   min_reward_decay: 0.999
-  sm_bm_inc: 0.9
-  sm_bm_dec: 0.998
+  sm_rm_inc: 0.9
+  sm_rm_dec: 0.998

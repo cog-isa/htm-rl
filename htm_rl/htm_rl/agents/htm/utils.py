@@ -155,8 +155,12 @@ class OptionVis:
                 logger.log({f'options/option_{key}': logger.Image(f'/tmp/option_{logger.run.id}_{episode}_{key}.png')},
                            step=episode)
 
-    def clear_stats(self):
-        self.options = dict()
+    def clear_stats(self, threshold):
+        new_options = dict()
+        for id_, stats in self.options.items():
+            if stats['n_uses'] < threshold:
+                new_options[id_] = stats
+        self.options = new_options
 
     @staticmethod
     def transform_displacement(disp_xy, direction):
