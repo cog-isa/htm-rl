@@ -12,11 +12,11 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: true
+log: false
 
 run_options:
   n_episodes: 100000
-  log_every_episode: 50
+  log_every_episode: 25
   log_values_int: True
   log_values_ext: True
   log_priorities: True
@@ -35,7 +35,7 @@ run_options:
   log_number_of_clusters: True
   draw_options: True
   draw_options_stats: True
-  opt_threshold: 4
+  opt_threshold: 50
   train_patterns: True
 
 environment:

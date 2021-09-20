@@ -380,7 +380,7 @@ class HTMAgentRunner:
                     if draw_options_stats:
                         self.option_stat.draw_options(self.logger, self.episode, threshold=opt_threshold,
                                                       obstacle_mask=self.environment.env.entities['obstacle'].mask)
-                        self.option_stat.clear_stats()
+                        self.option_stat.clear_stats(opt_threshold)
                         self.last_options_usage = dict()
                     if log_terminal_stat:
                         self.logger.log(
