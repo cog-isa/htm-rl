@@ -1,14 +1,12 @@
-from typing import Dict, List, Tuple
-
 import numpy as np
 
 from htm_rl.envs.biogwlab.module import Entity, EntityType
 
 
 class CachedFlagDict(dict):
-    _base_dict: Dict[str, Entity]
+    _base_dict: dict[str, Entity]
 
-    def __init__(self, base_dict: Dict[str, Entity]):
+    def __init__(self, base_dict: dict[str, Entity]):
         super().__init__()
         self._base_dict = base_dict
 
@@ -29,12 +27,12 @@ class CachedFlagDict(dict):
 
 
 class CachedEntityAggregation(dict):
-    _shape: Tuple[int, int]
-    _flag_dict: Dict[EntityType, List[Entity]]
+    _shape: tuple[int, int]
+    _flag_dict: dict[EntityType, list[Entity]]
 
     def __init__(
-            self, flag_dict: Dict[EntityType, List[Entity]],
-            shape: Tuple[int, int]
+            self, flag_dict: dict[EntityType, list[Entity]],
+            shape: tuple[int, int]
     ):
         super().__init__()
         self._flag_dict = flag_dict

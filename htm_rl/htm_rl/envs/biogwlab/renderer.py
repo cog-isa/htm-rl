@@ -1,54 +1,57 @@
-from typing import Tuple, List, Optional, Iterable, Dict
+from typing import Optional, Iterable
 
 import numpy as np
 
 from htm_rl.common.sdr_encoders import SdrConcatenator
+from htm_rl.envs.biogwlab.env_shape_params import EnvShapeParams
 from htm_rl.envs.biogwlab.module import Entity, EntityType
 from htm_rl.envs.biogwlab.view_clipper import ViewClipper, ViewClip
 
 
 class Renderer:
-    output_sdr_size: int
-
-    shape: Tuple[int, int]
-    render: List[str]
-    sdr_concatenator: Optional[SdrConcatenator]
+    shape: EnvShapeParams
     view_clipper: Optional[ViewClipper]
 
-    def __init__(self, env, view_rectangle=None):
-        self.shape = env.shape
-        self.view_clipper = None
-        if view_rectangle is not None:
-            self.view_clipper = ViewClipper(env.shape, view_rectangle)
-        self.sdr_concatenator = None
+    channels_concatenator: Optional[SdrConcatenator]
+
+    def __init__(self, shape_xy, view_rectangle=None):
+        self.shape = EnvShapeParams(shape_xy, view_rectangle)
+        self.view_clipper = self.shape.view_clipper
+
+        # delayed initialization on the first render call
+        self.channels_concatenator = None
 
     def render(self, position, view_direction, entities: Iterable[Entity]):
         view_clip = self.make_view_clip(position, view_direction)
 
-        layers_with_size = []
+        layers_with_sdr_size = []
         for entity in entities:
             if not entity.rendering:
                 continue
-            layer = entity.render(view_clip)
-            if isinstance(layer, list):
-                layers_with_size.extend(layer)
-            elif layer[1]:
-                layers_with_size.append(layer)
+            layer_with_sdr_size = entity.render(view_clip)
+            if isinstance(layer_with_sdr_size, list):
+                layers_with_sdr_size.extend(layer_with_sdr_size)
+            elif layer_with_sdr_size[1]:
+                layers_with_sdr_size.append(layer_with_sdr_size)
 
-        assert layers_with_size, 'Rendering output is empty'
-        layers, sizes = zip(*layers_with_size)
+        assert layers_with_sdr_size, 'Rendering output is empty'
+        layers, sdr_sizes = zip(*layers_with_sdr_size)
 
-        if self.sdr_concatenator is None:
-            self.sdr_concatenator = SdrConcatenator(list(sizes))
+        if self.channels_concatenator is None:
+            self.channels_concatenator = SdrConcatenator(list(sdr_sizes))
 
-        observation = self.sdr_concatenator.concatenate(*layers)
+        observation = self.channels_concatenator.concatenate(*layers)
         return observation
 
-    def render_rgb(self, position, view_direction, entities: Dict[EntityType, List[Entity]]):
+    def render_rgb(
+            self, position, view_direction,
+            entities: dict[EntityType, list[Entity]],
+            show_outer_walls: bool
+    ):
         # fill with magenta to catch non-colored cells
         default_filler = np.array([255, 3, 209])
 
-        img_map = np.empty(self.shape + (3, ), dtype=np.int)
+        img_map = np.empty(self.shape.full_shape + (3, ), dtype=np.int)
         img_map[:] = default_filler
 
         areas = entities[EntityType.Area]
@@ -61,7 +64,6 @@ class Renderer:
         obstacle_color, obstacle_dc = [70, 40, 100], [-7, -4, -10]
         self._draw_entities(img_map, obstacles, obstacle_color, obstacle_dc)
 
-        # TODO: reward based coloring
         food = entities[EntityType.Consumable]
         # consumables: salad green
         food_color, food_dc = [112, 212, 17], [-4, -10, 4]
@@ -88,11 +90,14 @@ class Renderer:
         # `grey`-out view area
         img_map[abs_indices] += (.5 * (255 - img_map[abs_indices])).astype(np.int)
 
+        if not show_outer_walls:
+            # cut outer walls, keeping only "inner" env part
+            img_map = self.shape.get_inner_area(img_map)
         return [img_map, img_obs]
 
     @property
-    def output_sdr_size(self):
-        return self.sdr_concatenator.output_sdr_size
+    def output_sdr_size(self) -> int:
+        return self.channels_concatenator.output_sdr_size
 
     def make_view_clip(self, position, view_direction):
         if self.view_clipper is None:
@@ -100,17 +105,21 @@ class Renderer:
         return self.view_clipper.clip(position, view_direction)
 
     @staticmethod
-    def _draw_entities(img: np.ndarray, entities: List[Entity], color: List[int], dc: List[int]):
+    def _draw_entities(
+            img: np.ndarray, entities: list[Entity], color: list[int],
+            delta_color: list[int]
+    ):
         mask = np.empty(img.shape[:2], dtype=np.bool)
-        color, dc = np.array(color), np.array(dc)
+        # color: RGB, i.e. 3-elem array
+        color, delta_color = np.array(color), np.array(delta_color)
         for entity in entities:
             mask.fill(0)
             entity.append_mask(mask)
             img[mask] = color
-            color += dc
+            color += delta_color
 
 
-def render_mask(mask: np.ndarray, view_clip: ViewClip = None):
+def render_mask(mask: np.ndarray, view_clip: ViewClip) -> tuple[np.ndarray, int]:
     if view_clip is None:
         return np.flatnonzero(mask), mask.size
 

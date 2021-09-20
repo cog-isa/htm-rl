@@ -52,7 +52,11 @@ class Agent(Entity):
     renderer: AgentRenderer
     env: Environment
 
-    def __init__(self, env: Environment, rendering=False, positions=None, change_position=False, direction=None, **entity):
+    def __init__(
+            self, env: Environment,
+            rendering=False, positions=None,
+            change_position=False, direction=None, **entity
+    ):
         super(Agent, self).__init__(rendering=rendering, **entity)
         self.env = env
 

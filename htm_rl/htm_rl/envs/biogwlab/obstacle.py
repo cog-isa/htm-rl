@@ -1,10 +1,11 @@
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 
+from htm_rl.envs.biogwlab.env_shape_params import EnvShapeParams
 from htm_rl.envs.biogwlab.environment import Environment
-from htm_rl.envs.biogwlab.module import Entity, EntityType
 from htm_rl.envs.biogwlab.generation.obstacles import ObstacleMaskGenerator, ObstacleMask, ObstacleMaskManual
+from htm_rl.envs.biogwlab.module import Entity, EntityType
 from htm_rl.envs.biogwlab.renderer import render_mask
 from htm_rl.envs.biogwlab.view_clipper import ViewClip
 
@@ -14,18 +15,22 @@ class Obstacle(Entity):
     type = EntityType.Obstacle
 
     generator: ObstacleMask
+    shape: EnvShapeParams
     mask: np.ndarray
     last_seed: Optional[int]
 
-    def __init__(self, env: Environment, density, map_name=None, **entity):
+    def __init__(self, env: Environment, density=None, map_name=None, **entity):
         super(Obstacle, self).__init__(**entity)
 
+        self.shape = env.renderer.shape
+        env_shape = self.shape.env_shape
         if map_name is not None:
-            self.generator = ObstacleMaskManual(shape=env.shape, map_name=map_name)
+            self.generator = ObstacleMaskManual(shape=env_shape, map_name=map_name)
         else:
-            self.generator = ObstacleMaskGenerator(shape=env.shape, density=density)
+            self.generator = ObstacleMaskGenerator(shape=env_shape, density=density)
 
-        self.mask = np.zeros(env.shape, dtype=np.bool)
+        # init with ones to make outer walls
+        self.mask = np.ones(self.shape.full_shape, dtype=np.bool)
         self.last_seed = None
 
     def generate(self, seeds):
@@ -34,7 +39,10 @@ class Obstacle(Entity):
             return
 
         self.initialized = False
-        self.mask = self.generator.generate(seed)
+        # generates obstacles only for the effective env shape
+        # outer walls are kept unchanged
+        inner_area_mask = self.generator.generate(seed)
+        self.shape.set_inner_area(self.mask, inner_area_mask)
         self.initialized = True
 
     def render(self, view_clip: ViewClip = None):
@@ -52,7 +60,7 @@ class BorderObstacle(Entity):
     family = 'obstacle.border'
     type = EntityType.Obstacle
 
-    shape: Tuple[int, int]
+    shape: tuple[int, int]
 
     def __init__(self, env: Environment, rendering=True, **entity):
         super(BorderObstacle, self).__init__(rendering=rendering, **entity)

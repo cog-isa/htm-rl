@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List, Any
+from typing import Any
 
 import numpy as np
 
@@ -33,43 +33,42 @@ class Environment(Env):
     ]
 
     seed: int
-    shape: Tuple[int, int]
+    shape: tuple[int, int]
 
     agent: Agent
-    modules: Dict[str, Module]
-    handlers: Dict[str, List[Any]]
+    modules: dict[str, Module]
+    handlers: dict[str, list[Any]]
 
-    entities: Dict[str, Entity]
-    entity_slices: Dict[EntityType, List[Entity]]
-    aggregated_mask: Dict[EntityType, np.ndarray]
+    entities: dict[str, Entity]
+    entity_slices: dict[EntityType, list[Entity]]
+    aggregated_mask: dict[EntityType, np.ndarray]
 
     episode_step: int
     step_reward: float
 
     renderer: Renderer
 
-    actions: List[str]
+    actions: list[str]
 
     def __init__(
-            self, shape_xy: Tuple[int, int], seed: int, actions: List[str],
-            rendering: Dict = None
+            self, shape_xy: tuple[int, int], seed: int, actions: list[str],
+            rendering: dict = None
     ):
-        # convert from x,y to i,j
-        width, height = shape_xy
-        self.shape = (height, width)
         self.seed = seed
+        self.renderer = Renderer(shape_xy=shape_xy, **isnone(rendering, {}))
+        self.shape = self.renderer.shape.full_shape
 
         self.actions = isnone(actions, self.supported_actions.copy())
         ensure_all_actions_supported(self.actions, self.supported_actions)
 
-        self.modules = dict()
-        self.handlers = dict()
-        self.entities = dict()
-        self.entity_slices = CachedFlagDict(self.entities)
-        self.aggregated_mask = CachedEntityAggregation(self.entity_slices, self.shape)
+        self.modules = {}
+        self.handlers = {}
+        self.entities = {}
 
-        rendering = isnone(rendering, dict())
-        self.renderer = Renderer(env=self, **rendering)
+        self.entity_slices = CachedFlagDict(self.entities)
+        self.aggregated_mask = CachedEntityAggregation(
+            self.entity_slices, self.shape
+        )
 
         self.episode_step = 0
         self.step_reward = 0
@@ -208,11 +207,12 @@ class Environment(Env):
     def output_sdr_size(self):
         return self.renderer.output_sdr_size
 
-    def render_rgb(self):
+    def render_rgb(self, show_outer_walls: bool = False):
         agent = self.agent
         return self.renderer.render_rgb(
             position=agent.position, view_direction=agent.view_direction,
-            entities=self.entity_slices
+            entities=self.entity_slices,
+            show_outer_walls=show_outer_walls
         )
 
 

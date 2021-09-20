@@ -34,7 +34,7 @@ class ModelDebugger(Debugger):
     def on_end_episode(self, pp: ProgressPoint, func, *args, **kwargs):
         if self.print_images:
             self.state_encoding_provider.encoding_scheme = None
-            self.env_map_provider.print_map(self.output_renderer)
+            self.env_map_provider.print_map(self.output_renderer, n=1)
             self.q_map_provider.print_maps(self.output_renderer, q=True, v=True)
             self.anomaly_map_provider.print_map(self.output_renderer)
             self.trajectory_tracker.print_map(self.output_renderer)

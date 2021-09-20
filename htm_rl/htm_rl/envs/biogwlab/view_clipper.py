@@ -1,6 +1,5 @@
 import dataclasses
 from dataclasses import dataclass
-from typing import Tuple
 
 import numpy as np
 
@@ -9,7 +8,7 @@ from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER, MoveDynamics
 
 @dataclass
 class ViewClip:
-    shape: Tuple[int, int]
+    shape: tuple[int, int]
     abs_indices: np.ndarray
     view_indices: np.ndarray
 
@@ -18,8 +17,8 @@ class ViewClip:
 
 
 class ViewClipper:
-    base_shape: Tuple[int, int]
-    view_rectangle: Tuple[Tuple[int, int], Tuple[int, int]]
+    base_shape: tuple[int, int]
+    view_rectangle: tuple[tuple[int, int], tuple[int, int]]
 
     natural_direction: int
 
@@ -28,13 +27,13 @@ class ViewClipper:
 
     def __init__(
             self,
-            base_shape: Tuple[int, int],
-            view_rectangle_xy: Tuple[Tuple[int, int], Tuple[int, int]],
+            base_shape: tuple[int, int],
+            view_rectangle: tuple[tuple[int, int], tuple[int, int]],
     ):
         self.base_shape = base_shape
         # view direction with natural indices traversal
         self.natural_direction = DIRECTIONS_ORDER.index('down')
-        self.view_rectangle = _xy_to_ij(view_rectangle_xy)
+        self.view_rectangle = view_rectangle
 
         h, w = self.base_shape
         self._map_abs_indices_cache = np.arange(h*w).reshape(self.base_shape)
