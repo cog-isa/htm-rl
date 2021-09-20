@@ -1,4 +1,4 @@
-seed: &seed 3426980
+seed: &seed 99853
 levels: 2
 agent: hima
 project: four_rooms_swap_empowered
@@ -127,7 +127,7 @@ cagent:
   dreaming:
     enabled: true
     anomaly_based_falling_asleep:
-      anomaly_threshold: .6
+      anomaly_threshold: 1.0
       alpha: .8
       beta: 2.
       max_prob: .15
@@ -173,10 +173,12 @@ blocks:
       basal_columns: 1000
   1:
     bg:
-      alpha: 0.01
-      beta: 0.01
+      alpha: 0.1
+      beta: 0.1
+      alpha_int: 0.01
+      beta_int: 0.01
       off_policy: true
-      softmax_beta: 0.7
+      softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
       use_reward_modulation: true
@@ -359,17 +361,18 @@ basal_ganglia_default:
   alpha_int: 0.1
   beta: 0.01
   beta_int: 0.1
-  discount_factor: 0.997
-  discount_factor_int: 0.1
+  discount_factor: 0.95
+  discount_factor_int: 0.5
   off_policy: true
   off_policy_int: true
-  softmax_beta: 1
-  epsilon_noise: 0
+  softmax_beta: 1.0
+  epsilon_noise: 0.0
   priority_ext: 1.0
   priority_int: 0.1
   td_error_threshold: 0.01
   priority_inc_factor: 1.1
   priority_dec_factor: 0.9
+  use_external_modulatory_signal: true
   seed: *seed
 
 block_default:

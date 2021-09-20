@@ -356,7 +356,7 @@ class Block:
             # Reinforce
             if (self.bg is not None) and (self.k != 0):
                 self.bg.update_response(basal_active_columns)
-                self.bg.force_dopamine(self.reward_ext, k=self.k, reward_int=self.reward_int)
+                self.bg.force_dopamine(self.reward_ext, k=self.k, reward_int=self.reward_int, external_modulation=self.reward_modulation_signal)
 
                 self.mean_reward = self.mean_reward * self.sm_reward + self.reward_ext * (1 - self.sm_reward)
                 if self.mean_reward > self.max_reward:

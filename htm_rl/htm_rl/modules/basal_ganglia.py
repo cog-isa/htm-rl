@@ -224,7 +224,7 @@ class BasalGanglia:
 
         return response_index, response, responses_values
 
-    def force_dopamine(self, reward: float, k: int = 0, reward_int: float = 0):
+    def force_dopamine(self, reward: float, k: int = 0, **kwargs):
         self.stri.learn(reward, k, self.off_policy)
 
     def update_response(self, response):
@@ -270,6 +270,7 @@ class DualBasalGanglia:
                  td_error_threshold: float = 0.01,
                  priority_inc_factor: float = 1.2,
                  priority_dec_factor: float = 0.9,
+                 use_external_modulatory_signal: bool = False,
                  seed: int = 0):
         """
         Basal Ganglia with two regions of Striatum. One for external reward and another for internal.
@@ -316,6 +317,7 @@ class DualBasalGanglia:
         self.priority_inc_factor = priority_inc_factor
         self.priority_dec_factor = priority_dec_factor
         self.td_error_threshold = td_error_threshold
+        self.use_external_modulatory_signal = use_external_modulatory_signal
 
         self.stn = STN(input_size, input_size)
         self.gpi = GPi(output_size, output_size, seed)
@@ -329,7 +331,6 @@ class DualBasalGanglia:
 
         self.responses_values_ext = np.empty(0)
         self.responses_values_int = np.empty(0)
-        self.current_max_response = None
 
     @property
     def td_error(self):
@@ -366,35 +367,42 @@ class DualBasalGanglia:
 
         response_index, response = self.tha.compute(responses, responses_boost, gpi, self.softmax_beta,
                                                     self.epsilon_noise)
-        self.current_max_response = self.tha.max_response
 
         self.responses_values_ext = np.zeros(len(responses))
         self.responses_values_int = np.zeros(len(responses))
         for ind, resp in enumerate(responses):
             self.responses_values_ext[ind] = np.median(self.stri_ext.values[resp])
             self.responses_values_int[ind] = np.median(self.stri_int.values[resp])
+
+        self.stri_ext.current_max_response = responses[np.argmax(self.responses_values_ext)]
+        self.stri_int.current_max_response = responses[np.argmax(self.responses_values_int)]
+
         responses_values = (self.responses_values_ext * self.priority_ext_init * self.priority_ext +
                             self.responses_values_int * self.priority_int_init * self.priority_int)
         return response_index, response, responses_values
 
-    def force_dopamine(self, reward_ext: float, k: int = 0, reward_int: float = 0.0):
+    def force_dopamine(self, reward_ext: float, k: int = 0, reward_int: float = 0.0, external_modulation: float = 0):
         """
         Aggregates rewards.
 
         :param reward_ext: external reward
         :param reward_int: internal reward
         :param k: step (for n-step learning)
+        :param external_modulation:
         :return:
         """
         self.stri_ext.learn(reward_ext, k, self.off_policy)
         self.stri_int.learn(reward_int, k, self.off_policy_int)
 
         # update priorities
-        td_err = self.stri_ext.error.sum()
-        if td_err < -self.td_error_threshold:
-            self.priority_ext = self.priority_ext * self.priority_dec_factor
+        if self.use_external_modulatory_signal:
+            self.priority_ext = external_modulation
         else:
-            self.priority_ext = min(self.priority_ext * self.priority_inc_factor, 1.0)
+            td_err = self.stri_ext.error.sum()
+            if td_err < -self.td_error_threshold:
+                self.priority_ext = self.priority_ext * self.priority_dec_factor
+            else:
+                self.priority_ext = min(self.priority_ext * self.priority_inc_factor, 1.0)
         self.priority_int = 1 - self.priority_ext
 
     def update_response(self, response):
