@@ -112,9 +112,12 @@ class Dreamer:
         """
         s = self.sa_encoder.encode_state(state, learn=False)
         self.reward_model.update(s, reward)
-
-        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
+        # learn transition and anomaly for (s,a) -> s'
         self.transition_model.process(s, learn=True)
+        self.anomaly_model.update(action, s, self.transition_model.anomaly)
+
+        # activate (s',a')
+        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
         self.transition_model.process(s_a, learn=False)
 
     def on_new_episode(self):
@@ -127,6 +130,7 @@ class Dreamer:
         self.transition_model.reset()
         if self.train:
             self.reward_model.decay_learning_factors()
+            self.anomaly_model.decay_learning_factors()
 
     def can_dream(self, reward: float) -> bool:
         """
