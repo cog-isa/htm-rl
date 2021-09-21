@@ -15,7 +15,7 @@ from htm_rl.agents.htm.configurator import configure
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, \
-    draw_dual_values, EmpowermentVis
+    draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
 from htm.bindings.sdr import SDR
 
 
@@ -254,8 +254,8 @@ class HTMAgentRunner:
         self.last_option_id = None
         self.current_action = None
 
-        self.option_stat = OptionVis(self.environment.env.shape, **config['vis_options'])
-        self.empowerment_vis = EmpowermentVis(self.agent.empowerment,
+        self.option_stat = OptionVis(self.env_config['shape_xy'], **config['vis_options'])
+        self.empowerment_vis = EmpowermentVis(self.env_config['shape_xy'], self.agent.empowerment,
                                               self.environment,
                                               self.agent.empowerment_horizon,
                                               self.agent.hierarchy.visual_block.sp)
@@ -379,7 +379,9 @@ class HTMAgentRunner:
                 if ((self.episode % log_every_episode) == 0) and (self.logger is not None) and (self.episode > 0):
                     if draw_options_stats:
                         self.option_stat.draw_options(self.logger, self.episode, threshold=opt_threshold,
-                                                      obstacle_mask=self.environment.env.entities['obstacle'].mask)
+                                                      obstacle_mask=clip_mask(self.environment.env.entities['obstacle'].mask,
+                                                                              self.environment.env.renderer.shape.top_left_point,
+                                                                              self.env_config['shape_xy']))
                         self.option_stat.clear_stats(opt_threshold)
                         self.last_options_usage = dict()
                     if log_terminal_stat:
@@ -395,7 +397,7 @@ class HTMAgentRunner:
                                 f'/tmp/empowerment_learned_{self.logger.run.id}.png')
                         }, step=self.episode)
                     if log_values_ext or log_values_int:
-                        draw_dual_values(self.environment.env, self.agent,
+                        draw_dual_values(self.env_config['shape_xy'], self.environment.env, self.agent,
                                          f'/tmp/values_ext_{self.logger.run.id}_{self.episode}.png',
                                          f'/tmp/values_int_{self.logger.run.id}_{self.episode}.png')
                         if log_values_ext:
@@ -421,7 +423,7 @@ class HTMAgentRunner:
 
                         if log_values:
                             draw_values(f'/tmp/values_{self.logger.run.id}_{self.episode}.png',
-                                        self.environment.env.shape,
+                                        self.env_config['shape_xy'],
                                         q,
                                         policy,
                                         directions=directions)
@@ -430,7 +432,7 @@ class HTMAgentRunner:
                                 step=self.episode)
                         if log_policy:
                             draw_policy(f'/tmp/policy_{self.logger.run.id}_{self.episode}.png',
-                                        self.environment.env.shape,
+                                        self.env_config['shape_xy'],
                                         policy,
                                         actions,
                                         directions=directions,
@@ -449,7 +451,7 @@ class HTMAgentRunner:
 
                         if log_option_values:
                             draw_values(f'/tmp/option_values_{self.logger.run.id}_{self.episode}.png',
-                                        self.environment.env.shape,
+                                        self.env_config['shape_xy'],
                                         q,
                                         policy,
                                         directions=directions)
@@ -458,7 +460,7 @@ class HTMAgentRunner:
                                 step=self.episode)
                         if log_option_policy:
                             draw_policy(f'/tmp/option_policy_{self.logger.run.id}_{self.episode}.png',
-                                        self.environment.env.shape,
+                                        self.env_config['shape_xy'],
                                         policy,
                                         option_ids,
                                         directions=directions)
@@ -510,7 +512,8 @@ class HTMAgentRunner:
 
             # ///logging///
             if self.environment.callmethod('is_terminal') and (self.environment.env.items_collected > 0):
-                pos = self.environment.env.agent.position
+                pos = get_unshifted_pos(self.environment.env.agent.position,
+                                        self.environment.env.renderer.shape.top_left_point)
                 if pos in self.terminal_pos_stat:
                     self.terminal_pos_stat[pos] += 1
                 else:
@@ -529,7 +532,8 @@ class HTMAgentRunner:
 
         if draw_options:
             option_block = self.agent.hierarchy.blocks[5]
-            c_pos = self.environment.env.agent.position
+            c_pos = get_unshifted_pos(self.environment.env.agent.position,
+                                      self.environment.env.renderer.shape.top_left_point)
             c_direction = self.environment.env.agent.view_direction
             c_option_id = option_block.current_option
 
@@ -592,13 +596,15 @@ class HTMAgentRunner:
 
     def update_option_stats(self, is_terminal):
         option_block = self.agent.hierarchy.blocks[5]
+        top_left_point = self.environment.env.renderer.shape.top_left_point
 
         if option_block.made_decision and not is_terminal:
             current_option_id = option_block.current_option
             if self.current_option_id != current_option_id:
                 if len(self.option_actions) != 0:
                     # update stats
-                    self.option_end_pos = self.environment.env.agent.position
+                    self.option_end_pos = get_unshifted_pos(self.environment.env.agent.position,
+                                                            top_left_point)
                     self.option_stat.update(self.current_option_id,
                                             self.option_start_pos,
                                             self.option_end_pos,
@@ -607,7 +613,8 @@ class HTMAgentRunner:
                     self.option_actions.clear()
                     self.option_predicted_actions = list()
 
-                self.option_start_pos = self.environment.env.agent.position
+                self.option_start_pos = get_unshifted_pos(self.environment.env.agent.position,
+                                                          top_left_point)
 
             predicted_actions = list()
             if self.agent.hierarchy.output_block.predicted_options is not None:
@@ -637,7 +644,8 @@ class HTMAgentRunner:
                     last_option = None
                 if last_option is not None:
                     last_option_id = last_option
-                    self.option_end_pos = self.environment.env.agent.position
+                    self.option_end_pos = get_unshifted_pos(self.environment.env.agent.position,
+                                                            top_left_point)
                     self.option_stat.update(last_option_id,
                                             self.option_start_pos,
                                             self.option_end_pos,
@@ -710,6 +718,7 @@ class HTMAgentRunner:
     def set_food_positions(self, positions, rand=False, sample_size=1):
         if rand:
             positions = self.rng.sample(positions, sample_size)
+        positions = [self.environment.env.renderer.shape.shift_relative_to_corner(pos) for pos in positions]
         self.environment.env.modules['food'].generator.positions = positions
 
     def set_feedback_boost_range(self, boost):
@@ -718,6 +727,7 @@ class HTMAgentRunner:
     def set_agent_positions(self, positions, rand=False, sample_size=1):
         if rand:
             positions = self.rng.sample(positions, sample_size)
+        positions = [self.environment.env.renderer.shape.shift_relative_to_corner(pos) for pos in positions]
         self.environment.env.modules['agent'].positions = positions
 
     def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None, door_positions=None):
@@ -766,7 +776,7 @@ class HTMAgentRunner:
             agent_room, food_room = self.rng.sample(list(range(1, 5)), k=2)
             food_door = None
 
-        room_width = (self.environment.env.shape[0] - 1) // 2
+        room_width = (self.env_config['shape_xy'][0] - 1) // 2
         if agent_fixed_positions is not None:
             agent_pos = tuple(agent_fixed_positions[agent_room - 1])
         else:

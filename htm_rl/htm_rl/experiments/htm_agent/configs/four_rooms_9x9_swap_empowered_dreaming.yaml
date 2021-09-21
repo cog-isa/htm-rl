@@ -1,4 +1,4 @@
-seed: &seed 99853
+seed: &seed 847582
 levels: 2
 agent: hima
 project: four_rooms_swap_empowered
@@ -12,7 +12,7 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: false
+log: true
 
 run_options:
   n_episodes: 100000
@@ -39,7 +39,7 @@ run_options:
   train_patterns: True
 
 environment:
-  seed: 2151
+  seed: 432921
   shape_xy: [9, 9]
 
   actions_cost:

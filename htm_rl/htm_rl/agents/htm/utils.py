@@ -19,12 +19,14 @@ style = dict(
 
 
 class EmpowermentVis:
-    def __init__(self, empowerment: Empowerment, environment: Environment,
+    def __init__(self, env_shape: tuple[int, int], empowerment: Empowerment, environment: Environment,
                  horizon: int, visual_block_sp: SpatialPooler):
+        self.env_shape = env_shape
         self.empowerment = empowerment
 
         self.environment = deepcopy(environment)
         self.environment.env.modules['terminate'].early_stop = False
+        self.top_left_point = self.environment.env.renderer.shape.top_left_point
 
         self.visual_block_sp = visual_block_sp
         self.horizon = horizon
@@ -33,38 +35,45 @@ class EmpowermentVis:
         input_state = SDR(self.environment.output_sdr_size)
         output_state = SDR(self.visual_block_sp.getColumnDimensions())
 
-        real_emp = np.zeros(self.environment.env.shape)
-        learned_emp = np.zeros(self.environment.env.shape)
+        real_emp = np.zeros(self.env_shape)
+        learned_emp = np.zeros(self.env_shape)
 
         for i_flat in np.flatnonzero(~self.environment.env.aggregated_mask[EntityType.Obstacle]):
             pos = self.environment.env.agent._unflatten_position(i_flat)
+            unshifted_pos = self.get_unshifted_pos(pos)
             assert isinstance(pos, tuple)
 
-            real_emp[pos] = real_empowerment(self.environment,
-                                             pos,
-                                             self.horizon)[0]
+            real_emp[unshifted_pos] = real_empowerment(self.environment,
+                                                       pos,
+                                                       self.horizon)[0]
 
             self.environment.env.agent.pos = pos
             _, observation, _ = self.environment.observe()
             input_state.sparse = observation
             self.visual_block_sp.compute(input_state, False, output_state)
 
-            learned_emp[pos] = self.empowerment.eval_state(output_state.sparse,
-                                                           self.horizon,
-                                                           use_memory=True)[0]
+            learned_emp[unshifted_pos] = self.empowerment.eval_state(output_state.sparse,
+                                                                     self.horizon,
+                                                                     use_memory=True)[0]
 
         figure = plt.figure(figsize=style['figure_size'])
-        sns.heatmap(real_emp, annot=True, fmt=style['annotation_format'], cbar=False, annot_kws={"size": style['font_size']},
+        sns.heatmap(real_emp, annot=True, fmt=style['annotation_format'], cbar=False,
+                    annot_kws={"size": style['font_size']},
                     linewidths=style['linewidth']
-        )
+                    )
         figure.savefig(path_real)
         plt.close(figure)
 
         figure = plt.figure(figsize=style['figure_size'])
-        sns.heatmap(learned_emp, annot=True, fmt=style['annotation_format'], cbar=False, annot_kws={"size": style['font_size']},
+        sns.heatmap(learned_emp, annot=True, fmt=style['annotation_format'], cbar=False,
+                    annot_kws={"size": style['font_size']},
                     linewidths=style['linewidth'])
         figure.savefig(path_learned)
         plt.close(figure)
+
+    def get_unshifted_pos(self, pos: tuple[int, int]) -> tuple[int, int]:
+        return (pos[0] - self.top_left_point[0],
+                pos[1] - self.top_left_point[1])
 
 
 class OptionVis:
@@ -178,6 +187,7 @@ class OptionVis:
 
 
 def compute_q_policy(env: Environment, agent, directions: dict = None):
+    top_left_point = env.renderer.shape.top_left_point
     q = dict()
     policy = dict()
     visual_block = agent.hierarchy.visual_block
@@ -200,8 +210,9 @@ def compute_q_policy(env: Environment, agent, directions: dict = None):
     # пройти по всем состояниям и вычилить для каждого состояния Q
     for i_flat in np.flatnonzero(~env.aggregated_mask[EntityType.Obstacle]):
         env.agent.position = env.agent._unflatten_position(i_flat)
-        q[env.agent.position] = dict()
-        policy[env.agent.position] = dict()
+        unshifted_pos = get_unshifted_pos(env.agent.position, top_left_point)
+        q[unshifted_pos] = dict()
+        policy[unshifted_pos] = dict()
         for i, direction in enumerate(directions):
             env.agent.view_direction = direction
             _, observation, _ = env.observe()
@@ -214,14 +225,15 @@ def compute_q_policy(env: Environment, agent, directions: dict = None):
                                                       responses_boost=None,
                                                       learn=False)
 
-            q[env.agent.position][i] = option_values
-            policy[env.agent.position][i] = softmax(output_block.bg.tha.response_activity)
+            q[unshifted_pos][i] = option_values
+            policy[unshifted_pos][i] = softmax(output_block.bg.tha.response_activity)
     return q, policy, actions
 
 
-def draw_dual_values(env: Environment, agent, path_ext, path_int):
-    values_ext = np.zeros(env.shape)
-    values_int = np.zeros(env.shape)
+def draw_dual_values(env_shape: tuple[int, int], env: Environment, agent, path_ext, path_int):
+    top_left_point = env.renderer.shape.top_left_point
+    values_ext = np.zeros(env_shape)
+    values_int = np.zeros(env_shape)
     visual_block = agent.hierarchy.visual_block
     output_block = agent.hierarchy.output_block
     options = output_block.sm.get_sparse_patterns()
@@ -232,6 +244,7 @@ def draw_dual_values(env: Environment, agent, path_ext, path_int):
     # пройти по всем состояниям и вычилить для каждого состояния Q
     for i_flat in np.flatnonzero(~env.aggregated_mask[EntityType.Obstacle]):
         env.agent.position = env.agent._unflatten_position(i_flat)
+        unshifted_pos = get_unshifted_pos(env.agent.position, top_left_point)
         _, observation, _ = env.observe()
         state_pattern.sparse = observation
         visual_block.sp.compute(state_pattern, False, sp_output)
@@ -239,7 +252,7 @@ def draw_dual_values(env: Environment, agent, path_ext, path_int):
                                     options,
                                     responses_boost=None,
                                     learn=False)
-        row, column = env.agent.position
+        row, column = unshifted_pos
         values_ext[row][column] = output_block.bg.responses_values_ext.max()
         values_int[row][column] = output_block.bg.responses_values_int.max()
 
@@ -259,6 +272,7 @@ def draw_dual_values(env: Environment, agent, path_ext, path_int):
 
 
 def compute_mu_policy(env: Environment, agent, directions: dict = None):
+    top_left_point = env.renderer.shape.top_left_point
     q = dict()
     policy = dict()
     output_block = agent.hierarchy.blocks[5]
@@ -276,8 +290,9 @@ def compute_mu_policy(env: Environment, agent, directions: dict = None):
     # пройти по всем состояниям и вычилить для каждого состояния Q
     for i_flat in np.flatnonzero(~env.aggregated_mask[EntityType.Obstacle]):
         env.agent.position = env.agent._unflatten_position(i_flat)
-        q[env.agent.position] = dict()
-        policy[env.agent.position] = dict()
+        unshifted_pos = get_unshifted_pos(env.agent.position, top_left_point)
+        q[unshifted_pos] = dict()
+        policy[unshifted_pos] = dict()
         for i, direction in enumerate(directions):
             env.agent.view_direction = direction
             _, observation, _ = env.observe()
@@ -290,8 +305,8 @@ def compute_mu_policy(env: Environment, agent, directions: dict = None):
                                                       responses_boost=None,
                                                       learn=False)
 
-            q[env.agent.position][i] = option_values
-            policy[env.agent.position][i] = softmax(output_block.bg.tha.response_activity)
+            q[unshifted_pos][i] = option_values
+            policy[unshifted_pos][i] = softmax(output_block.bg.tha.response_activity)
     return q, policy, option_ids
 
 
@@ -322,7 +337,8 @@ def draw_values(path: str, env_shape, q, policy, directions: dict = None):
         raise NotImplemented(f'Not implemented for n_directions = {n_directions}')
 
     plt.figure(figsize=style['figure_size'])
-    ax = sns.heatmap(flat_values, annot=True, fmt=style['annotation_format'], cbar=False, annot_kws={"size": style['font_size']},
+    ax = sns.heatmap(flat_values, annot=True, fmt=style['annotation_format'], cbar=False,
+                     annot_kws={"size": style['font_size']},
                      linewidths=style['linewidth'])
     ax.hlines(np.arange(0, flat_values.shape[0], 1 + n_directions // 4), xmin=0, xmax=flat_values.shape[1])
     ax.vlines(np.arange(0, flat_values.shape[1], 1 + n_directions // 4), ymin=0, ymax=flat_values.shape[0])
@@ -491,3 +507,13 @@ def get_direction_from_flat(pos):
         return 'left'
     else:
         return 'down'
+
+
+def get_unshifted_pos(pos, top_left_point):
+    return (pos[0] - top_left_point[0],
+            pos[1] - top_left_point[1])
+
+
+def clip_mask(mask, top_left_point, shape):
+    return mask[top_left_point[0]:top_left_point[0] + shape[0],
+                top_left_point[1]:top_left_point[1] + shape[1]]
