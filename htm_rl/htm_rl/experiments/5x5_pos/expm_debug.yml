@@ -30,7 +30,7 @@ agents:
 debug:
   # enabled can be set only by -d arg flag
   enabled: false
-  images: false
+  images: true
 
 wandb:
   project: test
