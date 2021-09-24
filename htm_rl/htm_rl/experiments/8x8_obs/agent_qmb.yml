@@ -3,23 +3,22 @@ _type_: qmb
 sa_encoder: q
 
 qvn:
-  discount_factor: &discount_factor .97
+  discount_factor: &discount_factor .95
   learning_rate: [.1, .995]
 
 eligibility_traces:
-  trace_decay: .75
+  trace_decay: [.75, .99]
   discount_factor: *discount_factor
 
-exploration_eps: [.3, .995]
-softmax_enabled: false
-im_weight: [.002, 1.]
-
-#ucb_estimate:
-#  visit_decay: .92
-#  ucb_exploration_factor: [.3, .997]
+softmax_temp: [.0, .0]
+exploration_eps: [.2, .99]
+im_weight: [.0005, 1.]
 
 reward_model:
-  learning_rate: [1., .995]
+  learning_rate: [1., 1.]
+
+anomaly_model:
+  learning_rate: [.05, 1.]
 
 transition_model:
   tm:
