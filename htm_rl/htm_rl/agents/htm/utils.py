@@ -162,10 +162,10 @@ class OptionVis:
                 image[:self.map_size[0], self.size + 2:self.size + 2 + self.map_size[1]] = value['init']
                 image[:self.map_size[0], self.size + 3 + self.map_size[1]:] = value['term']
                 plt.imsave(os.path.join(path_to_store_logs,
-                                        f'option_{logger.run.id}_{episode}_{key}.png'), image / max_n_uses, vmax=1,
+                                        f'option_{logger.id}_{episode}_{key}.png'), image / max_n_uses, vmax=1,
                            cmap='inferno')
                 logger.log({f'options/option_{key}': wandb.Image(os.path.join(path_to_store_logs,
-                                                                  f'option_{logger.run.id}_{episode}_{key}.png'))},
+                                                                  f'option_{logger.id}_{episode}_{key}.png'))},
                            step=episode)
 
     def clear_stats(self, threshold):
