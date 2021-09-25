@@ -3,8 +3,10 @@
 - [Installation](#installation)
   - [Install requirements](#install-requirements)
     - [[Optional] Install conda](#optional-install-conda)
-    - [Requirements.txt structure](#requirementstxt-structure)
+    - [[Info] requirements.txt structure](#info-requirementstxt-structure)
     - [Install requirements to dedicated python environment](#install-requirements-to-dedicated-python-environment)
+      - [Option 1: use conda and pip](#option-1-use-conda-and-pip)
+      - [Option 2: use pip only](#option-2-use-pip-only)
     - [Install `htm.core`](#install-htmcore)
     - [[Optional] Install `htm_rl` package](#optional-install-htm_rl-package)
   - [Contributors setup](#contributors-setup)
@@ -32,53 +34,59 @@ If you are new to conda, we recommend getting conda with [Miniconda](https://doc
 
 *If you brave enough, you may also consider [Miniforge](https://github.com/conda-forge/miniforge) as alternative to Miniconda - the difference from Miniconda is only that it sets default conda package channel to [conda-forge](https://github.com/conda-forge/miniforge), which is community-driven so it gets updates faster in general and contains more packages. Another alternative is to use [Mamba](https://github.com/mamba-org/mamba) instead of conda - Mamba mimics conda API, even uses it and fully backward compatible with it, so you can use both together; Mamba has enhanced dependency-resolving performance and async package installation, and also extends conda functionality. Last two options combined, [Mamba + Miniforge = Mambaforge](https://github.com/conda-forge/miniforge#mambaforge), are distributed by Miniforge community.*
 
-### Requirements.txt structure
+### [Info] requirements.txt structure
 
-File `requirements.txt` contains all required dependencies. Dependencies are grouped by what you can install with conda or pip and what is exclusive to pip.
-
-Unfortunately, even if you are going to use pip exclusively, it's unlikely that you can install the requirements with the simple `pip install -r requirements.txt` as at the time of writing (Sep 2021), `htm.core` pip package is broken and has to be installed manually from sources (see below).
+File `requirements.txt` contains all required dependencies. Dependencies are grouped by what you can install with conda or pip (conda section) and what is exclusive to pip (pip section). Besides what mentioned in `requirements.txt` you will also need to install our fork of the `htm.core` package from sources. In following sections we provide an installation guide.
 
 ### Install requirements to dedicated python environment
 
-Create a new environment with the packages from conda section ("conda requirements") in `requirements.txt`, then activate this environment. The name of the environment is up to you, we use `htm` for this guide. Please, check that the package list below matches `requirements.txt` before running the command below:
+In this section we provide you with two options: install requirements using both conda and pip or install everything with pip. In both cases requirements are installed into the new conda environment. The name of the environment is up to you, we use `htm` for this guide.
+
+*Do not hesitate to check that the package lists in the commands below match requirements in `requirements.txt`.*
+
+#### Option 1: use conda and pip
+
+Create new conda environment and install the conda requirements group, then install pip requirements group:
 
 ```bash
-conda create --name htm python=3.9 numpy matplotlib jupyterlab ruamel.yaml tqdm wandb mock
+conda create --name htm python=3.9 numpy matplotlib jupyterlab ruamel.yaml tqdm wandb mock imageio seaborn
 conda activate htm
+pip install hexy prettytable pytest>=4.6.5
 ```
 
-Install packages from pip requirements group in `requirements.txt` with pip except `htm.core`. Again, check that the package list below matches `requirements.txt`:
+#### Option 2: use pip only
+
+Create new conda environment and install everything with pip:
 
 ```bash
-pip install hexy prettytable pytest>=4.6.5
+conda create --name htm python=3.9
+conda activate htm
+pip install -r requirements.txt
 ```
 
 ### Install `htm.core`
 
-From sources (the only working option, Sep 2021):
+In our research we use slightly modified version of the `htm.core` package, so you have to install our fork instead of the origin. The following script installs it from the sources:
 
 ```bash
-git clone https://github.com/htm-community/htm.core
+cd <where to fork>
+git clone https://github.com/ZhekaHauska/htm.core.git
 cd htm.core
 pip install --use-feature=in-tree-build .
 ```
 
-From test-PyPi (broken, Sep 2021):
-
-```bash
-pip install -i https://test.pypi.org/simple/ htm.core
-```
-
 ### [Optional] Install `htm_rl` package
 
-To have an ability to import and use `htm_rl` package outside of the package root folder, e.g. in Jupyter Notebooks or in another packages, install it with _development mode_ flag. This flag means that package sources aren't copied to index, but the symlink is created meaning that the edits are "visible" immediately and don't require you to reinstall/update package manually:
+Install our `htm_rl` package:
 
 ```bash
 cd <htm_rl_project_root>/htm_rl
 pip install -e .
 ```
 
-Now you can import modules from the `htm_rl` package.
+The last command installs `htm_rl` with _development mode_ flag, which allows you importing modules from the `htm_rl` package outside of the package root folder, e.g. in Jupyter Notebooks or in another packages.
+
+Development mode flag `-e` prevent package sources to be copied to the index. Instead, the symlink is created, which means that the edits are "visible" immediately and don't require you to reinstall/update package manually after any changes in the package sources.
 
 ## Contributors setup
 
