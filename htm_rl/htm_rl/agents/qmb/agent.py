@@ -87,7 +87,7 @@ class QModelBasedAgent(QAgent):
         return 0.
 
     def _update_transition_model(self, s: SparseSdr, action: int, learn: bool):
-        # learn (s,a) -> s'
+        # learn transition and anomaly for (s,a) -> s'
         self.transition_model.process(s, learn=learn)
         anomaly = self.transition_model.anomaly
         self.anomaly_model.update(action, s, anomaly)

@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, Any
+from typing import Any
 
 from htm_rl.envs.biogwlab.agent import Agent
 from htm_rl.envs.biogwlab.area import MultiAreaGenerator
@@ -27,15 +27,17 @@ registry = {
 
 class BioGwLabEnvironment(Wrapper):
     def __init__(
-            self, shape_xy: Tuple[int, int], seed: int, rendering: Dict = None, actions=None,
+            self, shape_xy: tuple[int, int], seed: int,
+            rendering: dict = None, actions=None,
             **modules
     ):
         env = Environment(
-            shape_xy=shape_xy, seed=seed, actions=actions, rendering=rendering
+            shape_xy=shape_xy, seed=seed, actions=actions,
+            rendering=rendering
         )
 
         default_modules = [
-            Agent.family, BorderObstacle.family, 'regenerate', 'terminate'
+            Agent.family, 'regenerate', 'terminate'
         ]
         for module_name in default_modules:
             append_module(module_name, modules)
@@ -47,12 +49,12 @@ class BioGwLabEnvironment(Wrapper):
         super(BioGwLabEnvironment, self).__init__(env)
 
 
-def append_module(name: str, modules: Dict[str, Any]):
+def append_module(name: str, modules: dict[str, Any]):
     if name not in modules or modules[name] is None:
         modules[name] = {}
 
 
-def add_module(env, name: str, config: Dict):
+def add_module(env, name: str, config: dict):
     module_type = name
     if module_type not in registry:
         if '_type_' not in config:

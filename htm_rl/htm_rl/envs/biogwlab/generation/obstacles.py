@@ -1,24 +1,22 @@
-from typing import Tuple
-
 import numpy as np
 
 from htm_rl.envs.biogwlab.move_dynamics import MOVE_DIRECTIONS, DIRECTIONS_ORDER, MoveDynamics
 
 
 class ObstacleMask:
-    def generate(self, *args, **kwargs):
+    def generate(self, *args, **kwargs) -> np.ndarray:
         pass
 
 
 class ObstacleMaskGenerator(ObstacleMask):
     density: float
-    shape: Tuple[int, int]
+    shape: tuple[int, int]
 
     def __init__(self, density: float, shape):
         self.density = density
         self.shape = shape
 
-    def generate(self, seed):
+    def generate(self, seed: int) -> np.ndarray:
         height, width = self.shape
         n_cells = height * width
         n_required_obstacles = int((1. - self.density) * n_cells)
@@ -88,21 +86,23 @@ class ObstacleMaskGenerator(ObstacleMask):
 
 
 class ObstacleMaskManual(ObstacleMask):
-    shape: Tuple[int, int]
-    map_: np.array
+    shape: tuple[int, int]
+    map_: np.ndarray
 
-    def __init__(self, shape: Tuple[int, int], map_name: str):
+    def __init__(self, shape: tuple[int, int], map_name: str):
         self.shape = shape
         with open(map_name) as file:
             lines = file.readlines()
-        map_ = list()
-        for line in lines:
-            map_.append([bool(int(x)) for x in line.split()])
-        self.map_ = np.array(map_, dtype=np.bool_)
 
+        map_ = [
+            [bool(int(x)) for x in line.split()]
+            for line in lines
+        ]
+
+        self.map_ = np.array(map_, dtype=np.bool_)
         assert self.map_.shape == self.shape
 
-    def generate(self, seed):
+    def generate(self, seed: int) -> np.ndarray:
         return self.map_
 
 

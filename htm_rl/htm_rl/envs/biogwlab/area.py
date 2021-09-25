@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional
 
 import numpy as np
 
@@ -35,7 +35,7 @@ class MultiAreaGenerator(Module):
     generator: MultiAreaMapGenerator
     last_seed: Optional[int]
 
-    area_config: Dict
+    area_config: dict
 
     def __init__(self, n_types: int, env: Environment, name: str, **area_entity):
         super(MultiAreaGenerator, self).__init__(name=name)

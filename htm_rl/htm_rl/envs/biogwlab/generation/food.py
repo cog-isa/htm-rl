@@ -1,9 +1,8 @@
 from itertools import product
-from typing import Tuple, List, Optional
+from typing import Optional
 
 import numpy as np
 
-from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.common.utils import isnone
 
 
@@ -13,11 +12,11 @@ class FoodPositions:
 
 
 class FoodPositionsGenerator(FoodPositions):
-    shape: Tuple[int, int]
+    shape: tuple[int, int]
     n_items: int
     area_weights: Optional[np.ndarray]
 
-    def __init__(self, shape: Tuple[int, int], n_items, area_weights=None):
+    def __init__(self, shape: tuple[int, int], n_items, area_weights=None):
         self.shape = shape
         self.n_items = n_items
 
@@ -25,7 +24,10 @@ class FoodPositionsGenerator(FoodPositions):
         if area_weights is not None:
             self.area_weights = np.array(area_weights).reshape((-1, 1))
 
-    def generate(self, empty_mask: np.ndarray, area_masks: List[np.ndarray], seed):
+    def generate(
+            self, seed: int, empty_mask: np.ndarray,
+            area_masks: list[np.ndarray] = None
+    ):
         rng = np.random.default_rng(seed)
         n_cells = self.shape[0] * self.shape[1]
 
@@ -38,17 +40,18 @@ class FoodPositionsGenerator(FoodPositions):
         else:
             empty_indices_fl = np.flatnonzero(empty_mask)
             indices_fl = rng.choice(empty_indices_fl, size=self.n_items, replace=False)
-
-        # indices = list(zip(*np.divmod(indices_fl, self.shape[1])))
         return indices_fl
 
 
 class FoodPositionsManual(FoodPositions):
-    shape: Tuple[int, int]
+    shape: tuple[int, int]
     n_items: int
-    positions: List[Tuple[int, int]]
+    positions: list[tuple[int, int]]
 
-    def __init__(self, shape: Tuple[int, int], positions: List[Tuple[int, int]], *args, **kwargs):
+    def __init__(
+            self, shape: tuple[int, int], positions: list[tuple[int, int]],
+            *args, **kwargs
+    ):
         self.shape = shape
         self.positions = [tuple(x) for x in positions]
 
@@ -64,7 +67,7 @@ class LegacyFoodGenerator:
     RANCID_FRUIT_DISTRIBUTION = [.15, .3, .15, .15, .25]
     FOOD_TYPES_DISTRIBUTION = [.37, .33, .17, .13]
 
-    shape: Tuple[int, int]
+    shape: tuple[int, int]
     n_types: int
     n_items: int
 

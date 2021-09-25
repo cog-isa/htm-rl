@@ -1,8 +1,5 @@
-from typing import List, Set
-
 import numpy as np
 
-from htm_rl.common.plot_utils import plot_grid_images
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.generation.food import FoodPositionsGenerator, FoodPositions, FoodPositionsManual
 from htm_rl.envs.biogwlab.module import Entity, EntityType
@@ -31,26 +28,29 @@ class Food(Entity):
     type = EntityType.Consumable
 
     reward: float
-    positions_fl: Set[int]
+    positions_fl: set[int]
 
+    weighted_generation: bool
     generator: FoodPositions
     env: Environment
 
     def __init__(
             self, env: Environment, reward: float, n_items: int = 1,
-            area_weights: List[float] = None, positions=None,
+            area_weights: list[float] = None, positions=None,
             **entity
     ):
         super(Food, self).__init__(**entity)
 
         self.reward = reward
         self.manual_positions = positions
+        self.weighted_generation = False
         if positions is not None:
             self.generator = FoodPositionsManual(shape=env.shape, positions=positions)
         else:
             self.generator = FoodPositionsGenerator(
                 shape=env.shape, n_items=n_items, area_weights=area_weights
             )
+            self.weighted_generation = area_weights is not None
         self.env = env
 
     def generate(self, seeds):
@@ -60,18 +60,21 @@ class Food(Entity):
 
         seed = seeds['food']
         empty_mask = ~self.env.aggregated_mask[EntityType.Obstacle]
-        areas = self.env.entity_slices[EntityType.Area]
+        if self.weighted_generation:
+            areas = self.env.entity_slices[EntityType.Area]
 
-        area_masks = []
-        for area in areas:
-            mask = np.zeros_like(empty_mask)
-            area.append_mask(mask)
-            area_masks.append(mask)
+            area_masks = []
+            for area in areas:
+                mask = np.zeros_like(empty_mask)
+                area.append_mask(mask)
+                area_masks.append(mask)
+        else:
+            area_masks = None
 
-        # TODO: both flatten and non-flatten
-        self.positions_fl = set(self.generator.generate(
-            empty_mask=empty_mask, area_masks=area_masks, seed=seed
-        ))
+        positions_fl = self.generator.generate(
+            seed=seed, empty_mask=empty_mask, area_masks=area_masks
+        )
+        self.positions_fl = set(positions_fl)
         self.initialized = True
 
     def collect(self, position, view_direction):
@@ -87,14 +90,17 @@ class Food(Entity):
 
     def render(self, view_clip: ViewClip = None):
         if view_clip is None:
-            return np.array(list(self.positions_fl)), self.env.shape[0] * self.env.shape[1]
+            positions_fl = np.array(list(self.positions_fl))
+            env_size = self.env.shape[0] * self.env.shape[1]
+            return positions_fl, env_size
 
         indices = []
         for abs_ind, view_ind in zip(view_clip.abs_indices, view_clip.view_indices):
             if abs_ind in self.positions_fl:
                 indices.append(view_ind)
 
-        return np.array(indices), view_clip.shape[0] * view_clip.shape[1]
+        view_size = view_clip.shape[0] * view_clip.shape[1]
+        return np.array(indices), view_size
 
     def append_mask(self, mask: np.ndarray):
         if not self.initialized:

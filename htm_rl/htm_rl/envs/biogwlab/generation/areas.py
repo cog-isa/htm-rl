@@ -1,11 +1,10 @@
 from itertools import product
-from typing import Tuple
 
 import numpy as np
 
 
 class MultiAreaMapGenerator:
-    shape: Tuple[int, int]
+    shape: tuple[int, int]
     n_types: int
 
     def __init__(self, shape, n_types):
