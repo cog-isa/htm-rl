@@ -377,14 +377,13 @@ basal_ganglia_default:
   td_error_threshold: 0.01  # margin for td error condition: td < -threshold
   priority_inc_factor: 1.1  # multiply priority if td error is positive
   priority_dec_factor: 0.9  # else
-  sm_reward: 0.995  # smooth factor for reward
+  use_reward_modulation: true  # true: instead of TD error use reward modulation for priority
+  sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
+  sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement
   sm_max_reward: 0.99  # smooth factor for max reward
   sm_min_reward: 0.99  # smooth factor for min reward
   max_reward_decay: 0.999  # decay factor for max reward
   min_reward_decay: 0.999  # decay factor for min reward
-  use_reward_modulation: true  # true: instead of TD error use reward modulation for priority
-  sm_rm_inc: 0.9  # smooth factor for reward modulation during increment
-  sm_rm_dec: 0.998  # smooth factor for reward modulation during decrement
   seed: *seed
 
 block_default:
@@ -392,8 +391,12 @@ block_default:
   predicted_boost: 0.0  # boost predicted elementary actions
   feedback_boost_range: [0.0, 0.8]  # max and min boost percents for elementary actions corresponding to an option
   modulate_tm_lr: false  # use reward modulation for lr of TM
-  sm_rm_inc: 0.9  # smooth factor for reward modulation during increment
-  sm_rm_dec: 0.998  # smooth factor for reward modulation during decrement
+  sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
+  sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement
+  sm_max_reward: 0.99  # smooth factor for max reward
+  sm_min_reward: 0.99  # smooth factor for min reward
+  max_reward_decay: 0.999  # decay factor for max reward
+  min_reward_decay: 0.999  # decay factor for min reward
   d_an_th: 0.1  # threshold for anomaly deviation from mean, used for conditions
   d_cn_th: 0.1  # threshold for confidence deviation from mean, used for conditions
   sm_da: 0.9  # smooth factor for dopamine(squared td error)

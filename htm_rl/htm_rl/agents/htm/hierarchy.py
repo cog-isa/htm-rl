@@ -136,8 +136,12 @@ class Block:
                  sm_dda: float = 0,
                  d_an_th: float = 0,
                  d_cn_th: float = 0,
-                 sm_rm_inc: float = 0.9,
-                 sm_rm_dec: float = 0.999,
+                 sm_reward_inc: float = 0.9,
+                 sm_reward_dec: float = 0.999,
+                 min_reward_decay: float = 0.99,
+                 max_reward_decay: float = 0.99,
+                 sm_max_reward: float = 0.9,
+                 sm_min_reward: float = 0.9,
                  modulate_tm_lr: bool = False):
         
         self.tm = tm
@@ -186,8 +190,15 @@ class Block:
 
         self.modulate_tm_lr = modulate_tm_lr
         self.reward_modulation_signal = 1
-        self.sm_rm_inc = sm_rm_inc
-        self.sm_rm_dec = sm_rm_dec
+        self.sm_reward_inc = sm_reward_inc
+        self.sm_reward_dec = sm_reward_dec
+        self.mean_reward = 0
+        self.max_reward = 0
+        self.min_reward = 0
+        self.max_reward_decay = max_reward_decay
+        self.min_reward_decay = min_reward_decay
+        self.sm_max_reward = sm_max_reward
+        self.sm_min_reward = sm_min_reward
 
         self.should_return_exec_predictions = False
         self.should_return_apical_predictions = False
@@ -221,27 +232,6 @@ class Block:
 
     def __str__(self):
         return f"Block_{self.id}"
-
-    @property
-    def mean_reward(self):
-        if self.bg is not None:
-            return self.bg.mean_reward
-        else:
-            return 0
-
-    @property
-    def max_reward(self):
-        if self.bg is not None:
-            return self.bg.max_reward
-        else:
-            return 0
-
-    @property
-    def min_reward(self):
-        if self.bg is not None:
-            return self.bg.min_reward
-        else:
-            return 0
 
     def compute(self, add_exec=False, learn_exec=False):
         self.should_return_exec_predictions = False
@@ -369,6 +359,8 @@ class Block:
                 self.bg.update_response(basal_active_columns)
                 self.bg.force_dopamine(self.reward_ext, k=self.k, reward_int=self.reward_int)
 
+                self.update_reward_modulation_signal(self.reward_ext)
+
                 self.reward_ext = 0
                 self.reward_int = 0
                 self.k = 0
@@ -383,7 +375,6 @@ class Block:
 
             # Modulation
             if self.modulate_tm_lr:
-                self.update_reward_modulation_signal()
                 self.tm.set_learning_rate(self.reward_modulation_signal)
             # TM
             self.tm.set_active_columns(basal_active_columns)
@@ -553,15 +544,24 @@ class Block:
         self.learn_tm = True
         self.learn_sm = True
 
-    def update_reward_modulation_signal(self):
-        reward_modulation = np.clip((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 0.0, 1.0)
-        if reward_modulation > self.reward_modulation_signal:
-            self.reward_modulation_signal = self.sm_rm_inc * self.reward_modulation_signal + (
-                    1 - self.sm_rm_inc) * reward_modulation
+    def update_reward_modulation_signal(self, reward):
+        if reward > self.mean_reward:
+            self.mean_reward = self.mean_reward * self.sm_reward_inc + reward * (1 - self.sm_reward_inc)
         else:
-            self.reward_modulation_signal = self.sm_rm_dec * self.reward_modulation_signal + (
-                    1 - self.sm_rm_dec) * reward_modulation
+            self.mean_reward = self.mean_reward * self.sm_reward_dec + reward * (1 - self.sm_reward_dec)
 
+        if self.mean_reward > self.max_reward:
+            self.max_reward = self.max_reward * self.sm_max_reward + self.mean_reward * (1 - self.sm_max_reward)
+        else:
+            self.max_reward *= self.max_reward_decay
+
+        if self.mean_reward < self.min_reward:
+            self.min_reward = self.min_reward * self.sm_min_reward + self.mean_reward * (1 - self.sm_min_reward)
+        else:
+            self.min_reward *= self.min_reward_decay
+
+        self.reward_modulation_signal = np.clip((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 0.0,
+                                                1.0)
 
 class InputBlock:
     """

@@ -273,13 +273,12 @@ class DualBasalGanglia:
                  priority_inc_factor: float = 1.2,
                  priority_dec_factor: float = 0.9,
                  use_reward_modulation: bool = False,
-                 sm_reward: float = 0.9,
                  min_reward_decay: float = 0.99,
                  max_reward_decay: float = 0.99,
                  sm_max_reward: float = 0.9,
                  sm_min_reward: float = 0.9,
-                 sm_rm_inc: float = 0.9,
-                 sm_rm_dec: float = 0.99,
+                 sm_reward_inc: float = 0.9,
+                 sm_reward_dec: float = 0.99,
                  seed: int = 0):
         """
         Basal Ganglia with two regions of Striatum. One for external reward and another for internal.
@@ -344,15 +343,14 @@ class DualBasalGanglia:
         self.mean_reward = 0
         self.max_reward = 0
         self.min_reward = 0
-        self.sm_reward = sm_reward
+        self.sm_reward_inc = sm_reward_inc
+        self.sm_reward_dec = sm_reward_dec
         self.max_reward_decay = max_reward_decay
         self.min_reward_decay = min_reward_decay
         self.sm_max_reward = sm_max_reward
         self.sm_min_reward = sm_min_reward
 
         self.reward_modulation_signal = 1
-        self.sm_rm_inc = sm_rm_inc
-        self.sm_rm_dec = sm_rm_dec
 
     @property
     def td_error(self):
@@ -415,21 +413,9 @@ class DualBasalGanglia:
         self.stri_ext.learn(reward_ext, k, self.off_policy)
         self.stri_int.learn(reward_int, k, self.off_policy_int)
 
-        # update mean/max/min of external reward
-        self.mean_reward = self.mean_reward * self.sm_reward + reward_ext * (1 - self.sm_reward)
-        if self.mean_reward > self.max_reward:
-            self.max_reward = self.max_reward * self.sm_max_reward + self.mean_reward * (1 - self.sm_max_reward)
-        else:
-            self.max_reward *= self.max_reward_decay
-
-        if self.mean_reward < self.min_reward:
-            self.min_reward = self.mean_reward
-        else:
-            self.min_reward = self.min_reward * self.sm_min_reward + self.mean_reward * (1 - self.sm_min_reward)
-
         # update priorities
         if self.use_reward_modulation:
-            self.update_reward_modulation_signal()
+            self.update_reward_modulation_signal(reward_ext)
             self.priority_ext = self.reward_modulation_signal
         else:
             td_err = self.stri_ext.error.sum()
@@ -460,11 +446,21 @@ class DualBasalGanglia:
         self.stri_ext.update_stimulus(stimulus)
         self.stri_int.update_stimulus(stimulus)
 
-    def update_reward_modulation_signal(self):
-        reward_modulation = np.clip((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 0.0, 1.0)
-        if reward_modulation > self.reward_modulation_signal:
-            self.reward_modulation_signal = self.sm_rm_inc * self.reward_modulation_signal + (
-                    1 - self.sm_rm_inc) * reward_modulation
+    def update_reward_modulation_signal(self, reward):
+        if reward > self.mean_reward:
+            self.mean_reward = self.mean_reward * self.sm_reward_inc + reward * (1 - self.sm_reward_inc)
         else:
-            self.reward_modulation_signal = self.sm_rm_dec * self.reward_modulation_signal + (
-                    1 - self.sm_rm_dec) * reward_modulation
+            self.mean_reward = self.mean_reward * self.sm_reward_dec + reward * (1 - self.sm_reward_dec)
+
+        if self.mean_reward > self.max_reward:
+            self.max_reward = self.max_reward * self.sm_max_reward + self.mean_reward * (1 - self.sm_max_reward)
+        else:
+            self.max_reward *= self.max_reward_decay
+
+        if self.mean_reward < self.min_reward:
+            self.min_reward = self.min_reward * self.sm_min_reward + self.mean_reward * (1 - self.sm_min_reward)
+        else:
+            self.min_reward *= self.min_reward_decay
+
+        self.reward_modulation_signal = np.clip((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 0.0,
+                                                1.0)
