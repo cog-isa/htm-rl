@@ -9,6 +9,7 @@ from htm.bindings.sdr import SDR
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.basal_ganglia import softmax
 from copy import deepcopy
+import os
 
 style = dict(
     annotation_format=".1e",
@@ -135,7 +136,7 @@ class OptionVis:
     def is_in_bounds(self, position):
         return (max(position) < self.size) and (min(position) >= 0)
 
-    def draw_options(self, logger, episode, threshold=0, obstacle_mask=None):
+    def draw_options(self, logger, episode, path_to_store_logs, threshold=0, obstacle_mask=None):
         if len(self.options) == 0:
             return
 
@@ -159,9 +160,11 @@ class OptionVis:
                     term_map[obstacle_mask] = -color_shift
                 image[:self.map_size[0], self.size + 2:self.size + 2 + self.map_size[1]] = value['init']
                 image[:self.map_size[0], self.size + 3 + self.map_size[1]:] = value['term']
-                plt.imsave(f'/tmp/option_{logger.run.id}_{episode}_{key}.png', image / max_n_uses, vmax=1,
+                plt.imsave(os.path.join(path_to_store_logs,
+                                        f'option_{logger.run.id}_{episode}_{key}.png'), image / max_n_uses, vmax=1,
                            cmap='inferno')
-                logger.log({f'options/option_{key}': logger.Image(f'/tmp/option_{logger.run.id}_{episode}_{key}.png')},
+                logger.log({f'options/option_{key}': logger.Image(os.path.join(path_to_store_logs,
+                                                                  f'option_{logger.run.id}_{episode}_{key}.png'))},
                            step=episode)
 
     def clear_stats(self, threshold):

@@ -390,7 +390,7 @@ class HTMAgentRunner:
 
                 if ((self.episode % log_every_episode) == 0) and (self.logger is not None) and (self.episode > 0):
                     if draw_options_stats:
-                        self.option_stat.draw_options(self.logger, self.episode, threshold=opt_threshold,
+                        self.option_stat.draw_options(self.logger, self.episode, self.path_to_store_logs, threshold=opt_threshold,
                                                       obstacle_mask=clip_mask(
                                                           self.environment.env.entities['obstacle'].mask,
                                                           self.environment.env.renderer.shape.top_left_point,
