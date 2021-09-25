@@ -334,9 +334,10 @@ class HTMAgentRunner:
                          'main_metrics/level': self.level,
                          'main_metrics/total_terminals': self.total_terminals,
                          'main_metrics/map_change_indicator': map_change_indicator,
-                         'main_metrics/dreaming_time': dreaming_time
                          },
                         step=self.episode)
+                    if self.agent.use_dreaming:
+                        self.logger.log({'main_metrics/dreaming_time': dreaming_time}, step=self.episode)
                     if log_segments:
                         self.logger.log(
                             {
@@ -380,7 +381,7 @@ class HTMAgentRunner:
                                       enumerate(self.block_metrics['reward_modulation'])}
                         self.logger.log(modulation, step=self.episode)
 
-                    if log_number_of_clusters:
+                    if log_number_of_clusters and (self.agent.empowerment is not None):
                         self.logger.log(
                             {'empowerment/number_of_clusters': self.agent.empowerment.memory.number_of_clusters},
                             step=self.episode)
@@ -400,7 +401,7 @@ class HTMAgentRunner:
                         self.logger.log(
                             dict([(f'terminal_stats/{x[0]}', x[1]) for x in self.terminal_pos_stat.items()]),
                             step=self.episode)
-                    if log_empowerment:
+                    if log_empowerment and (self.agent.empowerment is not None):
                         self.empowerment_vis.draw(os.path.join(self.path_to_store_logs,
                                                                f'empowerment_real_{self.logger.run.id}.png'),
                                                   os.path.join(self.path_to_store_logs,
@@ -412,7 +413,7 @@ class HTMAgentRunner:
                                 os.path.join(self.path_to_store_logs,
                                              f'empowerment_learned_{self.logger.run.id}.png'))
                         }, step=self.episode)
-                    if log_values_ext or log_values_int:
+                    if (log_values_ext or log_values_int) and self.agent.use_intrinsic_reward:
                         draw_dual_values(self.env_config['shape_xy'], self.environment.env, self.agent,
                                          os.path.join(self.path_to_store_logs,
                                                       f'values_ext_{self.logger.run.id}_{self.episode}.png'),
@@ -431,7 +432,7 @@ class HTMAgentRunner:
                                                  f'values_int_{self.logger.run.id}_{self.episode}.png'))},
                                 step=self.episode)
 
-                    if log_values or log_policy:
+                    if (log_values or log_policy) and (not self.agent.use_intrinsic_reward):
                         if len(self.option_stat.action_displace) == 3:
                             directions = {'right': 0, 'down': 1, 'left': 2, 'up': 3}
                             actions_map = {0: 'move', 1: 'turn_right', 2: 'turn_left'}
@@ -506,7 +507,8 @@ class HTMAgentRunner:
                 self.current_action = self.agent.make_action(obs)
 
                 self.agent.reset()
-                self.agent.dreamer.on_new_episode()
+                if self.agent.use_dreaming:
+                    self.agent.dreamer.on_new_episode()
 
                 self.episode += 1
                 self.steps = 0
@@ -516,14 +518,15 @@ class HTMAgentRunner:
                 self.steps += 1
                 self.total_reward += reward
 
-            if self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
+            if self.agent.use_dreaming and self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
                 dreaming_time += 1
 
             self.current_action = self.agent.make_action(obs)
 
             self.agent.reinforce(reward)
-            self.agent.dreamer.on_wake_step(obs, reward, self.current_action)
+            if self.agent.use_dreaming:
+                self.agent.dreamer.on_wake_step(obs, reward, self.current_action)
 
             # ///logging///
             if self.logger is not None:

@@ -1,8 +1,8 @@
-seed: &seed 76980
+seed: &seed 847582
 levels: 2
 agent: hima
-project: four_rooms_swap_empowered
-entity: hauska
+project: four_rooms_swap_dreaming
+entity: you  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
 
@@ -12,34 +12,36 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: true
+log: true  # wand logging
+path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 100000
-  log_every_episode: 50
+  log_every_episode: 25
   log_values_int: True
   log_values_ext: True
   log_priorities: True
-  log_values: False
-  log_policy: False
+  log_values: True
+  log_policy: True
   log_option_values: False
   log_option_policy: False
-  log_options_usage: True
+  log_options_usage: False
   log_td_error: True
   log_anomaly: False
   log_confidence: False
-  log_boost_modulation: False
-  log_segments: True
+  log_modulation: False
+  log_segments: False
   log_terminal_stat: True
-  log_empowerment: True
-  log_number_of_clusters: True
-  draw_options: True
-  draw_options_stats: True
-  opt_threshold: 4
+  log_empowerment: False
+  log_number_of_clusters: False
+  draw_options: False
+  draw_options_stats: False
+  opt_threshold: 50
   train_patterns: True
+  animation_fps: 3
 
 environment:
-  seed: 2151
+  seed: 432921
   shape_xy: [9, 9]
 
   actions_cost:
@@ -86,7 +88,10 @@ environment:
     n_items_to_collect: 1
 
 cagent:
-  intrinsic_reward: true
+  use_intrinsic_reward: false
+  use_dreaming: true
+  alpha: 1.0
+  punish_intrinsic_reward: -10
   action:
     do_nothing_action: 4
     noise_tolerance: 0.1
@@ -95,7 +100,6 @@ cagent:
     - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
     - [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
     - [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
-  alpha: 1.0
   muscles:
     connected_permanence: 0.5
     depolarized_decrement: 0.01
@@ -106,7 +110,6 @@ cagent:
     permanence_increment: 0.1
     sample_size: 1.0
     seed: *seed
-  punish_reward: -10
   empowerment:
     horizon: 3
     similarity_threshold: 0.6
@@ -123,7 +126,42 @@ cagent:
       predictedSegmentDecrement: 0.001
       maxSegmentsPerCell: 5
     seed: *seed
+  dreaming:
+    enabled: true
+    anomaly_based_falling_asleep:
+      anomaly_threshold: 1.0
+      alpha: .8
+      beta: 2.
+      max_prob: .15
 
+    prediction_depth: 18
+    n_prediction_rollouts: [ 3, 12 ]
+
+    sa_encoder:
+      clusters_similarity_threshold: .7
+
+    reward_model:
+      learning_rate: [ 1., 1. ]
+
+    anomaly_model:
+      learning_rate: [ .1, 1. ]
+
+    transition_model:
+      tm:
+        cells_per_column: 1
+        initial_permanence: .3
+        connected_permanence: .3
+        activation_threshold: .88
+        learning_threshold: .8
+        max_new_synapse_count: 1.0
+        max_synapses_per_segment: 1.0
+        predictedSegmentDecrement: .001
+        permanenceIncrement: .05
+        permanenceDecrement: .01
+        maxSegmentsPerCell: 8
+    seed: *seed
+
+# specify blocks and substitute default parameters
 blocks:
   0:
     bg: null
@@ -138,12 +176,15 @@ blocks:
       basal_columns: 1000
   1:
     bg:
-      alpha: 0.01
-      beta: 0.01
+      alpha: 0.1
+      beta: 0.1
+      alpha_int: 0.01
+      beta_int: 0.01
       off_policy: true
-      softmax_beta: 0.7
+      softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
+      modulate_tm_lr: false
       level: 1
     sm: {}
     sp:
@@ -169,7 +210,7 @@ blocks:
       alpha: 0.1
       beta: 0.1
       off_policy: true
-      softmax_beta: 1.0
+      softmax_beta: 0.5
       epsilon_noise: 0.0
     block:
       level: 2
@@ -183,6 +224,7 @@ blocks:
 
 cells_per_column: &cells_per_column 15
 
+# specify connections
 hierarchy:
   block_connections: [
     {
@@ -251,6 +293,7 @@ input_block_default:
 
 muscles_size: 12
 
+# default parameters
 spatial_memory_default:
   activation_threshold: 1
   initial_permanence: 1.0
@@ -319,35 +362,42 @@ temporal_memory_default:
   timeseries: True
 
 basal_ganglia_default:
-  alpha: 0.01
-  alpha_int: 0.1
-  beta: 0.01
-  beta_int: 0.1
-  discount_factor: 0.997
-  discount_factor_int: 0.1
-  off_policy: true
-  off_policy_int: true
-  softmax_beta: 1
-  epsilon_noise: 0
-  priority_ext: 1.0
-  priority_int: 0.1
-  td_error_threshold: 0.01
-  priority_inc_factor: 1.1
-  priority_dec_factor: 0.9
+  alpha: 0.01  # external striatum learning rate
+  alpha_int: 0.1  # internal striatum learning rate
+  beta: 0.01  # external striatum learning rate
+  beta_int: 0.1  # internal striatum learning rate
+  discount_factor: 0.95  # external reward
+  discount_factor_int: 0.5 # internal reward
+  off_policy: true  # true: use Q-learning, false: use SARSA for external striatum region
+  off_policy_int: true  # the same for internal striatum region
+  softmax_beta: 1.0  # softmax inverse temperature, controls thalamus noise
+  epsilon_noise: 0.0  # another way to control thalamus noisiness
+  priority_ext: 1.0  # scale factor for external reward
+  priority_int: 0.1  # scale factor for internal reward
+  td_error_threshold: 0.01  # margin for td error condition: td < -threshold, experimental
+  priority_inc_factor: 1.1  # multiply priority if td error is positive, experimental
+  priority_dec_factor: 0.9  # else, experimental
+  use_reward_modulation: true  # true: instead of TD error use reward modulation for priority
+  sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
+  sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement
+  sm_max_reward: 0.99  # smooth factor for max reward
+  sm_min_reward: 0.99  # smooth factor for min reward
+  max_reward_decay: 0.999  # decay factor for max reward
+  min_reward_decay: 0.999  # decay factor for min reward
   seed: *seed
 
 block_default:
-  gamma: 0.997
-  predicted_boost: 0.0
-  feedback_boost_range: [0.0, 0.8]
-  modulation: false
-  sm_da: 0.9
-  sm_dda: 0.995
-  d_an_th: 0.1
-  d_cn_th: 0.1
-  sm_reward: 0.995
-  sm_max_reward: 0.997
-  max_reward_decay: 0.999
-  min_reward_decay: 0.999
-  sm_bm_inc: 0.9
-  sm_bm_dec: 0.998
+  gamma: 0.997  # discount factor for option rewards
+  predicted_boost: 0.0  # boost predicted elementary actions
+  feedback_boost_range: [0.0, 0.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
+  modulate_tm_lr: false  # use reward modulation for lr of TM
+  sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
+  sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement
+  sm_max_reward: 0.99  # smooth factor for max reward
+  sm_min_reward: 0.99  # smooth factor for min reward
+  max_reward_decay: 0.999  # decay factor for max reward
+  min_reward_decay: 0.999  # decay factor for min reward
+  d_an_th: 0.1  # threshold for anomaly deviation from mean, used for conditions
+  d_cn_th: 0.1  # threshold for confidence deviation from mean, used for conditions
+  sm_da: 0.9  # smooth factor for dopamine(squared td error)
+  sm_dda: 0.995  # smooth factor for derivative of dopamine
