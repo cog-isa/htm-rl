@@ -8,7 +8,6 @@ tqdm
 wandb
 imageio
 seaborn
-ast
 #   htm.core dependencies
 mock
 
