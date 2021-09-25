@@ -13,6 +13,7 @@ vis_options:
   action_rotation: [0, 0, 0, 0]
 
 log: true
+path_to_store_logs: '/tmp'
 
 run_options:
   n_episodes: 100000
@@ -37,6 +38,7 @@ run_options:
   draw_options_stats: True
   opt_threshold: 50
   train_patterns: True
+  animation_fps: 3
 
 environment:
   seed: 432921
