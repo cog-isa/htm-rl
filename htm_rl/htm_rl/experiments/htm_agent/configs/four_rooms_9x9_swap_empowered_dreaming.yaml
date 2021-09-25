@@ -2,7 +2,7 @@ seed: &seed 847582
 levels: 2
 agent: hima
 project: four_rooms_swap_empowered
-entity: hauska
+entity: hauska  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
 
@@ -12,8 +12,8 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: true
-path_to_store_logs: '/tmp'
+log: true  # wand logging
+path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 100000
@@ -161,6 +161,7 @@ cagent:
         maxSegmentsPerCell: 8
     seed: *seed
 
+# specify blocks and substitute default parameters
 blocks:
   0:
     bg: null
@@ -183,7 +184,7 @@ blocks:
       softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
-      use_reward_modulation: true
+      modulate_tm_lr: true
       level: 1
     sm: {}
     sp:
@@ -209,7 +210,7 @@ blocks:
       alpha: 0.1
       beta: 0.1
       off_policy: true
-      softmax_beta: 1.0
+      softmax_beta: 0.5
       epsilon_noise: 0.0
     block:
       level: 2
@@ -223,6 +224,7 @@ blocks:
 
 cells_per_column: &cells_per_column 15
 
+# specify connections
 hierarchy:
   block_connections: [
     {
@@ -291,6 +293,7 @@ input_block_default:
 
 muscles_size: 12
 
+# default parameters
 spatial_memory_default:
   activation_threshold: 1
   initial_permanence: 1.0
@@ -359,36 +362,39 @@ temporal_memory_default:
   timeseries: True
 
 basal_ganglia_default:
-  alpha: 0.01
-  alpha_int: 0.1
-  beta: 0.01
-  beta_int: 0.1
-  discount_factor: 0.95
-  discount_factor_int: 0.5
-  off_policy: true
-  off_policy_int: true
-  softmax_beta: 1.0
-  epsilon_noise: 0.0
-  priority_ext: 1.0
-  priority_int: 0.1
-  td_error_threshold: 0.01
-  priority_inc_factor: 1.1
-  priority_dec_factor: 0.9
-  use_external_modulatory_signal: true
+  alpha: 0.01  # external striatum learning rate
+  alpha_int: 0.1  # internal striatum learning rate
+  beta: 0.01  # external striatum learning rate
+  beta_int: 0.1  # internal striatum learning rate
+  discount_factor: 0.95  # external reward
+  discount_factor_int: 0.5 # internal reward
+  off_policy: true  # true: use Q-learning, false: use SARSA for external striatum region
+  off_policy_int: true  # the same for internal striatum region
+  softmax_beta: 1.0  # softmax inverse temperature, controls thalamus noise
+  epsilon_noise: 0.0  # another way to control thalamus noisiness
+  priority_ext: 1.0  # scale factor for external reward
+  priority_int: 0.1  # scale factor for internal reward
+  td_error_threshold: 0.01  # margin for td error condition: td < -threshold
+  priority_inc_factor: 1.1  # multiply priority if td error is positive
+  priority_dec_factor: 0.9  # else
+  sm_reward: 0.995  # smooth factor for reward
+  sm_max_reward: 0.99  # smooth factor for max reward
+  sm_min_reward: 0.99  # smooth factor for min reward
+  max_reward_decay: 0.999  # decay factor for max reward
+  min_reward_decay: 0.999  # decay factor for min reward
+  use_reward_modulation: true  # true: instead of TD error use reward modulation for priority
+  sm_rm_inc: 0.9  # smooth factor for reward modulation during increment
+  sm_rm_dec: 0.998  # smooth factor for reward modulation during decrement
   seed: *seed
 
 block_default:
-  gamma: 0.997
-  predicted_boost: 0.0
-  feedback_boost_range: [0.0, 0.8]
-  use_reward_modulation: false
-  sm_da: 0.9
-  sm_dda: 0.995
-  d_an_th: 0.1
-  d_cn_th: 0.1
-  sm_reward: 0.995
-  sm_max_reward: 0.997
-  max_reward_decay: 0.999
-  min_reward_decay: 0.999
-  sm_rm_inc: 0.9
-  sm_rm_dec: 0.998
+  gamma: 0.997  # discount factor for option rewards
+  predicted_boost: 0.0  # boost predicted elementary actions
+  feedback_boost_range: [0.0, 0.8]  # max and min boost percents for elementary actions corresponding to an option
+  modulate_tm_lr: false  # use reward modulation for lr of TM
+  sm_rm_inc: 0.9  # smooth factor for reward modulation during increment
+  sm_rm_dec: 0.998  # smooth factor for reward modulation during decrement
+  d_an_th: 0.1  # threshold for anomaly deviation from mean, used for conditions
+  d_cn_th: 0.1  # threshold for confidence deviation from mean, used for conditions
+  sm_da: 0.9  # smooth factor for dopamine(squared td error)
+  sm_dda: 0.995  # smooth factor for derivative of dopamine

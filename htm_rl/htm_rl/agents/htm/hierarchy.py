@@ -2,9 +2,11 @@ import numpy as np
 from htm.bindings.sdr import SDR
 from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm.bindings.algorithms import SpatialPooler
-from htm_rl.modules.basal_ganglia import BasalGanglia
+from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
 import os
 import pickle
+
+from typing import Union
 
 EPS = 1e-12
 
@@ -117,14 +119,14 @@ class Block:
     """
     tm: ApicalBasalFeedbackTM
     sp: SpatialPooler
-    bg: BasalGanglia
+    bg: Union[BasalGanglia, DualBasalGanglia]
     sm: SpatialMemory
 
     def __init__(self,
                  tm: ApicalBasalFeedbackTM,
                  sm: SpatialMemory = None,
                  sp: SpatialPooler = None,
-                 bg: BasalGanglia = None,
+                 bg: Union[BasalGanglia, DualBasalGanglia] = None,
                  id_: int = None,
                  level: int = None,
                  predicted_boost: float = 0.2,
@@ -134,13 +136,9 @@ class Block:
                  sm_dda: float = 0,
                  d_an_th: float = 0,
                  d_cn_th: float = 0,
-                 sm_reward: float = 0,
-                 max_reward_decay: float = 0.99,
-                 sm_max_reward: float = 0.95,
-                 min_reward_decay: float = 0.99,
                  sm_rm_inc: float = 0.9,
                  sm_rm_dec: float = 0.999,
-                 use_reward_modulation: bool = True):
+                 modulate_tm_lr: bool = False):
         
         self.tm = tm
         self.sp = sp
@@ -186,15 +184,7 @@ class Block:
         self.sm_da = sm_da
         self.sm_dda = sm_dda
 
-        self.mean_reward = 0
-        self.sm_reward = sm_reward
-        self.min_reward = 0
-        self.min_reward_decay = min_reward_decay
-        self.max_reward = 0
-        self.max_reward_decay = max_reward_decay
-        self.sm_max_reward = sm_max_reward
-
-        self.use_reward_modulation = use_reward_modulation
+        self.modulate_tm_lr = modulate_tm_lr
         self.reward_modulation_signal = 1
         self.sm_rm_inc = sm_rm_inc
         self.sm_rm_dec = sm_rm_dec
@@ -231,6 +221,27 @@ class Block:
 
     def __str__(self):
         return f"Block_{self.id}"
+
+    @property
+    def mean_reward(self):
+        if self.bg is not None:
+            return self.bg.mean_reward
+        else:
+            return 0
+
+    @property
+    def max_reward(self):
+        if self.bg is not None:
+            return self.bg.max_reward
+        else:
+            return 0
+
+    @property
+    def min_reward(self):
+        if self.bg is not None:
+            return self.bg.min_reward
+        else:
+            return 0
 
     def compute(self, add_exec=False, learn_exec=False):
         self.should_return_exec_predictions = False
@@ -356,22 +367,12 @@ class Block:
             # Reinforce
             if (self.bg is not None) and (self.k != 0):
                 self.bg.update_response(basal_active_columns)
-                self.bg.force_dopamine(self.reward_ext, k=self.k, reward_int=self.reward_int, external_modulation=self.reward_modulation_signal)
-
-                self.mean_reward = self.mean_reward * self.sm_reward + self.reward_ext * (1 - self.sm_reward)
-                if self.mean_reward > self.max_reward:
-                    self.max_reward = self.max_reward * self.sm_max_reward + self.mean_reward * (1 - self.sm_max_reward)
-                else:
-                    self.max_reward *= self.max_reward_decay
-
-                if self.mean_reward < self.min_reward:
-                    self.min_reward = self.mean_reward
-                else:
-                    self.min_reward *= self.min_reward_decay
+                self.bg.force_dopamine(self.reward_ext, k=self.k, reward_int=self.reward_int)
 
                 self.reward_ext = 0
                 self.reward_int = 0
                 self.k = 0
+
                 prev_da = self.da
                 self.da = self.da * self.sm_da + np.power(self.bg.td_error, 2).flatten().sum() * (1 - self.sm_da)
                 self.dda = self.dda * self.sm_dda + (self.da - prev_da) * (1 - self.sm_dda)
@@ -381,15 +382,8 @@ class Block:
                 self.sm.forget()
 
             # Modulation
-            if self.use_reward_modulation:
-                reward_modulation = min((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 1.0)
-                if reward_modulation > self.reward_modulation_signal:
-                    self.reward_modulation_signal = self.sm_rm_inc * self.reward_modulation_signal + (
-                                1 - self.sm_rm_inc) * reward_modulation
-                else:
-                    self.reward_modulation_signal = self.sm_rm_dec * self.reward_modulation_signal + (
-                                1 - self.sm_rm_dec) * reward_modulation
-
+            if self.modulate_tm_lr:
+                self.update_reward_modulation_signal()
                 self.tm.set_learning_rate(self.reward_modulation_signal)
             # TM
             self.tm.set_active_columns(basal_active_columns)
@@ -558,6 +552,15 @@ class Block:
         self.learn_sp = True
         self.learn_tm = True
         self.learn_sm = True
+
+    def update_reward_modulation_signal(self):
+        reward_modulation = np.clip((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 0.0, 1.0)
+        if reward_modulation > self.reward_modulation_signal:
+            self.reward_modulation_signal = self.sm_rm_inc * self.reward_modulation_signal + (
+                    1 - self.sm_rm_inc) * reward_modulation
+        else:
+            self.reward_modulation_signal = self.sm_rm_dec * self.reward_modulation_signal + (
+                    1 - self.sm_rm_dec) * reward_modulation
 
 
 class InputBlock:
