@@ -249,8 +249,6 @@ class Empowerment:
             self.tm.activateDendrites(learn=False)
             predictiveCells = self.tm.getPredictiveCells().sparse
             predictedColumnIndices = [self.tm.columnForCell(i) for i in predictiveCells]
-            #         if len(predictedColumnIndices) == 0:
-            #             print('!!!!!!')
             sdr.sparse = np.unique(predictedColumnIndices)
         if use_segments:
             predictedColumnIndices = map(self.tm.columnForCell,
@@ -259,7 +257,10 @@ class Empowerment:
             data[i] += 1
         if self.memory is not None and use_memory:
             if (self.memory.kernels is not None) and (self.memory.kernels.size > 0):
-                p = np.round(np.dot(self.memory.adopted_kernels(self.sparsity), data.T) / (self.sparsity * self.size))
+                clusters = self.memory.adopted_kernels(self.sparsity)
+                mask = (clusters[:, data!=0].sum(axis=1) / (self.sparsity * self.size)) < self.memory.threshold
+                p = np.dot(clusters, data.T) / (self.sparsity * self.size)
+                p[mask] = 0
                 total_p = p.sum()
                 empowerment = np.sum(-p / (total_p + EPS) * np.log(p / (total_p + EPS), where=p != 0), where=p != 0)
                 p = p / (total_p + EPS)
