@@ -322,7 +322,7 @@ class HTMAgentRunner:
                                                                 f'{self.logger.run.id}_episode_{self.episode}_step_{i}.png'))
                             writer.append_data(image)
                     self.logger.log(
-                        {f'behavior_samples/animation': self.logger.Video(
+                        {f'behavior_samples/animation': wandb.Video(
                             os.path.join(self.path_to_store_logs,
                                          f'{self.logger.run.id}_episode_{self.episode}.gif'),
                             fps=animation_fps,
@@ -407,9 +407,9 @@ class HTMAgentRunner:
                                                   os.path.join(self.path_to_store_logs,
                                                                f'empowerment_learned_{self.logger.run.id}.png'))
                         self.logger.log({
-                            'empowerment/real': self.logger.Image(os.path.join(self.path_to_store_logs,
+                            'empowerment/real': wandb.Image(os.path.join(self.path_to_store_logs,
                                                                                f'empowerment_real_{self.logger.run.id}.png')),
-                            'empowerment/learned': self.logger.Image(
+                            'empowerment/learned': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
                                              f'empowerment_learned_{self.logger.run.id}.png'))
                         }, step=self.episode)
@@ -421,13 +421,13 @@ class HTMAgentRunner:
                                                       f'values_int_{self.logger.run.id}_{self.episode}.png'))
                         if log_values_ext:
                             self.logger.log(
-                                {'values/state_values_ext': self.logger.Image(
+                                {'values/state_values_ext': wandb.Image(
                                     os.path.join(self.path_to_store_logs,
                                                  f'values_ext_{self.logger.run.id}_{self.episode}.png'))},
                                 step=self.episode)
                         if log_values_int:
                             self.logger.log(
-                                {'values/state_values_int': self.logger.Image(
+                                {'values/state_values_int': wandb.Image(
                                     os.path.join(self.path_to_store_logs,
                                                  f'values_int_{self.logger.run.id}_{self.episode}.png'))},
                                 step=self.episode)
@@ -449,7 +449,7 @@ class HTMAgentRunner:
                                         q,
                                         policy,
                                         directions=directions)
-                            self.logger.log({'values/state_values': self.logger.Image(
+                            self.logger.log({'values/state_values': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
                                              f'values_{self.logger.run.id}_{self.episode}.png'))},
                                             step=self.episode)
@@ -842,7 +842,7 @@ class HTMAgentRunner:
             map_image = map_image[0]
         plt.imsave(os.path.join(self.path_to_store_logs,
                                 f'map_{config["environment"]["seed"]}_{self.episode}.png'), map_image.astype('uint8'))
-        logger.log({'maps/map': logger.Image(os.path.join(self.path_to_store_logs,
+        logger.log({'maps/map': wandb.Image(os.path.join(self.path_to_store_logs,
                                                           f'map_{config["environment"]["seed"]}_{self.episode}.png'))},
                    step=self.episode)
 
@@ -910,7 +910,7 @@ if __name__ == '__main__':
         logger = None
 
     if logger is not None:
-        logger.init(project=config['project'], entity=config['entity'], config=config)
+        logger = logger.init(project=config['project'], entity=config['entity'], config=config)
 
     for arg in sys.argv[2:]:
         key, value = arg.split('=')

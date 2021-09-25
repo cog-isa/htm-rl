@@ -10,6 +10,7 @@ from htm.bindings.algorithms import SpatialPooler
 from htm_rl.agents.htm.basal_ganglia import softmax
 from copy import deepcopy
 import os
+import wandb
 
 style = dict(
     annotation_format=".1e",
@@ -163,7 +164,7 @@ class OptionVis:
                 plt.imsave(os.path.join(path_to_store_logs,
                                         f'option_{logger.run.id}_{episode}_{key}.png'), image / max_n_uses, vmax=1,
                            cmap='inferno')
-                logger.log({f'options/option_{key}': logger.Image(os.path.join(path_to_store_logs,
+                logger.log({f'options/option_{key}': wandb.Image(os.path.join(path_to_store_logs,
                                                                   f'option_{logger.run.id}_{episode}_{key}.png'))},
                            step=episode)
 
