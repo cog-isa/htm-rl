@@ -160,4 +160,5 @@ def configure(config):
 
     new_config['seed'] = config['seed']
     new_config['levels'] = config['levels']
+    new_config['path_to_store_logs'] = config['path_to_store_logs']
     return new_config
