@@ -5,6 +5,8 @@
   - [Quick install](#quick-install)
   - [Repository structure](#repository-structure)
   - [Working example](#working-example)
+    - [How to run HIMA agent](#how-to-run-hima-agent)
+    - [Non-HIMA Q-learning agent](#non-hima-q-learning-agent)
 
 ## Links
 
@@ -51,6 +53,12 @@ pip install -e .
     - `run_X.py` - runners, i.e. entry point to run testing scenarios
 
 ## Working example
+
+### How to run HIMA agent
+
+See corresponding [readme](./htm_rl/htm_rl/agents/htm/README.md)
+
+### Non-HIMA Q-learning agent
 
 ```bash
 # cd to package sources root
