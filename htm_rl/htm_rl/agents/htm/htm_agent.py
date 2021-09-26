@@ -256,6 +256,7 @@ class HTMAgentRunner:
         self.current_option_id = None
         self.last_option_id = None
         self.current_action = None
+        self.early_stop = False
 
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
@@ -299,7 +300,7 @@ class HTMAgentRunner:
         map_change_indicator = 0
         dreaming_time = 0
 
-        while self.episode < n_episodes:
+        while self.episode < n_episodes and (not self.early_stop):
             if self.scenario is not None:
                 self.scenario.check_conditions()
 
@@ -835,6 +836,9 @@ class HTMAgentRunner:
 
     def level_up(self):
         self.level += 1
+
+    def stop(self):
+        self.early_stop = True
 
     def draw_map(self, logger):
         map_image = self.environment.callmethod('render_rgb')
