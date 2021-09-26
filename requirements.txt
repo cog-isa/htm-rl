@@ -8,7 +8,6 @@ tqdm
 wandb
 imageio
 seaborn
-ast
 #   htm.core dependencies
 mock
 
@@ -25,5 +24,4 @@ pytest>=4.6.5
 
 
 # >>>>>>>>> install from sources
-#   install htm.core from sources until they fix pip package
-htm.core
+#   install our fork of the htm.core (see README)
