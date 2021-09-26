@@ -12,3 +12,4 @@
 - condition: ['level', 'equal', 3, 'norepeat']
   check_every: 'level'
   action: 'stop'
+  params: {}
