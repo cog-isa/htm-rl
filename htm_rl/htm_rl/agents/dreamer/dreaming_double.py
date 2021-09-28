@@ -4,38 +4,12 @@ from typing import Optional
 import numpy as np
 from numpy.random import Generator
 
+from htm_rl.agents.dreamer.falling_asleep import TdErrorBasedFallingAsleep, AnomalyBasedFallingAsleep
 from htm_rl.agents.dreamer.qvn_double import QValueNetworkDouble
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, DecayingValue
-
-
-class TdErrorBasedFallingAsleep:
-    boost_prob_alpha: DecayingValue
-    prob_threshold: float
-
-    def __init__(
-            self, boost_prob_alpha: DecayingValue, prob_threshold: float
-    ):
-        self.boost_prob_alpha = boost_prob_alpha
-        self.prob_threshold = prob_threshold
-
-
-class AnomalyBasedFallingAsleep:
-    anomaly_threshold: float
-    alpha: float
-    beta: float
-    max_prob: float
-
-    def __init__(
-            self, anomaly_threshold: float, alpha: float,
-            beta: float, max_prob: float,
-    ):
-        self.anomaly_threshold = anomaly_threshold
-        self.alpha = alpha
-        self.beta = beta
-        self.max_prob = max_prob
 
 
 class DreamingDouble(QModelBasedAgent):

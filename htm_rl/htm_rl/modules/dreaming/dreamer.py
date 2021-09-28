@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 from numpy.random import Generator
 
-from htm_rl.agents.dreamer.dreaming_double import AnomalyBasedFallingAsleep
+from htm_rl.agents.dreamer.falling_asleep import AnomalyBasedFallingAsleep
 from htm_rl.agents.qmb.anomaly_model import AnomalyModel
 from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
