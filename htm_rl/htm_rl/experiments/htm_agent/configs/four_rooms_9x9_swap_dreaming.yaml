@@ -2,7 +2,7 @@ seed: &seed 847582
 levels: 2
 agent: hima
 project: four_rooms_swap_dreaming
-entity: you  # don't forget to change if you use logging
+entity: pkuderov  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
 
@@ -13,7 +13,7 @@ vis_options:
   action_rotation: [0, 0, 0, 0]
 
 log: true  # wand logging
-path_to_store_logs: '/tmp'  # important: change, if you are Windows user
+path_to_store_logs: './logs/'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 100000
