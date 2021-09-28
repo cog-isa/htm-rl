@@ -54,9 +54,12 @@ class EmpowermentVis:
             input_state.sparse = observation
             self.visual_block_sp.compute(input_state, False, output_state)
 
-            learned_emp[unshifted_pos] = self.empowerment.eval_state(output_state.sparse,
-                                                                     self.horizon,
-                                                                     use_memory=True)[0]
+            if self.empowerment.filename is None:
+                learned_emp[unshifted_pos] = self.empowerment.eval_state(output_state.sparse,
+                                                                         self.horizon,
+                                                                         use_memory=True)[0]
+            else:
+                learned_emp[unshifted_pos] = self.empowerment.eval_from_file(pos)
 
         figure = plt.figure(figsize=style['figure_size'])
         sns.heatmap(real_emp, annot=True, fmt=style['annotation_format'], cbar=False,

@@ -2,7 +2,7 @@ seed: &seed 847582
 levels: 2
 agent: hima
 project: four_rooms_swap_empowerment
-entity: you  # don't forget to change if you use logging
+entity: arkol  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
 
@@ -29,11 +29,11 @@ run_options:
   log_td_error: True
   log_anomaly: False
   log_confidence: False
-  log_modulation: True
+  log_modulation: False
   log_segments: False
   log_terminal_stat: True
   log_empowerment: True
-  log_number_of_clusters: True
+  log_number_of_clusters: False
   draw_options: False
   draw_options_stats: False
   opt_threshold: 50
@@ -91,7 +91,7 @@ cagent:
   use_intrinsic_reward: true
   use_dreaming: false
   alpha: 1.0
-  punish_intrinsic_reward: -10
+  punish_intrinsic_reward: -3
   action:
     do_nothing_action: 4
     noise_tolerance: 0.1
@@ -111,9 +111,9 @@ cagent:
     sample_size: 1.0
     seed: *seed
   empowerment:
-    horizon: 3
+    horizon: 4
     similarity_threshold: 0.6
-    memory: true
+    memory: false
     evaluate: false
     tm_config:
       noise_tolerance: 0.25
@@ -126,6 +126,7 @@ cagent:
       predictedSegmentDecrement: 0.001
       maxSegmentsPerCell: 5
     seed: *seed
+    filename: '../../experiments/htm_agent/empowerments/empowerment_real_4.json'
   dreaming:
     enabled: false
     anomaly_based_falling_asleep:

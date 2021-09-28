@@ -92,6 +92,7 @@ class HTMAgent:
         self.sp_input = SDR(self.hierarchy.output_block.get_in_sizes()[-1])
         self.previous_obs = np.empty(0)
         self.backup = None
+        self.real_pos = None
 
     def make_action(self, state_pattern):
         self.state_pattern.sparse = state_pattern
@@ -115,15 +116,18 @@ class HTMAgent:
         # train empowerment tm
         if self.use_intrinsic_reward:
             current_obs = self.hierarchy.visual_block.get_output('basal')
-            if (self.previous_obs.size > 0) and (current_obs.size > 0):
+            if (self.previous_obs.size > 0) and (current_obs.size > 0) and self.empowerment.filename is None:
                 self.empowerment.learn(self.previous_obs, current_obs)
             self.previous_obs = current_obs
         return action
 
     def get_intrinsic_reward(self):
         state = self.hierarchy.visual_block.get_output('basal')
-        reward = self.empowerment.eval_state(state, self.empowerment_horizon,
+        if self.empowerment.filename is None:
+            reward = self.empowerment.eval_state(state, self.empowerment_horizon,
                                              use_memory=True)[0]
+        else:
+            reward = self.empowerment.eval_from_file(self.real_pos)
         return reward
 
     def reinforce(self, reward: float):
@@ -148,6 +152,7 @@ class HTMAgent:
         self.action_pattern = np.empty(0)
         self.state_pattern.sparse = np.empty(0)
         self.previous_obs = np.empty(0)
+        self.real_pos = None
 
     def generate_patterns(self):
         """
@@ -250,6 +255,8 @@ class HTMAgentRunner:
         self.agent_pos = list()
         self.level = -1
         self.steps = 0
+        self.cumulative_steps = 0
+        self.all_steps = 0
         self.episode = 0
         self.option_actions = list()
         self.option_predicted_actions = list()
@@ -335,6 +342,8 @@ class HTMAgentRunner:
                          'main_metrics/level': self.level,
                          'main_metrics/total_terminals': self.total_terminals,
                          'main_metrics/map_change_indicator': map_change_indicator,
+                         'main_metrics/cumulative_steps': self.cumulative_steps,
+                         'main_metrics/all_steps': self.all_steps,
                          },
                         step=self.episode)
                     if self.agent.use_dreaming:
@@ -512,9 +521,15 @@ class HTMAgentRunner:
                     self.agent.dreamer.on_new_episode()
 
                 self.episode += 1
+                if map_change_indicator == 1:
+                    self.cumulative_steps = 0
+                else:
+                    self.cumulative_steps += self.steps
+                self.all_steps += self.steps
                 self.steps = 0
                 self.total_reward = 0
                 dreaming_time = 0
+                self.agent.real_pos = self.environment.env.agent.position
             else:
                 self.steps += 1
                 self.total_reward += reward
@@ -541,6 +556,7 @@ class HTMAgentRunner:
             # \\\logging\\\
 
             self.environment.act(self.current_action)
+            self.agent.real_pos = self.environment.env.agent.position
 
             # ///logging///
             if self.environment.callmethod('is_terminal') and (self.environment.env.items_collected > 0):

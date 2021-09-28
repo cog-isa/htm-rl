@@ -1,5 +1,5 @@
-project: four_rooms_empowerment_final
-entity: you
+project: four_rooms_empowerment_2
+entity: arkol
 program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:
