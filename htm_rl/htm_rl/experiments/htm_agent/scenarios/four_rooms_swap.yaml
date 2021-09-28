@@ -9,3 +9,7 @@
   check_every: 'total_terminals'
   action: 'level_up'
   params: {}
+- condition: ['level', 'equal', 3, 'norepeat']
+  check_every: 'level'
+  action: 'stop'
+  params: {}

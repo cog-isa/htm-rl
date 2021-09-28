@@ -1,0 +1,24 @@
+project: four_rooms_empowerment_final
+entity: you
+program: ../../agents/htm/htm_agent.py
+method: grid
+parameters:
+  seed:
+    values: [46504, 990958, 453238]
+  environment.seed:
+    values:
+      - 99078
+      - 87546
+      - 58763
+  cagent.use_intrinsic_reward:
+    values:
+      - True
+      - False
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_swap_empowerment
+  - ${args}
+

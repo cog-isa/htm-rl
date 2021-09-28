@@ -5,6 +5,8 @@
   - [Quick install](#quick-install)
   - [Repository structure](#repository-structure)
   - [Working example](#working-example)
+    - [How to run HIMA agent](#how-to-run-hima-agent)
+    - [Non-HIMA Q-learning agent](#non-hima-q-learning-agent)
 
 ## Links
 
@@ -22,15 +24,16 @@ There're two setup guides:
 
 ```bash
 # create env with required packages via conda, then activate it
-conda create --name htm python=3.9 numpy matplotlib jupyterlab ruamel.yaml tqdm wandb mock
+conda create --name htm python=3.9 numpy matplotlib jupyterlab ruamel.yaml tqdm wandb mock imageio seaborn
 conda activate htm
 
 # install packages, that cannot be installed with conda, with pip
 pip install hexy prettytable pytest>=4.6.5
 
-# clone htm.core sources to an arbitrary place and pip install it from sources
-# pip will install missing htm.core dependencies if needed
-git clone https://github.com/htm-community/htm.core
+# git clone our `htm.core` fork to an arbitrary place and pip install it from sources
+# pip will install missing dependencies to the current environment if needed
+cd <where to clone>
+git clone https://github.com/ZhekaHauska/htm.core.git
 cd htm.core
 pip install --use-feature=in-tree-build .
 
@@ -50,6 +53,12 @@ pip install -e .
     - `run_X.py` - runners, i.e. entry point to run testing scenarios
 
 ## Working example
+
+### How to run HIMA agent
+
+See corresponding [readme](./htm_rl/htm_rl/agents/htm/README.md)
+
+### Non-HIMA Q-learning agent
 
 ```bash
 # cd to package sources root

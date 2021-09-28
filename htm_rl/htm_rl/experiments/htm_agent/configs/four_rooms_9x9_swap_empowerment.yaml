@@ -1,7 +1,7 @@
 seed: &seed 847582
 levels: 2
 agent: hima
-project: four_rooms_swap_empowered_dreaming
+project: four_rooms_swap_empowerment
 entity: you  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
@@ -25,17 +25,17 @@ run_options:
   log_policy: False
   log_option_values: False
   log_option_policy: False
-  log_options_usage: True
+  log_options_usage: False
   log_td_error: True
   log_anomaly: False
   log_confidence: False
   log_modulation: True
-  log_segments: True
+  log_segments: False
   log_terminal_stat: True
   log_empowerment: True
   log_number_of_clusters: True
-  draw_options: True
-  draw_options_stats: True
+  draw_options: False
+  draw_options_stats: False
   opt_threshold: 50
   train_patterns: True
   animation_fps: 3
@@ -89,7 +89,7 @@ environment:
 
 cagent:
   use_intrinsic_reward: true
-  use_dreaming: true
+  use_dreaming: false
   alpha: 1.0
   punish_intrinsic_reward: -10
   action:
@@ -127,7 +127,7 @@ cagent:
       maxSegmentsPerCell: 5
     seed: *seed
   dreaming:
-    enabled: true
+    enabled: false
     anomaly_based_falling_asleep:
       anomaly_threshold: 1.0
       alpha: .8
@@ -184,7 +184,7 @@ blocks:
       softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
-      modulate_tm_lr: true
+      modulate_tm_lr: false
       level: 1
     sm: {}
     sp:
@@ -389,7 +389,7 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997  # discount factor for option rewards
   predicted_boost: 0.0  # boost predicted elementary actions
-  feedback_boost_range: [0.0, 0.8]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
+  feedback_boost_range: [0.0, 0.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
   modulate_tm_lr: false  # use reward modulation for lr of TM
   sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
   sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement

@@ -256,6 +256,7 @@ class HTMAgentRunner:
         self.current_option_id = None
         self.last_option_id = None
         self.current_action = None
+        self.early_stop = False
 
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
@@ -299,7 +300,7 @@ class HTMAgentRunner:
         map_change_indicator = 0
         dreaming_time = 0
 
-        while self.episode < n_episodes:
+        while self.episode < n_episodes and (not self.early_stop):
             if self.scenario is not None:
                 self.scenario.check_conditions()
 
@@ -314,17 +315,17 @@ class HTMAgentRunner:
                     # log all saved frames for this episode
                     self.animation = False
                     with imageio.get_writer(os.path.join(self.path_to_store_logs,
-                                                         f'{self.logger.run.id}_episode_{self.episode}.gif'),
+                                                         f'{self.logger.id}_episode_{self.episode}.gif'),
                                             mode='I',
                                             fps=animation_fps) as writer:
                         for i in range(self.steps):
                             image = imageio.imread(os.path.join(self.path_to_store_logs,
-                                                                f'{self.logger.run.id}_episode_{self.episode}_step_{i}.png'))
+                                                                f'{self.logger.id}_episode_{self.episode}_step_{i}.png'))
                             writer.append_data(image)
                     self.logger.log(
-                        {f'behavior_samples/animation': self.logger.Video(
+                        {f'behavior_samples/animation': wandb.Video(
                             os.path.join(self.path_to_store_logs,
-                                         f'{self.logger.run.id}_episode_{self.episode}.gif'),
+                                         f'{self.logger.id}_episode_{self.episode}.gif'),
                             fps=animation_fps,
                             format='gif')}, step=self.episode)
 
@@ -334,9 +335,10 @@ class HTMAgentRunner:
                          'main_metrics/level': self.level,
                          'main_metrics/total_terminals': self.total_terminals,
                          'main_metrics/map_change_indicator': map_change_indicator,
-                         'main_metrics/dreaming_time': dreaming_time
                          },
                         step=self.episode)
+                    if self.agent.use_dreaming:
+                        self.logger.log({'main_metrics/dreaming_time': dreaming_time}, step=self.episode)
                     if log_segments:
                         self.logger.log(
                             {
@@ -380,7 +382,7 @@ class HTMAgentRunner:
                                       enumerate(self.block_metrics['reward_modulation'])}
                         self.logger.log(modulation, step=self.episode)
 
-                    if log_number_of_clusters:
+                    if log_number_of_clusters and (self.agent.empowerment is not None):
                         self.logger.log(
                             {'empowerment/number_of_clusters': self.agent.empowerment.memory.number_of_clusters},
                             step=self.episode)
@@ -389,7 +391,7 @@ class HTMAgentRunner:
 
                 if ((self.episode % log_every_episode) == 0) and (self.logger is not None) and (self.episode > 0):
                     if draw_options_stats:
-                        self.option_stat.draw_options(self.logger, self.episode, threshold=opt_threshold,
+                        self.option_stat.draw_options(self.logger, self.episode, self.path_to_store_logs, threshold=opt_threshold,
                                                       obstacle_mask=clip_mask(
                                                           self.environment.env.entities['obstacle'].mask,
                                                           self.environment.env.renderer.shape.top_left_point,
@@ -400,38 +402,38 @@ class HTMAgentRunner:
                         self.logger.log(
                             dict([(f'terminal_stats/{x[0]}', x[1]) for x in self.terminal_pos_stat.items()]),
                             step=self.episode)
-                    if log_empowerment:
+                    if log_empowerment and (self.agent.empowerment is not None):
                         self.empowerment_vis.draw(os.path.join(self.path_to_store_logs,
-                                                               f'empowerment_real_{self.logger.run.id}.png'),
+                                                               f'empowerment_real_{self.logger.id}.png'),
                                                   os.path.join(self.path_to_store_logs,
-                                                               f'empowerment_learned_{self.logger.run.id}.png'))
+                                                               f'empowerment_learned_{self.logger.id}.png'))
                         self.logger.log({
-                            'empowerment/real': self.logger.Image(os.path.join(self.path_to_store_logs,
-                                                                               f'empowerment_real_{self.logger.run.id}.png')),
-                            'empowerment/learned': self.logger.Image(
+                            'empowerment/real': wandb.Image(os.path.join(self.path_to_store_logs,
+                                                                               f'empowerment_real_{self.logger.id}.png')),
+                            'empowerment/learned': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
-                                             f'empowerment_learned_{self.logger.run.id}.png'))
+                                             f'empowerment_learned_{self.logger.id}.png'))
                         }, step=self.episode)
-                    if log_values_ext or log_values_int:
+                    if (log_values_ext or log_values_int) and self.agent.use_intrinsic_reward:
                         draw_dual_values(self.env_config['shape_xy'], self.environment.env, self.agent,
                                          os.path.join(self.path_to_store_logs,
-                                                      f'values_ext_{self.logger.run.id}_{self.episode}.png'),
+                                                      f'values_ext_{self.logger.id}_{self.episode}.png'),
                                          os.path.join(self.path_to_store_logs,
-                                                      f'values_int_{self.logger.run.id}_{self.episode}.png'))
+                                                      f'values_int_{self.logger.id}_{self.episode}.png'))
                         if log_values_ext:
                             self.logger.log(
-                                {'values/state_values_ext': self.logger.Image(
+                                {'values/state_values_ext': wandb.Image(
                                     os.path.join(self.path_to_store_logs,
-                                                 f'values_ext_{self.logger.run.id}_{self.episode}.png'))},
+                                                 f'values_ext_{self.logger.id}_{self.episode}.png'))},
                                 step=self.episode)
                         if log_values_int:
                             self.logger.log(
-                                {'values/state_values_int': self.logger.Image(
+                                {'values/state_values_int': wandb.Image(
                                     os.path.join(self.path_to_store_logs,
-                                                 f'values_int_{self.logger.run.id}_{self.episode}.png'))},
+                                                 f'values_int_{self.logger.id}_{self.episode}.png'))},
                                 step=self.episode)
 
-                    if log_values or log_policy:
+                    if (log_values or log_policy) and (not self.agent.use_intrinsic_reward):
                         if len(self.option_stat.action_displace) == 3:
                             directions = {'right': 0, 'down': 1, 'left': 2, 'up': 3}
                             actions_map = {0: 'move', 1: 'turn_right', 2: 'turn_left'}
@@ -443,18 +445,18 @@ class HTMAgentRunner:
 
                         if log_values:
                             draw_values(os.path.join(self.path_to_store_logs,
-                                                     f'values_{self.logger.run.id}_{self.episode}.png'),
+                                                     f'values_{self.logger.id}_{self.episode}.png'),
                                         self.env_config['shape_xy'],
                                         q,
                                         policy,
                                         directions=directions)
-                            self.logger.log({'values/state_values': self.logger.Image(
+                            self.logger.log({'values/state_values': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
-                                             f'values_{self.logger.run.id}_{self.episode}.png'))},
+                                             f'values_{self.logger.id}_{self.episode}.png'))},
                                             step=self.episode)
                         if log_policy:
                             draw_policy(os.path.join(self.path_to_store_logs,
-                                                     f'policy_{self.logger.run.id}_{self.episode}.png'),
+                                                     f'policy_{self.logger.id}_{self.episode}.png'),
                                         self.env_config['shape_xy'],
                                         policy,
                                         actions,
@@ -462,7 +464,7 @@ class HTMAgentRunner:
                                         actions_map=actions_map)
                             self.logger.log(
                                 {'values/policy': wandb.Image(os.path.join(self.path_to_store_logs,
-                                                                           f'policy_{self.logger.run.id}_{self.episode}.png'))},
+                                                                           f'policy_{self.logger.id}_{self.episode}.png'))},
                                 step=self.episode)
 
                     if log_option_values or log_option_policy:
@@ -475,25 +477,25 @@ class HTMAgentRunner:
 
                         if log_option_values:
                             draw_values(os.path.join(self.path_to_store_logs,
-                                                     f'option_values_{self.logger.run.id}_{self.episode}.png'),
+                                                     f'option_values_{self.logger.id}_{self.episode}.png'),
                                         self.env_config['shape_xy'],
                                         q,
                                         policy,
                                         directions=directions)
                             self.logger.log({'values/option_state_values': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
-                                             f'option_values_{self.logger.run.id}_{self.episode}.png'))},
+                                             f'option_values_{self.logger.id}_{self.episode}.png'))},
                                             step=self.episode)
                         if log_option_policy:
                             draw_policy(os.path.join(self.path_to_store_logs,
-                                                     f'option_policy_{self.logger.run.id}_{self.episode}.png'),
+                                                     f'option_policy_{self.logger.id}_{self.episode}.png'),
                                         self.env_config['shape_xy'],
                                         policy,
                                         option_ids,
                                         directions=directions)
                             self.logger.log({'values/option_policy': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
-                                             f'option_policy_{self.logger.run.id}_{self.episode}.png'))},
+                                             f'option_policy_{self.logger.id}_{self.episode}.png'))},
                                             step=self.episode)
 
                 if ((((self.episode + 1) % log_every_episode) == 0) or (self.episode == 0)) and (
@@ -506,7 +508,8 @@ class HTMAgentRunner:
                 self.current_action = self.agent.make_action(obs)
 
                 self.agent.reset()
-                self.agent.dreamer.on_new_episode()
+                if self.agent.use_dreaming:
+                    self.agent.dreamer.on_new_episode()
 
                 self.episode += 1
                 self.steps = 0
@@ -516,14 +519,15 @@ class HTMAgentRunner:
                 self.steps += 1
                 self.total_reward += reward
 
-            if self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
+            if self.agent.use_dreaming and self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
                 dreaming_time += 1
 
             self.current_action = self.agent.make_action(obs)
 
             self.agent.reinforce(reward)
-            self.agent.dreamer.on_wake_step(obs, reward, self.current_action)
+            if self.agent.use_dreaming:
+                self.agent.dreamer.on_wake_step(obs, reward, self.current_action)
 
             # ///logging///
             if self.logger is not None:
@@ -621,7 +625,7 @@ class HTMAgentRunner:
             pic = np.concatenate([pic, term_draw_options], axis=1)
 
         plt.imsave(os.path.join(self.path_to_store_logs,
-                                f'{logger.run.id}_episode_{episode}_step_{steps}.png'), pic.astype('uint8'))
+                                f'{logger.id}_episode_{episode}_step_{steps}.png'), pic.astype('uint8'))
 
     def update_option_stats(self, is_terminal):
         option_block = self.agent.hierarchy.blocks[5]
@@ -833,13 +837,16 @@ class HTMAgentRunner:
     def level_up(self):
         self.level += 1
 
+    def stop(self):
+        self.early_stop = True
+
     def draw_map(self, logger):
         map_image = self.environment.callmethod('render_rgb')
         if isinstance(map_image, list):
             map_image = map_image[0]
         plt.imsave(os.path.join(self.path_to_store_logs,
                                 f'map_{config["environment"]["seed"]}_{self.episode}.png'), map_image.astype('uint8'))
-        logger.log({'maps/map': logger.Image(os.path.join(self.path_to_store_logs,
+        logger.log({'maps/map': wandb.Image(os.path.join(self.path_to_store_logs,
                                                           f'map_{config["environment"]["seed"]}_{self.episode}.png'))},
                    step=self.episode)
 
@@ -907,7 +914,7 @@ if __name__ == '__main__':
         logger = None
 
     if logger is not None:
-        logger.init(project=config['project'], entity=config['entity'], config=config)
+        logger = logger.init(project=config['project'], entity=config['entity'], config=config)
 
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
