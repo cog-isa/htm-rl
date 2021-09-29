@@ -9,7 +9,6 @@ from htm_rl.scenarios.standard.scenario import Scenario
 
 
 class TrajectoryTracker(Debugger):
-    fill_value: float = 0.
     name_prefix: str = 'position'
 
     env: Environment

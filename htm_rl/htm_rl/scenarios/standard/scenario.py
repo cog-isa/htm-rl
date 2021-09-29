@@ -47,9 +47,7 @@ class Scenario:
         wandb_run = self.init_wandb_run()
 
         if self.debug_enabled:
-            from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
-            print_images = self.debug['images']
-            model_debugger = ModelDebugger(self, images=print_images)
+            self.inject_debugger(self.debug)
 
         for _ in trange(self.n_episodes):
             self.run_episode_with_mode(
@@ -135,3 +133,18 @@ class Scenario:
             'seed': self.config['env_seed']
         }
         return run
+
+    def inject_debugger(self, debug: dict):
+        debugger_type = debug['_type_']
+        print_images = self.debug['images']
+
+        if debugger_type == 'dreaming trajectory':
+            from htm_rl.agents.dreamer.debug.dreaming_trajectory_debugger import DreamingTrajectoryDebugger
+            # noinspection PyUnusedLocal
+            trajectory_debugger = DreamingTrajectoryDebugger(self, images=print_images)
+        elif debugger_type == 'model':
+            from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
+            # noinspection PyUnusedLocal
+            model_debugger = ModelDebugger(self, images=print_images)
+        else:
+            raise KeyError(debugger_type)

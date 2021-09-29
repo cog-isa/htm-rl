@@ -15,9 +15,9 @@ class EnvMapProvider(Debugger):
     _maps: Optional[list[np.ndarray]]
     _titles: list[str]
     name_str: str
-    include_observation: bool
+    with_outer_walls: bool
 
-    def __init__(self, scenario: Scenario):
+    def __init__(self, scenario: Scenario, with_outer_walls=True):
         super().__init__(scenario)
 
         self._maps = None
@@ -27,11 +27,14 @@ class EnvMapProvider(Debugger):
             f'{config["env"]}, seed={config["env_seed"]}',
             'agent observation'
         ]
+        self.with_outer_walls = with_outer_walls
 
     @property
     def maps(self) -> list[np.ndarray]:
         if self._maps is None:
-            self._maps = ensure_list(self.env.render_rgb())
+            self._maps = ensure_list(self.env.render_rgb(
+                show_outer_walls=self.with_outer_walls
+            ))
         return self._maps
 
     @property

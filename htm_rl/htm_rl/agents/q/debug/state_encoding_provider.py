@@ -21,6 +21,9 @@ class StateEncodingProvider(Debugger):
         self.position_provider = AgentStateProvider(scenario)
         self.encoding_scheme = None
 
+    def reset(self):
+        self.encoding_scheme = None
+
     def get_encoding_scheme(self) -> dict[tuple[int, int], SparseSdr]:
         if self.encoding_scheme is not None:
             return self.encoding_scheme
@@ -47,7 +50,7 @@ class StateEncodingProvider(Debugger):
     def decode_state(
             state: SparseSdr,
             encoding_scheme: dict[tuple[int, int], SparseSdr],
-            min_overlap_rate: float = .6
+            min_overlap_rate: float = .5
     ) -> Optional[tuple[int, int]]:
         best_match = None, 0.
         state = set(state)
