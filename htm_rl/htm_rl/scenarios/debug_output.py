@@ -26,9 +26,14 @@ class ImageOutput(BaseOutput):
         self.with_value_text_flags = []
 
     def restore(self, images, titles, with_value_text_flags, save_path):
-        self.images = images
-        self.titles = titles
-        self.with_value_text_flags = with_value_text_flags
+        if self.is_empty:
+            self.images = images
+            self.titles = titles
+            self.with_value_text_flags = with_value_text_flags
+        else:
+            self.images.extend(images)
+            self.titles.extend(titles)
+            self.with_value_text_flags.extend(with_value_text_flags)
 
     @property
     def is_empty(self):

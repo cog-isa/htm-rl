@@ -11,7 +11,7 @@ class DreamerSaEncoder(SpSaEncoder):
     """
     Auxiliary encoder for the HIMA dreamer implementation.
     Besides forward encoding, it also supports s --> state decoding. It also
-    doesn't implement s_a --> sa encoding as it's needed for a Dreamer.
+    doesn't implement s_a --> sa encoding as it's not needed for a Dreamer.
     """
     sa_sp: None
 

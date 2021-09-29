@@ -44,14 +44,13 @@ class DreamingTrajectoryTracker(Debugger):
 
     def on_put_into_dreaming(self, agent, put_into_dream, *args, **kwargs):
         res = put_into_dream(*args, **kwargs)
+        self.state_encoding_provider.reset()
         self.encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
         self.starting_pos = None
         return res
 
     def on_move_in_dream(self, agent, move_in_dream, *args, **kwargs):
         state = args[0]
-        assert self.encoding_scheme
-
         position = self.state_encoding_provider.decode_state(state, self.encoding_scheme)
 
         if position is not None:

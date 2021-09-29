@@ -12,19 +12,21 @@ from htm_rl.scenarios.standard.scenario import Scenario
 
 
 class DreamingHeatmapTracker(Debugger):
-    fill_value: float = 0.
     name_prefix = 'dreaming_heatmap'
-    dreaming_heatmap: ma.MaskedArray
 
     env: Environment
     agent: DreamerAgent
-    agent_state_provider: AgentStateProvider
 
-    def __init__(self, scenario: Scenario):
+    agent_state_provider: AgentStateProvider
+    dreaming_heatmap: ma.MaskedArray
+    accumulate_heatmap: bool
+
+    def __init__(self, scenario: Scenario, accumulate_heatmap=False):
         super(DreamingHeatmapTracker, self).__init__(scenario)
 
         self.agent_state_provider = AgentStateProvider(scenario)
         self.dreaming_heatmap = ma.masked_all(self.env.shape, dtype=np.int)
+        self.accumulate_heatmap = accumulate_heatmap
 
         dreamer = self.agent.dreamer
         inject_debug_tools(dreamer)
@@ -41,7 +43,8 @@ class DreamingHeatmapTracker(Debugger):
         dream(*args, **kwargs)
 
     def reset(self):
-        self.dreaming_heatmap.mask[:] = True
+        if not self.accumulate_heatmap:
+            self.dreaming_heatmap.mask[:] = True
 
     @property
     def title(self) -> str:
