@@ -17,7 +17,7 @@ class SpSaEncoder(SaEncoder):
     sa_sp: SpatialPooler
 
     state_clusters: Optional[Memory]
-    sa_clusters: Optional[Memory]
+    state_clusters_similarity_threshold_max: Optional[float]
 
     def __init__(
             self,
@@ -27,7 +27,7 @@ class SpSaEncoder(SaEncoder):
             action_encoder: dict,
             sa_sp: dict,
             state_clusters_similarity_threshold: float = None,
-            sa_clusters_similarity_threshold: float = None,
+            state_clusters_similarity_threshold_max: float = None,
     ):
         self.state_sp = SpatialPooler(input_source=env, seed=seed, **state_sp)
         self.state_clusters = None
@@ -36,6 +36,7 @@ class SpSaEncoder(SaEncoder):
                 size=self.state_sp.output_sdr_size,
                 threshold=state_clusters_similarity_threshold
             )
+            self.state_clusters_similarity_threshold_max = state_clusters_similarity_threshold_max
         action_encoder['bucket_size'] = max(
             int(.75 * self.state_sp.n_active_bits),
             action_encoder.get('bucket_size', 0)
@@ -46,18 +47,24 @@ class SpSaEncoder(SaEncoder):
             self.action_encoder
         ])
         self.sa_sp = SpatialPooler(input_source=self.s_a_concatenator, seed=seed, **sa_sp)
-        self.sa_clusters = None
-        if sa_clusters_similarity_threshold is not None:
-            self.sa_clusters = Memory(
-                size=self.sa_sp.output_sdr_size,
-                threshold=sa_clusters_similarity_threshold
-            )
 
     def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
         s = self.state_sp.compute(state, learn=learn)
         if self.state_clusters is not None:
+            nom = self.state_clusters.number_of_clusters
+            # if nom > 45:
+            #     self.state_clusters = Memory(
+            #         self.state_clusters.size, self.state_clusters.threshold
+            #     )
+
             self.state_clusters.add(s)
             s = self._match_nearest_cluster(s, self.state_clusters)
+            self._increase_threshold(
+                self.state_clusters, self.state_clusters_similarity_threshold_max
+            )
+            nom_ = self.state_clusters.number_of_clusters
+            # if nom_ > nom and nom_ % 10 == 0:
+            #     print(nom_)
         return s
 
     def encode_action(self, action: int, learn: bool) -> SparseSdr:
@@ -76,9 +83,6 @@ class SpSaEncoder(SaEncoder):
 
     def encode_s_a(self, s_a: SparseSdr, learn: bool) -> SparseSdr:
         sa = self.sa_sp.compute(s_a, learn=learn)
-        if self.sa_clusters is not None:
-            self.sa_clusters.add(sa)
-            sa = self._match_nearest_cluster(sa, self.sa_clusters)
         return sa
 
     def concat_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
@@ -112,6 +116,11 @@ class SpSaEncoder(SaEncoder):
         best_cluster_norm = cluster_norms[best_match_cluster_ind]
         best_cluster = np.flatnonzero(best_cluster_norm)
         return best_cluster
+
+    @staticmethod
+    def _increase_threshold(clusters: Memory, max_threshold: float):
+        if clusters.threshold < max_threshold:
+            clusters.threshold += .0004
 
 
 class CrossSaEncoder(SaEncoder):

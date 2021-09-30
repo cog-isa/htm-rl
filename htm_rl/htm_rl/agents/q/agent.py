@@ -151,7 +151,12 @@ class QAgent(Agent):
         self.softmax_temp = temp, decay
 
     def _encode_s_actions(self, s: SparseSdr, learn: bool) -> list[SparseSdr]:
+        p_learn = 1.5 / self.n_actions
+
         return [
-            self.sa_encoder.encode_s_action(s, action, learn=learn)
+            self.sa_encoder.encode_s_action(
+                s, action,
+                learn=learn and self._rng.random() < p_learn
+            )
             for action in range(self.n_actions)
         ]
