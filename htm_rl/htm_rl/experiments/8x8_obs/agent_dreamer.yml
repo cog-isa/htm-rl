@@ -25,12 +25,12 @@ dreaming:
   anomaly_based_falling_asleep:
     anomaly_threshold: .5
     alpha: .7
-    beta: 1.8
-    max_prob: .05
-  first_dreaming_episode: 3
+    beta: 1.2
+    max_prob: .15
+  first_dreaming_episode: 5
 
   qvn:
-    learning_rate_factor: .3
+    learning_rate_factor: .2
   rollout_q_lr_decay_power: .0
 
   eligibility_traces:
@@ -42,8 +42,8 @@ dreaming:
   exploration_eps: [.15, .997]
   trajectory_exploration_eps_decay: 1.
 
-  prediction_depth: 18
-  n_prediction_rollouts: [1, 6]
+  prediction_depth: 14
+  n_prediction_rollouts: [2, 3]
 
 reward_model:
   learning_rate: [1., 1.]
@@ -54,13 +54,13 @@ anomaly_model:
 transition_model:
   tm:
     cells_per_column: 1
-    initial_permanence: .3
+    initial_permanence: .32
     connected_permanence: .3
-    activation_threshold: .85
+    activation_threshold: .8
     learning_threshold: .75
-    max_new_synapse_count: 1.1
-    max_synapses_per_segment: 1.1
-    predictedSegmentDecrement: .001
+    max_new_synapse_count: 1.15
+    max_synapses_per_segment: 1.15
+    predictedSegmentDecrement: .0005
     permanenceIncrement: .05
-    permanenceDecrement: .01
-    maxSegmentsPerCell: 8
+    permanenceDecrement: .02
+    maxSegmentsPerCell: 6

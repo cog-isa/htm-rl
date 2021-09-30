@@ -19,7 +19,7 @@ rendering:
   view_rectangle: [[-2, -2], [2, 2]]
 
 areas:
-  n_types: 3
+  n_types: 4
 
 obstacle:
   density: .25
