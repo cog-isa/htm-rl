@@ -1,5 +1,3 @@
-from typing import Tuple, Optional
-
 import numpy as np
 
 from htm_rl.agents.dreamer.dreaming_double import DreamingDouble
