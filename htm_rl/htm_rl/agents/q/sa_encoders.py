@@ -1,10 +1,13 @@
+from typing import Optional
+
 import numpy as np
 
 from htm_rl.agents.q.sa_encoder import SaEncoder
-from htm_rl.common.sdr import SparseSdr
+from htm_rl.common.sdr import SparseSdr, sparse_to_dense
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.envs.env import Env
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler
+from htm_rl.modules.empowerment import Memory
 
 
 class SpSaEncoder(SaEncoder):
@@ -13,15 +16,26 @@ class SpSaEncoder(SaEncoder):
     s_a_concatenator: SdrConcatenator
     sa_sp: SpatialPooler
 
+    state_clusters: Optional[Memory]
+    sa_clusters: Optional[Memory]
+
     def __init__(
             self,
             env: Env,
             seed: int,
             state_sp: dict,
             action_encoder: dict,
-            sa_sp: dict
+            sa_sp: dict,
+            state_clusters_similarity_threshold: float = None,
+            sa_clusters_similarity_threshold: float = None,
     ):
         self.state_sp = SpatialPooler(input_source=env, seed=seed, **state_sp)
+        self.state_clusters = None
+        if state_clusters_similarity_threshold is not None:
+            self.state_clusters = Memory(
+                size=self.state_sp.output_sdr_size,
+                threshold=state_clusters_similarity_threshold
+            )
         action_encoder['bucket_size'] = max(
             int(.75 * self.state_sp.n_active_bits),
             action_encoder.get('bucket_size', 0)
@@ -32,9 +46,19 @@ class SpSaEncoder(SaEncoder):
             self.action_encoder
         ])
         self.sa_sp = SpatialPooler(input_source=self.s_a_concatenator, seed=seed, **sa_sp)
+        self.sa_clusters = None
+        if sa_clusters_similarity_threshold is not None:
+            self.sa_clusters = Memory(
+                size=self.sa_sp.output_sdr_size,
+                threshold=sa_clusters_similarity_threshold
+            )
 
     def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
-        return self.state_sp.compute(state, learn=learn)
+        s = self.state_sp.compute(state, learn=learn)
+        if self.state_clusters is not None:
+            self.state_clusters.add(s)
+            s = self._match_nearest_cluster(s, self.state_clusters)
+        return s
 
     def encode_action(self, action: int, learn: bool) -> SparseSdr:
         return self.action_encoder.encode(action)
@@ -51,16 +75,20 @@ class SpSaEncoder(SaEncoder):
         return s_a[s_a < state_part_size].copy()
 
     def encode_s_a(self, s_a: SparseSdr, learn: bool) -> SparseSdr:
-        return self.sa_sp.compute(s_a, learn=learn)
+        sa = self.sa_sp.compute(s_a, learn=learn)
+        if self.sa_clusters is not None:
+            self.sa_clusters.add(sa)
+            sa = self._match_nearest_cluster(sa, self.sa_clusters)
+        return sa
 
     def concat_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        a = self.action_encoder.encode(action)
-        s_a = self.s_a_concatenator.concatenate(s, a)
+        a = self.encode_action(action, learn=learn)
+        s_a = self.concat_s_a(s, a, learn=learn)
         return s_a
 
     def encode_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
         s_a = self.concat_s_action(s, action, learn=learn)
-        sa = self.sa_sp.compute(s_a, learn=learn)
+        sa = self.encode_s_a(s_a, learn=learn)
         return sa
 
     @property
@@ -70,6 +98,20 @@ class SpSaEncoder(SaEncoder):
     @property
     def s_output_sdr_size(self):
         return self.state_sp.output_sdr_size
+
+    @staticmethod
+    def _match_nearest_cluster(
+            sdr: SparseSdr, clusters: Memory
+    ) -> SparseSdr:
+        dense_sdr = sparse_to_dense(sdr, clusters.size)
+        similarities = clusters.similarity(dense_sdr)
+        best_match_cluster_ind = np.argmax(similarities)
+
+        sparsity = len(sdr) / clusters.size
+        cluster_norms = clusters.adopted_kernels(sparsity)
+        best_cluster_norm = cluster_norms[best_match_cluster_ind]
+        best_cluster = np.flatnonzero(best_cluster_norm)
+        return best_cluster
 
 
 class CrossSaEncoder(SaEncoder):
@@ -141,6 +183,7 @@ class CrossSaEncoder(SaEncoder):
         return s_a
 
     def encode_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
+        # noinspection PyUnusedLocal
         sa = s_a = self.sa_encoder.encode(s, action)
         return sa
 
