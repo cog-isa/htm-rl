@@ -5,20 +5,23 @@
 
 state_sp:
   <<: *default_spatial_pooler_params
-  output_dilation_ratio: 1.2
-  potential_synapses_ratio: .65
-  sparsity: .02
-  boost_strength: .3
-  boost_sliding_window: 1000
-  expected_normal_overlap_frequency: .004
+  output_size: 400
+  potential_synapses_ratio: .5
+  sparsity: .025
+  boost_strength: .5
+  boost_sliding_window: 800
+  expected_normal_overlap_frequency: .005
+
+state_clusters_similarity_threshold: .5
+state_clusters_similarity_threshold_max: .6
 
 action_encoder:
   bucket_size: 4
 
 sa_sp:
   <<: *default_spatial_pooler_params
-  output_dilation_ratio: 2.
-  potential_synapses_ratio: .9
+  output_size: 500
+  potential_synapses_ratio: .5
   sparsity: .02
   boost_strength: .3
   boost_sliding_window: 2000
