@@ -249,7 +249,9 @@ class HTMAgentRunner:
         self.animation = False
         self.agent_pos = list()
         self.level = -1
+        self.task = 0
         self.steps = 0
+        self.steps_cumulative = 0
         self.episode = 0
         self.option_actions = list()
         self.option_predicted_actions = list()
@@ -257,6 +259,7 @@ class HTMAgentRunner:
         self.last_option_id = None
         self.current_action = None
         self.early_stop = False
+        self.map_change_indicator = 0
 
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
@@ -295,10 +298,15 @@ class HTMAgentRunner:
         self.total_reward = 0
         self.steps = 0
         self.episode = 0
+        self.steps_cumulative = 0
+        self.task = 0
         self.animation = False
         self.agent_pos = list()
-        map_change_indicator = 0
         dreaming_time = 0
+
+        if self.logger is not None:
+            wandb.define_metric("task")
+            wandb.define_metric("main_metrics/steps_per_task", step_metric="task")
 
         while self.episode < n_episodes and (not self.early_stop):
             if self.scenario is not None:
@@ -334,9 +342,11 @@ class HTMAgentRunner:
                         {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode,
                          'main_metrics/level': self.level,
                          'main_metrics/total_terminals': self.total_terminals,
-                         'main_metrics/map_change_indicator': map_change_indicator,
+                         'main_metrics/steps_cumulative': self.steps_cumulative,
+                         'main_metrics/map_change_indicator': self.map_change_indicator,
                          },
                         step=self.episode)
+                    self.map_change_indicator = 0
                     if self.agent.use_dreaming:
                         self.logger.log({'main_metrics/dreaming_time': dreaming_time}, step=self.episode)
                     if log_segments:
@@ -512,6 +522,7 @@ class HTMAgentRunner:
                     self.agent.dreamer.on_new_episode()
 
                 self.episode += 1
+                self.steps_cumulative += self.steps
                 self.steps = 0
                 self.total_reward = 0
                 dreaming_time = 0
@@ -552,9 +563,6 @@ class HTMAgentRunner:
                     self.terminal_pos_stat[pos] = 1
                 self.last_terminal_stat = self.terminal_pos_stat[pos]
                 self.total_terminals += 1
-                map_change_indicator = 1
-            else:
-                map_change_indicator = 0
             # \\\logging\\\
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
@@ -833,6 +841,10 @@ class HTMAgentRunner:
         self.environment.callmethod('reset')
         if self.logger is not None:
             self.draw_map(self.logger)
+            self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task}, step=self.episode)
+            self.steps_cumulative = 0
+            self.task += 1
+            self.map_change_indicator = 1
 
     def level_up(self):
         self.level += 1
