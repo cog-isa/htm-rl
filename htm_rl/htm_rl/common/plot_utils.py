@@ -64,6 +64,10 @@ def store_environment_map(
     plot_grid_images(env_map, titles, show=False, save_path=save_path)
 
 
+def plot_regular_plot(ax, data: np.ndarray):
+    ax.plot(np.arange(data.size), data)
+
+
 def _plot_grid_image(
         ax, data: np.ndarray, title: Optional[str] = None,
         with_value_text: bool = False
@@ -73,7 +77,10 @@ def _plot_grid_image(
     ax.xaxis.tick_top()
 
     if data.ndim == 3 and data.shape[2] == 4:
-        plot_triangled(data, ax)
+        plot_triangled(ax, data)
+        return
+    if data.ndim == 1:
+        plot_regular_plot(ax, data)
         return
 
     h, w = data.shape[:2]
@@ -97,7 +104,7 @@ def _plot_grid_image(
         annotate_heatmap(im, data=data, valfmt=valfmt)
 
 
-def plot_triangled(data, ax):
+def plot_triangled(ax, data: np.ndarray):
     h, w = data.shape[:2]
     x = np.linspace(0, w, 2 * w + 1) - .5
     y = np.linspace(0, h, 2 * h + 1) - .5

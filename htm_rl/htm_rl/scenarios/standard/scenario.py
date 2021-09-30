@@ -1,10 +1,9 @@
-import numpy as np
 from tqdm import trange
 
 from htm_rl.agents.agent import Agent
 from htm_rl.common.utils import timed
 from htm_rl.envs.env import Env
-from htm_rl.scenarios.factories import materialize_environment, materialize_agent
+from htm_rl.scenarios.factories import materialize_environment, materialize_agent, inject_debugger
 from htm_rl.scenarios.standard.run_stats import RunStats
 from htm_rl.scenarios.utils import ProgressPoint
 
@@ -47,7 +46,7 @@ class Scenario:
         wandb_run = self.init_wandb_run()
 
         if self.debug_enabled:
-            self.inject_debugger(self.debug)
+            inject_debugger(self.debug, self, images=self.debug['images'])
 
         for _ in trange(self.n_episodes):
             self.run_episode_with_mode(
@@ -133,18 +132,3 @@ class Scenario:
             'seed': self.config['env_seed']
         }
         return run
-
-    def inject_debugger(self, debug: dict):
-        debugger_type = debug['_type_']
-        print_images = self.debug['images']
-
-        if debugger_type == 'dreaming trajectory':
-            from htm_rl.agents.dreamer.debug.dreaming_trajectory_debugger import DreamingTrajectoryDebugger
-            # noinspection PyUnusedLocal
-            trajectory_debugger = DreamingTrajectoryDebugger(self, images=print_images)
-        elif debugger_type == 'model':
-            from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
-            # noinspection PyUnusedLocal
-            model_debugger = ModelDebugger(self, images=print_images)
-        else:
-            raise KeyError(debugger_type)

@@ -44,3 +44,22 @@ def materialize_experiment(config: FileConfig) -> Experiment:
         return DreamingConditionExperiment(config)
     else:
         raise NameError(scenario_type)
+
+
+def inject_debugger(debug: dict, scenario, **kwargs):
+    debugger_type = debug['_type_']
+
+    if debugger_type == 'dreaming trajectory':
+        from htm_rl.agents.dreamer.debug.dreaming_trajectory_debugger import DreamingTrajectoryDebugger
+        # noinspection PyUnusedLocal
+        trajectory_debugger = DreamingTrajectoryDebugger(scenario, **kwargs)
+    elif debugger_type == 'model':
+        from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
+        # noinspection PyUnusedLocal
+        model_debugger = ModelDebugger(scenario, **kwargs)
+    elif debugger_type == 'encoding':
+        from htm_rl.agents.q.debug.encoding_debugger import EncodingDebugger
+        # noinspection PyUnusedLocal
+        encoding_debugger = EncodingDebugger(scenario, **kwargs)
+    else:
+        raise KeyError(debugger_type)

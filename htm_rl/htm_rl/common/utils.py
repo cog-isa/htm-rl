@@ -6,6 +6,7 @@ import numpy as np
 
 
 DecayingValue = tuple[float, float]
+Coord2d = tuple[int, int]
 
 
 def isnone(x, default):
