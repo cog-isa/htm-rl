@@ -64,43 +64,48 @@ class Agent(Entity):
             assert isinstance(rendering, dict)
             self.renderer = AgentRenderer(env_shape=env.shape, **rendering)
 
+        self.positions = None
         if positions is not None:
             self.positions = [tuple(x) for x in positions]
-        else:
-            self.positions = positions
 
-        if direction is None:
-            self.init_direction = None
-        else:
+        self.init_direction = None
+        if direction is not None:
             self.init_direction = DIRECTIONS_ORDER.index(direction)
+
         self.change_position = change_position
-        self.rng = None
 
     def generate(self, seeds):
-        if not (self.initialized and self.change_position):
-            rng = np.random.default_rng(seeds['agent'])
-            self.rng = rng
-        else:
-            rng = self.rng
+        # it's crucial
+        self.initialized = False
+
+        rng = np.random.default_rng(seeds['agent'])
 
         if self.positions is not None:
-            if (len(self.positions) > 1) and self.change_position:
-                self.position = self.positions[rng.integers(0, len(self.positions))]
-            else:
-                self.position = self.positions[0]
+            self.position = self._select_from_fixed_positions(rng)
         else:
-            empty_positions_mask = ~self.env.aggregated_mask[EntityType.NonEmpty]
-
-            empty_positions_fl = np.flatnonzero(empty_positions_mask)
-            position_fl = rng.choice(empty_positions_fl)
-
-            self.position = self._unflatten_position(position_fl)
+            self.position = self._place_at_empty_position(rng)
 
         if self.init_direction is not None:
             self.view_direction = self.init_direction
         else:
             self.view_direction = rng.choice(len(DIRECTIONS_ORDER))
+
         self.initialized = True
+
+    def _select_from_fixed_positions(self, rng):
+        ind = 0
+        if len(self.positions) > 1 or self.change_position:
+            ind = rng.integers(len(self.positions))
+
+        return self.positions[ind]
+
+    def _place_at_empty_position(self, rng):
+        empty_positions_mask = ~self.env.aggregated_mask[EntityType.NonEmpty]
+
+        empty_positions_fl = np.flatnonzero(empty_positions_mask)
+        position_fl = rng.choice(empty_positions_fl)
+
+        return self._unflatten_position(position_fl)
 
     def move(self, direction):
         obstacles = self.env.aggregated_mask[EntityType.Obstacle]

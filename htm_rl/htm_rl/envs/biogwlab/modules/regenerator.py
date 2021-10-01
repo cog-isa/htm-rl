@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Optional
 
 import numpy as np
 
@@ -13,8 +13,8 @@ class Regenerator(Module):
     base_modulo: int = 1_000_000
 
     seed: int
-    seeds: Dict[str, int]
-    rates: Dict[str, int]
+    seeds: dict[str, int]
+    rates: dict[str, int]
     episode: int
 
     def __init__(self, env: Environment, name: str, **rates):
@@ -28,14 +28,21 @@ class Regenerator(Module):
         self.seeds = {key: rng.integers(self.base_modulo) for key in self.rates}
 
     def generate_seeds(self):
+        def scheduled(rate: Optional[int]):
+            if rate is None:
+                return False
+            return (self.episode + 1) % rate == 0
+
         self.episode += 1
         regenerate = False  # marks for regeneration all dependants, note loop order
         for key in ['map', 'food', 'agent']:
-            rate = self.rates[key]
-            if regenerate or (rate is not None and (self.episode + 1) % rate == 0):
+            if regenerate or scheduled(self.rates[key]):
                 seed = self.seeds[key]
+                # use the current seed to generate the next seed
                 rng = np.random.default_rng(seed)
                 self.seeds[key] = rng.integers(self.base_modulo)
+
+                # every dependant modules should be regenerated too
                 regenerate = True
 
         return self.seeds

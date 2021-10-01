@@ -48,7 +48,7 @@ def plot_grid_images(
 
     if save_path is not None:
         fig.savefig(save_path, dpi=120)
-        plt.close(fig)
+        plt.close('all')
 
 
 def store_environment_map(
