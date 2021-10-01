@@ -771,7 +771,7 @@ class HTMAgentRunner:
         positions = [self.environment.env.renderer.shape.shift_relative_to_corner(pos) for pos in positions]
         self.environment.env.modules['agent'].positions = positions
 
-    def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None, door_positions=None):
+    def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None, door_positions=None, wall_thickness=1):
         """
         Room numbers:
         |1|2|
@@ -779,6 +779,7 @@ class HTMAgentRunner:
         :param agent_fixed_positions:
         :param food_fixed_positions:
         :param door_positions
+        :param wall_thickness:
         :return:
         """
 
@@ -788,13 +789,13 @@ class HTMAgentRunner:
                 if room == 1:
                     col_range = [0, width - 1]
                 else:
-                    col_range = [width + 1, width * 2]
+                    col_range = [width + wall_thickness, width * 2 + wall_thickness - 1]
             else:
-                row_range = [width + 1, 2 * width]
+                row_range = [width + wall_thickness, 2 * width + wall_thickness - 1]
                 if room == 3:
                     col_range = [0, width - 1]
                 else:
-                    col_range = [width + 1, width * 2]
+                    col_range = [width + wall_thickness, width * 2 + wall_thickness - 1]
             return row_range, col_range
 
         def get_adjacent_rooms(room):
@@ -817,7 +818,7 @@ class HTMAgentRunner:
             agent_room, food_room = self.rng.sample(list(range(1, 5)), k=2)
             food_door = None
 
-        room_width = (self.env_config['shape_xy'][0] - 1) // 2
+        room_width = (self.env_config['shape_xy'][0] - wall_thickness) // 2
         if agent_fixed_positions is not None:
             agent_pos = tuple(agent_fixed_positions[agent_room - 1])
         else:
