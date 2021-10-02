@@ -49,7 +49,7 @@ reward_model:
   learning_rate: [1., 1.]
 
 anomaly_model:
-  learning_rate: [.04, 1.]
+  learning_rate: [.1, 1.]
 
 transition_model:
   tm:
