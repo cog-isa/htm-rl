@@ -725,10 +725,11 @@ class HTMAgentRunner:
                 self.agent.hierarchy.output_block.da - self.block_metrics['da_1lvl']) / (self.steps + 1)
         self.block_metrics['dda_1lvl'] = self.block_metrics['dda_1lvl'] + (
                 self.agent.hierarchy.output_block.dda - self.block_metrics['dda_1lvl']) / (self.steps + 1)
-        self.block_metrics['da_2lvl'] = self.block_metrics['da_2lvl'] + (
-                self.agent.hierarchy.blocks[5].da - self.block_metrics['da_2lvl']) / (self.steps + 1)
-        self.block_metrics['dda_2lvl'] = self.block_metrics['dda_2lvl'] + (
-                self.agent.hierarchy.blocks[5].dda - self.block_metrics['dda_2lvl']) / (self.steps + 1)
+        if len(self.agent.hierarchy.blocks) > 4:
+            self.block_metrics['da_2lvl'] = self.block_metrics['da_2lvl'] + (
+                    self.agent.hierarchy.blocks[5].da - self.block_metrics['da_2lvl']) / (self.steps + 1)
+            self.block_metrics['dda_2lvl'] = self.block_metrics['dda_2lvl'] + (
+                    self.agent.hierarchy.blocks[5].dda - self.block_metrics['dda_2lvl']) / (self.steps + 1)
         if self.agent.use_intrinsic_reward:
             self.block_metrics['priority_ext_1lvl'] = self.block_metrics['priority_ext_1lvl'] + (
                     self.agent.hierarchy.output_block.bg.priority_ext - self.block_metrics['priority_ext_1lvl']) / (
@@ -736,12 +737,13 @@ class HTMAgentRunner:
             self.block_metrics['priority_int_1lvl'] = self.block_metrics['priority_int_1lvl'] + (
                     self.agent.hierarchy.output_block.bg.priority_int - self.block_metrics['priority_int_1lvl']) / (
                                                               self.steps + 1)
-            self.block_metrics['priority_ext_2lvl'] = self.block_metrics['priority_ext_2lvl'] + (
-                    self.agent.hierarchy.blocks[5].bg.priority_ext - self.block_metrics['priority_ext_2lvl']) / (
-                                                              self.steps + 1)
-            self.block_metrics['priority_int_2lvl'] = self.block_metrics['priority_int_2lvl'] + (
-                    self.agent.hierarchy.blocks[5].bg.priority_int - self.block_metrics['priority_int_2lvl']) / (
-                                                              self.steps + 1)
+            if len(self.agent.hierarchy.blocks) > 4:
+                self.block_metrics['priority_ext_2lvl'] = self.block_metrics['priority_ext_2lvl'] + (
+                        self.agent.hierarchy.blocks[5].bg.priority_ext - self.block_metrics['priority_ext_2lvl']) / (
+                                                                  self.steps + 1)
+                self.block_metrics['priority_int_2lvl'] = self.block_metrics['priority_int_2lvl'] + (
+                        self.agent.hierarchy.blocks[5].bg.priority_int - self.block_metrics['priority_int_2lvl']) / (
+                                                                  self.steps + 1)
 
     def reset_block_metrics(self):
         self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
