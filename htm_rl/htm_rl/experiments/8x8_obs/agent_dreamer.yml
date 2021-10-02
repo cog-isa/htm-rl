@@ -54,13 +54,13 @@ anomaly_model:
 transition_model:
   tm:
     cells_per_column: 1
-    initial_permanence: .32
+    initial_permanence: .35
     connected_permanence: .3
-    activation_threshold: .8
-    learning_threshold: .75
-    max_new_synapse_count: 1.15
-    max_synapses_per_segment: 1.15
-    predictedSegmentDecrement: .0005
+    activation_threshold: .75
+    learning_threshold: .65
+    max_new_synapse_count: 1.1
+    max_synapses_per_segment: 1.1
+    predictedSegmentDecrement: .001
     permanenceIncrement: .05
     permanenceDecrement: .02
-    maxSegmentsPerCell: 6
+    maxSegmentsPerCell: 8
