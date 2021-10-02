@@ -114,11 +114,11 @@ class HTMAgent:
         action = self.action.get_action(action_pattern)
 
         # train empowerment tm
-        if self.use_intrinsic_reward:
-            current_obs = self.hierarchy.visual_block.get_output('basal')
-            if (self.previous_obs.size > 0) and (current_obs.size > 0) and self.empowerment.filename is None:
-                self.empowerment.learn(self.previous_obs, current_obs)
-            self.previous_obs = current_obs
+        # if self.use_intrinsic_reward:
+        #     current_obs = self.hierarchy.visual_block.get_output('basal')
+        #     if (self.previous_obs.size > 0) and (current_obs.size > 0) and self.empowerment.filename is None:
+        #         self.empowerment.learn(self.previous_obs, current_obs)
+        #     self.previous_obs = current_obs
         return action
 
     def get_intrinsic_reward(self):
@@ -304,6 +304,7 @@ class HTMAgentRunner:
         self.episode = 0
         self.animation = False
         self.agent_pos = list()
+        self.cumulative_steps = 0
         map_change_indicator = 0
         dreaming_time = 0
 
@@ -318,6 +319,10 @@ class HTMAgentRunner:
 
             if is_first:
                 # ///logging///
+                if map_change_indicator == 1:
+                    self.cumulative_steps = 0
+                self.cumulative_steps += self.steps
+                self.all_steps += self.steps
                 if self.animation:
                     # log all saved frames for this episode
                     self.animation = False
@@ -521,11 +526,6 @@ class HTMAgentRunner:
                     self.agent.dreamer.on_new_episode()
 
                 self.episode += 1
-                if map_change_indicator == 1:
-                    self.cumulative_steps = 0
-                else:
-                    self.cumulative_steps += self.steps
-                self.all_steps += self.steps
                 self.steps = 0
                 self.total_reward = 0
                 dreaming_time = 0
@@ -642,6 +642,7 @@ class HTMAgentRunner:
 
         plt.imsave(os.path.join(self.path_to_store_logs,
                                 f'{logger.id}_episode_{episode}_step_{steps}.png'), pic.astype('uint8'))
+        plt.close()
 
     def update_option_stats(self, is_terminal):
         option_block = self.agent.hierarchy.blocks[5]
@@ -862,6 +863,7 @@ class HTMAgentRunner:
             map_image = map_image[0]
         plt.imsave(os.path.join(self.path_to_store_logs,
                                 f'map_{config["environment"]["seed"]}_{self.episode}.png'), map_image.astype('uint8'))
+        plt.close()
         logger.log({'maps/map': wandb.Image(os.path.join(self.path_to_store_logs,
                                                           f'map_{config["environment"]["seed"]}_{self.episode}.png'))},
                    step=self.episode)

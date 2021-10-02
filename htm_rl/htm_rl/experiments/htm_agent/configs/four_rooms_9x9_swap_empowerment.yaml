@@ -17,7 +17,7 @@ path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 100000
-  log_every_episode: 25
+  log_every_episode: 50
   log_values_int: True
   log_values_ext: True
   log_priorities: True
@@ -32,7 +32,7 @@ run_options:
   log_modulation: False
   log_segments: False
   log_terminal_stat: True
-  log_empowerment: True
+  log_empowerment: False
   log_number_of_clusters: False
   draw_options: False
   draw_options_stats: False
@@ -179,43 +179,13 @@ blocks:
     bg:
       alpha: 0.1
       beta: 0.1
-      alpha_int: 0.01
-      beta_int: 0.01
       off_policy: true
-      softmax_beta: 0.25
+      softmax_beta: 1.0
       epsilon_noise: 0.0
     block:
       modulate_tm_lr: false
       level: 1
     sm: {}
-    sp:
-      boostStrength: 0.0
-      localAreaDensity: 0.02
-      potentialPct: 0.5
-    tm:
-      basal_columns: 1000
-
-  2:
-    bg: null
-    block:
-      level: 2
-    sm: { }
-    sp:
-      boostStrength: 0.0
-      localAreaDensity: 0.02
-      potentialPct: 0.5
-    tm:
-      basal_columns: 1000
-  3:
-    bg:
-      alpha: 0.1
-      beta: 0.1
-      off_policy: true
-      softmax_beta: 0.5
-      epsilon_noise: 0.0
-    block:
-      level: 2
-    sm: { }
     sp:
       boostStrength: 0.0
       localAreaDensity: 0.02
@@ -249,8 +219,8 @@ hierarchy:
     {
       'basal_in': [ 0 ],
       'apical_in': [ 3 ],
-      'feedback_in': [ 4 ],
-      'basal_out': [ 4 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
       'apical_out': [ 3 ],
       'feedback_out': [ ]
     },
@@ -258,28 +228,10 @@ hierarchy:
     {
       'basal_in': [ 1 ],
       'apical_in': [ 2 ],
-      'feedback_in': [ 5 ],
-      'basal_out': [ 5 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
       'apical_out': [ 2 ],
       'feedback_out': [ ]
-    },
-
-    {
-      'basal_in': [ 2 ],
-      'apical_in': [ 5 ],
-      'feedback_in': [ ],
-      'basal_out': [ ],
-      'apical_out': [ 5 ],
-      'feedback_out': [ 2 ]
-    },
-
-    {
-      'basal_in': [ 3 ],
-      'apical_in': [ 4 ],
-      'feedback_in': [ ],
-      'basal_out': [ ],
-      'apical_out': [ 4 ],
-      'feedback_out': [ 3 ]
     }
   ]
   input_blocks:
@@ -368,23 +320,23 @@ basal_ganglia_default:
   beta: 0.01  # external striatum learning rate
   beta_int: 0.1  # internal striatum learning rate
   discount_factor: 0.95  # external reward
-  discount_factor_int: 0.5 # internal reward
+  discount_factor_int: 0. # internal reward
   off_policy: true  # true: use Q-learning, false: use SARSA for external striatum region
   off_policy_int: true  # the same for internal striatum region
   softmax_beta: 1.0  # softmax inverse temperature, controls thalamus noise
   epsilon_noise: 0.0  # another way to control thalamus noisiness
   priority_ext: 1.0  # scale factor for external reward
-  priority_int: 0.1  # scale factor for internal reward
+  priority_int: 0.1  # !!!!!!!!
   td_error_threshold: 0.01  # margin for td error condition: td < -threshold, experimental
   priority_inc_factor: 1.1  # multiply priority if td error is positive, experimental
   priority_dec_factor: 0.9  # else, experimental
   use_reward_modulation: true  # true: instead of TD error use reward modulation for priority
-  sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
-  sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement
-  sm_max_reward: 0.99  # smooth factor for max reward
-  sm_min_reward: 0.99  # smooth factor for min reward
-  max_reward_decay: 0.999  # decay factor for max reward
-  min_reward_decay: 0.999  # decay factor for min reward
+  sm_reward_inc: 0.9  # !!!!!!!!
+  sm_reward_dec: 0.998  # !!!!!!!!!!!
+  sm_max_reward: 0.99  # !!!!!!!!!!
+  sm_min_reward: 0.99  # !!!!!!!!!!!!
+  max_reward_decay: 0.999  # !!!!!!!!!!!
+  min_reward_decay: 0.999  # !!!!!!!!!!!!!!1
   seed: *seed
 
 block_default:
