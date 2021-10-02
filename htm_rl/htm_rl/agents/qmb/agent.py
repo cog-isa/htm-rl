@@ -16,6 +16,8 @@ class QModelBasedAgent(QAgent):
 
     im_weight: DecayingValue
 
+    _prev_action: Optional[int]
+
     def __init__(
             self,
             reward_model: dict,
@@ -36,6 +38,7 @@ class QModelBasedAgent(QAgent):
             **anomaly_model
         )
         self.im_weight = im_weight
+        self._prev_action = None
 
     @property
     def name(self):
@@ -44,10 +47,12 @@ class QModelBasedAgent(QAgent):
     def on_new_episode(self):
         super(QModelBasedAgent, self).on_new_episode()
         if self.train:
-            self.transition_model.reset()
+            # no need to reset Transition Model - it's reset with
+            # the first (s, a) [non-learnable] activation
             self.reward_model.decay_learning_factors()
             self.anomaly_model.decay_learning_factors()
             self.im_weight = exp_decay(self.im_weight)
+            self._prev_action = None
 
     def act(self, reward: float, state: SparseSdr, first: bool) -> Optional[int]:
         if first and self._step > 0:
@@ -58,11 +63,14 @@ class QModelBasedAgent(QAgent):
         im_reward = self._get_im_reward()
 
         prev_sa_sdr = self._current_sa_sdr
+        prev_action = self._prev_action
         s = self.sa_encoder.encode_state(state, learn=True and train)
         actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
 
         if train and not first:
-            self.reward_model.update(s, reward)
+            self._on_transition_to_new_state(
+                prev_action, s, reward, learn=True and train
+            )
             self.E_traces.update(prev_sa_sdr)
             self._make_q_learning_step(
                 sa=prev_sa_sdr, r=reward+im_reward,
@@ -72,26 +80,35 @@ class QModelBasedAgent(QAgent):
         action = self._choose_action(actions_sa_sdr)
         chosen_sa_sdr = actions_sa_sdr[action]
         if train:
-            self._update_transition_model(s, action, learn=True and train)
+            self._on_action_selection(s, action)
         if train and self.ucb_estimate.enabled:
             self.ucb_estimate.update(chosen_sa_sdr)
 
         self._current_sa_sdr = chosen_sa_sdr
+        self._prev_action = action
         self._step += 1
         return action
 
     def _get_im_reward(self) -> float:
         if self.train and self.im_weight[0] > 0.:
-            x = (1 - self.transition_model.recall) ** 2
+            x = self.transition_model.anomaly ** 2
             return self.im_weight[0] * x
         return 0.
 
-    def _update_transition_model(self, s: SparseSdr, action: int, learn: bool):
-        # learn transition and anomaly for (s,a) -> s'
-        self.transition_model.process(s, learn=learn)
-        anomaly = self.transition_model.recall
-        self.anomaly_model.update(action, s, anomaly)
+    def _on_transition_to_new_state(
+            self, prev_action: int, s: SparseSdr, reward: float, learn: bool
+    ):
+        # if self.sa_encoder.state_clusters is not None:
+        #     if self.sa_encoder.state_clusters.threshold < .55:
+        #         return
 
-        # activate (s',a')
+        # learn transition and anomaly for (s',a') -> s
+        self.transition_model.process(s, learn=learn)
+        self.anomaly_model.update(prev_action, s, self.transition_model.anomaly)
+        # also update reward model
+        self.reward_model.update(s, reward)
+
+    def _on_action_selection(self, s: SparseSdr, action: int):
+        # activate (s,a)
         s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
         self.transition_model.process(s_a, learn=False)
