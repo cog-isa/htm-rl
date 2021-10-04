@@ -41,14 +41,16 @@ class DreamerAgent(QModelBasedAgent):
             return None
 
         train = self.train
-        im_reward = self._get_im_reward()
-
         prev_sa_sdr = self._current_sa_sdr
+        prev_action = self._prev_action
         s = self.sa_encoder.encode_state(state, learn=True and train)
         actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
 
         if train and not first:
-            self.reward_model.update(s, reward)
+            self._on_transition_to_new_state(
+                prev_action, s, reward, learn=True and train
+            )
+            im_reward = self._get_im_reward()
             self.E_traces.update(prev_sa_sdr)
             self._make_q_learning_step(
                 sa=prev_sa_sdr, r=reward+im_reward,
@@ -62,11 +64,12 @@ class DreamerAgent(QModelBasedAgent):
         action = self._choose_action(actions_sa_sdr)
         chosen_sa_sdr = actions_sa_sdr[action]
         if train:
-            self._update_transition_model(s, action, learn=True and train)
+            self._on_action_selection(s, action)
         if train and self.ucb_estimate.enabled:
             self.ucb_estimate.update(chosen_sa_sdr)
 
         self._current_sa_sdr = chosen_sa_sdr
+        self._prev_action = action
         self._step += 1
         return action
 
