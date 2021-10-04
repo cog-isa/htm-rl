@@ -42,23 +42,25 @@ class DreamingTrajectoryTracker(Debugger):
         # noinspection PyUnresolvedReferences
         self.agent.dreamer.set_breakpoint('_move_in_dream', self.on_move_in_dream)
 
+    # noinspection PyUnusedLocal
     def on_put_into_dreaming(self, agent, put_into_dream, *args, **kwargs):
         res = put_into_dream(*args, **kwargs)
         self.state_encoding_provider.reset()
         self.encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
-        self.starting_pos = None
+        self.starting_pos = self.env.agent.position
         return res
 
+    # noinspection PyUnusedLocal
     def on_move_in_dream(self, agent, move_in_dream, *args, **kwargs):
         state = args[0]
-        position = self.state_encoding_provider.decode_state(state, self.encoding_scheme)
+        position, _, _ = self.state_encoding_provider.decode_state(
+            state, self.encoding_scheme
+        )
 
         if position is not None:
             if self.heatmap.mask[position]:
                 self.heatmap[position] = 0
             self.heatmap[position] += 1
-            if self.starting_pos is None:
-                self.starting_pos = position
 
         self.trajectory_len += 1
         return move_in_dream(*args, **kwargs)

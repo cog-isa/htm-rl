@@ -43,6 +43,7 @@ class DreamingTrajectoryDebugger(Debugger):
         # noinspection PyUnresolvedReferences
         self.agent.dreamer.set_breakpoint('_wake', self.on_new_rollout)
 
+    # noinspection PyUnusedLocal
     def on_new_rollout(self, dreaming_double: DreamingDouble, func, *args, **kwargs):
         func(*args, **kwargs)
         if self.print_images:
@@ -50,7 +51,7 @@ class DreamingTrajectoryDebugger(Debugger):
 
     # noinspection PyUnusedLocal
     def on_end_episode(self, pp: ProgressPoint, func, *args, **kwargs):
-        if self.print_images:
+        if self.print_images and self.agent.train:
             output_filename = self.get_episode_filename(pp, self.train_eval_mark)
 
             rollouts = None
@@ -67,5 +68,8 @@ class DreamingTrajectoryDebugger(Debugger):
 
             output = self.output_renderer.flush(filename=output_filename)
             plot_grid_images(show=False, cols_per_row=3, **output)
+
+        if not self.agent.train:
+            self.trajectory_tracker.reset()
 
         func(*args, **kwargs)
