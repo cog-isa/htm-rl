@@ -65,15 +65,16 @@ class QModelBasedAgent(QAgent):
         train = self.train
         prev_sa_sdr = self._current_sa_sdr
         prev_action = self._prev_action
-        s = self.sa_encoder.encode_state(state, learn=True and train)
-        actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
+        input_changed = self.input_changes_detector.changed(state, train)
+        s = self.sa_encoder.encode_state(state, learn=train and input_changed)
+        actions_sa_sdr = self._encode_s_actions(s, learn=train and input_changed)
 
         if train and not first:
             self._on_transition_to_new_state(
-                prev_action, s, reward, learn=True and train
+                prev_action, s, reward, learn=train and input_changed
             )
-            im_reward = self._get_im_reward()
-            self.E_traces.update(prev_sa_sdr)
+            im_reward = self._get_im_reward(train=train and input_changed)
+            self.E_traces.update(prev_sa_sdr, with_reset=not input_changed)
             self._make_q_learning_step(
                 sa=prev_sa_sdr, r=reward+im_reward,
                 next_actions_sa_sdr=actions_sa_sdr
@@ -91,8 +92,8 @@ class QModelBasedAgent(QAgent):
         self._step += 1
         return action
 
-    def _get_im_reward(self) -> float:
-        if self.train and self.im_weight[0] > 0.:
+    def _get_im_reward(self, train: bool) -> float:
+        if train and self.im_weight[0] > 0.:
             x = self.transition_model.anomaly ** 2
             return self.im_weight[0] * x
         return 0.
@@ -106,6 +107,9 @@ class QModelBasedAgent(QAgent):
 
         # learn transition and anomaly for (s',a') -> s
         self.transition_model.process(s, learn=learn)
+        if not learn:
+            return
+
         self.anomaly_model.update(prev_action, s, self.transition_model.anomaly)
         # also update reward model
         self.reward_model.update(s, reward)
