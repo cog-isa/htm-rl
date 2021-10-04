@@ -116,23 +116,3 @@ class TransitionModel:
 
         self.f_score = f_beta_score
         self.anomaly = 1. - recall
-
-    # TODO: Try removing both getstate and setstate - pickling should work w/o them
-    def __getstate__(self):
-        # used to pickle object
-        data = (
-            self.tm,
-            self._proximal_input_sdr,
-            self._predicted_columns_sdr,
-            self.anomaly, self.precision, self.recall,
-        )
-        return data
-
-    def __setstate__(self, state):
-        # used to unpickle
-        (
-            self.tm,
-            self._proximal_input_sdr,
-            self._predicted_columns_sdr,
-            self.anomaly, self.precision, self.recall,
-        ) = state
