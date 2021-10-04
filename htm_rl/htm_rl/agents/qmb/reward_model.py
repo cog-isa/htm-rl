@@ -18,9 +18,14 @@ class RewardModel:
         self.reward_anomaly = .0
 
     def update(self, s: SparseSdr, reward: float):
-        learned_reward = self.rewards[s].mean()
+        # compute reward anomaly
+        learned_reward = self.state_reward(s)
         self.reward_anomaly = 2 * abs(learned_reward - reward) / (abs(learned_reward) + abs(reward) + 1e-5)
+        # update model
         update_slice_lin_sum(self.rewards, s, self.learning_rate[0], reward)
+
+    def state_reward(self, s: SparseSdr):
+        return np.mean(self.rewards[s])
 
     def decay_learning_factors(self):
         self.learning_rate = exp_decay(self.learning_rate)
