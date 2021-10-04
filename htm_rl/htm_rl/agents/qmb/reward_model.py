@@ -25,7 +25,7 @@ class RewardModel:
         update_slice_lin_sum(self.rewards, s, self.learning_rate[0], reward)
 
     def state_reward(self, s: SparseSdr):
-        return np.mean(self.rewards[s])
+        return np.median(self.rewards[s])
 
     def decay_learning_factors(self):
         self.learning_rate = exp_decay(self.learning_rate)

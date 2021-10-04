@@ -28,6 +28,9 @@ class AnomalyModel:
         )
 
     def state_anomaly(self, s: SparseSdr, prev_action: int = None):
+        if len(s) == 0:
+            return 1.
+
         # reduce by state encoding
         action_anomaly = np.median(self.anomaly[s], axis=0)
         if prev_action is not None:
