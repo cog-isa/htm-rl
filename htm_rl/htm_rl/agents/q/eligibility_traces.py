@@ -3,12 +3,13 @@ from typing import Optional
 import numpy as np
 
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import update_exp_trace, isnone, exp_decay, DecayingValue
+from htm_rl.common.utils import update_exp_trace, exp_decay, DecayingValue
 
 
 class EligibilityTraces:
     trace_decay: DecayingValue
     discount_factor: float
+    with_reset: bool
     E: Optional[np.ndarray]
 
     cells_sdr_size: Optional[int]
@@ -16,11 +17,13 @@ class EligibilityTraces:
     def __init__(
             self, cells_sdr_size: int = None,
             trace_decay: DecayingValue = (.0, .0),
-            discount_factor: float = None
+            discount_factor: float = None,
+            with_reset: bool = False
     ):
         self.cells_sdr_size = cells_sdr_size
         self.trace_decay = trace_decay
         self.discount_factor = discount_factor
+        self.with_reset = with_reset
         self.E = None
         self.reset()
 
@@ -28,10 +31,14 @@ class EligibilityTraces:
     def enabled(self) -> bool:
         return self.trace_decay[0] > .05
 
-    def update(self, sa: SparseSdr):
+    def update(self, sa: SparseSdr, with_reset: bool = False):
         if self.enabled:
             lambda_, gamma = self.trace_decay[0], self.discount_factor
-            update_exp_trace(self.E, sa, lambda_ * gamma)
+            update_exp_trace(
+                self.E, sa,
+                decay=lambda_ * gamma,
+                with_reset=self.with_reset or with_reset
+            )
 
     def reset(self, decay: bool = True):
         if not self.enabled:

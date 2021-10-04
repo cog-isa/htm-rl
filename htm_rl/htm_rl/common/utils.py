@@ -79,10 +79,13 @@ def update_slice_lin_sum(s, ind, lr, val):
     s[ind] = (1 - lr) * s[ind] + lr * val
 
 
-def update_exp_trace(traces, tr, decay, val=1.):
+def update_exp_trace(traces, tr, decay, val=1., with_reset=False):
     """Updates exponential trace."""
     traces *= decay
-    traces[tr] += val
+    if with_reset:
+        traces[tr] = val
+    else:
+        traces[tr] += val
 
 
 def exp_decay(value: DecayingValue) -> DecayingValue:
