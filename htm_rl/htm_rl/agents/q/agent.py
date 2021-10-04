@@ -8,6 +8,7 @@ from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.q.qvn import QValueNetwork
 from htm_rl.agents.q.sa_encoder import SaEncoder
 from htm_rl.agents.q.sa_encoders import make_sa_encoder
+from htm_rl.agents.q.input_changes_detector import InputChangesDetector
 from htm_rl.agents.q.ucb_estimator import UcbEstimator
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.utils import exp_decay, softmax, DecayingValue, isnone
@@ -19,6 +20,7 @@ class QAgent(Agent):
     sa_encoder: SaEncoder
     Q: QValueNetwork
     E_traces: EligibilityTraces
+    # input_changes_detector: InputChangesDetector
 
     train: bool
     softmax_temp: DecayingValue
@@ -48,6 +50,7 @@ class QAgent(Agent):
             self.sa_encoder.output_sdr_size,
             **isnone(eligibility_traces, {})
         )
+        # self.input_changes_detector = InputChangesDetector(env.output_sdr_size)
 
         self.train = True
         self.softmax_temp = softmax_temp
@@ -81,6 +84,7 @@ class QAgent(Agent):
 
         train = self.train
         prev_sa_sdr = self._current_sa_sdr
+        # input_changed = self.input_changes_detector.changed(state, train)
         s = self.sa_encoder.encode_state(state, learn=True and train)
         actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
 
