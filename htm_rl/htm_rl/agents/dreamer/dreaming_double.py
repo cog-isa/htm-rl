@@ -28,8 +28,9 @@ class DreamingDouble(QModelBasedAgent):
     prediction_depth: int
     n_prediction_rollouts: tuple[int, int]
 
-    starting_sa_sdr: Optional[SparseSdr]
-    exploration_eps_backup: Optional[DecayingValue]
+    _starting_sa_sdr: Optional[SparseSdr]
+    _starting_state: Optional[SparseSdr]
+    _exploration_eps_backup: Optional[DecayingValue]
     _episode: int
 
     # noinspection PyMissingConstructor,PyPep8Naming
@@ -65,8 +66,9 @@ class DreamingDouble(QModelBasedAgent):
 
         self.transition_model = wake_agent.transition_model
         self.tm_checkpoint = None
-
+        self.anomaly_model = wake_agent.anomaly_model
         self.reward_model = wake_agent.reward_model
+
         self.softmax_temp = softmax_temp
         self.exploration_eps = exploration_eps
         self.trajectory_exploration_eps_decay = trajectory_exploration_eps_decay
@@ -87,8 +89,9 @@ class DreamingDouble(QModelBasedAgent):
         self.last_dreaming_episode = isnone(last_dreaming_episode, 999999)
 
         self.train = True
-        self.starting_sa_sdr = None
-        self.exploration_eps_backup = None
+        self._starting_sa_sdr = None
+        self._starting_state = None
+        self._exploration_eps_backup = None
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
         self._step = 0
@@ -112,7 +115,7 @@ class DreamingDouble(QModelBasedAgent):
             # reward condition prevents useless planning when we've already
             # found the goal
             return False
-        if self.Q.learning_rate[0] < 1e-3:
+        if self.Q.learning_rate[0] < 1e-4:
             # there's no reason to dream when learning is almost stopped
             return False
         return True
@@ -126,7 +129,18 @@ class DreamingDouble(QModelBasedAgent):
         return False
 
     def dream(self, starting_state, prev_sa_sdr):
-        self._put_into_dream(prev_sa_sdr)
+        self._put_into_dream(starting_state, prev_sa_sdr)
+
+        # from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
+        # s_enc_provider: StateEncodingProvider = self.s_enc_provider
+        # s_enc_provider.reset()
+        # s_enc_provider.get_encoding_scheme()
+        # print('pos', self.env.agent.position)
+        #
+        # sa_encoder: SpSaEncoder = self.sa_encoder
+        # if sa_encoder.state_clusters:
+        #     i_cluster, sims, cluster = sa_encoder.match_nearest_cluster(starting_state)
+        #     print('cl', cluster, i_cluster, sims)
 
         starting_state_len = len(starting_state)
         i_rollout = 0
@@ -140,9 +154,10 @@ class DreamingDouble(QModelBasedAgent):
             state = starting_state
             depth = 0
             for depth in range(self.prediction_depth):
-                if len(state) < .6 * starting_state_len:
+                next_state, a, anomaly = self._move_in_dream(state)
+                if len(next_state) < .6 * starting_state_len or anomaly > .5:
                     break
-                state, a = self._move_in_dream(state)
+                state = next_state
 
             i_rollout += 1
             sum_depth += depth ** .6
@@ -151,15 +166,16 @@ class DreamingDouble(QModelBasedAgent):
         # if depths: print(depths)
         self._wake()
 
-    def _put_into_dream(self, starting_sa_sdr):
+    def _put_into_dream(self, starting_state: SparseSdr, starting_sa_sdr: SparseSdr):
         self._save_tm_checkpoint()
-        self.starting_sa_sdr = starting_sa_sdr.copy()
-        self.exploration_eps_backup = self.exploration_eps
+        self._starting_state = starting_state.copy()
+        self._starting_sa_sdr = starting_sa_sdr.copy()
+        self._exploration_eps_backup = self.exploration_eps
 
     def _on_new_rollout(self, i_rollout):
         if i_rollout > 0:
             self._restore_tm_checkpoint()
-        self._current_sa_sdr = self.starting_sa_sdr.copy()
+        self._current_sa_sdr = self._starting_sa_sdr.copy()
         # noinspection PyPep8Naming
         Q_lr_decay = 1. / (i_rollout + 1.)**self.rollout_q_lr_decay_power
         self.Q.learning_rate = multiply_decaying_value(
@@ -173,7 +189,7 @@ class DreamingDouble(QModelBasedAgent):
                 self.E_traces.reset(decay=False)
 
     def _wake(self):
-        self.exploration_eps = self.exploration_eps_backup
+        self.exploration_eps = self._exploration_eps_backup
         self._restore_tm_checkpoint()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
@@ -202,21 +218,47 @@ class DreamingDouble(QModelBasedAgent):
         return action
 
     def _move_in_dream(self, state: SparseSdr):
-        reward = self.reward_model.rewards[state].mean()
-        action = self.act(reward, state, first=False)
-
-        if reward > .2:
-            # found goal ==> should stop rollout
-            s_next = []
-            return s_next, action
+        # from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
+        # s_enc_provider: StateEncodingProvider = self.s_enc_provider
+        # scheme = s_enc_provider.get_encoding_scheme()
+        #
+        # position, _, _ = s_enc_provider.decode_state(state, scheme, .0)
+        # print('s pos', state, position)
 
         s = state
-        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
-        self.transition_model.process(s, learn=False)
-        _, s_next_cells = self.transition_model.process(s_a, learn=False)
+        reward = self.reward_model.state_reward(s)
+        action = self.act(reward, s, first=False)
 
-        s_next = self.transition_model.columns_from_cells(s_next_cells)
-        return s_next, action
+        # from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
+        # print('r, a', reward, action, DIRECTIONS_ORDER[action])
+
+        if reward > .3:
+            # found goal ==> should stop rollout
+            s_next = []
+            return s_next, action, 1.
+
+        self.transition_model.process(s, learn=False)
+        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
+        # print('s_a', s_a)
+        self.transition_model.process(s_a, learn=False)
+        s_next = self.transition_model.predicted_cols
+
+        allowed_max_len = int(1.15 * len(self._starting_state))
+        if len(s_next) > allowed_max_len:
+            s_next = self._rng.choice(s_next, allowed_max_len, replace=False)
+            s_next.sort()
+
+        # s_next = self.sa_encoder.restore_s(s_next, .45)
+        # print('s_next', s_next)
+
+        # position, overlap, s_ = s_enc_provider.decode_state(s_next, scheme, .4)
+        # print(position, overlap, s_)
+        # print('====================')
+        # if s_ is not None:
+        #     s_next = np.array(list(sorted(s_)))
+
+        anomaly = self.anomaly_model.state_anomaly(s_next, prev_action=action)
+        return s_next, action, anomaly
 
     def _td_error_based_dreaming(self, td_error):
         boost_prob_alpha = self.td_error_based_falling_asleep.boost_prob_alpha[0]
@@ -245,13 +287,17 @@ class DreamingDouble(QModelBasedAgent):
 
     def _save_tm_checkpoint(self) -> bytes:
         """Saves TM state."""
-        self.tm_checkpoint = pickle.dumps(self.transition_model)
-        return self.tm_checkpoint
+        if self.transition_model.tm.cells_per_column > 1:
+            self.tm_checkpoint = pickle.dumps(self.transition_model)
+            return self.tm_checkpoint
 
     def _restore_tm_checkpoint(self, tm_checkpoint: bytes = None):
         """Restores saved TM state."""
-        tm_checkpoint = isnone(tm_checkpoint, self.tm_checkpoint)
-        self.transition_model = pickle.loads(tm_checkpoint)
+        if self.transition_model.tm.cells_per_column > 1:
+            tm_checkpoint = isnone(tm_checkpoint, self.tm_checkpoint)
+            self.transition_model = pickle.loads(tm_checkpoint)
+        else:
+            self.transition_model.process(self._starting_state, learn=False)
 
     @property
     def name(self):
