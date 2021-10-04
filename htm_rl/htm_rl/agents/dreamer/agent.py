@@ -88,7 +88,7 @@ class DreamerAgent(QModelBasedAgent):
                 self.cum_td_error = exp_sum(self.cum_td_error, self.td_error_decay, td_error)
                 td_error = self.cum_td_error
             elif self.dreamer.falling_asleep_strategy == 'anomaly':
-                anomaly = self.anomaly_model.anomaly[s].mean()
+                anomaly = self.anomaly_model.state_anomaly(s)
 
             dream = self.dreamer.decide_to_dream(
                 td_error=td_error, anomaly=anomaly
