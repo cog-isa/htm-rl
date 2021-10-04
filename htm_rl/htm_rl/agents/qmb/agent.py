@@ -31,7 +31,10 @@ class QModelBasedAgent(QAgent):
         self.transition_model = make_transition_model(
             self.sa_encoder, transition_model
         )
-        self.reward_model = RewardModel(self.sa_encoder.output_sdr_size, **reward_model)
+        self.reward_model = RewardModel(
+            cells_sdr_size=self.sa_encoder.s_output_sdr_size,
+            **reward_model
+        )
         self.anomaly_model = AnomalyModel(
             cells_sdr_size=self.sa_encoder.s_output_sdr_size,
             n_actions=self.n_actions,
@@ -60,8 +63,6 @@ class QModelBasedAgent(QAgent):
             return None
 
         train = self.train
-        im_reward = self._get_im_reward()
-
         prev_sa_sdr = self._current_sa_sdr
         prev_action = self._prev_action
         s = self.sa_encoder.encode_state(state, learn=True and train)
@@ -71,6 +72,7 @@ class QModelBasedAgent(QAgent):
             self._on_transition_to_new_state(
                 prev_action, s, reward, learn=True and train
             )
+            im_reward = self._get_im_reward()
             self.E_traces.update(prev_sa_sdr)
             self._make_q_learning_step(
                 sa=prev_sa_sdr, r=reward+im_reward,
