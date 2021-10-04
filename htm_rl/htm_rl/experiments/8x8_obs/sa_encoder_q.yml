@@ -12,8 +12,8 @@ state_sp:
   boost_sliding_window: 800
   expected_normal_overlap_frequency: .005
 
-state_clusters_similarity_threshold: .3
-state_clusters_similarity_threshold_max: .6
+#state_clusters_similarity_threshold: .3
+#state_clusters_similarity_threshold_max: .6
 
 action_encoder:
   bucket_size: 4
