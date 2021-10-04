@@ -48,6 +48,11 @@ class Scenario:
         if self.debug_enabled:
             inject_debugger(self.debug, self, images=self.debug['images'])
 
+        # from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
+        # from htm_rl.envs.env import unwrap
+        # self.agent.dreamer.s_enc_provider = StateEncodingProvider(self)
+        # self.agent.dreamer.env = unwrap(self.env)
+
         for _ in trange(self.n_episodes):
             self.run_episode_with_mode(
                 train_stats, eval_stats, wandb_run
