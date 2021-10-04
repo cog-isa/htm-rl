@@ -4,6 +4,7 @@ from htm_rl.agents.rnd.debug.agent_state_provider import AgentStateProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
 from htm_rl.agents.q.agent import QAgent
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.common.utils import Coord2d
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.envs.biogwlab.module import EntityType
 from htm_rl.scenarios.standard.scenario import Scenario
@@ -49,17 +50,17 @@ class StateEncodingProvider(Debugger):
     @staticmethod
     def decode_state(
             state: SparseSdr,
-            encoding_scheme: dict[tuple[int, int], SparseSdr],
+            encoding_scheme: dict[Coord2d, SparseSdr],
             min_overlap_rate: float = .5
-    ) -> Optional[tuple[int, int]]:
-        best_match = None, 0.
+    ) -> tuple[Optional[Coord2d], float, Optional[SparseSdr]]:
+        best_match = None, 0., None
         state = set(state)
         for position, state_ in encoding_scheme.items():
             state_ = set(state_)
-            overlap = len(state & state_) / len(state)
+            overlap = len(state & state_) / len(state_)
             if overlap < min_overlap_rate:
                 continue
             if overlap > best_match[1]:
-                best_match = position, overlap
+                best_match = position, overlap, state_
 
-        return best_match[0]
+        return best_match
