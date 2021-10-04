@@ -23,10 +23,10 @@ dreaming:
     boost_prob_alpha: [2.5, 1.]
     prob_threshold: .3
   anomaly_based_falling_asleep:
-    anomaly_threshold: .25
+    anomaly_threshold: .4
     alpha: .7
     beta: 1.2
-    max_prob: .02
+    max_prob: .1
   first_dreaming_episode: 5
 
   qvn:
@@ -61,4 +61,4 @@ transition_model:
     predictedSegmentDecrement: .001
     permanenceIncrement: .1
     permanenceDecrement: .05
-    maxSegmentsPerCell: 10
+    maxSegmentsPerCell: 12

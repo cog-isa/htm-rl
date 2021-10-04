@@ -155,7 +155,7 @@ class DreamingDouble(QModelBasedAgent):
             depth = 0
             for depth in range(self.prediction_depth):
                 next_state, a, anomaly = self._move_in_dream(state)
-                if len(next_state) < .6 * starting_state_len or anomaly > .5:
+                if len(next_state) < .6 * starting_state_len or anomaly > .6:
                     break
                 state = next_state
 
