@@ -20,7 +20,7 @@ class QAgent(Agent):
     sa_encoder: SaEncoder
     Q: QValueNetwork
     E_traces: EligibilityTraces
-    # input_changes_detector: InputChangesDetector
+    input_changes_detector: InputChangesDetector
 
     train: bool
     softmax_temp: DecayingValue
@@ -50,7 +50,7 @@ class QAgent(Agent):
             self.sa_encoder.output_sdr_size,
             **isnone(eligibility_traces, {})
         )
-        # self.input_changes_detector = InputChangesDetector(env.output_sdr_size)
+        self.input_changes_detector = InputChangesDetector(env.output_sdr_size)
 
         self.train = True
         self.softmax_temp = softmax_temp
@@ -72,6 +72,7 @@ class QAgent(Agent):
         self.E_traces.reset()
         if self.train:
             self.Q.decay_learning_factors()
+            self.input_changes_detector.reset()
             self._decay_softmax_temperature()
             self.exploration_eps = exp_decay(self.exploration_eps)
             if self.ucb_estimate.enabled:
@@ -84,12 +85,12 @@ class QAgent(Agent):
 
         train = self.train
         prev_sa_sdr = self._current_sa_sdr
-        # input_changed = self.input_changes_detector.changed(state, train)
-        s = self.sa_encoder.encode_state(state, learn=True and train)
-        actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
+        input_changed = self.input_changes_detector.changed(state, train)
+        s = self.sa_encoder.encode_state(state, learn=train and input_changed)
+        actions_sa_sdr = self._encode_s_actions(s, learn=train and input_changed)
 
         if train and not first:
-            self.E_traces.update(prev_sa_sdr)
+            self.E_traces.update(prev_sa_sdr, with_reset=not input_changed)
             self._make_q_learning_step(
                 sa=prev_sa_sdr, r=reward, next_actions_sa_sdr=actions_sa_sdr
             )

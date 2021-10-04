@@ -16,7 +16,6 @@ class InputChangesDetector:
     def changed(self, x: SparseSdr, train: bool) -> float:
         if not train:
             return True
-        return True
 
         update_exp_trace(self.input_freq, x, .5)
         freq = self.input_freq[x].mean()
