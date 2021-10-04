@@ -58,7 +58,9 @@ class SpSaEncoder(SaEncoder):
             #     )
 
             self.state_clusters.add(s)
-            s = self._match_nearest_cluster(s, self.state_clusters)
+            s, _ = self._match_nearest_cluster(
+                s, self.state_clusters, self.state_sp.n_active_bits
+            )
             self._increase_threshold(
                 self.state_clusters, self.state_clusters_similarity_threshold_max
             )
@@ -103,19 +105,46 @@ class SpSaEncoder(SaEncoder):
     def s_output_sdr_size(self):
         return self.state_sp.output_sdr_size
 
+    def restore_s(self, s: SparseSdr, threshold: float):
+        if len(s) / self.state_sp.n_active_bits < threshold:
+            return s
+        if self.state_clusters is None:
+            return s
+
+        restored_s, similarity = self._match_nearest_cluster(
+            s, self.state_clusters, self.state_sp.n_active_bits
+        )
+        if similarity < threshold:
+            return s
+        return restored_s
+
+    def match_nearest_cluster(self, sdr: SparseSdr):
+        clusters = self.state_clusters
+        n_active_bits = self.state_sp.n_active_bits
+
+        dense_sdr = sparse_to_dense(sdr, clusters.size)
+        similarities = clusters.similarity(dense_sdr)
+        best_match_cluster_ind = np.argmax(similarities)
+
+        sparsity = n_active_bits / clusters.size
+        cluster_norms = clusters.adopted_kernels(sparsity)
+        best_cluster_norm = cluster_norms[best_match_cluster_ind]
+        best_cluster = np.flatnonzero(best_cluster_norm)
+        return best_match_cluster_ind, similarities, best_cluster
+
     @staticmethod
     def _match_nearest_cluster(
-            sdr: SparseSdr, clusters: Memory
+            sdr: SparseSdr, clusters: Memory, n_active_bits: int
     ) -> SparseSdr:
         dense_sdr = sparse_to_dense(sdr, clusters.size)
         similarities = clusters.similarity(dense_sdr)
         best_match_cluster_ind = np.argmax(similarities)
 
-        sparsity = len(sdr) / clusters.size
+        sparsity = n_active_bits / clusters.size
         cluster_norms = clusters.adopted_kernels(sparsity)
         best_cluster_norm = cluster_norms[best_match_cluster_ind]
         best_cluster = np.flatnonzero(best_cluster_norm)
-        return best_cluster
+        return best_cluster, similarities[best_match_cluster_ind]
 
     @staticmethod
     def _increase_threshold(clusters: Memory, max_threshold: float):
