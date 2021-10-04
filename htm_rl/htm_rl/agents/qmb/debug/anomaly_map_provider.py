@@ -31,12 +31,12 @@ class AnomalyMapProvider(Debugger):
         self.state_encoding_provider = state_encoding_provider
 
     def anomaly(self):
-        anomaly_s = self.agent.anomaly_model.anomaly
+        anomaly_model = self.agent.anomaly_model
         anomaly_pos = ma.masked_all(self.env.shape, dtype=np.float)
 
         encoding_scheme = self.state_encoding_provider.get_encoding_scheme()
         for position, s in encoding_scheme.items():
-            anomaly_pos[position] = anomaly_s[s].mean()
+            anomaly_pos[position] = anomaly_model.state_anomaly(s)
         return anomaly_pos
 
     @property
