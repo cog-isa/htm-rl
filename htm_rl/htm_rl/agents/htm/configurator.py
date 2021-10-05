@@ -139,8 +139,8 @@ def configure(config):
 
     noise_tolerance = config['cagent']['empowerment']['tm_config']['noise_tolerance']
     learning_margin = config['cagent']['empowerment']['tm_config']['learning_margin']
-    input_size = blocks[visual_block]['sp']['columnDimensions'][0]
-    input_sparsity = blocks[visual_block]['sp']['localAreaDensity']
+    input_size = blocks[visual_block - len(input_blocks)]['sp']['columnDimensions'][0]
+    input_sparsity = blocks[visual_block - len(input_blocks)]['sp']['localAreaDensity']
 
     new_config['agent']['empowerment'] = deepcopy(config['cagent']['empowerment'])
     new_config['agent']['empowerment']['tm_config'].pop('noise_tolerance')
