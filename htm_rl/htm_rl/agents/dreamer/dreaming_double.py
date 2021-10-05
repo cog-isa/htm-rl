@@ -148,14 +148,14 @@ class DreamingDouble(QModelBasedAgent):
         depths = []
         while i_rollout < self.n_prediction_rollouts[0] or (
                 i_rollout < self.n_prediction_rollouts[1]
-                and sum_depth >= 2.2 * i_rollout
+                and 2. <= sum_depth < 3.2
         ):
             self._on_new_rollout(i_rollout)
             state = starting_state
             depth = 0
             for depth in range(self.prediction_depth):
                 next_state, a, anomaly = self._move_in_dream(state)
-                if len(next_state) < .6 * starting_state_len or anomaly > .6:
+                if len(next_state) < .6 * starting_state_len or anomaly > .7:
                     break
                 state = next_state
 
@@ -165,6 +165,48 @@ class DreamingDouble(QModelBasedAgent):
 
         # if depths: print(depths)
         self._wake()
+
+    def _move_in_dream(self, state: SparseSdr):
+        # from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
+        # s_enc_provider: StateEncodingProvider = self.s_enc_provider
+        # scheme = s_enc_provider.get_encoding_scheme()
+        #
+        # position, _, _ = s_enc_provider.decode_state(state, scheme, .0)
+        # print('s pos', state, position)
+
+        s = state
+        reward = self.reward_model.state_reward(s)
+        action = self.act(reward, s, first=False)
+
+        # from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
+        # print('r, a', reward, action, DIRECTIONS_ORDER[action])
+
+        if reward > .3:
+            # found goal ==> should stop rollout
+            return [], action, 1.
+
+        self.transition_model.process(s, learn=False)
+        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
+        # print('s_a', s_a)
+        self.transition_model.process(s_a, learn=False)
+        s_next = self.transition_model.predicted_cols
+
+        allowed_max_len = int(1.2 * len(self._starting_state))
+        if len(s_next) > allowed_max_len:
+            s_next = self._rng.choice(s_next, allowed_max_len, replace=False)
+            s_next.sort()
+
+        # s_next = self.sa_encoder.restore_s(s_next, .45)
+        # print('s_next', s_next)
+
+        # position, overlap, s_ = s_enc_provider.decode_state(s_next, scheme, .4)
+        # print(position, overlap, s_)
+        # print('====================')
+        # if s_ is not None:
+        #     s_next = np.array(list(sorted(s_)))
+
+        anomaly = self.anomaly_model.state_anomaly(s_next, prev_action=action)
+        return s_next, action, anomaly
 
     def _put_into_dream(self, starting_state: SparseSdr, starting_sa_sdr: SparseSdr):
         self._save_tm_checkpoint()
@@ -198,7 +240,7 @@ class DreamingDouble(QModelBasedAgent):
 
         if not first:
             # Q-learning step
-            self.E_traces.update(prev_sa_sdr)
+            self.E_traces.update(prev_sa_sdr, with_reset=False)
             self._make_q_learning_step(
                 sa=prev_sa_sdr, r=reward, next_actions_sa_sdr=actions_sa_sdr
             )
@@ -216,49 +258,6 @@ class DreamingDouble(QModelBasedAgent):
 
         self._current_sa_sdr = chosen_sa_sdr
         return action
-
-    def _move_in_dream(self, state: SparseSdr):
-        # from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
-        # s_enc_provider: StateEncodingProvider = self.s_enc_provider
-        # scheme = s_enc_provider.get_encoding_scheme()
-        #
-        # position, _, _ = s_enc_provider.decode_state(state, scheme, .0)
-        # print('s pos', state, position)
-
-        s = state
-        reward = self.reward_model.state_reward(s)
-        action = self.act(reward, s, first=False)
-
-        # from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
-        # print('r, a', reward, action, DIRECTIONS_ORDER[action])
-
-        if reward > .3:
-            # found goal ==> should stop rollout
-            s_next = []
-            return s_next, action, 1.
-
-        self.transition_model.process(s, learn=False)
-        s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
-        # print('s_a', s_a)
-        self.transition_model.process(s_a, learn=False)
-        s_next = self.transition_model.predicted_cols
-
-        allowed_max_len = int(1.15 * len(self._starting_state))
-        if len(s_next) > allowed_max_len:
-            s_next = self._rng.choice(s_next, allowed_max_len, replace=False)
-            s_next.sort()
-
-        # s_next = self.sa_encoder.restore_s(s_next, .45)
-        # print('s_next', s_next)
-
-        # position, overlap, s_ = s_enc_provider.decode_state(s_next, scheme, .4)
-        # print(position, overlap, s_)
-        # print('====================')
-        # if s_ is not None:
-        #     s_next = np.array(list(sorted(s_)))
-
-        anomaly = self.anomaly_model.state_anomaly(s_next, prev_action=action)
-        return s_next, action, anomaly
 
     def _td_error_based_dreaming(self, td_error):
         boost_prob_alpha = self.td_error_based_falling_asleep.boost_prob_alpha[0]

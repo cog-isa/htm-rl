@@ -25,7 +25,7 @@ class ImageOutput(BaseOutput):
         self.titles = []
         self.with_value_text_flags = []
 
-    def restore(self, images, titles, with_value_text_flags, save_path):
+    def restore(self, images, titles, with_value_text_flags, **kwargs):
         if self.is_empty:
             self.images = images
             self.titles = titles
@@ -57,7 +57,9 @@ class ImageOutput(BaseOutput):
             'images': self.images,
             'titles': self.titles,
             'with_value_text_flags': self.with_value_text_flags,
-            'save_path': save_path,
         }
+        if save_path is not None:
+            output['save_path'] = save_path
+
         self.reset()
         return output

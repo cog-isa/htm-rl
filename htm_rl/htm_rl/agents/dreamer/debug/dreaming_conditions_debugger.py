@@ -23,7 +23,7 @@ class DreamingConditionsDebugger(Debugger):
     dreaming_test_started: bool
     output_data: dict
 
-    def __init__(self, scenario, images: bool):
+    def __init__(self, scenario, print_images: bool):
         super(DreamingConditionsDebugger, self).__init__(scenario)
 
         self.output_renderer = ImageOutput(scenario.config)
@@ -33,10 +33,11 @@ class DreamingConditionsDebugger(Debugger):
         self.q_map_provider = QMapProvider(scenario, self.state_encoding_provider)
         self.anomaly_map_provider = AnomalyMapProvider(scenario, self.state_encoding_provider)
         self.dreaming_point_test_tracker: Optional[DreamingPointTestTracker] = None
-        self.images = images
+        self.print_images = print_images
         self.output_data = {}
         self.dreaming_test_started = False
 
+        inject_debug_tools(self.progress)
         # record stats during baseline pre-run
         # noinspection PyUnresolvedReferences
         self.progress.set_breakpoint('end_episode', self.on_end_episode_no_dreaming)
@@ -50,13 +51,13 @@ class DreamingConditionsDebugger(Debugger):
     def on_end_episode_dreaming(self, pp: ProgressPoint, func, *args, **kwargs):
         cols_per_row = 3
         is_train = self.scenario.mode == 'train'
-        if self.images:
+        if self.print_images:
             output_train = self.output_data[pp.episode, True]
             if is_train and self.dreaming_test_started:
                 self.output_renderer.restore(**output_train)
-                self._add_dreaming_point_test()
+                self.dreaming_point_test_tracker.print_map(self.output_renderer)
                 output_train = self.output_renderer.flush(
-                    filename=None, save_path=output_train['save_path']
+                    save_path=output_train['save_path']
                 )
             plot_grid_images(show=False, cols_per_row=cols_per_row, **output_train)
 
@@ -70,14 +71,15 @@ class DreamingConditionsDebugger(Debugger):
         is_train = self.scenario.mode == 'train'
         train_eval_mark = 'A' if is_train else 'Z'
 
-        if self.images:
-            self.state_encoding_provider.encoding_scheme = None
+        if self.print_images:
+            output_filename = self.get_episode_filename(pp, self.train_eval_mark)
+            self.state_encoding_provider.reset()
+
             self.env_map_provider.print_map(self.output_renderer)
             self.q_map_provider.print_maps(self.output_renderer, q=True, v=True)
             self.anomaly_map_provider.print_map(self.output_renderer)
             self.trajectory_tracker.print_map(self.output_renderer)
 
-            output_filename = self.get_episode_filename(pp, self.train_eval_mark)
             output = self.output_renderer.flush(output_filename)
             self.output_data[pp.episode, is_train] = output
 
@@ -88,8 +90,6 @@ class DreamingConditionsDebugger(Debugger):
         func(*args, **kwargs)
         self.env = env_unwrap(scenario.env)
         self.progress = scenario.progress
-        # agent is invalid from now on
-        self.agent = None
 
         inject_debug_tools(self.env)
         inject_debug_tools(self.progress)
@@ -105,7 +105,9 @@ class DreamingConditionsDebugger(Debugger):
         inject_debug_tools(scenario.force_dreaming_point)
 
         # record single dreaming position test
-        self.dreaming_point_test_tracker = DreamingPointTestTracker(scenario)
+        self.dreaming_point_test_tracker = DreamingPointTestTracker(
+            scenario, self.state_encoding_provider, self.print_images
+        )
         # track progress
         self.scenario.progress.unset_breakpoint('end_episode', self.on_end_episode_dreaming)
         self.scenario.force_dreaming_point.set_breakpoint('end_episode', self.on_end_episode_dreaming)

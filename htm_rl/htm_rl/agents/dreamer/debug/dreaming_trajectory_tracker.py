@@ -3,8 +3,10 @@ from typing import Optional
 import numpy as np
 from numpy import ma
 
+from htm_rl.agents.dreamer.agent import DreamerAgent
 from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
+from htm_rl.common.debug import inject_debug_tools
 from htm_rl.common.sdr import SparseSdr
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.scenarios.debug_output import ImageOutput
@@ -14,6 +16,7 @@ from htm_rl.scenarios.standard.scenario import Scenario
 class DreamingTrajectoryTracker(Debugger):
     name_prefix: str = 'dreaming_rollout'
 
+    agent: DreamerAgent
     env: Environment
     state_encoding_provider: StateEncodingProvider
     encoding_scheme: dict[tuple[int, int], SparseSdr]
@@ -36,7 +39,10 @@ class DreamingTrajectoryTracker(Debugger):
         self.encoding_scheme = dict()
         self.trajectory_len = 0
         self.starting_pos = None
+        self.inject_debug_tools_to_dreamer()
 
+    def inject_debug_tools_to_dreamer(self):
+        inject_debug_tools(self.agent.dreamer)
         # noinspection PyUnresolvedReferences
         self.agent.dreamer.set_breakpoint('_put_into_dream', self.on_put_into_dreaming)
         # noinspection PyUnresolvedReferences
@@ -65,13 +71,13 @@ class DreamingTrajectoryTracker(Debugger):
         self.trajectory_len += 1
         return move_in_dream(*args, **kwargs)
 
-    def print_map(self, renderer: ImageOutput):
+    def print_map(self, renderer: ImageOutput, min_traj=1):
         if np.all(self.heatmap.mask):
             return
-
-        renderer.handle_img(
-            self.heatmap, self.title, with_value_text=True
-        )
+        if np.sum(self.heatmap) >= min_traj:
+            renderer.handle_img(
+                self.heatmap, self.title, with_value_text=True
+            )
         self.reset()
 
     def reset(self):

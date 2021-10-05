@@ -3,6 +3,7 @@ from numpy import ma
 
 from htm_rl.agents.rnd.debug.agent_state_provider import AgentStateProvider
 from htm_rl.agents.rnd.debug.debugger import Debugger
+from htm_rl.common.debug import inject_debug_tools
 from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
@@ -20,6 +21,8 @@ class TrajectoryTracker(Debugger):
 
         self.agent_state_provider = AgentStateProvider(scenario)
         self.heatmap = ma.masked_all(self.env.shape, dtype=np.int)
+
+        inject_debug_tools(self.agent)
         # noinspection PyUnresolvedReferences
         self.agent.set_breakpoint(act_method_name, self.on_act)
 

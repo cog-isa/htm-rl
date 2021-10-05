@@ -1,16 +1,16 @@
 _type_: dreamer
 
 qvn:
-  discount_factor: &discount_factor .95
-  learning_rate: [.1, .995]
+  discount_factor: &discount_factor .92
+  learning_rate: [.04, .997]
 
 eligibility_traces: &e_traces
-  trace_decay: [.75, .99]
+  trace_decay: [.8, .995]
   discount_factor: *discount_factor
 
-softmax_temp: [.2, .93]
+softmax_temp: [.1, .995]
 exploration_eps: [.2, .99]
-im_weight: [.001, .99]
+im_weight: [.0005, .99]
 
 td_error_decay: .6
 dreaming:
@@ -21,26 +21,24 @@ dreaming:
     boost_prob_alpha: [2.5, 1.]
     prob_threshold: .3
   anomaly_based_falling_asleep:
-    anomaly_threshold: .8
+    anomaly_threshold: .4
     alpha: .75
-    beta: 1.5
-    max_prob: .2
+    beta: 1.3
+    max_prob: .05
 
   qvn:
     learning_rate_factor: 1.
   rollout_q_lr_decay_power: .0
 
-  eligibility_traces:
-    trace_decay: [.75, .99]
-    discount_factor: *discount_factor
+  eligibility_traces: *e_traces
   derive_e_traces: true
 
-  softmax_temp: [.0, .93]
-  exploration_eps: [.3, .997]
+  softmax_temp: [.1, .995]
+  exploration_eps: [.15, .997]
   trajectory_exploration_eps_decay: 1.
 
-  prediction_depth: 18
-  n_prediction_rollouts: [3, 12]
+  prediction_depth: 12
+  n_prediction_rollouts: [1, 1]
 
 reward_model:
   learning_rate: [1., 1.]
@@ -51,13 +49,13 @@ anomaly_model:
 transition_model:
   tm:
     cells_per_column: 1
-    initial_permanence: .3
-    connected_permanence: .3
-    activation_threshold: .88
-    learning_threshold: .8
-    max_new_synapse_count: 1.0
-    max_synapses_per_segment: 1.0
+    initial_permanence: .41
+    connected_permanence: .5
+    activation_threshold: .8
+    learning_threshold: .65
+    max_new_synapse_count: 1.1
+    max_synapses_per_segment: 1.2
     predictedSegmentDecrement: .001
-    permanenceIncrement: .05
-    permanenceDecrement: .01
-    maxSegmentsPerCell: 4
+    permanenceIncrement: .1
+    permanenceDecrement: .05
+    maxSegmentsPerCell: 12

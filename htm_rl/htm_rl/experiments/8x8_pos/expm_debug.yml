@@ -1,18 +1,26 @@
 _type_: standard
 
-env_seeds:
-#  - 851775
-  - 743535
-#  - 288985
-#  - 190368
-#  - 885213
-#  - 768840
+env_seeds: !generate_seeds
+  base: 7878
+  n_seeds: 10
 
-agent_seeds:
-  - 42
-#  - 1337
-#  - 1984
-#  - 3433
+agent_seeds: !generate_seeds
+  base: 89
+  n_seeds: 3
+
+#env_seeds:
+##  - 851775
+#  - 743535
+##  - 288985
+##  - 190368
+##  - 885213
+##  - 768840
+#
+#agent_seeds:
+#  - 42
+##  - 1337
+##  - 1984
+##  - 3433
 
 n_episodes: 50
 train_ep_before_eval: 1
@@ -26,11 +34,17 @@ agents:
   qmb: qmb
   dreamer: dreamer
 
+  wake: dreamer
+  dreamer_td: dreamer
+  dreamer_an: dreamer
+  dreamer_an1: dreamer
+  dreamer_an2: dreamer
+
 debug:
   # enabled can be set only by -d arg flag
   enabled: false
   images: false
 
 wandb:
-  project: test
+  project: test_dreaming
 

@@ -35,10 +35,10 @@ agent:
     what:
       - position
 #      - view direction
-    bucket_size: 4
+    bucket_size: 10
 
 terminate:
-  episode_max_steps: 200
+  episode_max_steps: 100
   early_stop: true
 
 

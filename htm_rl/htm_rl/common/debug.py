@@ -48,6 +48,21 @@ def inject_debug_tools_to_obj(obj, inject_or_not=True):
     setattr(obj, '_apply_breakpoint', MethodType(_apply_breakpoint, obj))
 
 
+def remove_debug_tools_from_obj(obj):
+    if not hasattr(obj, 'set_breakpoint'):
+        return
+
+    # noinspection PyProtectedMember
+    overrides = obj._overrides
+    for method_name in overrides:
+        setattr(obj, method_name, overrides[method_name][0])
+
+    delattr(obj, '_overrides')
+    delattr(obj, 'set_breakpoint')
+    delattr(obj, 'unset_breakpoint')
+    delattr(obj, '_apply_breakpoint')
+
+
 def inject_debug_tools_to_type(base_type, inject_or_not=True):
     """Create subclass with added debugging helpers via dynamic inheritance."""
 
