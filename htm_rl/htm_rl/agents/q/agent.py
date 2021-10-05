@@ -73,7 +73,7 @@ class QAgent(Agent):
         if self.train:
             self.Q.decay_learning_factors()
             self.input_changes_detector.reset()
-            self._decay_softmax_temperature()
+            self.softmax_temp = exp_decay(self.softmax_temp)
             self.exploration_eps = exp_decay(self.exploration_eps)
             if self.ucb_estimate.enabled:
                 self.ucb_estimate.decay_learning_factors()
@@ -106,7 +106,7 @@ class QAgent(Agent):
         return action
 
     def _choose_action(self, next_actions_sa_sdr: list[SparseSdr]) -> int:
-        if self.softmax_temp[0] >= self.softmax_limit:
+        if self.softmax_temp[0] > .0:
             # SOFTMAX
             action_values = self.Q.values(next_actions_sa_sdr)
             p = softmax(action_values, self.softmax_temp[0])
@@ -145,15 +145,6 @@ class QAgent(Agent):
             # === disabled
             return False
         return self._rng.random() < self.exploration_eps[0]
-
-    def _decay_softmax_temperature(self):
-        if self.softmax_temp[0] == 0.:
-            return
-
-        temp, decay = exp_decay(self.softmax_temp)
-        # limit the "hardness"
-        temp = max(temp, self.softmax_limit)
-        self.softmax_temp = temp, decay
 
     def _encode_s_actions(self, s: SparseSdr, learn: bool) -> list[SparseSdr]:
         p_learn = 1.5 / self.n_actions

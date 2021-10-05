@@ -15,6 +15,7 @@ def register_arguments(parser: ArgumentParser):
     parser.add_argument('-d', '--print_debug', dest='debug_enabled', action='store_true', default=False)
     parser.add_argument('-w', '--wandb_enabled', dest='wandb_enabled', action='store_true', default=False)
     parser.add_argument('-o', '--output', dest='results_dir', default='results')
+    parser.add_argument('-s', '--wandb_silent', dest='wandb_silent', action='store_true', default=False)
 
 
 def main():
@@ -45,6 +46,12 @@ def main():
     config['debug.enabled'] = args.debug_enabled
     config['wandb.enabled'] = args.wandb_enabled
     config['overwrites'] = overwrites
+    config['wandb.silent'] = args.wandb_silent
+
+    if config['wandb.silent']:
+        import os
+        os.environ["WANDB_SILENT"] = "true"
+
     experiment.run()
 
 

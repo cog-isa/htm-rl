@@ -54,7 +54,8 @@ class QValueNetwork:
     def value(self, x) -> float:
         if len(x) == 0:
             return np.infty
-        return self.cell_value[x].mean()
+        # noinspection PyTypeChecker
+        return np.median(self.cell_value[x])
 
     def decay_learning_factors(self):
         self.learning_rate = exp_decay(self.learning_rate)

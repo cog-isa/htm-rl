@@ -33,6 +33,7 @@ class DreamingTrajectoryDebugger(Debugger):
         self.dreaming_trajectory_tracker = DreamingTrajectoryTracker(scenario)
         self.print_images = images
 
+        inject_debug_tools(self.progress)
         # noinspection PyUnresolvedReferences
         self.progress.set_breakpoint('end_episode', self.on_end_episode)
 

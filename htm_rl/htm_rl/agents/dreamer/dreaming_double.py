@@ -104,7 +104,7 @@ class DreamingDouble(QModelBasedAgent):
         )
         self.E_traces.decay_trace_decay()
         self.exploration_eps = exp_decay(self.exploration_eps)
-        self._decay_softmax_temperature()
+        self.softmax_temp = exp_decay(self.softmax_temp)
 
     def can_dream(self, reward):
         if not self.enabled:
