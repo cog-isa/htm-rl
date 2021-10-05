@@ -16,7 +16,8 @@ actions_cost:
     move: 1.
 
 rendering:
-  view_rectangle: [[-3, -3], [3, 3]]
+#  view_rectangle: [[-3, -3], [3, 3]]
+  view_rectangle: [[-2, -2], [2, 2]]
 
 areas:
   n_types: 4
