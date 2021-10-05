@@ -1,26 +1,30 @@
-project: four_rooms_9x9_free_new_final
+project: four_rooms_baseline
 entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:
   seed:
-    values: [6549, 46850, 43081]
+    values: [4654, 16459, 98410]
   environment.seed:
     values:
-      - 65989
-      - 98696
-      - 54739
+      - 45812
+      - 98091
+      - 23050
   block_default.feedback_boost_range:
     values:
-      - [0.0, 0.8]
+      - [0, 0.0]
   blocks.1.bg.softmax_beta:
     values:
-      - 1.2
-
+      - 0.2
+      - 0.25
+      - 0.3
+      - 0.5
+      - 0.7
+      - 1.0
 command:
   - ${env}
   - python
   - ${program}
-  - four_rooms_9x9_free_options
+  - four_rooms_9x9_swap_baseline
   - ${args}
 

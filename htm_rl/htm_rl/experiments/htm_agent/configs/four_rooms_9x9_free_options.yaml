@@ -70,7 +70,7 @@ environment:
   food:
     n_items: 1
     reward: 1.
-    positions: [ [ 4, 6 ] ]
+    positions: [ [ 5, 7 ] ]
 
   agent:
     change_position: true
@@ -180,7 +180,7 @@ blocks:
       alpha_int: 0.01
       beta_int: 0.01
       off_policy: true
-      softmax_beta: 0.25
+      softmax_beta: 1.0
       epsilon_noise: 0.0
     block:
       modulate_tm_lr: true
@@ -209,7 +209,7 @@ blocks:
       alpha: 0.1
       beta: 0.1
       off_policy: true
-      softmax_beta: 0.5
+      softmax_beta: 1.0
       epsilon_noise: 0.0
     block:
       level: 2

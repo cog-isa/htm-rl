@@ -1,10 +1,10 @@
 seed: &seed 847582
-levels: 2
+levels: 1
 agent: hima
 project: four_rooms_swap_options
 entity: hauska  # don't forget to change if you use logging
 
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
+scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap_simple.yaml'
 
 vis_options:
   size: 21
@@ -25,17 +25,17 @@ run_options:
   log_policy: True
   log_option_values: False
   log_option_policy: False
-  log_options_usage: True
+  log_options_usage: False
   log_td_error: True
   log_anomaly: False
   log_confidence: False
-  log_modulation: True
-  log_segments: True
-  log_terminal_stat: True
+  log_modulation: False
+  log_segments: False
+  log_terminal_stat: False
   log_empowerment: False
   log_number_of_clusters: False
-  draw_options: True
-  draw_options_stats: True
+  draw_options: False
+  draw_options_stats: False
   opt_threshold: 50
   train_patterns: True
   animation_fps: 3
@@ -194,34 +194,6 @@ blocks:
     tm:
       basal_columns: 1000
 
-  2:
-    bg: null
-    block:
-      level: 2
-    sm: { }
-    sp:
-      boostStrength: 0.0
-      localAreaDensity: 0.02
-      potentialPct: 0.5
-    tm:
-      basal_columns: 1000
-  3:
-    bg:
-      alpha: 0.1
-      beta: 0.1
-      off_policy: true
-      softmax_beta: 1.0
-      epsilon_noise: 0.0
-    block:
-      level: 2
-    sm: { }
-    sp:
-      boostStrength: 0.0
-      localAreaDensity: 0.02
-      potentialPct: 0.5
-    tm:
-      basal_columns: 1000
-
 cells_per_column: &cells_per_column 15
 
 # specify connections
@@ -247,38 +219,20 @@ hierarchy:
 
     {
       'basal_in': [ 0 ],
-      'apical_in': [ 3 ],
-      'feedback_in': [ 4 ],
-      'basal_out': [ 4 ],
-      'apical_out': [ 3 ],
+      'apical_in': [ ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
+      'apical_out': [ ],
       'feedback_out': [ ]
     },
 
     {
       'basal_in': [ 1 ],
-      'apical_in': [ 2 ],
-      'feedback_in': [ 5 ],
-      'basal_out': [ 5 ],
-      'apical_out': [ 2 ],
+      'apical_in': [ ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
+      'apical_out': [ ],
       'feedback_out': [ ]
-    },
-
-    {
-      'basal_in': [ 2 ],
-      'apical_in': [ 5 ],
-      'feedback_in': [ ],
-      'basal_out': [ ],
-      'apical_out': [ 5 ],
-      'feedback_out': [ 2 ]
-    },
-
-    {
-      'basal_in': [ 3 ],
-      'apical_in': [ 4 ],
-      'feedback_in': [ ],
-      'basal_out': [ ],
-      'apical_out': [ 4 ],
-      'feedback_out': [ 3 ]
     }
   ]
   input_blocks:
@@ -389,7 +343,7 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997  # discount factor for option rewards
   predicted_boost: 0.0  # boost predicted elementary actions
-  feedback_boost_range: [0.0, 0.8]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
+  feedback_boost_range: [0.0, 0.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
   modulate_tm_lr: false  # use reward modulation for lr of TM
   sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
   sm_reward_dec: 0.98  # smooth factor for reward modulation during decrement
