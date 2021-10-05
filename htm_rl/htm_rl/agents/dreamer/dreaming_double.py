@@ -191,12 +191,18 @@ class DreamingDouble(QModelBasedAgent):
         self.transition_model.process(s_a, learn=False)
         s_next = self.transition_model.predicted_cols
 
-        allowed_max_len = int(1.2 * len(self._starting_state))
-        if len(s_next) > allowed_max_len:
-            s_next = self._rng.choice(s_next, allowed_max_len, replace=False)
+        activation = len(s_next) / len(self._starting_state)
+        if activation > 1.2:
+            s_next = self._rng.choice(
+                s_next, int(1.2 * len(self._starting_state)),
+                replace=False
+            )
             s_next.sort()
 
-        # s_next = self.sa_encoder.restore_s(s_next, .45)
+        # noinspection PyUnresolvedReferences
+        if self.sa_encoder.state_clusters is not None:
+            s_next = self.sa_encoder.restore_s(s_next, .7)
+
         # print('s_next', s_next)
 
         # position, overlap, s_ = s_enc_provider.decode_state(s_next, scheme, .4)

@@ -1,6 +1,7 @@
 import numpy as np
 
 from htm_rl.common.sdr import SparseSdr, DenseSdr
+from htm_rl.common.utils import isnone
 
 
 class ClusterMemory:
@@ -9,6 +10,7 @@ class ClusterMemory:
     sdr_size: int
     n_active_bits: int
     similarity_threshold: float
+    similarity_threshold_delta: float
     similarity_threshold_limit: float
 
     n_clusters: int
@@ -23,11 +25,13 @@ class ClusterMemory:
     def __init__(
             self, sdr_size: int, n_active_bits: int,
             similarity_threshold: float, similarity_threshold_limit: float,
-            max_n_clusters: int, max_tracked_bits_rate: float = 3.
+            max_n_clusters: int, max_tracked_bits_rate: float = 3.,
+            similarity_threshold_delta: float = .0004
     ):
         self.sdr_size = sdr_size
         self.n_active_bits = n_active_bits
         self.similarity_threshold = similarity_threshold
+        self.similarity_threshold_delta = similarity_threshold_delta
         self.similarity_threshold_limit = similarity_threshold_limit
 
         max_tracked_bits = int(n_active_bits * max_tracked_bits_rate)
@@ -35,7 +39,7 @@ class ClusterMemory:
         self._clusters = np.zeros((max_n_clusters, max_tracked_bits), dtype=np.int)
         self._traces = np.zeros_like(self._clusters, dtype=np.float)
         self._sizes = np.zeros(max_n_clusters, dtype=np.int)
-        self._clusters_trace = np.zeros_like(self._sizes, dtype=np.int)
+        self._clusters_trace = np.zeros_like(self._sizes, dtype=np.float)
 
         self._cache_sdr = np.zeros(sdr_size, dtype=np.int)
         self._cache_traces_sum = np.zeros((max_n_clusters, 2), dtype=np.float)
@@ -46,7 +50,7 @@ class ClusterMemory:
 
     @property
     def full(self):
-        return self.n_clusters == self._clusters.shape[0]
+        return self.n_clusters >= self._clusters.shape[0]
 
     @property
     def clusters(self):
@@ -58,22 +62,26 @@ class ClusterMemory:
 
     @property
     def active_clusters(self):
-        return self.clusters[-self.n_active_bits:]
+        return self.clusters[:, -self.n_active_bits:]
 
     @property
     def active_clusters_trace(self):
-        return self.traces[-self.n_active_bits:]
+        return self.traces[:, -self.n_active_bits:]
 
-    def activate(self, sdr: SparseSdr, similarity: np.ndarray = None):
+    def activate(
+            self, sdr: SparseSdr, similarity: np.ndarray = None,
+            matched_cluster: int = None
+    ):
         if similarity is None:
-            similarity = self.similarity(sdr)
+            cluster, i_cluster, similarity = self.match(sdr)
+            matched_cluster = i_cluster if cluster is not None else None
 
-        cluster, i_cluster, similarity = self.match(sdr, similarity)
-        if cluster is None:
-            i_cluster = self.create(sdr)
+        if matched_cluster is None:
+            matched_cluster = self.create(sdr)
         else:
-            self.update(i_cluster, sdr)
-        return i_cluster
+            self.update(matched_cluster, sdr)
+
+        return matched_cluster
 
     def create(self, sdr: SparseSdr):
         if self.full:
@@ -109,8 +117,8 @@ class ClusterMemory:
         # append to cluster by increasing its size
         while to_add and size < max_cluster_size:
             size += 1
-            self._traces[cluster, -size] = 1.
             self._clusters[cluster, -size] = to_add.pop()
+            self._traces[cluster, -size] = 1.
 
         self._sizes[cluster] = size
 
@@ -118,17 +126,20 @@ class ClusterMemory:
             # append to cluster by replacing elements with the lowest trace
             k = len(to_add)
             # the first k -- with the lowest trace
-            partition = np.argpartition(self.traces, k, axis=-1)
+            partition = np.argpartition(self._traces[cluster], k, axis=-1)
             self._clusters[cluster, :] = self._clusters[cluster, partition]
             self._traces[cluster, :] = self._traces[cluster, partition]
             # replace with the new elements
             self._clusters[cluster, :k] = to_add
             self._traces[cluster, :k] = 1.
 
+        valid_trace_part = self._traces[cluster, -size:]
+        valid_cluster_part = self._clusters[cluster, -size:]
+
         # repartition to get active cluster on the right side
-        partition = np.argpartition(self.traces, -self.n_active_bits, axis=-1)
-        self._traces[cluster, :] = self._traces[cluster, partition]
-        self._clusters[cluster, :] = self._clusters[cluster, partition]
+        partition = np.argpartition(valid_trace_part, -self.n_active_bits, axis=-1)
+        self._traces[cluster, -size:] = valid_trace_part[partition]
+        self._clusters[cluster, -size:] = valid_cluster_part[partition]
 
         self._decay_cluster_traces(cluster)
         self._update_cluster_trace_sum_cache(cluster)
@@ -145,6 +156,11 @@ class ClusterMemory:
         self._sizes[i] = self._sizes[-1]
         self._clusters_trace[i] = self._clusters_trace[-1]
         self._cache_traces_sum[i] = self._cache_traces_sum[-1]
+
+        self._traces[-1, :] = 0
+        self._sizes[-1] = 0
+        self._clusters_trace[-1] = 0
+        self._cache_traces_sum[-1] = 0
         self.n_clusters -= 1
 
     def match(self, sdr: SparseSdr, similarity: np.ndarray = None):
@@ -156,7 +172,7 @@ class ClusterMemory:
 
         ind = np.argmax(similarity)
         if similarity[ind] < self.similarity_threshold:
-            return None, ind, similarity
+            return None, None, similarity
         return self.active_clusters[ind], ind, similarity
 
     def similarity(
@@ -169,12 +185,14 @@ class ClusterMemory:
         if with_active_cluster_parts:
             intersection = self._cache_sdr[self.active_clusters]
             trace = self.active_clusters_trace
+            trace_sum = self._cache_traces_sum[:self.n_clusters, 1]
         else:
             # non-tracked cluster parts WILL HAVE zero trace => they don't interfere
             intersection = self._cache_sdr[self.clusters]
             trace = self.traces
+            trace_sum = self._cache_traces_sum[:self.n_clusters, 0]
 
-        similarity = np.sum(intersection * trace, axis=-1) / np.sum(trace, axis=-1)
+        similarity = np.sum(intersection * trace, axis=-1) / trace_sum
 
         # zeroes back to full zero
         self._cache_sdr[sdr] = 0
@@ -200,6 +218,10 @@ class ClusterMemory:
             for cluster in self.active_clusters
         ])
         return overlap
+
+    def change_threshold(self, delta=None):
+        if 0 < self.similarity_threshold < self.similarity_threshold_limit:
+            self.similarity_threshold += isnone(delta, self.similarity_threshold_delta)
 
     def _decay_cluster_traces(self, active_cluster: int):
         self._clusters_trace[:self.n_clusters] *= .99
