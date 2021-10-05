@@ -16,26 +16,29 @@ actions_cost:
     move: 1.
 
 rendering:
-#  view_rectangle: [[-3, -3], [3, 3]]
-  view_rectangle: [[-2, -2], [2, 2]]
 
 areas:
-  n_types: 4
+  n_types: 1
+  rendering: false
 
 obstacle:
   density: .25
+  rendering: false
 
 food:
   n_items: 1
   reward: 1.
+  rendering: false
 
-#agent:
-#  rendering:
-#    what:
-#      - position
-##      - view direction
-#    bucket_size: 3
+agent:
+  rendering:
+    what:
+      - position
+#      - view direction
+    bucket_size: 10
 
 terminate:
   episode_max_steps: 100
   early_stop: true
+
+
