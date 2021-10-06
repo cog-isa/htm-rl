@@ -20,7 +20,7 @@ class DreamingTrajectoryDebugger(Debugger):
     env: Environment
     agent: DreamerAgent
 
-    def __init__(self, scenario: Scenario, images: bool):
+    def __init__(self, scenario: Scenario, print_images: bool):
         super().__init__(scenario)
 
         self.output_renderer = ImageOutput(scenario.config)
@@ -31,7 +31,7 @@ class DreamingTrajectoryDebugger(Debugger):
         self.anomaly_map_provider = AnomalyMapProvider(scenario, self.state_encoding_provider)
         self.dreaming_heatmap_tracker = DreamingHeatmapTracker(scenario, accumulate_heatmap=True)
         self.dreaming_trajectory_tracker = DreamingTrajectoryTracker(scenario)
-        self.print_images = images
+        self.print_images = print_images
 
         inject_debug_tools(self.progress)
         # noinspection PyUnresolvedReferences

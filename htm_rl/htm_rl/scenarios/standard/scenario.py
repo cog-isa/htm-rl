@@ -46,12 +46,7 @@ class Scenario:
         wandb_run = self.init_wandb_run()
 
         if self.debug_enabled:
-            inject_debugger(self.debug, self, images=self.debug['images'])
-
-        # from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
-        # from htm_rl.envs.env import unwrap
-        # self.agent.dreamer.s_enc_provider = StateEncodingProvider(self)
-        # self.agent.dreamer.env = unwrap(self.env)
+            inject_debugger(self.debug, self, print_images=self.debug['print_images'])
 
         for _ in trange(self.n_episodes):
             self.run_episode_with_mode(
