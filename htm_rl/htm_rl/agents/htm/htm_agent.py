@@ -260,6 +260,7 @@ class HTMAgentRunner:
         self.current_action = None
         self.early_stop = False
         self.map_change_indicator = 0
+        self.task_episode = 0
 
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
@@ -522,6 +523,7 @@ class HTMAgentRunner:
                     self.agent.dreamer.on_new_episode()
 
                 self.episode += 1
+                self.task_episode += 1
                 self.steps_cumulative += self.steps
                 self.steps = 0
                 self.total_reward = 0
@@ -848,6 +850,22 @@ class HTMAgentRunner:
             self.steps_cumulative = 0
             self.task += 1
             self.map_change_indicator = 1
+            self.task_episode = 0
+
+    def set_pos_in_order(self, agent_positions, food_positions):
+        agent_pos = agent_positions[self.task]
+        food_pos = food_positions[self.task]
+
+        self.set_agent_positions([agent_pos])
+        self.set_food_positions([food_pos])
+        self.environment.callmethod('reset')
+        if self.logger is not None:
+            self.draw_map(self.logger)
+            self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task},
+                            step=self.episode)
+            self.steps_cumulative = 0
+            self.task += 1
+            self.map_change_indicator = 1
 
     def level_up(self):
         self.level += 1
@@ -951,7 +969,7 @@ if __name__ == '__main__':
     runner = HTMAgentRunner(configure(config), logger=logger)
     runner.agent.train_patterns()
 
-    if logger is not None:
-        runner.draw_map(logger)
+    #if logger is not None:
+        #runner.draw_map(logger)
 
     runner.run_episodes(**config['run_options'])

@@ -4,7 +4,7 @@ agent: hima
 project: four_rooms_swap_options
 entity: hauska  # don't forget to change if you use logging
 
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap_simple.yaml'
+scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
 
 vis_options:
   size: 21
@@ -17,7 +17,7 @@ path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 100000
-  log_every_episode: 25
+  log_every_episode: 100000
   log_values_int: False
   log_values_ext: False
   log_priorities: False
@@ -219,19 +219,19 @@ hierarchy:
 
     {
       'basal_in': [ 0 ],
-      'apical_in': [ ],
+      'apical_in': [ 3 ],
       'feedback_in': [ ],
       'basal_out': [ ],
-      'apical_out': [ ],
+      'apical_out': [ 3 ],
       'feedback_out': [ ]
     },
 
     {
       'basal_in': [ 1 ],
-      'apical_in': [ ],
+      'apical_in': [ 2 ],
       'feedback_in': [ ],
       'basal_out': [ ],
-      'apical_out': [ ],
+      'apical_out': [ 2 ],
       'feedback_out': [ ]
     }
   ]

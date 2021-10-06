@@ -1,0 +1,24 @@
+- condition: ['last_terminal_stat', 'mod', 100, 'repeat']
+  check_every: 'last_terminal_stat'
+  action: 'set_pos_in_order'
+  params:
+    agent_positions: [(1, 2), (1, 2), (7, 2), (7, 2), (7, 6), (7, 6), (1, 6), (1, 6),
+                      (1, 6), (1, 2), (7, 2), (7, 6),
+                      (1, 6), (7, 2), (1, 2), (7, 6)]
+    food_positions: [(1, 4), (4, 2), (7, 4), (4, 2), (4, 6), (7, 4), (1, 4), (4, 6),
+                      (0, 0), (8, 0), (8, 8), (0, 8),
+                      (8, 0), (0, 8), (8, 8), (0, 0)]
+- condition: ['task_episode', 'equal', 300, 'repeat']
+  check_every: 'task_episode'
+  action: 'set_pos_in_order'
+  params:
+    agent_positions: [ (1, 2), (1, 2), (7, 2), (7, 2), (7, 6), (7, 6), (1, 6), (1, 6),
+                       (1, 6), (1, 2), (7, 2), (7, 6),
+                       (1, 6), (7, 2), (1, 2), (7, 6) ]
+    food_positions: [ (1, 4), (4, 2), (7, 4), (4, 2), (4, 6), (7, 4), (1, 4), (4, 6),
+                      (0, 0), (8, 0), (8, 8), (0, 8),
+                      (8, 0), (0, 8), (8, 8), (0, 0) ]
+- condition: ['task', 'equal', 17, 'norepeat']
+  check_every: 'task'
+  action: 'stop'
+  params: {}

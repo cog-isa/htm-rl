@@ -1,4 +1,4 @@
-project: four_rooms_baseline
+project: four_rooms_swap_baseline
 entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
