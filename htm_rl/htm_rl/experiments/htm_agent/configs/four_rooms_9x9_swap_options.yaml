@@ -4,7 +4,7 @@ agent: hima
 project: four_rooms_swap_options
 entity: hauska  # don't forget to change if you use logging
 
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
+scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap_hard.yaml'
 
 vis_options:
   size: 21

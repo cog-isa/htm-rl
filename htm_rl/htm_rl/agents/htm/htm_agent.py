@@ -853,8 +853,8 @@ class HTMAgentRunner:
             self.task_episode = 0
 
     def set_pos_in_order(self, agent_positions, food_positions):
-        agent_pos = agent_positions[self.task]
-        food_pos = food_positions[self.task]
+        agent_pos = tuple(agent_positions[self.task])
+        food_pos = tuple(food_positions[self.task])
 
         self.set_agent_positions([agent_pos])
         self.set_food_positions([food_pos])
@@ -937,7 +937,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_rooms_9x9_swap_empowered_dreaming'
+        default_config_name = 'four_rooms_9x9_swap_options'
     with open(f'../../experiments/htm_agent/configs/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
