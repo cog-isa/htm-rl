@@ -88,7 +88,7 @@ class ClusterMemory:
             self.clean_up()
 
         i_cluster = self.n_clusters
-        n = self.n_active_bits
+        n = len(sdr)
 
         self._clusters[i_cluster, -n:] = sdr
         self._traces[i_cluster, -n:] = 1.

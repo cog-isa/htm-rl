@@ -32,7 +32,7 @@ class SpSaEncoder(SaEncoder):
         self.state_clusters = None
         if state_clusters is not None:
             self.state_clusters = ClusterMemory(
-                sdr_size=self.state_sp.output_sdr_size,
+                sdr_size=self.s_output_sdr_size,
                 n_active_bits=self.state_sp.n_active_bits,
                 **state_clusters
             )
