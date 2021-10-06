@@ -4,7 +4,7 @@ import numpy as np
 
 from htm_rl.agents.q.cluster_memory import ClusterMemory
 from htm_rl.agents.q.sa_encoder import SaEncoder
-from htm_rl.common.sdr import SparseSdr, sparse_to_dense
+from htm_rl.common.sdr import SparseSdr
 from htm_rl.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from htm_rl.envs.env import Env
 from htm_rl.htm_plugins.spatial_pooler import SpatialPooler

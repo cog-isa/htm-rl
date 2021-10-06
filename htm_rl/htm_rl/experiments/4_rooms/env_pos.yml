@@ -1,5 +1,5 @@
 _type_: biogwlab
-shape_xy: [8, 8]
+shape_xy: [9, 9]
 
 actions:
 #  - stay
@@ -22,8 +22,8 @@ areas:
   rendering: false
 
 obstacle:
-  density: .25
   rendering: false
+  map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
 
 food:
   n_items: 1

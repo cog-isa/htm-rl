@@ -4,12 +4,11 @@ _type_: standard
 #  base: 10000
 #  n_seeds: 8
 
-#env_seeds: [52, 53, 54, 55, 57, 60, 62, 64, 65, 67, 68, 70]
-env_seeds: [11, 25, 27, 31, 32, 33, 36, 37, 38, 39, 41, 42]
-#env_seeds: [215921]
-agent_seeds: [1, 2, 3, 4]
+#env_seeds: [52, 53, 54, 55, 60, 62, 64, 65, 68, 77]
+#env_seeds: [27, 31, 32, 33, 36, 38, 39, 41, 42, 44]
+env_seeds: [3, 4, 6, 10, 11, 13, 14, 15, 16, 18]
+agent_seeds: [1, 2, 3, 4, 5]
 #agent_seeds: [1]
-#agent_seeds: [500795]
 
 #agent_seeds: !generate_seeds
 #  base: 89
@@ -29,7 +28,7 @@ agent_seeds: [1, 2, 3, 4]
 ##  - 1984
 ##  - 3433
 
-n_episodes: 300
+n_episodes: 500
 train_ep_before_eval: 1
 
 envs:
@@ -37,17 +36,18 @@ envs:
   - pos
 
 agents:
-  rnd: rnd
-  q: q
-  qmb: qmb
   dreamer: dreamer
   wake: dreamer
+
+  dreamer_08: dreamer
+  wake_env: dreamer
 debug:
-  _type_: 'dreaming trajectory'
+  _type_: model
+#  _type_: dreaming trajectory
   # enabled can be set only by -d arg flag
   enabled: false
   print_images: true
 
 wandb:
-  project: test_dreaming_8x8_obs_new
+  project: test_dreaming_4rooms_obs
 
