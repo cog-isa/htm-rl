@@ -1,5 +1,5 @@
 _type_: biogwlab
-shape_xy: [8, 8]
+shape_xy: [12, 12]
 
 actions:
 #  - stay
@@ -9,7 +9,7 @@ actions:
   - move up
 
 actions_cost:
-  base_cost: -.008
+  base_cost: -.006
   weights:
 #    stay: .5
     turn: 1.
@@ -38,7 +38,7 @@ agent:
     bucket_size: 10
 
 terminate:
-  episode_max_steps: 100
+  episode_max_steps: 150
   early_stop: true
 
 

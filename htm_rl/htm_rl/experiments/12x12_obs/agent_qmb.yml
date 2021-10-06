@@ -3,14 +3,14 @@ _type_: qmb
 sa_encoder: q
 
 qvn:
-  discount_factor: &discount_factor .92
+  discount_factor: &discount_factor .9
   learning_rate: [.04, .997]
 
 eligibility_traces:
   trace_decay: [.8, .995]
   discount_factor: *discount_factor
 
-softmax_temp: [.1, .995]
+softmax_temp: [2., .99]
 exploration_eps: [.2, .99]
 im_weight: [.0005, .99]
 

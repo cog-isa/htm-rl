@@ -5,10 +5,10 @@ _type_: standard
 #  n_seeds: 8
 
 #env_seeds: [52, 53, 54, 55, 57, 60, 62, 64, 65, 67, 68, 70]
-env_seeds: [11, 25, 27, 31, 32, 33, 36, 37, 38, 39, 41, 42]
+env_seeds: [11, 27] #, 31, 32, 33, 36, 37, 38, 39, 41, 42]
 #env_seeds: [215921]
-agent_seeds: [1, 2, 3, 4]
-#agent_seeds: [1]
+#agent_seeds: [1, 2, 3, 4]
+agent_seeds: [1]
 #agent_seeds: [500795]
 
 #agent_seeds: !generate_seeds
@@ -29,7 +29,7 @@ agent_seeds: [1, 2, 3, 4]
 ##  - 1984
 ##  - 3433
 
-n_episodes: 300
+n_episodes: 500
 train_ep_before_eval: 1
 
 envs:
@@ -37,7 +37,6 @@ envs:
   - pos
 
 agents:
-  rnd: rnd
   q: q
   qmb: qmb
   dreamer: dreamer

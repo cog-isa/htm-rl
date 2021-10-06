@@ -3,7 +3,7 @@ _type_: dreamer
 sa_encoder: q
 
 qvn:
-  discount_factor: &discount_factor .92
+  discount_factor: &discount_factor .9
   learning_rate: [.04, .997]
 
 eligibility_traces: &e_traces
@@ -39,7 +39,7 @@ dreaming:
   exploration_eps: [.15, .997]
   trajectory_exploration_eps_decay: 1.
 
-  prediction_depth: 12
+  prediction_depth: 18
   n_prediction_rollouts: [1, 1]
 
 reward_model:
