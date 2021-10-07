@@ -100,7 +100,7 @@ def multiply_decaying_value(value: DecayingValue, alpha: float) -> DecayingValue
     return x * alpha, decay
 
 
-_softmax_temperature_limit = 0.02
+_softmax_temperature_limit = 1e-5
 
 
 def softmax(x, temp=1.):

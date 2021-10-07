@@ -24,7 +24,6 @@ class QAgent(Agent):
 
     train: bool
     softmax_temp: DecayingValue
-    softmax_limit = .04
     exploration_eps: DecayingValue
     ucb_estimate: UcbEstimator
 
@@ -141,7 +140,7 @@ class QAgent(Agent):
         )
 
     def _should_make_random_action(self) -> bool:
-        if self.exploration_eps[0] < .001:
+        if self.exploration_eps[0] < 1e-6:
             # === disabled
             return False
         return self._rng.random() < self.exploration_eps[0]
