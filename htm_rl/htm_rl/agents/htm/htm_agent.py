@@ -870,6 +870,7 @@ class HTMAgentRunner:
             self.steps_cumulative = 0
             self.task += 1
             self.map_change_indicator = 1
+            self.task_episode = 0
 
     def level_up(self):
         self.level += 1
