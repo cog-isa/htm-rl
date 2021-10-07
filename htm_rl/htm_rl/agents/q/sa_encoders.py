@@ -32,7 +32,7 @@ class SpSaEncoder(SaEncoder):
         self.state_clusters = None
         if state_clusters is not None:
             self.state_clusters = ClusterMemory(
-                sdr_size=self.s_output_sdr_size,
+                input_sdr_size=self.s_output_sdr_size,
                 n_active_bits=self.state_sp.n_active_bits,
                 **state_clusters
             )
@@ -58,7 +58,7 @@ class SpSaEncoder(SaEncoder):
                 i_cluster = self.state_clusters.activate(
                     s, similarity, matched_cluster=i_cluster
                 )
-                cluster = self.state_clusters.active_clusters[i_cluster]
+                cluster = self.state_clusters.representatives[i_cluster]
 
             s = np.sort(cluster)
             self.state_clusters.change_threshold()

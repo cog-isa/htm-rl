@@ -201,6 +201,7 @@ class DreamingDouble(QModelBasedAgent):
 
         # noinspection PyUnresolvedReferences
         if self.sa_encoder.state_clusters is not None:
+            # noinspection PyUnresolvedReferences
             s_next = self.sa_encoder.restore_s(s_next, .7)
 
         # print('s_next', s_next)
