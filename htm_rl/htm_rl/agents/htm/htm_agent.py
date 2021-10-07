@@ -846,23 +846,27 @@ class HTMAgentRunner:
         self.environment.callmethod('reset')
         if self.logger is not None:
             self.draw_map(self.logger)
-            self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task}, step=self.episode)
+            if self.task > 0:
+                self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task}, step=self.episode)
             self.steps_cumulative = 0
             self.task += 1
             self.map_change_indicator = 1
             self.task_episode = 0
 
     def set_pos_in_order(self, agent_positions, food_positions):
-        agent_pos = tuple(agent_positions[self.task])
-        food_pos = tuple(food_positions[self.task])
+        if self.task < len(agent_positions):
+            agent_pos = tuple(agent_positions[self.task])
+            food_pos = tuple(food_positions[self.task])
 
-        self.set_agent_positions([agent_pos])
-        self.set_food_positions([food_pos])
+            self.set_agent_positions([agent_pos])
+            self.set_food_positions([food_pos])
         self.environment.callmethod('reset')
         if self.logger is not None:
-            self.draw_map(self.logger)
-            self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task},
-                            step=self.episode)
+            if self.task < len(agent_positions):
+                self.draw_map(self.logger)
+            if self.task > 0:
+                self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task},
+                                step=self.episode)
             self.steps_cumulative = 0
             self.task += 1
             self.map_change_indicator = 1

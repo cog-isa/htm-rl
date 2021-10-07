@@ -347,8 +347,8 @@ temporal_memory_default:
   initial_permanence_inhib: 0.1
   connected_threshold_inhib: 0.5
   permanence_increment_inhib: 0.1
-  permanence_decrement_inhib: 0.001
-  predicted_segment_decrement_inhib: 0.005
+  permanence_decrement_inhib: 0.01
+  predicted_segment_decrement_inhib: 0.0001
   enable_pruning_basal: False
   enable_pruning_apical: False
   enable_pruning_exec: False
