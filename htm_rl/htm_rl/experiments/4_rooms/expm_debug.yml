@@ -4,10 +4,13 @@ _type_: standard
 #  base: 10000
 #  n_seeds: 8
 
-#env_seeds: [52, 53, 54, 55, 60, 62, 64, 65, 68, 77]
-#env_seeds: [27, 31, 32, 33, 36, 38, 39, 41, 42, 44]
-env_seeds: [3, 4, 6, 10, 11, 13, 14, 15, 16, 18]
-agent_seeds: [1, 2, 3, 4, 5]
+#env_seeds: [52, 53, 54, 55, 60, 62, 64, 65, 68]
+#env_seeds: [27, 31, 32, 33, 36, 39, 42, 44]
+#env_seeds: [27, 36, 42, 44, 52, 60, 62, 65]
+env_seeds: [3, 4, 6, 10] #, 11, 13, 14, 15, 16, 18]
+agent_seeds: [1, 2, 3, 4]
+#agent_seeds: [1, 2, 3, 4, 5]
+#agent_seeds: [10, 11, 12, 13, 14, 15]
 #agent_seeds: [1]
 
 #agent_seeds: !generate_seeds
@@ -38,9 +41,6 @@ envs:
 agents:
   dreamer: dreamer
   wake: dreamer
-
-  dreamer_08: dreamer
-  wake_env: dreamer
 debug:
   _type_: model
 #  _type_: dreaming trajectory
@@ -49,5 +49,5 @@ debug:
   print_images: true
 
 wandb:
-  project: test_dreaming_4rooms_obs
+  project: test_dreaming_4rooms_obs_3x3
 
