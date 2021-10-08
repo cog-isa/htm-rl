@@ -156,7 +156,10 @@ class ClusterMemory:
 
         return matched_cluster
 
-    def match(self, sdr: SparseSdr, similarity: np.ndarray = None):
+    def match(
+            self, sdr: SparseSdr,
+            similarity: np.ndarray = None, similarity_threshold: float = None
+    ):
         """
         Finds the best matched cluster for provided vector `sdr`.
 
@@ -166,6 +169,8 @@ class ClusterMemory:
             Vector that should be matched.
         similarity : np.ndarray, optional
             Pre-computed similarity between clusters and provided input vector.
+        similarity_threshold : float, optional
+            Overrides ClusterMemory object's similarity threshold for this call.
 
         Returns
         -------
@@ -183,7 +188,8 @@ class ClusterMemory:
             similarity = self.similarity(sdr)
 
         ind = np.argmax(similarity)
-        if similarity[ind] < self.similarity_threshold:
+        similarity_threshold = isnone(similarity_threshold, self.similarity_threshold)
+        if similarity[ind] < similarity_threshold:
             return None, None, similarity
         return self.representatives[ind], ind, similarity
 
@@ -341,9 +347,22 @@ class ClusterMemory:
         self._update_cluster_traces(cluster)
 
     def remove_least_used_cluster(self) -> int:
-        # CHANGES CLUSTERS ORDER!!!
+        """
+        Removes the least used cluster. NOTE: CHANGES CLUSTERS ORDER!!!
+
+        Returns
+        -------
+        int
+            Index of the removed cluster. It could be used to get the cluster
+            ordering change - selected for removal cluster is swapped with the
+            last [in clusters buffer] cluster and then is popped from buffer.
+            Hence, after removal we have: a) i-th cluster removed, b) -1-th
+            cluster moved to i-th position.
+        """
+        #
 
         # cluster with the lowest trace
+        # noinspection PyTypeChecker
         i = np.argmin(self._cluster_traces)
 
         # replace i-th with the last and pop last

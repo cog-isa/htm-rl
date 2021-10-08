@@ -73,6 +73,7 @@ class QModelBasedAgent(QAgent):
             self._on_transition_to_new_state(
                 prev_action, s, reward, learn=train and input_changed
             )
+            # it's crucial to get IM reward _after_ transition to a new state
             im_reward = self._get_im_reward(train=train and input_changed)
             self.E_traces.update(prev_sa_sdr, with_reset=not input_changed)
             self._make_q_learning_step(
@@ -94,6 +95,7 @@ class QModelBasedAgent(QAgent):
 
     def _get_im_reward(self, train: bool) -> float:
         if train and self.im_weight[0] > 0.:
+            # it takes anomaly from the most recent transition (s', a') -> s
             x = self.transition_model.anomaly ** 2
             return self.im_weight[0] * x
         return 0.
@@ -101,10 +103,6 @@ class QModelBasedAgent(QAgent):
     def _on_transition_to_new_state(
             self, prev_action: int, s: SparseSdr, reward: float, learn: bool
     ):
-        # if self.sa_encoder.state_clusters is not None:
-        #     if self.sa_encoder.state_clusters.threshold < .55:
-        #         return
-
         # learn transition and anomaly for (s',a') -> s
         self.transition_model.process(s, learn=learn)
         if not learn:

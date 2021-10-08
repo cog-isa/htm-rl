@@ -51,6 +51,7 @@ class DreamerAgent(QModelBasedAgent):
             self._on_transition_to_new_state(
                 prev_action, s, reward, learn=train and input_changed
             )
+            # it's crucial to get IM reward _after_ transition to a new state
             im_reward = self._get_im_reward(train=train and input_changed)
             self.E_traces.update(prev_sa_sdr, with_reset=not input_changed)
             self._make_q_learning_step(

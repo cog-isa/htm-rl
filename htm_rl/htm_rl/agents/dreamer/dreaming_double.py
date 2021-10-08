@@ -19,8 +19,6 @@ class DreamingDouble(QModelBasedAgent):
     rollout_q_lr_decay_power: float
     trajectory_exploration_eps_decay: float
 
-    tm_checkpoint: Optional[bytes]
-
     enabled: bool
     falling_asleep_strategy: str
     td_error_based_falling_asleep: Optional[TdErrorBasedFallingAsleep]
@@ -30,6 +28,7 @@ class DreamingDouble(QModelBasedAgent):
 
     _starting_sa_sdr: Optional[SparseSdr]
     _starting_state: Optional[SparseSdr]
+    _tm_checkpoint: Optional[bytes]
     _exploration_eps_backup: Optional[DecayingValue]
     _episode: int
 
@@ -65,7 +64,6 @@ class DreamingDouble(QModelBasedAgent):
         self.derive_E_traces = derive_e_traces
 
         self.transition_model = wake_agent.transition_model
-        self.tm_checkpoint = None
         self.anomaly_model = wake_agent.anomaly_model
         self.reward_model = wake_agent.reward_model
 
@@ -91,6 +89,7 @@ class DreamingDouble(QModelBasedAgent):
         self.train = True
         self._starting_sa_sdr = None
         self._starting_state = None
+        self._tm_checkpoint = None
         self._exploration_eps_backup = None
         self._rng = np.random.default_rng(seed)
         self._current_sa_sdr = None
@@ -131,24 +130,14 @@ class DreamingDouble(QModelBasedAgent):
     def dream(self, starting_state, prev_sa_sdr):
         self._put_into_dream(starting_state, prev_sa_sdr)
 
-        # from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
-        # s_enc_provider: StateEncodingProvider = self.s_enc_provider
-        # s_enc_provider.reset()
-        # s_enc_provider.get_encoding_scheme()
-        # print('pos', self.env.agent.position)
-        #
-        # sa_encoder: SpSaEncoder = self.sa_encoder
-        # if sa_encoder.state_clusters:
-        #     i_cluster, sims, cluster = sa_encoder.match_nearest_cluster(starting_state)
-        #     print('cl', cluster, i_cluster, sims)
-
         starting_state_len = len(starting_state)
         i_rollout = 0
+        min_n_rollouts, max_n_rollouts = self.n_prediction_rollouts
         sum_depth = 0
         depths = []
-        while i_rollout < self.n_prediction_rollouts[0] or (
-                i_rollout < self.n_prediction_rollouts[1]
-                and 2. <= sum_depth < 3.2
+
+        while i_rollout < min_n_rollouts or (
+                i_rollout < max_n_rollouts and sum_depth >= 2
         ):
             self._on_new_rollout(i_rollout)
             state = starting_state
@@ -167,32 +156,23 @@ class DreamingDouble(QModelBasedAgent):
         self._wake()
 
     def _move_in_dream(self, state: SparseSdr):
-        # from htm_rl.agents.q.debug.state_encoding_provider import StateEncodingProvider
-        # s_enc_provider: StateEncodingProvider = self.s_enc_provider
-        # scheme = s_enc_provider.get_encoding_scheme()
-        #
-        # position, _, _ = s_enc_provider.decode_state(state, scheme, .0)
-        # print('s pos', state, position)
-
         s = state
         reward = self.reward_model.state_reward(s)
         action = self.act(reward, s, first=False)
-
-        # from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
-        # print('r, a', reward, action, DIRECTIONS_ORDER[action])
 
         if reward > .3:
             # found goal ==> should stop rollout
             return [], action, 1.
 
+        # (s', a') -> s
         self.transition_model.process(s, learn=False)
+        # s -> (s, a)
         s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
-        # print('s_a', s_a)
         self.transition_model.process(s_a, learn=False)
         s_next = self.transition_model.predicted_cols
 
-        activation = len(s_next) / len(self._starting_state)
-        if activation > 1.2:
+        if len(s_next) / len(self._starting_state) > 1.2:
+            # if superposition grew too much, subsample it
             s_next = self._rng.choice(
                 s_next, int(1.2 * len(self._starting_state)),
                 replace=False
@@ -203,14 +183,6 @@ class DreamingDouble(QModelBasedAgent):
         if self.sa_encoder.state_clusters is not None:
             # noinspection PyUnresolvedReferences
             s_next = self.sa_encoder.restore_s(s_next, .7)
-
-        # print('s_next', s_next)
-
-        # position, overlap, s_ = s_enc_provider.decode_state(s_next, scheme, .4)
-        # print(position, overlap, s_)
-        # print('====================')
-        # if s_ is not None:
-        #     s_next = np.array(list(sorted(s_)))
 
         anomaly = self.anomaly_model.state_anomaly(s_next, prev_action=action)
         return s_next, action, anomaly
@@ -280,27 +252,32 @@ class DreamingDouble(QModelBasedAgent):
         if anomaly > params.anomaly_threshold:
             return False
 
+        # p in [0, 1]
         p = 1 - anomaly
 
-        # --> [0, >1] --> [0, 1]
+        # alpha in [0, 1] <=> break point p value
         alpha, beta = params.alpha, params.beta
+        # make non-linear by boosting p > alpha and inhibiting p < alpha, if b > 1
+        # --> [0, > 1]
         p = (p / alpha)**beta
+        # re-normalize back --> [0, 1]
         p /= (1 / alpha)**beta
 
-        # --> [0, max_prob]
-        p *= params.max_prob        # [0, max_prob]
+        # shrink to max allowed probability --> [0, max_prob]
+        p *= params.max_prob
+        # sample
         return self._rng.random() < p
 
     def _save_tm_checkpoint(self) -> bytes:
         """Saves TM state."""
         if self.transition_model.tm.cells_per_column > 1:
-            self.tm_checkpoint = pickle.dumps(self.transition_model)
-            return self.tm_checkpoint
+            self._tm_checkpoint = pickle.dumps(self.transition_model)
+            return self._tm_checkpoint
 
     def _restore_tm_checkpoint(self, tm_checkpoint: bytes = None):
         """Restores saved TM state."""
         if self.transition_model.tm.cells_per_column > 1:
-            tm_checkpoint = isnone(tm_checkpoint, self.tm_checkpoint)
+            tm_checkpoint = isnone(tm_checkpoint, self._tm_checkpoint)
             self.transition_model = pickle.loads(tm_checkpoint)
         else:
             self.transition_model.process(self._starting_state, learn=False)

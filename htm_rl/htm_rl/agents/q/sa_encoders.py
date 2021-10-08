@@ -51,20 +51,7 @@ class SpSaEncoder(SaEncoder):
     def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
         s = self.state_sp.compute(state, learn=learn)
         if self.state_clusters is not None:
-            # nom = self.state_clusters.n_clusters
-            cluster, i_cluster, similarity = self.state_clusters.match(s)
-
-            if learn or i_cluster is None:
-                i_cluster = self.state_clusters.activate(
-                    s, similarity, matched_cluster=i_cluster
-                )
-                cluster = self.state_clusters.representatives[i_cluster]
-
-            s = np.sort(cluster)
-            self.state_clusters.change_threshold()
-            # nom_ = self.state_clusters.n_clusters
-            # if nom_ > nom and nom_ % 10 == 0:
-            #     print(nom_)
+            s = self._cluster_s(s, learn)
         return s
 
     def encode_action(self, action: int, learn: bool) -> SparseSdr:
@@ -103,15 +90,35 @@ class SpSaEncoder(SaEncoder):
     def s_output_sdr_size(self):
         return self.state_sp.output_sdr_size
 
-    def restore_s(self, s: SparseSdr, threshold: float):
-        if len(s) / self.state_sp.n_active_bits < threshold:
+    def restore_s(self, s: SparseSdr, restoration_threshold: float):
+        # if s damaged too much, just don't try restoring
+        if len(s) / self.state_sp.n_active_bits < restoration_threshold:
             return s
         if self.state_clusters is None:
             return s
 
-        cluster, i_cluster, similarity = self.state_clusters.match(s)
+        cluster, i_cluster, similarity = self.state_clusters.match(
+            s, similarity_threshold=restoration_threshold
+        )
         if cluster is not None:
             return np.sort(cluster)
+        return s
+
+    def _cluster_s(self, s: SparseSdr, learn: bool) -> SparseSdr:
+        # nom = self.state_clusters.n_clusters
+        if learn:
+            i_cluster = self.state_clusters.activate(s)
+            cluster = self.state_clusters.representatives[i_cluster]
+        else:
+            cluster, _, _ = self.state_clusters.match(s)
+
+        if cluster is not None:
+            s = np.sort(cluster)
+            self.state_clusters.change_threshold()
+
+        # nom_ = self.state_clusters.n_clusters
+        # if nom_ > nom and nom_ % 10 == 0:
+        #     print(nom_)
         return s
 
 

@@ -75,3 +75,7 @@ class SpatialPoolerWrapper(SpatialPooler):
 
         self._cached_input_sdr = SDR(self._spatial_pooler.getInputDimensions())
         self._cached_output_sdr = SDR(self._spatial_pooler.getColumnDimensions())
+
+    @property
+    def input_sdr_size(self):
+        return self._cached_input_sdr.size
