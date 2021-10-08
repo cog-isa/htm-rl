@@ -1,6 +1,6 @@
 seed: &seed 847582
 levels: 2
-agent: hima
+agent: wake_1x1
 project: four_rooms_swap_dreaming
 entity: pkuderov  # don't forget to change if you use logging
 
@@ -59,9 +59,12 @@ environment:
 
   rendering:
     view_rectangle: [[-1, -1], [1, 1]]
+#    view_rectangle: [[-2, -2], [2, 2]]
+#    view_rectangle: [[-3, -3], [3, 3]]
 
   areas:
     n_types: 4
+#    n_types: 5
 
   obstacle:
     density: 0.1
@@ -84,12 +87,13 @@ environment:
 
   terminate:
     episode_max_steps: 200
+#    episode_max_steps: 100
     early_stop: true
     n_items_to_collect: 1
 
 cagent:
   use_intrinsic_reward: false
-  use_dreaming: true
+  use_dreaming: false
   alpha: 1.0
   punish_intrinsic_reward: -10
   action:
