@@ -35,7 +35,7 @@ dreaming:
   eligibility_traces: *e_traces
   derive_e_traces: true
 
-  softmax_temp: [.1, .995]
+  softmax_temp: [.1, .992]
   exploration_eps: [.15, .997]
   trajectory_exploration_eps_decay: 1.
 
