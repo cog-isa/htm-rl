@@ -130,11 +130,9 @@ class DreamingDouble(QModelBasedAgent):
     def dream(self, starting_state, prev_sa_sdr):
         self._put_into_dream(starting_state, prev_sa_sdr)
 
-        starting_state_len = len(starting_state)
         i_rollout = 0
         min_n_rollouts, max_n_rollouts = self.n_prediction_rollouts
-        sum_depth = 0
-        depths = []
+        sum_depth, depths = 0, []
 
         while i_rollout < min_n_rollouts or (
                 i_rollout < max_n_rollouts and sum_depth >= 2
@@ -144,7 +142,7 @@ class DreamingDouble(QModelBasedAgent):
             depth = 0
             for depth in range(self.prediction_depth):
                 next_state, a, anomaly = self._move_in_dream(state)
-                if len(next_state) < .6 * starting_state_len or anomaly > .7:
+                if len(next_state) < .6 * len(starting_state) or anomaly > .7:
                     break
                 state = next_state
 
