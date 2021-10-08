@@ -279,6 +279,7 @@ class DualBasalGanglia:
                  sm_min_reward: float = 0.9,
                  sm_reward_inc: float = 0.9,
                  sm_reward_dec: float = 0.99,
+                 intrinsic_decay: float = 0.999,
                  seed: int = 0):
         """
         Basal Ganglia with two regions of Striatum. One for external reward and another for internal.
@@ -349,6 +350,8 @@ class DualBasalGanglia:
         self.min_reward_decay = min_reward_decay
         self.sm_max_reward = sm_max_reward
         self.sm_min_reward = sm_min_reward
+        self.intrinsic_off = 1
+        self.intrinsic_decay = intrinsic_decay
 
         self.reward_modulation_signal = 1
 
@@ -377,9 +380,9 @@ class DualBasalGanglia:
         d1_ext, d2_ext = self.stri_ext.compute(stimulus)
         d1_int, d2_int = self.stri_int.compute(stimulus)
         d1 = (self.priority_ext_init * self.priority_ext * d1_ext +
-              self.priority_int_init * self.priority_int * d1_int)
+              self.intrinsic_off * self.priority_int_init * self.priority_int * d1_int)
         d2 = (self.priority_ext_init * self.priority_ext * d2_ext +
-              self.priority_int_init * self.priority_int * d2_int)
+              self.intrinsic_off * self.priority_int_init * self.priority_int * d2_int)
 
         stn = self.stn.compute(stimulus, learn=learn)
         gpe = self.gpe.compute(stn, d2)
@@ -462,5 +465,12 @@ class DualBasalGanglia:
         else:
             self.min_reward *= self.min_reward_decay
 
-        self.reward_modulation_signal = np.clip((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 0.0,
+        self.reward_modulation_signal = np.clip(np.abs(self.mean_reward - self.min_reward) / (self.max_reward + EPS), 0.0,
                                                 1.0)
+        if self.max_reward < EPS:
+            self.reward_modulation_signal = 0
+
+        if self.reward_modulation_signal < EPS:
+            self.intrinsic_off *= self.intrinsic_decay
+        else:
+            self.intrinsic_off = 1

@@ -1,7 +1,7 @@
 seed: &seed 847582
 levels: 2
-agent: hima
-project: four_rooms_swap_empowerment
+agent: hima_abs_zero_off
+project: four_rooms_emp
 entity: arkol  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
@@ -31,7 +31,7 @@ run_options:
   log_confidence: False
   log_modulation: False
   log_segments: False
-  log_terminal_stat: True
+  log_terminal_stat: False
   log_empowerment: False
   log_number_of_clusters: False
   draw_options: False
@@ -91,7 +91,7 @@ cagent:
   use_intrinsic_reward: true
   use_dreaming: false
   alpha: 1.0
-  punish_intrinsic_reward: -3
+  punish_intrinsic_reward: 0
   action:
     do_nothing_action: 4
     noise_tolerance: 0.1
@@ -126,7 +126,7 @@ cagent:
       predictedSegmentDecrement: 0.001
       maxSegmentsPerCell: 5
     seed: *seed
-    filename: '../../experiments/htm_agent/empowerments/empowerment_real_4.json'
+    filename: '../../experiments/htm_agent/empowerments/empowerment_real_4_p1_3.json'
   dreaming:
     enabled: false
     anomaly_based_falling_asleep:
@@ -331,12 +331,13 @@ basal_ganglia_default:
   priority_inc_factor: 1.1  # multiply priority if td error is positive, experimental
   priority_dec_factor: 0.9  # else, experimental
   use_reward_modulation: true  # true: instead of TD error use reward modulation for priority
-  sm_reward_inc: 0.9  # !!!!!!!!
-  sm_reward_dec: 0.998  # !!!!!!!!!!!
-  sm_max_reward: 0.99  # !!!!!!!!!!
-  sm_min_reward: 0.99  # !!!!!!!!!!!!
-  max_reward_decay: 0.999  # !!!!!!!!!!!
-  min_reward_decay: 0.999  # !!!!!!!!!!!!!!1
+  sm_reward_inc: 0.9
+  sm_reward_dec: 0.998
+  sm_max_reward: 0.99
+  sm_min_reward: 0.999
+  max_reward_decay: 0.99
+  min_reward_decay: 0.9999
+  intrinsic_decay: 0.99
   seed: *seed
 
 block_default:

@@ -122,8 +122,8 @@ class HTMAgent:
         return action
 
     def get_intrinsic_reward(self):
-        state = self.hierarchy.visual_block.get_output('basal')
         if self.empowerment.filename is None:
+            state = self.hierarchy.visual_block.get_output('basal')
             reward = self.empowerment.eval_state(state, self.empowerment_horizon,
                                              use_memory=True)[0]
         else:
@@ -310,6 +310,14 @@ class HTMAgentRunner:
         self.agent_pos = list()
         dreaming_time = 0
 
+        #logging priorities
+        if self.agent.use_intrinsic_reward:
+            max_reward_log = 0
+            mean_reward_log = 0
+            min_reward_log = 0
+            priority_ext_log = 0
+            intrinsic_off_log = 0
+
         if self.logger is not None:
             wandb.define_metric("task")
             wandb.define_metric("main_metrics/steps_per_task", step_metric="task")
@@ -354,6 +362,15 @@ class HTMAgentRunner:
                          'main_metrics/all_steps': self.all_steps,
                          },
                         step=self.episode)
+                    if self.agent.use_intrinsic_reward:
+                        self.logger.log(
+                            {'priority/mean_reward': mean_reward_log/self.steps,
+                             'priority/max_reward': max_reward_log/self.steps,
+                             'priority/min_reward': min_reward_log/self.steps,
+                             'priority/priority_ext': priority_ext_log/self.steps,
+                             'priority/intrinsic_off': intrinsic_off_log/self.steps},
+                            step=self.episode
+                        )
                     self.map_change_indicator = 0
                     if self.agent.use_dreaming:
                         self.logger.log({'main_metrics/dreaming_time': dreaming_time}, step=self.episode)
@@ -535,9 +552,23 @@ class HTMAgentRunner:
                 self.total_reward = 0
                 dreaming_time = 0
                 self.agent.real_pos = self.environment.env.agent.position
+                if self.agent.use_intrinsic_reward:
+                    max_reward_log = 0
+                    mean_reward_log = 0
+                    min_reward_log = 0
+                    priority_ext_log = 0
+                    intrinsic_off_log = 0
             else:
                 self.steps += 1
                 self.total_reward += reward
+                # logging
+                if self.agent.use_intrinsic_reward:
+                    mean_reward_log += self.agent.hierarchy.output_block.bg.mean_reward
+                    max_reward_log += self.agent.hierarchy.output_block.bg.max_reward
+                    min_reward_log += self.agent.hierarchy.output_block.bg.min_reward
+                    priority_ext_log += self.agent.hierarchy.output_block.bg.priority_ext
+                    intrinsic_off_log += self.agent.hierarchy.output_block.bg.intrinsic_off
+                # logging
 
             if self.agent.use_dreaming and self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
@@ -963,7 +994,7 @@ if __name__ == '__main__':
     runner = HTMAgentRunner(configure(config), logger=logger)
     runner.agent.train_patterns()
 
-    if logger is not None:
-        runner.draw_map(logger)
+    # if logger is not None:
+    #     runner.draw_map(logger)
 
     runner.run_episodes(**config['run_options'])
