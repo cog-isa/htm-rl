@@ -43,10 +43,10 @@ dreaming:
   n_prediction_rollouts: [1, 1]
 
 reward_model:
-  learning_rate: [.1, 1.]
+  learning_rate: [.2, 1.]
 
 anomaly_model:
-  learning_rate: [.2, 1.]
+  learning_rate: [.1, 1.]
 
 transition_model:
   tm:
