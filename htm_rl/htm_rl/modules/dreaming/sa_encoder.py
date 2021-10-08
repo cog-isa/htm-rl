@@ -47,10 +47,9 @@ class DreamerSaEncoder(SpSaEncoder):
 
         # state encoder learns in HIMA, not here
         s = self.state_sp.compute(state, learn=False)
-        if self.state_clusters is not None:
-            s = self._cluster_s(s, learn)
 
-        self._add_to_decoder(state, s)
+        s, i_cluster = self._cluster_s(s, learn)
+        self._add_to_decoder(state, i_cluster)
         return s
 
     def concat_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
@@ -75,7 +74,7 @@ class DreamerSaEncoder(SpSaEncoder):
         cluster, i_cluster, similarity = self.state_clusters.match(s)
 
         if learn:
-            if self.state_clusters.full:
+            if cluster is None and self.state_clusters.full:
                 # have to free up space manually to track clusters order change
                 i_removed = self.state_clusters.remove_least_used_cluster()
 
@@ -90,14 +89,12 @@ class DreamerSaEncoder(SpSaEncoder):
         if cluster is not None:
             s = np.sort(cluster)
             self.state_clusters.change_threshold()
-        return s
+        return s, i_cluster
 
     def _add_to_decoder(self, state: SparseSdr, cluster: int):
         if cluster is None:
             return
 
-        if cluster < len(self.state_decoder):
-            if not np.any(state != self.state_decoder[cluster]):
-                print('Decoder miss')
-        else:
-            self.state_decoder.append(state.copy())
+        if cluster == len(self.state_decoder):
+            self.state_decoder.append([])
+        self.state_decoder[cluster] = state.copy()
