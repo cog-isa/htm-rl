@@ -233,7 +233,7 @@ class Block:
     def __str__(self):
         return f"Block_{self.id}"
 
-    def compute(self, add_exec=False, learn_exec=False):
+    def compute(self, add_exec=False, learn_exec=False, narrow_prediction=False):
         self.should_return_exec_predictions = False
         self.should_return_apical_predictions = False
         # gather all inputs
@@ -295,6 +295,32 @@ class Block:
 
             # Evaluate feedback boost
             self.feedback_boost = self.feedback_boost_range[0] + total_value * (self.feedback_boost_range[1] - self.feedback_boost_range[0])
+        elif narrow_prediction:
+            # Narrow prediction by a feedback
+            # Form feedback input sdr(columns)
+            feedback_active_columns = list()
+            shift = 0
+
+            for block in self.feedback_in:
+                feedback_active_columns.append(block.get_output('basal') + shift)
+                shift += block.basal_columns
+
+            if len(feedback_active_columns) > 0:
+                feedback_active_columns = np.concatenate(feedback_active_columns)
+            else:
+                feedback_active_columns = np.empty(0)
+
+            # TM
+            self.tm.set_active_feedback_columns(feedback_active_columns)
+            self.tm.activate_inhib_dendrites()
+            self.tm.predict_cells()
+
+            self.confidence = self.tm.confidence[-1]
+            self.confidence_threshold = self.tm.confidence_threshold
+
+            self.d_cn = (self.confidence - self.confidence_threshold) / (self.confidence_threshold + EPS)
+
+            self.feedback_in_pattern = feedback_active_columns
         else:
             basal_active_columns = list()
             shift = 0
@@ -709,6 +735,7 @@ class Hierarchy:
 
         if (block.d_an > block.d_an_th) and (block.d_cn >= - block.d_cn_th):
             tasks = zip(block.basal_out, [None]*len(block.basal_out))
+            self.queue.append((block, {'narrow_prediction': True}))
             self.queue.append((block, {'learn_exec': True}))
             self.queue.extend(tasks)
         elif block.d_cn < -block.d_cn_th:

@@ -181,40 +181,12 @@ blocks:
       alpha_int: 0.01
       beta_int: 0.01
       off_policy: true
-      softmax_beta: 0.25
+      softmax_beta: 1.0
       epsilon_noise: 0.0
     block:
       modulate_tm_lr: false
       level: 1
     sm: {}
-    sp:
-      boostStrength: 0.0
-      localAreaDensity: 0.02
-      potentialPct: 0.5
-    tm:
-      basal_columns: 1000
-
-  2:
-    bg: null
-    block:
-      level: 2
-    sm: { }
-    sp:
-      boostStrength: 0.0
-      localAreaDensity: 0.02
-      potentialPct: 0.5
-    tm:
-      basal_columns: 1000
-  3:
-    bg:
-      alpha: 0.1
-      beta: 0.1
-      off_policy: true
-      softmax_beta: 0.5
-      epsilon_noise: 0.0
-    block:
-      level: 2
-    sm: { }
     sp:
       boostStrength: 0.0
       localAreaDensity: 0.02
@@ -248,8 +220,8 @@ hierarchy:
     {
       'basal_in': [ 0 ],
       'apical_in': [ 3 ],
-      'feedback_in': [ 4 ],
-      'basal_out': [ 4 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
       'apical_out': [ 3 ],
       'feedback_out': [ ]
     },
@@ -257,28 +229,10 @@ hierarchy:
     {
       'basal_in': [ 1 ],
       'apical_in': [ 2 ],
-      'feedback_in': [ 5 ],
-      'basal_out': [ 5 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
       'apical_out': [ 2 ],
       'feedback_out': [ ]
-    },
-
-    {
-      'basal_in': [ 2 ],
-      'apical_in': [ 5 ],
-      'feedback_in': [ ],
-      'basal_out': [ ],
-      'apical_out': [ 5 ],
-      'feedback_out': [ 2 ]
-    },
-
-    {
-      'basal_in': [ 3 ],
-      'apical_in': [ 4 ],
-      'feedback_in': [ ],
-      'basal_out': [ ],
-      'apical_out': [ 4 ],
-      'feedback_out': [ 3 ]
     }
   ]
   input_blocks:

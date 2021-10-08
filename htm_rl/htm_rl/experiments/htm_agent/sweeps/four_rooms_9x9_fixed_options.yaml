@@ -1,0 +1,27 @@
+project: four_rooms_9x9_fixed_new_final
+entity: hauska
+program: ../../agents/htm/htm_agent.py
+method: grid
+parameters:
+  seed:
+    values: [43241, 54782, 23781]
+  environment.seed:
+    values:
+      - 54089
+      - 98100
+      - 98212
+  block_default.feedback_boost_range:
+    values:
+      - [0.0, 0.8]
+  blocks.1.bg.softmax_beta:
+    values:
+      - 1.2
+      - 1.3
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_fixed_options
+  - ${args}
+

@@ -249,7 +249,9 @@ class HTMAgentRunner:
         self.animation = False
         self.agent_pos = list()
         self.level = -1
+        self.task = 0
         self.steps = 0
+        self.steps_cumulative = 0
         self.episode = 0
         self.option_actions = list()
         self.option_predicted_actions = list()
@@ -257,6 +259,8 @@ class HTMAgentRunner:
         self.last_option_id = None
         self.current_action = None
         self.early_stop = False
+        self.map_change_indicator = 0
+        self.task_episode = 0
 
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
@@ -295,10 +299,15 @@ class HTMAgentRunner:
         self.total_reward = 0
         self.steps = 0
         self.episode = 0
+        self.steps_cumulative = 0
+        self.task = 0
         self.animation = False
         self.agent_pos = list()
-        map_change_indicator = 0
         dreaming_time = 0
+
+        if self.logger is not None:
+            wandb.define_metric("task")
+            wandb.define_metric("main_metrics/steps_per_task", step_metric="task")
 
         while self.episode < n_episodes and (not self.early_stop):
             if self.scenario is not None:
@@ -334,9 +343,11 @@ class HTMAgentRunner:
                         {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode,
                          'main_metrics/level': self.level,
                          'main_metrics/total_terminals': self.total_terminals,
-                         'main_metrics/map_change_indicator': map_change_indicator,
+                         'main_metrics/steps_cumulative': self.steps_cumulative,
+                         'main_metrics/map_change_indicator': self.map_change_indicator,
                          },
                         step=self.episode)
+                    self.map_change_indicator = 0
                     if self.agent.use_dreaming:
                         self.logger.log({'main_metrics/dreaming_time': dreaming_time}, step=self.episode)
                     if log_segments:
@@ -512,6 +523,8 @@ class HTMAgentRunner:
                     self.agent.dreamer.on_new_episode()
 
                 self.episode += 1
+                self.task_episode += 1
+                self.steps_cumulative += self.steps
                 self.steps = 0
                 self.total_reward = 0
                 dreaming_time = 0
@@ -552,9 +565,6 @@ class HTMAgentRunner:
                     self.terminal_pos_stat[pos] = 1
                 self.last_terminal_stat = self.terminal_pos_stat[pos]
                 self.total_terminals += 1
-                map_change_indicator = 1
-            else:
-                map_change_indicator = 0
             # \\\logging\\\
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
@@ -717,10 +727,11 @@ class HTMAgentRunner:
                 self.agent.hierarchy.output_block.da - self.block_metrics['da_1lvl']) / (self.steps + 1)
         self.block_metrics['dda_1lvl'] = self.block_metrics['dda_1lvl'] + (
                 self.agent.hierarchy.output_block.dda - self.block_metrics['dda_1lvl']) / (self.steps + 1)
-        self.block_metrics['da_2lvl'] = self.block_metrics['da_2lvl'] + (
-                self.agent.hierarchy.blocks[5].da - self.block_metrics['da_2lvl']) / (self.steps + 1)
-        self.block_metrics['dda_2lvl'] = self.block_metrics['dda_2lvl'] + (
-                self.agent.hierarchy.blocks[5].dda - self.block_metrics['dda_2lvl']) / (self.steps + 1)
+        if len(self.agent.hierarchy.blocks) > 4:
+            self.block_metrics['da_2lvl'] = self.block_metrics['da_2lvl'] + (
+                    self.agent.hierarchy.blocks[5].da - self.block_metrics['da_2lvl']) / (self.steps + 1)
+            self.block_metrics['dda_2lvl'] = self.block_metrics['dda_2lvl'] + (
+                    self.agent.hierarchy.blocks[5].dda - self.block_metrics['dda_2lvl']) / (self.steps + 1)
         if self.agent.use_intrinsic_reward:
             self.block_metrics['priority_ext_1lvl'] = self.block_metrics['priority_ext_1lvl'] + (
                     self.agent.hierarchy.output_block.bg.priority_ext - self.block_metrics['priority_ext_1lvl']) / (
@@ -728,12 +739,13 @@ class HTMAgentRunner:
             self.block_metrics['priority_int_1lvl'] = self.block_metrics['priority_int_1lvl'] + (
                     self.agent.hierarchy.output_block.bg.priority_int - self.block_metrics['priority_int_1lvl']) / (
                                                               self.steps + 1)
-            self.block_metrics['priority_ext_2lvl'] = self.block_metrics['priority_ext_2lvl'] + (
-                    self.agent.hierarchy.blocks[5].bg.priority_ext - self.block_metrics['priority_ext_2lvl']) / (
-                                                              self.steps + 1)
-            self.block_metrics['priority_int_2lvl'] = self.block_metrics['priority_int_2lvl'] + (
-                    self.agent.hierarchy.blocks[5].bg.priority_int - self.block_metrics['priority_int_2lvl']) / (
-                                                              self.steps + 1)
+            if len(self.agent.hierarchy.blocks) > 4:
+                self.block_metrics['priority_ext_2lvl'] = self.block_metrics['priority_ext_2lvl'] + (
+                        self.agent.hierarchy.blocks[5].bg.priority_ext - self.block_metrics['priority_ext_2lvl']) / (
+                                                                  self.steps + 1)
+                self.block_metrics['priority_int_2lvl'] = self.block_metrics['priority_int_2lvl'] + (
+                        self.agent.hierarchy.blocks[5].bg.priority_int - self.block_metrics['priority_int_2lvl']) / (
+                                                                  self.steps + 1)
 
     def reset_block_metrics(self):
         self.block_metrics = {'anomaly_threshold': [0] * self.n_blocks,
@@ -763,7 +775,7 @@ class HTMAgentRunner:
         positions = [self.environment.env.renderer.shape.shift_relative_to_corner(pos) for pos in positions]
         self.environment.env.modules['agent'].positions = positions
 
-    def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None, door_positions=None):
+    def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None, door_positions=None, wall_thickness=1):
         """
         Room numbers:
         |1|2|
@@ -771,6 +783,7 @@ class HTMAgentRunner:
         :param agent_fixed_positions:
         :param food_fixed_positions:
         :param door_positions
+        :param wall_thickness:
         :return:
         """
 
@@ -780,13 +793,13 @@ class HTMAgentRunner:
                 if room == 1:
                     col_range = [0, width - 1]
                 else:
-                    col_range = [width + 1, width * 2]
+                    col_range = [width + wall_thickness, width * 2 + wall_thickness - 1]
             else:
-                row_range = [width + 1, 2 * width]
+                row_range = [width + wall_thickness, 2 * width + wall_thickness - 1]
                 if room == 3:
                     col_range = [0, width - 1]
                 else:
-                    col_range = [width + 1, width * 2]
+                    col_range = [width + wall_thickness, width * 2 + wall_thickness - 1]
             return row_range, col_range
 
         def get_adjacent_rooms(room):
@@ -809,7 +822,7 @@ class HTMAgentRunner:
             agent_room, food_room = self.rng.sample(list(range(1, 5)), k=2)
             food_door = None
 
-        room_width = (self.env_config['shape_xy'][0] - 1) // 2
+        room_width = (self.env_config['shape_xy'][0] - wall_thickness) // 2
         if agent_fixed_positions is not None:
             agent_pos = tuple(agent_fixed_positions[agent_room - 1])
         else:
@@ -833,6 +846,31 @@ class HTMAgentRunner:
         self.environment.callmethod('reset')
         if self.logger is not None:
             self.draw_map(self.logger)
+            if self.task > 0:
+                self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task}, step=self.episode)
+            self.steps_cumulative = 0
+            self.task += 1
+            self.map_change_indicator = 1
+            self.task_episode = 0
+
+    def set_pos_in_order(self, agent_positions, food_positions):
+        if self.task < len(agent_positions):
+            agent_pos = tuple(agent_positions[self.task])
+            food_pos = tuple(food_positions[self.task])
+
+            self.set_agent_positions([agent_pos])
+            self.set_food_positions([food_pos])
+        self.environment.callmethod('reset')
+        if self.logger is not None:
+            if self.task < len(agent_positions):
+                self.draw_map(self.logger)
+            if self.task > 0:
+                self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task},
+                                step=self.episode)
+            self.steps_cumulative = 0
+            self.task += 1
+            self.map_change_indicator = 1
+            self.task_episode = 0
 
     def level_up(self):
         self.level += 1
@@ -904,7 +942,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_rooms_9x9_swap_empowered_dreaming'
+        default_config_name = 'four_rooms_9x9_swap_options'
     with open(f'../../experiments/htm_agent/configs/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
@@ -936,7 +974,7 @@ if __name__ == '__main__':
     runner = HTMAgentRunner(configure(config), logger=logger)
     runner.agent.train_patterns()
 
-    if logger is not None:
-        runner.draw_map(logger)
+    #if logger is not None:
+        #runner.draw_map(logger)
 
     runner.run_episodes(**config['run_options'])

@@ -1,10 +1,10 @@
 seed: &seed 847582
-levels: 2
+levels: 1
 agent: hima
-project: four_rooms_swap_empowerment
-entity: you  # don't forget to change if you use logging
+project: four_rooms_swap_options
+entity: hauska  # don't forget to change if you use logging
 
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
+scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap_hard.yaml'
 
 vis_options:
   size: 21
@@ -17,23 +17,23 @@ path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 100000
-  log_every_episode: 25
-  log_values_int: True
-  log_values_ext: True
-  log_priorities: True
-  log_values: False
-  log_policy: False
+  log_every_episode: 100000
+  log_values_int: False
+  log_values_ext: False
+  log_priorities: False
+  log_values: True
+  log_policy: True
   log_option_values: False
   log_option_policy: False
   log_options_usage: False
   log_td_error: True
   log_anomaly: False
   log_confidence: False
-  log_modulation: True
+  log_modulation: False
   log_segments: False
-  log_terminal_stat: True
-  log_empowerment: True
-  log_number_of_clusters: True
+  log_terminal_stat: False
+  log_empowerment: False
+  log_number_of_clusters: False
   draw_options: False
   draw_options_stats: False
   opt_threshold: 50
@@ -88,7 +88,7 @@ environment:
     n_items_to_collect: 1
 
 cagent:
-  use_intrinsic_reward: true
+  use_intrinsic_reward: false
   use_dreaming: false
   alpha: 1.0
   punish_intrinsic_reward: -10
@@ -181,10 +181,10 @@ blocks:
       alpha_int: 0.01
       beta_int: 0.01
       off_policy: true
-      softmax_beta: 1.0
+      softmax_beta: 1.2
       epsilon_noise: 0.0
     block:
-      modulate_tm_lr: false
+      modulate_tm_lr: true
       level: 1
     sm: {}
     sp:
@@ -302,7 +302,7 @@ temporal_memory_default:
   connected_threshold_inhib: 0.5
   permanence_increment_inhib: 0.1
   permanence_decrement_inhib: 0.001
-  predicted_segment_decrement_inhib: 0.0001
+  predicted_segment_decrement_inhib: 0.005
   enable_pruning_basal: False
   enable_pruning_apical: False
   enable_pruning_exec: False
@@ -346,7 +346,7 @@ block_default:
   feedback_boost_range: [0.0, 0.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
   modulate_tm_lr: false  # use reward modulation for lr of TM
   sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
-  sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement
+  sm_reward_dec: 0.98  # smooth factor for reward modulation during decrement
   sm_max_reward: 0.99  # smooth factor for max reward
   sm_min_reward: 0.99  # smooth factor for min reward
   max_reward_decay: 0.999  # decay factor for max reward

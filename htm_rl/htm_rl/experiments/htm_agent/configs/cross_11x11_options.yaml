@@ -1,10 +1,10 @@
 seed: &seed 847582
 levels: 2
 agent: hima
-project: four_rooms_swap_empowerment
-entity: you  # don't forget to change if you use logging
+project: cross_options
+entity: hauska  # don't forget to change if you use logging
 
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
+scenario: '../../experiments/htm_agent/scenarios/cross_11x11.yaml'
 
 vis_options:
   size: 21
@@ -16,33 +16,33 @@ log: true  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
-  n_episodes: 100000
+  n_episodes: 2000
   log_every_episode: 25
-  log_values_int: True
-  log_values_ext: True
-  log_priorities: True
-  log_values: False
-  log_policy: False
+  log_values_int: False
+  log_values_ext: False
+  log_priorities: False
+  log_values: True
+  log_policy: True
   log_option_values: False
   log_option_policy: False
-  log_options_usage: False
+  log_options_usage: True
   log_td_error: True
   log_anomaly: False
   log_confidence: False
   log_modulation: True
-  log_segments: False
+  log_segments: True
   log_terminal_stat: True
-  log_empowerment: True
-  log_number_of_clusters: True
-  draw_options: False
-  draw_options_stats: False
+  log_empowerment: False
+  log_number_of_clusters: False
+  draw_options: True
+  draw_options_stats: True
   opt_threshold: 50
   train_patterns: True
   animation_fps: 3
 
 environment:
   seed: 432921
-  shape_xy: [9, 9]
+  shape_xy: [11, 11]
 
   actions_cost:
     base_cost: -0.005
@@ -65,17 +65,17 @@ environment:
 
   obstacle:
     density: 0.1
-    map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
+    map_name: '../../experiments/htm_agent/maps/cross_11x11.map'
 
   food:
     n_items: 1
     reward: 1.
-    positions: [[4, 6]]
+    positions: [ [ 6, 6 ] ]
 
   agent:
+    positions: [ [ 6, 1 ], [ 1, 6 ], [ 6, 11 ], [ 11, 6 ] ]
     change_position: true
     direction: up
-    positions: [ [ 1, 2 ], [ 7, 2 ], [ 7, 6 ], [ 1, 6 ] ]
   #  rendering:
   #    what:
   #      - position
@@ -88,7 +88,7 @@ environment:
     n_items_to_collect: 1
 
 cagent:
-  use_intrinsic_reward: true
+  use_intrinsic_reward: false
   use_dreaming: false
   alpha: 1.0
   punish_intrinsic_reward: -10
@@ -184,9 +184,37 @@ blocks:
       softmax_beta: 1.0
       epsilon_noise: 0.0
     block:
-      modulate_tm_lr: false
+      modulate_tm_lr: true
       level: 1
     sm: {}
+    sp:
+      boostStrength: 0.0
+      localAreaDensity: 0.02
+      potentialPct: 0.5
+    tm:
+      basal_columns: 1000
+
+  2:
+    bg: null
+    block:
+      level: 2
+    sm: { }
+    sp:
+      boostStrength: 0.0
+      localAreaDensity: 0.02
+      potentialPct: 0.5
+    tm:
+      basal_columns: 1000
+  3:
+    bg:
+      alpha: 0.1
+      beta: 0.1
+      off_policy: true
+      softmax_beta: 1.0
+      epsilon_noise: 0.0
+    block:
+      level: 2
+    sm: { }
     sp:
       boostStrength: 0.0
       localAreaDensity: 0.02
@@ -220,8 +248,8 @@ hierarchy:
     {
       'basal_in': [ 0 ],
       'apical_in': [ 3 ],
-      'feedback_in': [ ],
-      'basal_out': [ ],
+      'feedback_in': [ 4 ],
+      'basal_out': [ 4 ],
       'apical_out': [ 3 ],
       'feedback_out': [ ]
     },
@@ -229,10 +257,28 @@ hierarchy:
     {
       'basal_in': [ 1 ],
       'apical_in': [ 2 ],
-      'feedback_in': [ ],
-      'basal_out': [ ],
+      'feedback_in': [ 5 ],
+      'basal_out': [ 5 ],
       'apical_out': [ 2 ],
       'feedback_out': [ ]
+    },
+
+    {
+      'basal_in': [ 2 ],
+      'apical_in': [ 5 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
+      'apical_out': [ 5 ],
+      'feedback_out': [ 2 ]
+    },
+
+    {
+      'basal_in': [ 3 ],
+      'apical_in': [ 4 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
+      'apical_out': [ 4 ],
+      'feedback_out': [ 3 ]
     }
   ]
   input_blocks:
@@ -302,7 +348,7 @@ temporal_memory_default:
   connected_threshold_inhib: 0.5
   permanence_increment_inhib: 0.1
   permanence_decrement_inhib: 0.001
-  predicted_segment_decrement_inhib: 0.0001
+  predicted_segment_decrement_inhib: 0.005
   enable_pruning_basal: False
   enable_pruning_apical: False
   enable_pruning_exec: False
@@ -343,10 +389,10 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997  # discount factor for option rewards
   predicted_boost: 0.0  # boost predicted elementary actions
-  feedback_boost_range: [0.0, 0.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
+  feedback_boost_range: [0.0, 0.8]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
   modulate_tm_lr: false  # use reward modulation for lr of TM
   sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
-  sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement
+  sm_reward_dec: 0.98  # smooth factor for reward modulation during decrement
   sm_max_reward: 0.99  # smooth factor for max reward
   sm_min_reward: 0.99  # smooth factor for min reward
   max_reward_decay: 0.999  # decay factor for max reward
