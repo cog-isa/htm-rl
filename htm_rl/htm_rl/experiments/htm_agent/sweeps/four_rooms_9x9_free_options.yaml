@@ -1,5 +1,5 @@
 project: four_rooms_9x9_free_new_final
-entity: you
+entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:
@@ -13,7 +13,9 @@ parameters:
   block_default.feedback_boost_range:
     values:
       - [0.0, 0.8]
-      - [0.0, 0.0]
+  blocks.1.bg.softmax_beta:
+    values:
+      - 1.2
 
 command:
   - ${env}
