@@ -2,7 +2,7 @@ seed: &seed 847582
 levels: 2
 agent: hima_abs_zero_off
 project: four_rooms_emp
-entity: arkol  # don't forget to change if you use logging
+entity: hauska  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
 
@@ -180,7 +180,7 @@ blocks:
       alpha: 0.1
       beta: 0.1
       off_policy: true
-      softmax_beta: 1.0
+      softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
       modulate_tm_lr: false

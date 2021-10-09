@@ -1,19 +1,21 @@
-project: four_rooms_empowerment_2
-entity: arkol
+project: four_rooms_empowerment_full
+entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:
   seed:
-    values: [46504, 990958, 453238]
+    values: [909028, 98917, 32312]
   environment.seed:
     values:
-      - 99078
-      - 87546
-      - 58763
+      - 93289
+      - 19857
+      - 38571
   cagent.use_intrinsic_reward:
     values:
       - True
-      - False
+  blocks.1.bg.softmax_beta:
+    values:
+      - 0.25
 
 command:
   - ${env}
