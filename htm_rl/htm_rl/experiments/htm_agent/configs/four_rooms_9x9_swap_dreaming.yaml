@@ -1,6 +1,6 @@
 seed: &seed 847582
 levels: 2
-agent: wake_1x1
+agent: wake_temp_sp_a
 project: four_rooms_swap_dreaming
 entity: pkuderov  # don't forget to change if you use logging
 
@@ -179,8 +179,14 @@ blocks:
     sm: {}
     sp:
       boostStrength: 0.0
+#      boostStrength: 2.
       localAreaDensity: 0.02
       potentialPct: 0.5
+#      dutyCyclePeriod: 10000
+#      minPctOverlapDutyCycle: 0.0004
+#      synPermConnected: 0.5
+#      synPermActiveInc: 0.02
+#      synPermInactiveDec: 0.01
     tm:
       basal_columns: 1000
   1:
@@ -190,7 +196,7 @@ blocks:
       alpha_int: 0.01
       beta_int: 0.01
       off_policy: true
-      softmax_beta: 1.0
+      softmax_beta: .25
       epsilon_noise: 0.0
     block:
       modulate_tm_lr: false
@@ -198,8 +204,14 @@ blocks:
     sm: {}
     sp:
       boostStrength: 0.0
+#      boostStrength: 2.
       localAreaDensity: 0.02
       potentialPct: 0.5
+#      dutyCyclePeriod: 10000
+#      minPctOverlapDutyCycle: 0.0004
+#      synPermConnected: 0.5
+#      synPermActiveInc: 0.02
+#      synPermInactiveDec: 0.01
     tm:
       basal_columns: 1000
 
