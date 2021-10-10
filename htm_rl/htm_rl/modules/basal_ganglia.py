@@ -9,7 +9,8 @@ EPS = 1e-12
 
 
 def softmax(x):
-    return np.exp(x) / np.sum(np.exp(x))
+    e_x = np.exp(x - np.max(x, axis=-1))
+    return e_x / np.sum(e_x)
 
 
 class Striatum:

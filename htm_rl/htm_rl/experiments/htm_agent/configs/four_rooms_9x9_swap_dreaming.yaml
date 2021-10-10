@@ -1,6 +1,6 @@
 seed: &seed 847582
 levels: 2
-agent: wake_temp_sp_a
+agent: dreaming_2x2_s_r1_a_bst_p_2
 project: four_rooms_swap_dreaming
 entity: pkuderov  # don't forget to change if you use logging
 
@@ -58,13 +58,13 @@ environment:
     - stay
 
   rendering:
-    view_rectangle: [[-1, -1], [1, 1]]
-#    view_rectangle: [[-2, -2], [2, 2]]
+#    view_rectangle: [[-1, -1], [1, 1]]
+    view_rectangle: [[-2, -2], [2, 2]]
 #    view_rectangle: [[-3, -3], [3, 3]]
 
   areas:
-    n_types: 4
-#    n_types: 5
+#    n_types: 4
+    n_types: 5
 
   obstacle:
     density: 0.1
@@ -79,21 +79,17 @@ environment:
     change_position: true
     direction: up
     positions: [ [ 1, 2 ], [ 7, 2 ], [ 7, 6 ], [ 1, 6 ] ]
-  #  rendering:
-  #    what:
-  #      - position
-  ##      - view direction
-  #    bucket_size: 3
 
   terminate:
-    episode_max_steps: 200
-#    episode_max_steps: 100
+#    episode_max_steps: 200
+    episode_max_steps: 100
     early_stop: true
     n_items_to_collect: 1
 
 cagent:
   use_intrinsic_reward: false
-  use_dreaming: false
+#  use_dreaming: false
+  use_dreaming: true
   alpha: 1.0
   punish_intrinsic_reward: -10
   action:
@@ -150,10 +146,12 @@ cagent:
         max_tracked_bits_rate: 2.
 
     reward_model:
-      learning_rate: [ .2, 1. ]
+#      learning_rate: [ .2, 1. ]
+      learning_rate: [ .5, 1. ]
 
     anomaly_model:
-      learning_rate: [ .1, 1. ]
+#      learning_rate: [ .1, 1. ]
+      learning_rate: [ .2, 1. ]
 
     transition_model:
       tm:
@@ -178,15 +176,16 @@ blocks:
       level: 1
     sm: {}
     sp:
-      boostStrength: 0.0
+#      boostStrength: 0.0
 #      boostStrength: 2.
+      boostStrength: 1.
       localAreaDensity: 0.02
       potentialPct: 0.5
-#      dutyCyclePeriod: 10000
-#      minPctOverlapDutyCycle: 0.0004
-#      synPermConnected: 0.5
-#      synPermActiveInc: 0.02
-#      synPermInactiveDec: 0.01
+      dutyCyclePeriod: 40000
+      minPctOverlapDutyCycle: 0.0002
+      synPermConnected: 0.5
+      synPermActiveInc: 0.02
+      synPermInactiveDec: 0.01
     tm:
       basal_columns: 1000
   1:
