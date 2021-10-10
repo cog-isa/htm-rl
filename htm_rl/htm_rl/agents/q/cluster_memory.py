@@ -47,7 +47,8 @@ class ClusterMemory:
     n_active_bits: int
     similarity_threshold: float
     similarity_threshold_delta: float
-    similarity_threshold_limit: float
+    similarity_threshold_max: float
+    similarity_threshold_min: float
 
     n_clusters: int
 
@@ -73,15 +74,18 @@ class ClusterMemory:
 
     def __init__(
             self, input_sdr_size: int, n_active_bits: int,
-            similarity_threshold: float, similarity_threshold_limit: float,
+            similarity_threshold_min: float, similarity_threshold_max: float,
             max_n_clusters: int, max_tracked_bits_rate: float = 3.,
             similarity_threshold_delta: float = .0004
     ):
         self.sdr_size = input_sdr_size
         self.n_active_bits = n_active_bits
-        self.similarity_threshold = similarity_threshold
+        self.similarity_threshold_min = similarity_threshold_min
+        self.similarity_threshold_max = similarity_threshold_max
+        self.similarity_threshold = .5 * (
+                similarity_threshold_max + similarity_threshold_min
+        )
         self.similarity_threshold_delta = similarity_threshold_delta
-        self.similarity_threshold_limit = similarity_threshold_limit
 
         max_n_tracked_bits = int(n_active_bits * max_tracked_bits_rate)
         self.n_clusters = 0
@@ -401,8 +405,12 @@ class ClusterMemory:
         return overlap
 
     def change_threshold(self, delta=None):
-        if 0 < self.similarity_threshold < self.similarity_threshold_limit:
-            self.similarity_threshold += isnone(delta, self.similarity_threshold_delta)
+        min_th, max_th = self.similarity_threshold_min, self.similarity_threshold_max
+        delta = isnone(delta, self.similarity_threshold_delta)
+
+        new_th = self.similarity_threshold + delta
+        if min_th < new_th < max_th:
+            self.similarity_threshold = new_th
 
     def _update_cluster_traces(self, active_cluster: int):
         self._cluster_traces[:self.n_clusters] *= .99

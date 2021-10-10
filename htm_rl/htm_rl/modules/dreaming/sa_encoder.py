@@ -88,7 +88,12 @@ class DreamerSaEncoder(SpSaEncoder):
 
         if cluster is not None:
             s = np.sort(cluster)
-            self.state_clusters.change_threshold()
+
+        delta = self.state_clusters.similarity_threshold_delta
+        if cluster is None:
+            delta *= -1
+        self.state_clusters.change_threshold(delta)
+
         return s, i_cluster
 
     def _add_to_decoder(self, state: SparseSdr, cluster: int):

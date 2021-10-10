@@ -114,7 +114,11 @@ class SpSaEncoder(SaEncoder):
 
         if cluster is not None:
             s = np.sort(cluster)
-            self.state_clusters.change_threshold()
+
+        delta = self.state_clusters.similarity_threshold_delta
+        if cluster is None:
+            delta *= -1
+        self.state_clusters.change_threshold(delta)
 
         # nom_ = self.state_clusters.n_clusters
         # if nom_ > nom and nom_ % 10 == 0:
