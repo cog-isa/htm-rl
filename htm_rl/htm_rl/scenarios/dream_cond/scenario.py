@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 from tqdm import tqdm
 
-from htm_rl.agents.agent import Agent
+from htm_rl.agents.dreamer.agent import DreamerAgent
 from htm_rl.agents.dreamer.debug.dreaming_conditions_debugger import DreamingConditionsDebugger
 from htm_rl.common.utils import timed
 from htm_rl.envs.biogwlab.environment import Environment
@@ -32,7 +32,7 @@ class Scenario:
 
     mode: str
     env: Env
-    agent: Agent
+    agent: DreamerAgent
     progress: ProgressPoint
 
     def __init__(
@@ -57,14 +57,16 @@ class Scenario:
         self.init_run()
         self.test_results_map = dict()
 
-    def init_run(self, with_debug=False):
+    def init_run(self):
         config = self.config
         self.env = materialize_environment(
             config['envs'][config['env']], config['env_seed']
         )
+        # noinspection PyTypeChecker
         self.agent = materialize_agent(
             config['agents'][config['agent']], config['agent_seed'], self.env
         )
+        self.agent.dreamer.enabled = False
         self.mode = 'train'
         self.progress = ProgressPoint()
 

@@ -82,7 +82,7 @@ class Muscles:
         self.active_segments = active_segments
         self.matching_segments = matching_segments
         self.num_potential = num_potential
-        self.depolarized_muscles.sparse = depolarized_cells
+        self.depolarized_muscles.sparse = np.unique(depolarized_cells)
 
     def learn(self):
         learning_active_segments = self.connections.filterSegmentsByCell(self.active_segments,

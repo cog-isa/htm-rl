@@ -1,57 +1,55 @@
+from typing import Union
+
 import numpy as np
 
+from htm_rl.common.utils import ensure_list
 from htm_rl.envs.biogwlab.module import Entity, EntityType
 
+TEntityKey = Union[str, EntityType]
+TEntityValue = Union[Entity, list[Entity]]
+TEntityDict = dict[TEntityKey, TEntityValue]
 
-class CachedFlagDict(dict):
-    _base_dict: dict[str, Entity]
 
-    def __init__(self, base_dict: dict[str, Entity]):
-        super().__init__()
-        self._base_dict = base_dict
+class EntityDict(TEntityDict):
+    def __getitem__(self, key: TEntityKey) -> TEntityValue:
+        if isinstance(key, str):
+            return super(EntityDict, self).__getitem__(key)
+        elif isinstance(key, EntityType):
+            return self._filter_by_flag(key)
+        else:
+            raise KeyError()
 
-    def flush(self):
-        self.clear()
+    def __setitem__(self, key: str, value: Entity):
+        # assert only single items are added and only by str key
+        assert isinstance(key, str) and isinstance(value, Entity)
+        super(EntityDict, self).__setitem__(key, value)
 
-    def __getitem__(self, flag: EntityType):
-        if True or flag not in self:
-            self[flag] = self._find_items(flag)
-        return super(CachedFlagDict, self).__getitem__(flag)
-
-    def _find_items(self, flag: EntityType):
+    def _filter_by_flag(self, flag: EntityType) -> list[Entity]:
         return [
             entity
-            for entity in self._base_dict.values()
+            for entity in self.values()
             if entity.type & flag
         ]
 
 
-class CachedEntityAggregation(dict):
+class EntityMaskAggregation(dict[TEntityKey, np.ndarray]):
     _shape: tuple[int, int]
-    _flag_dict: dict[EntityType, list[Entity]]
+    _entities: TEntityDict
 
-    def __init__(
-            self, flag_dict: dict[EntityType, list[Entity]],
-            shape: tuple[int, int]
-    ):
+    def __init__(self, entities: TEntityDict, shape: tuple[int, int]):
         super().__init__()
-        self._flag_dict = flag_dict
+        self._entities = entities
         self._shape = shape
 
-    def flush(self):
-        self.clear()
-        self._flag_dict.clear()
+    def __getitem__(self, key: TEntityKey) -> np.ndarray:
+        # one or many entities could be queried
+        entities = ensure_list(self._entities[key])
 
-    def __getitem__(self, flag: EntityType):
-        if True or flag not in self:
-            self[flag] = self._aggregate_entities(flag)
-        return super(CachedEntityAggregation, self).__getitem__(flag)
-
-    def _aggregate_entities(self, flag: EntityType):
+        # aggregate mask
         mask = np.zeros(self._shape, dtype=np.bool)
-        for entity in self._flag_dict[flag]:
+        for entity in entities:
+            # IMPORTANT: only initialized entities are "valid" !
             if entity.initialized:
                 entity.append_mask(mask)
+
         return mask
-
-

@@ -12,7 +12,7 @@ eligibility_traces:
 
 softmax_temp: [.0, .0]
 exploration_eps: [.2, .99]
-im_weight: [.000, 1.]
+im_weight: [.001, 1.]
 
 reward_model:
   learning_rate: [1., 1.]
@@ -25,8 +25,8 @@ transition_model:
     cells_per_column: 1
     initial_permanence: .35
     connected_permanence: .3
-    activation_threshold: .7
-    learning_threshold: .4
+    activation_threshold: .88
+    learning_threshold: .8
     max_new_synapse_count: 1.0
     max_synapses_per_segment: 1.0
     predictedSegmentDecrement: .001

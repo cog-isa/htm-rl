@@ -13,6 +13,7 @@ class TagMethods:
         base = seed_gen_dict['base']
         n_seeds = seed_gen_dict['n_seeds']
         seeds = np.random.default_rng(base).integers(0, 1_000_000, size=n_seeds)
+        seeds.sort()
         return seeds.tolist()
 
 

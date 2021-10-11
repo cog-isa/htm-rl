@@ -1,10 +1,9 @@
-import numpy as np
 from tqdm import trange
 
 from htm_rl.agents.agent import Agent
 from htm_rl.common.utils import timed
 from htm_rl.envs.env import Env
-from htm_rl.scenarios.factories import materialize_environment, materialize_agent
+from htm_rl.scenarios.factories import materialize_environment, materialize_agent, inject_debugger
 from htm_rl.scenarios.standard.run_stats import RunStats
 from htm_rl.scenarios.utils import ProgressPoint
 
@@ -47,9 +46,7 @@ class Scenario:
         wandb_run = self.init_wandb_run()
 
         if self.debug_enabled:
-            from htm_rl.agents.qmb.debug.model_debugger import ModelDebugger
-            print_images = self.debug['images']
-            model_debugger = ModelDebugger(self, images=print_images)
+            inject_debugger(self.debug, self, print_images=self.debug['print_images'])
 
         for _ in trange(self.n_episodes):
             self.run_episode_with_mode(

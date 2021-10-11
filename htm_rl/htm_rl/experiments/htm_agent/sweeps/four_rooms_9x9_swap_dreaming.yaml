@@ -1,5 +1,5 @@
 project: four_rooms_dreaming_final
-entity: you
+entity: pkuderov
 program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:

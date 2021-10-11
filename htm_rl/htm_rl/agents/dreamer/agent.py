@@ -1,5 +1,3 @@
-from typing import Tuple, Optional
-
 import numpy as np
 
 from htm_rl.agents.dreamer.dreaming_double import DreamingDouble
@@ -43,15 +41,19 @@ class DreamerAgent(QModelBasedAgent):
             return None
 
         train = self.train
-        im_reward = self._get_im_reward()
-
         prev_sa_sdr = self._current_sa_sdr
-        s = self.sa_encoder.encode_state(state, learn=True and train)
-        actions_sa_sdr = self._encode_s_actions(s, learn=True and train)
+        prev_action = self._prev_action
+        input_changed = self.input_changes_detector.changed(state, train)
+        s = self.sa_encoder.encode_state(state, learn=train and input_changed)
+        actions_sa_sdr = self._encode_s_actions(s, learn=train and input_changed)
 
         if train and not first:
-            self.reward_model.update(s, reward)
-            self.E_traces.update(prev_sa_sdr)
+            self._on_transition_to_new_state(
+                prev_action, s, reward, learn=train and input_changed
+            )
+            # it's crucial to get IM reward _after_ transition to a new state
+            im_reward = self._get_im_reward(train=train and input_changed)
+            self.E_traces.update(prev_sa_sdr, with_reset=not input_changed)
             self._make_q_learning_step(
                 sa=prev_sa_sdr, r=reward+im_reward,
                 next_actions_sa_sdr=actions_sa_sdr
@@ -64,11 +66,12 @@ class DreamerAgent(QModelBasedAgent):
         action = self._choose_action(actions_sa_sdr)
         chosen_sa_sdr = actions_sa_sdr[action]
         if train:
-            self._update_transition_model(s, action, learn=True and train)
+            self._on_action_selection(s, action)
         if train and self.ucb_estimate.enabled:
             self.ucb_estimate.update(chosen_sa_sdr)
 
         self._current_sa_sdr = chosen_sa_sdr
+        self._prev_action = action
         self._step += 1
         return action
 
@@ -87,7 +90,7 @@ class DreamerAgent(QModelBasedAgent):
                 self.cum_td_error = exp_sum(self.cum_td_error, self.td_error_decay, td_error)
                 td_error = self.cum_td_error
             elif self.dreamer.falling_asleep_strategy == 'anomaly':
-                anomaly = self.anomaly_model.anomaly[s].mean()
+                anomaly = self.anomaly_model.state_anomaly(s)
 
             dream = self.dreamer.decide_to_dream(
                 td_error=td_error, anomaly=anomaly

@@ -3,12 +3,12 @@ _type_: q
 sa_encoder: q
 
 qvn:
-  discount_factor: &discount_factor .97
-  learning_rate: [.1, .995]
+  discount_factor: &discount_factor .92
+  learning_rate: [.04, .997]
 
 eligibility_traces:
-  trace_decay: .0
+  trace_decay: [.8, .995]
   discount_factor: *discount_factor
 
-#exploration_eps: [.3, .99]
-softmax_enabled: true
+softmax_temp: [.1, .995]
+exploration_eps: [.2, .99]

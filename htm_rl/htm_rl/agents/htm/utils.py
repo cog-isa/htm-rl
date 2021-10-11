@@ -402,11 +402,12 @@ def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = No
                 direction = None
             else:
                 direction = get_direction_from_flat((i, j))
-            if actions_map is not None:
+            if actions_map is not None and action in actions_map:
                 row, col, drow, dcol = get_arrow(actions_map[action], direction)
-                ax.arrow(j + col, i + row, dcol, drow, length_includes_head=True,
-                         head_width=0.2,
-                         head_length=0.2)
+                if row is not None:
+                    ax.arrow(j + col, i + row, dcol, drow, length_includes_head=True,
+                             head_width=0.2,
+                             head_length=0.2)
             else:
                 ax.text(j + 0.5, i + 0.5, str(action), fontsize=12)
 
@@ -416,6 +417,8 @@ def draw_policy(path: str, env_shape, policy, actions_env, directions: dict = No
 
 
 def get_arrow(action, direction=None):
+    row, col, drow, dcol = None, None, None, None
+
     if direction is None:
         if action == 'up':
             row = 1

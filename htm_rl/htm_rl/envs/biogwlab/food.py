@@ -61,7 +61,7 @@ class Food(Entity):
         seed = seeds['food']
         empty_mask = ~self.env.aggregated_mask[EntityType.Obstacle]
         if self.weighted_generation:
-            areas = self.env.entity_slices[EntityType.Area]
+            areas = self.env.entities[EntityType.Area]
 
             area_masks = []
             for area in areas:

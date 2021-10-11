@@ -4,7 +4,7 @@ import numpy as np
 
 from htm_rl.common.utils import isnone
 from htm_rl.envs.biogwlab.agent import Agent
-from htm_rl.envs.biogwlab.flags import CachedFlagDict, CachedEntityAggregation
+from htm_rl.envs.biogwlab.flags import EntityDict, EntityMaskAggregation, TEntityDict, TEntityKey
 from htm_rl.envs.biogwlab.module import Module, Entity, EntityType
 from htm_rl.envs.biogwlab.move_dynamics import (
     MOVE_DIRECTIONS, DIRECTIONS_ORDER, TURN_DIRECTIONS,
@@ -39,9 +39,8 @@ class Environment(Env):
     modules: dict[str, Module]
     handlers: dict[str, list[Any]]
 
-    entities: dict[str, Entity]
-    entity_slices: dict[EntityType, list[Entity]]
-    aggregated_mask: dict[EntityType, np.ndarray]
+    entities: TEntityDict
+    aggregated_mask: dict[TEntityKey, np.ndarray]
 
     episode_step: int
     step_reward: float
@@ -63,12 +62,8 @@ class Environment(Env):
 
         self.modules = {}
         self.handlers = {}
-        self.entities = {}
-
-        self.entity_slices = CachedFlagDict(self.entities)
-        self.aggregated_mask = CachedEntityAggregation(
-            self.entity_slices, self.shape
-        )
+        self.entities = EntityDict()
+        self.aggregated_mask = EntityMaskAggregation(self.entities, self.shape)
 
         self.episode_step = 0
         self.step_reward = 0
@@ -79,14 +74,9 @@ class Environment(Env):
         self.step_reward = 0
         self.items_collected = 0
 
-        self.entity_slices.clear()
-        self.aggregated_mask.clear()
-
-        self.entity_slices.clear()
-        self.aggregated_mask.clear()
-
         self._run_handlers('reset')
         self.generate()
+
         # noinspection PyTypeChecker
         self.agent = self.entities['agent']
 
@@ -98,6 +88,7 @@ class Environment(Env):
         self.modules[module.name] = module
         if isinstance(module, Entity):
             self.entities[module.name] = module
+
         for event in self.supported_events:
             if hasattr(module, event):
                 handlers = self.handlers.setdefault(event, [])
@@ -110,6 +101,7 @@ class Environment(Env):
         self.modules.pop(module.name)
         if isinstance(module, Entity):
             self.entities.pop(module.name)
+
         for event in self.supported_events:
             if hasattr(module, event):
                 self.handlers[event].remove(getattr(module, event))
@@ -211,7 +203,7 @@ class Environment(Env):
         agent = self.agent
         return self.renderer.render_rgb(
             position=agent.position, view_direction=agent.view_direction,
-            entities=self.entity_slices,
+            entities=self.entities,
             show_outer_walls=show_outer_walls
         )
 

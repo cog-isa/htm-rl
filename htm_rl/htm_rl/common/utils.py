@@ -6,6 +6,7 @@ import numpy as np
 
 
 DecayingValue = tuple[float, float]
+Coord2d = tuple[int, int]
 
 
 def isnone(x, default):
@@ -78,10 +79,13 @@ def update_slice_lin_sum(s, ind, lr, val):
     s[ind] = (1 - lr) * s[ind] + lr * val
 
 
-def update_exp_trace(traces, tr, decay, val=1.):
+def update_exp_trace(traces, tr, decay, val=1., with_reset=False):
     """Updates exponential trace."""
     traces *= decay
-    traces[tr] += val
+    if with_reset:
+        traces[tr] = val
+    else:
+        traces[tr] += val
 
 
 def exp_decay(value: DecayingValue) -> DecayingValue:
@@ -96,7 +100,12 @@ def multiply_decaying_value(value: DecayingValue, alpha: float) -> DecayingValue
     return x * alpha, decay
 
 
+_softmax_temperature_limit = 1e-5
+
+
 def softmax(x, temp=1.):
     """Computes softmax values for a vector `x` with a given temperature."""
+    if temp < _softmax_temperature_limit:
+        temp = _softmax_temperature_limit
     e_x = np.exp((x - np.max(x, axis=-1)) / temp)
     return e_x / e_x.sum(axis=-1)

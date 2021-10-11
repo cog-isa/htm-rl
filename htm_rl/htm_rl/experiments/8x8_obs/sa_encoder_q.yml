@@ -1,25 +1,33 @@
 .default_spatial_pooler_params: &default_spatial_pooler_params
-  synapse_permanence_deltas: [ .1, .02 ]
   connected_permanence_threshold: .5
   min_activation_threshold: 2
 
 state_sp:
   <<: *default_spatial_pooler_params
-  output_dilation_ratio: 1.2
-  potential_synapses_ratio: .65
-  sparsity: .02
-  boost_strength: .3
-  boost_sliding_window: 1000
-  expected_normal_overlap_frequency: .004
+  output_size: 800
+  potential_synapses_ratio: .5
+  sparsity: .025
+  synapse_permanence_deltas: [ .02, .01 ]
+  boost_strength: 2.
+  boost_sliding_window: 10000
+  expected_normal_overlap_frequency: .0005
+
+state_clusters:
+  similarity_threshold: .6
+  similarity_threshold_delta: .0004
+  similarity_threshold_limit: .8
+  max_n_clusters: 75
+  max_tracked_bits_rate: 2.2
 
 action_encoder:
   bucket_size: 4
 
 sa_sp:
   <<: *default_spatial_pooler_params
-  output_dilation_ratio: 2.
-  potential_synapses_ratio: .9
+  output_size: 1600
+  potential_synapses_ratio: .6
   sparsity: .02
-  boost_strength: .3
-  boost_sliding_window: 2000
-  expected_normal_overlap_frequency: .004
+  synapse_permanence_deltas: [ .02, .01 ]
+  boost_strength: .5
+  boost_sliding_window: 20000
+  expected_normal_overlap_frequency: .0004

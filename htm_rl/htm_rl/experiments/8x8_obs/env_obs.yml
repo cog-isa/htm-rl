@@ -9,17 +9,18 @@ actions:
   - move up
 
 actions_cost:
-  base_cost: -.002
+  base_cost: -.008
   weights:
 #    stay: .5
     turn: 1.
     move: 1.
 
 rendering:
+#  view_rectangle: [[-3, -3], [3, 3]]
   view_rectangle: [[-2, -2], [2, 2]]
 
 areas:
-  n_types: 3
+  n_types: 4
 
 obstacle:
   density: .25
@@ -36,5 +37,5 @@ food:
 #    bucket_size: 3
 
 terminate:
-  episode_max_steps: 200
+  episode_max_steps: 100
   early_stop: true

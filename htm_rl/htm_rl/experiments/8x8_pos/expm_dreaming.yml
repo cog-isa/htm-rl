@@ -2,7 +2,7 @@ _type_: dreaming condition
 
 env_seeds: !generate_seeds
   base: 8989
-  n_seeds: 5
+  n_seeds: 2
 
 agent_seeds: !generate_seeds
   base: 89
@@ -24,10 +24,10 @@ agent_seeds: !generate_seeds
 ###  - 1984
 ###  - 3433
 
-max_episodes: 60
+max_episodes: 80
 train_ep_before_eval: 1
 n_goals_before_dreaming: 8
-dreaming_test: 15
+dreaming_test: 20
 test_forward: 15
 compare_vs_last_eps: 15
 

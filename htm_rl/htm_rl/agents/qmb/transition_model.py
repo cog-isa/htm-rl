@@ -15,6 +15,7 @@ class TransitionModel:
     anomaly: float
     precision: float
     recall: float
+    f_score: float
 
     _proximal_input_sdr: SDR    # cached SDR
     _predicted_columns_sdr: SDR   # cached SDR
@@ -24,6 +25,7 @@ class TransitionModel:
         self.tm = tm
         self.precision = 0.
         self.recall = 0.
+        self.f_score = 0.
         self.anomaly = 1.
 
         self._proximal_input_sdr = SDR(self.tm.n_columns)
@@ -73,12 +75,14 @@ class TransitionModel:
         """
         self.tm.activateDendrites(learn=learn)
         predicted_cells = self.tm.getPredictiveCells().sparse
-        self._predicted_columns_sdr.sparse = list(self.columns_from_cells(predicted_cells))
+        self._predicted_columns_sdr.sparse = list(
+            self.columns_from_cells(predicted_cells)
+        )
         return predicted_cells
 
     @property
     def predicted_cols(self) -> SparseSdr:
-        return self._predicted_columns_sdr.sparse
+        return np.copy(self._predicted_columns_sdr.sparse)
 
     def columns_from_cells(self, cells_sparse_sdr: SparseSdr) -> SparseSdr:
         """
@@ -109,23 +113,6 @@ class TransitionModel:
             f_beta_score = 0.
         else:
             f_beta_score = (1 + beta**2) * (precision * recall) / (beta**2 * precision + recall)
-        self.anomaly = 1. - f_beta_score
 
-    def __getstate__(self):
-        # used to pickle object
-        data = (
-            self.tm,
-            self._proximal_input_sdr,
-            self._predicted_columns_sdr,
-            self.anomaly, self.precision, self.recall,
-        )
-        return data
-
-    def __setstate__(self, state):
-        # used to unpickle
-        (
-            self.tm,
-            self._proximal_input_sdr,
-            self._predicted_columns_sdr,
-            self.anomaly, self.precision, self.recall,
-        ) = state
+        self.f_score = f_beta_score
+        self.anomaly = 1. - recall

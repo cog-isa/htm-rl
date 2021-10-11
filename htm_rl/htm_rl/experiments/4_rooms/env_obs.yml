@@ -1,5 +1,5 @@
 _type_: biogwlab
-shape_xy: [12, 12]
+shape_xy: [9, 9]
 
 actions:
 #  - stay
@@ -9,7 +9,7 @@ actions:
   - move up
 
 actions_cost:
-  base_cost: -.006
+  base_cost: -.008
   weights:
 #    stay: .5
     turn: 1.
@@ -23,19 +23,12 @@ areas:
   n_types: 5
 
 obstacle:
-  density: .25
+  map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
 
 food:
   n_items: 1
   reward: 1.
 
-#agent:
-#  rendering:
-#    what:
-#      - position
-##      - view direction
-#    bucket_size: 3
-
 terminate:
-  episode_max_steps: 150
+  episode_max_steps: 100
   early_stop: true
