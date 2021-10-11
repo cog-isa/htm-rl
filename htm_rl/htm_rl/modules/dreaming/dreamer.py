@@ -144,6 +144,8 @@ class Dreamer:
         # the first (s, a) [non-learnable] activation
         self.reward_model.decay_learning_factors()
         self.anomaly_model.decay_learning_factors()
+
+    def on_new_goal(self):
         self.stats.reset()
 
     def can_dream(self, reward: float) -> bool:

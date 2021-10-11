@@ -251,7 +251,9 @@ class HTMAgentRunner:
         self.level = -1
         self.task = 0
         self.steps = 0
-        self.steps_cumulative = 0
+        self.steps_per_goal = 0
+        self.steps_per_task = 0
+        self.steps_total = 0
         self.episode = 0
         self.option_actions = list()
         self.option_predicted_actions = list()
@@ -298,12 +300,13 @@ class HTMAgentRunner:
                      log_number_of_clusters=False, animation_fps=3):
         self.total_reward = 0
         self.steps = 0
+        self.steps_per_goal = 0
+        self.steps_per_task = 0
+        self.steps_total = 0
         self.episode = 0
-        self.steps_cumulative = 0
         self.task = 0
         self.animation = False
         self.agent_pos = list()
-        dreaming_time = 0
 
         if self.logger is not None:
             wandb.define_metric("task")
@@ -343,13 +346,12 @@ class HTMAgentRunner:
                         {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode,
                          'main_metrics/level': self.level,
                          'main_metrics/total_terminals': self.total_terminals,
-                         'main_metrics/steps_cumulative': self.steps_cumulative,
+                         'main_metrics/steps_cumulative': self.steps_per_task,
+                         'main_metrics/total_steps': self.steps_total,
                          'main_metrics/map_change_indicator': self.map_change_indicator,
                          },
                         step=self.episode)
                     self.map_change_indicator = 0
-                    if self.agent.use_dreaming:
-                        self.logger.log({'main_metrics/dreaming_time': dreaming_time}, step=self.episode)
                     if log_segments:
                         self.logger.log(
                             {
@@ -524,17 +526,17 @@ class HTMAgentRunner:
 
                 self.episode += 1
                 self.task_episode += 1
-                self.steps_cumulative += self.steps
+                self.steps_per_goal += self.steps
+                self.steps_per_task += self.steps
+                self.steps_total += self.steps
                 self.steps = 0
                 self.total_reward = 0
-                dreaming_time = 0
             else:
                 self.steps += 1
                 self.total_reward += reward
 
             if self.agent.use_dreaming and self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
-                dreaming_time += 1
 
             self.current_action = self.agent.make_action(obs)
 
@@ -557,14 +559,7 @@ class HTMAgentRunner:
 
             # ///logging///
             if self.environment.callmethod('is_terminal') and (self.environment.env.items_collected > 0):
-                pos = get_unshifted_pos(self.environment.env.agent.position,
-                                        self.environment.env.renderer.shape.top_left_point)
-                if pos in self.terminal_pos_stat:
-                    self.terminal_pos_stat[pos] += 1
-                else:
-                    self.terminal_pos_stat[pos] = 1
-                self.last_terminal_stat = self.terminal_pos_stat[pos]
-                self.total_terminals += 1
+                self.on_terminal()
             # \\\logging\\\
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
@@ -846,12 +841,7 @@ class HTMAgentRunner:
         self.environment.callmethod('reset')
         if self.logger is not None:
             self.draw_map(self.logger)
-            if self.task > 0:
-                self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task}, step=self.episode)
-            self.steps_cumulative = 0
-            self.task += 1
-            self.map_change_indicator = 1
-            self.task_episode = 0
+            self.on_new_task()
 
     def set_pos_in_order(self, agent_positions, food_positions):
         if self.task < len(agent_positions):
@@ -864,13 +854,6 @@ class HTMAgentRunner:
         if self.logger is not None:
             if self.task < len(agent_positions):
                 self.draw_map(self.logger)
-            if self.task > 0:
-                self.logger.log({'main_metrics/steps_per_task': self.steps_cumulative, 'task': self.task},
-                                step=self.episode)
-            self.steps_cumulative = 0
-            self.task += 1
-            self.map_change_indicator = 1
-            self.task_episode = 0
 
     def level_up(self):
         self.level += 1
@@ -887,6 +870,82 @@ class HTMAgentRunner:
         logger.log({'maps/map': wandb.Image(os.path.join(self.path_to_store_logs,
                                                           f'map_{config["environment"]["seed"]}_{self.episode}.png'))},
                    step=self.episode)
+
+    def log_dreaming_stats(self):
+        dreaming_stats = self.agent.dreamer.stats
+        cl_wake_stats = dreaming_stats.wake_cluster_memory_stats
+        cl_dreaming_stats = dreaming_stats.dreaming_cluster_memory_stats
+        stats_to_log = {
+            'rollouts': dreaming_stats.rollouts,
+            'avg_depth': dreaming_stats.avg_depth,
+            'cl_wake_match_rate': cl_wake_stats.avg_match_rate,
+            'cl_wake_avg_match_similarity': cl_wake_stats.avg_match_similarity,
+            'cl_wake_avg_mismatch_similarity': cl_wake_stats.avg_mismatch_similarity,
+            'cl_wake_all': cl_wake_stats.matched + cl_wake_stats.mismatched,
+            'cl_wake_added': cl_wake_stats.added,
+            'cl_wake_removed': cl_wake_stats.removed,
+            'cl_wake_avg_removed_cluster_intra_similarity': cl_wake_stats.avg_removed_cluster_intra_similarity,
+            'cl_wake_avg_removed_cluster_trace': cl_wake_stats.avg_removed_cluster_trace,
+            'cl_dreaming_all': cl_dreaming_stats.matched + cl_dreaming_stats.mismatched,
+            'cl_dreaming_match_rate': cl_dreaming_stats.avg_match_rate,
+            'cl_dreaming_avg_match_similarity': cl_dreaming_stats.avg_match_similarity,
+            'cl_dreaming_avg_mismatch_similarity': cl_dreaming_stats.avg_mismatch_similarity,
+        }
+
+        order = [
+            'rollouts', 'avg_depth', 'cl_wake_match_rate',
+            'cl_wake_avg_match_similarity', 'cl_wake_avg_mismatch_similarity',
+            'cl_wake_all', 'cl_wake_added', 'cl_wake_removed',
+            'cl_wake_avg_removed_cluster_intra_similarity',
+            'cl_wake_avg_removed_cluster_trace',
+            'cl_dreaming_all', 'cl_dreaming_match_rate',
+            'cl_dreaming_avg_match_similarity',
+            'cl_dreaming_avg_mismatch_similarity',
+        ]
+        for k in order:
+            self.logger.log({f'dreaming/{k}': stats_to_log[k]}, step=self.episode)
+
+        self.agent.dreamer.on_new_goal()
+
+    def on_terminal(self):
+        pos = get_unshifted_pos(
+            self.environment.env.agent.position,
+            self.environment.env.renderer.shape.top_left_point
+        )
+        if pos in self.terminal_pos_stat:
+            self.terminal_pos_stat[pos] += 1
+        else:
+            self.terminal_pos_stat[pos] = 1
+        self.last_terminal_stat = self.terminal_pos_stat[pos]
+        self.total_terminals += 1
+
+        if self.agent.use_dreaming:
+            self.log_dreaming_stats()
+
+        self.logger.log({
+            'main_metrics/goal_steps_per_goal': self.steps_per_goal,
+            'main_metrics/task_steps_per_goal': self.steps_per_task,
+            'main_metrics/total_steps_per_goal': self.steps_total,
+            'main_metrics/episode_per_goal': self.episode,
+        }, step=self.total_terminals)
+
+        self.steps_per_goal = 0
+
+    def on_new_task(self):
+        if self.task > 0:
+            self.logger.log({
+                'main_metrics/steps_per_task': self.steps_per_task,
+                'task': self.task
+            }, step=self.episode)
+
+            self.logger.log({
+                'main_metrics/total_steps_per_task': self.steps_total
+            }, step=self.task)
+
+        self.steps_per_task = 0
+        self.task += 1
+        self.map_change_indicator = 1
+        self.task_episode = 0
 
 
 class Scenario:
@@ -961,12 +1020,12 @@ if __name__ == '__main__':
 
         key = key.lstrip('-')
         tokens = key.split('.')
-        if len(tokens) == 4:
-            config[tokens[0]][int(tokens[1])][tokens[2]][tokens[3]] = value
-        elif len(tokens) == 2:
-            config[tokens[0]][tokens[1]] = value
-        elif len(tokens) == 1:
-            config[tokens[0]] = value
+        c = config
+        for k in tokens[:-1]:
+            if 0 in c:
+                k = int(k)
+            c = c[k]
+        c[tokens[-1]] = value
 
     # with open('../../experiments/htm_agent/htm_config_unpacked.yaml', 'w') as file:
     #     yaml.dump(configure(config), file, Dumper=yaml.Dumper)

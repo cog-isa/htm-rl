@@ -135,6 +135,7 @@ class DreamingDouble(QModelBasedAgent):
         #     round(ds.avg_match_similarity, 3), round(ds.avg_mismatch_similarity, 3),
         # )
 
+    def on_new_goal(self):
         self.stats.reset()
 
     def can_dream(self, reward):
