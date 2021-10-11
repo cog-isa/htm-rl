@@ -309,8 +309,7 @@ class HTMAgentRunner:
         self.agent_pos = list()
 
         if self.logger is not None:
-            wandb.define_metric("task")
-            wandb.define_metric("main_metrics/steps_per_task", step_metric="task")
+            self.define_logging_metrics()
 
         while self.episode < n_episodes and (not self.early_stop):
             if self.scenario is not None:
@@ -877,6 +876,7 @@ class HTMAgentRunner:
         cl_dreaming_stats = dreaming_stats.dreaming_cluster_memory_stats
         stats_to_log = {
             'rollouts': dreaming_stats.rollouts,
+            'avg_dreaming_rate': dreaming_stats.rollouts / self.steps_per_goal,
             'avg_depth': dreaming_stats.avg_depth,
             'cl_wake_match_rate': cl_wake_stats.avg_match_rate,
             'cl_wake_avg_match_similarity': cl_wake_stats.avg_match_similarity,
@@ -891,18 +891,7 @@ class HTMAgentRunner:
             'cl_dreaming_avg_match_similarity': cl_dreaming_stats.avg_match_similarity,
             'cl_dreaming_avg_mismatch_similarity': cl_dreaming_stats.avg_mismatch_similarity,
         }
-
-        order = [
-            'rollouts', 'avg_depth', 'cl_wake_match_rate',
-            'cl_wake_avg_match_similarity', 'cl_wake_avg_mismatch_similarity',
-            'cl_wake_all', 'cl_wake_added', 'cl_wake_removed',
-            'cl_wake_avg_removed_cluster_intra_similarity',
-            'cl_wake_avg_removed_cluster_trace',
-            'cl_dreaming_all', 'cl_dreaming_match_rate',
-            'cl_dreaming_avg_match_similarity',
-            'cl_dreaming_avg_mismatch_similarity',
-        ]
-        for k in order:
+        for k in stats_to_log.keys():
             self.logger.log({f'dreaming/{k}': stats_to_log[k]}, step=self.episode)
 
         self.agent.dreamer.on_new_goal()
@@ -923,29 +912,37 @@ class HTMAgentRunner:
             self.log_dreaming_stats()
 
         self.logger.log({
-            'main_metrics/goal_steps_per_goal': self.steps_per_goal,
-            'main_metrics/task_steps_per_goal': self.steps_per_task,
-            'main_metrics/total_steps_per_goal': self.steps_total,
-            'main_metrics/episode_per_goal': self.episode,
-        }, step=self.total_terminals)
+            'goal': self.total_terminals,
+            'main_metrics/g_goal_steps': self.steps_per_goal,
+            'main_metrics/g_task_steps': self.steps_per_task,
+            'main_metrics/g_total_steps': self.steps_total,
+            'main_metrics/g_episode': self.episode,
+        }, step=self.episode)
 
         self.steps_per_goal = 0
 
     def on_new_task(self):
         if self.task > 0:
             self.logger.log({
+                'task': self.task,
                 'main_metrics/steps_per_task': self.steps_per_task,
-                'task': self.task
+                'main_metrics/t_total_steps': self.steps_total
             }, step=self.episode)
-
-            self.logger.log({
-                'main_metrics/total_steps_per_task': self.steps_total
-            }, step=self.task)
 
         self.steps_per_task = 0
         self.task += 1
         self.map_change_indicator = 1
         self.task_episode = 0
+
+    @staticmethod
+    def define_logging_metrics():
+        wandb.define_metric("task")
+        wandb.define_metric("main_metrics/steps_per_task", step_metric="task")
+        wandb.define_metric("main_metrics/t_*", step_metric="task")
+
+        wandb.define_metric("goal")
+        wandb.define_metric("main_metrics/g_*", step_metric="goal")
+        wandb.define_metric("dreaming/*", step_metric="goal")
 
 
 class Scenario:
