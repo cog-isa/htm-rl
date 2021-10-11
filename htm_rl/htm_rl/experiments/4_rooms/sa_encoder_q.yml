@@ -13,9 +13,12 @@ state_sp:
   expected_normal_overlap_frequency: .0004
 
 state_clusters:
-  similarity_threshold_delta: .02
-  similarity_threshold_min: .6
-  similarity_threshold_max: .8
+  similarity_threshold:
+    initial_value: .7
+    min_value: .6
+    max_value: .8
+    delta: .02
+    negative_delta_rate: 2.5
   max_n_clusters: 80
   max_tracked_bits_rate: 2.
 

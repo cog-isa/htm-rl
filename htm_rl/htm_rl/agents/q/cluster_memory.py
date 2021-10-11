@@ -1,5 +1,7 @@
 import numpy as np
 
+from htm_rl.agents.q.balancing_param import BalancingParam
+from htm_rl.agents.q.cluster_memory_stats import ClusterMemoryStats
 from htm_rl.common.sdr import SparseSdr, DenseSdr
 from htm_rl.common.utils import isnone
 
@@ -45,10 +47,9 @@ class ClusterMemory:
 
     sdr_size: int
     n_active_bits: int
-    similarity_threshold: float
-    similarity_threshold_delta: float
-    similarity_threshold_max: float
-    similarity_threshold_min: float
+    similarity_threshold: BalancingParam
+
+    stats: ClusterMemoryStats
 
     n_clusters: int
 
@@ -74,18 +75,12 @@ class ClusterMemory:
 
     def __init__(
             self, input_sdr_size: int, n_active_bits: int,
-            similarity_threshold_min: float, similarity_threshold_max: float,
+            similarity_threshold: dict,
             max_n_clusters: int, max_tracked_bits_rate: float = 3.,
-            similarity_threshold_delta: float = .0004
     ):
         self.sdr_size = input_sdr_size
         self.n_active_bits = n_active_bits
-        self.similarity_threshold_min = similarity_threshold_min
-        self.similarity_threshold_max = similarity_threshold_max
-        self.similarity_threshold = .5 * (
-                similarity_threshold_max + similarity_threshold_min
-        )
-        self.similarity_threshold_delta = similarity_threshold_delta
+        self.similarity_threshold = BalancingParam(**similarity_threshold)
 
         max_n_tracked_bits = int(n_active_bits * max_tracked_bits_rate)
         self.n_clusters = 0
@@ -97,6 +92,7 @@ class ClusterMemory:
         self._cluster_traces = np.zeros(max_n_clusters, dtype=np.float)
 
         self._cache_sdr = np.zeros(input_sdr_size, dtype=np.int)
+        self.stats = ClusterMemoryStats()
 
     @property
     def empty(self):
@@ -192,7 +188,16 @@ class ClusterMemory:
             similarity = self.similarity(sdr)
 
         ind = np.argmax(similarity)
-        similarity_threshold = isnone(similarity_threshold, self.similarity_threshold)
+        similarity_threshold = isnone(
+            similarity_threshold, self.similarity_threshold.value
+        )
+
+        # log stats
+        self.stats.on_match(
+            self.n_clusters, similarity[ind], similarity_threshold,
+            self._cluster_traces[ind]
+        )
+
         if similarity[ind] < similarity_threshold:
             return None, None, similarity
         return self.representatives[ind], ind, similarity
@@ -269,6 +274,10 @@ class ClusterMemory:
         self._cluster_sizes[i_cluster] = n
         self.n_clusters += 1
         self._update_cluster_traces(i_cluster)
+
+        # log stats
+        self.stats.on_added()
+
         return i_cluster
 
     def update(self, cluster: int, sdr: SparseSdr):
@@ -363,11 +372,11 @@ class ClusterMemory:
             Hence, after removal we have: a) i-th cluster removed, b) -1-th
             cluster moved to i-th position.
         """
-        #
-
         # cluster with the lowest trace
-        # noinspection PyTypeChecker
         i = np.argmin(self._cluster_traces)
+
+        removed_cluster = self.representatives[i].copy()
+        removed_cluster_trace = self._cluster_traces[i]
 
         # replace i-th with the last and pop last
         self._clusters[i] = self._clusters[-1]
@@ -383,6 +392,10 @@ class ClusterMemory:
         self._cluster_sizes[-1] = 0
         self._cluster_traces[-1] = 0
         self.n_clusters -= 1
+
+        # log stats
+        best_match_similarity = np.max(self.similarity(removed_cluster))
+        self.stats.on_removed(removed_cluster_trace, best_match_similarity)
 
         # noinspection PyTypeChecker
         return i
@@ -403,14 +416,6 @@ class ClusterMemory:
             # zeroes back to full zero
             self._cache_sdr[sdr] = 0
         return overlap
-
-    def change_threshold(self, delta=None):
-        min_th, max_th = self.similarity_threshold_min, self.similarity_threshold_max
-        delta = isnone(delta, self.similarity_threshold_delta)
-
-        new_th = self.similarity_threshold + delta
-        if min_th < new_th < max_th:
-            self.similarity_threshold = new_th
 
     def _update_cluster_traces(self, active_cluster: int):
         self._cluster_traces[:self.n_clusters] *= .99

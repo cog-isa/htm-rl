@@ -4,8 +4,10 @@ from typing import Optional
 import numpy as np
 from numpy.random import Generator
 
+from htm_rl.agents.dreamer.dreaming_stats import DreamingStats
 from htm_rl.agents.dreamer.falling_asleep import TdErrorBasedFallingAsleep, AnomalyBasedFallingAsleep
 from htm_rl.agents.dreamer.qvn_double import QValueNetworkDouble
+from htm_rl.agents.q.cluster_memory import ClusterMemory
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.common.sdr import SparseSdr
@@ -25,6 +27,8 @@ class DreamingDouble(QModelBasedAgent):
     anomaly_based_falling_asleep: Optional[AnomalyBasedFallingAsleep]
     prediction_depth: int
     n_prediction_rollouts: tuple[int, int]
+
+    stats: DreamingStats
 
     _starting_sa_sdr: Optional[SparseSdr]
     _starting_state: Optional[SparseSdr]
@@ -96,6 +100,11 @@ class DreamingDouble(QModelBasedAgent):
         self._step = 0
         self._episode = 0
 
+        if self._cluster_memory is not None:
+            self.stats = DreamingStats(self._cluster_memory.stats)
+        else:
+            self.stats = DreamingStats()
+
     def on_new_episode(self):
         self._episode += 1
         self.td_error_based_falling_asleep.boost_prob_alpha = exp_decay(
@@ -104,6 +113,29 @@ class DreamingDouble(QModelBasedAgent):
         self.E_traces.decay_trace_decay()
         self.exploration_eps = exp_decay(self.exploration_eps)
         self.softmax_temp = exp_decay(self.softmax_temp)
+
+        # ds = self.stats.dreaming_cluster_memory_stats
+        # ws = self.stats.wake_cluster_memory_stats
+        # print(
+        #     'roll dep', self.stats.rollouts, self.stats.avg_depth,
+        # )
+        # print(
+        #     'wake rate sim',
+        #     ws.matched + ws.mismatched, ws.matched,
+        #     round(ws.avg_match_similarity, 3), round(ws.avg_mismatch_similarity, 3),
+        #     ' | ',
+        #     ws.added, ws.removed,
+        #     ' | ',
+        #     round(ws.avg_removed_cluster_intra_similarity, 3),
+        #     round(ws.avg_removed_cluster_trace, 6)
+        # )
+        # print(
+        #     'dreaming rate sim',
+        #     ds.matched + ds.mismatched, ds.matched,
+        #     round(ds.avg_match_similarity, 3), round(ds.avg_mismatch_similarity, 3),
+        # )
+
+        self.stats.reset()
 
     def can_dream(self, reward):
         if not self.enabled:
@@ -132,26 +164,30 @@ class DreamingDouble(QModelBasedAgent):
 
         i_rollout = 0
         min_n_rollouts, max_n_rollouts = self.n_prediction_rollouts
-        sum_depth, depths = 0, []
+        sum_depth, sum_depth_smoothed, depths = 0, 0, []
 
         while i_rollout < min_n_rollouts or (
-                i_rollout < max_n_rollouts and sum_depth >= 2
+                i_rollout < max_n_rollouts
+                and sum_depth_smoothed / (i_rollout + 1e-5) >= 2.5
         ):
             self._on_new_rollout(i_rollout)
             state = starting_state
             depth = 0
-            for depth in range(self.prediction_depth):
+            while depth < self.prediction_depth:
                 next_state, a, anomaly = self._move_in_dream(state)
+                depth += 1
                 if len(next_state) < .6 * len(starting_state) or anomaly > .7:
                     break
                 state = next_state
 
             i_rollout += 1
-            sum_depth += depth ** .6
+            sum_depth += depth
+            sum_depth_smoothed += depth ** .6
             depths.append(depth)
 
         # if depths: print(depths)
         self._wake()
+        self.stats.on_dreamed(i_rollout, sum_depth)
 
     def _move_in_dream(self, state: SparseSdr):
         s = state
@@ -180,7 +216,7 @@ class DreamingDouble(QModelBasedAgent):
         # noinspection PyUnresolvedReferences
         if self.sa_encoder.state_clusters is not None:
             # noinspection PyUnresolvedReferences
-            s_next = self.sa_encoder.restore_s(s_next, .7)
+            s_next = self.sa_encoder.restore_s(s_next)
 
         anomaly = self.anomaly_model.state_anomaly(s_next, prev_action=action)
         return s_next, action, anomaly
@@ -190,6 +226,8 @@ class DreamingDouble(QModelBasedAgent):
         self._starting_state = starting_state.copy()
         self._starting_sa_sdr = starting_sa_sdr.copy()
         self._exploration_eps_backup = self.exploration_eps
+        if self._cluster_memory is not None:
+            self._cluster_memory.stats = self.stats.dreaming_cluster_memory_stats
 
     def _on_new_rollout(self, i_rollout):
         if i_rollout > 0:
@@ -209,6 +247,8 @@ class DreamingDouble(QModelBasedAgent):
 
     def _wake(self):
         self.exploration_eps = self._exploration_eps_backup
+        if self._cluster_memory is not None:
+            self._cluster_memory.stats = self.stats.wake_cluster_memory_stats
         self._restore_tm_checkpoint()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
@@ -279,6 +319,11 @@ class DreamingDouble(QModelBasedAgent):
             self.transition_model = pickle.loads(tm_checkpoint)
         else:
             self.transition_model.process(self._starting_state, learn=False)
+
+    @property
+    def _cluster_memory(self) -> ClusterMemory:
+        # noinspection PyUnresolvedReferences
+        return self.sa_encoder.state_clusters
 
     @property
     def name(self):

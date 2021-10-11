@@ -90,7 +90,9 @@ class SpSaEncoder(SaEncoder):
     def s_output_sdr_size(self):
         return self.state_sp.output_sdr_size
 
-    def restore_s(self, s: SparseSdr, restoration_threshold: float):
+    def restore_s(self, s: SparseSdr):
+        restoration_threshold = self.state_clusters.similarity_threshold.min_value
+
         # if s damaged too much, just don't try restoring
         if len(s) / self.state_sp.n_active_bits < restoration_threshold:
             return s
@@ -105,24 +107,18 @@ class SpSaEncoder(SaEncoder):
         return s
 
     def _cluster_s(self, s: SparseSdr, learn: bool) -> SparseSdr:
-        # nom = self.state_clusters.n_clusters
+        cluster, i_cluster, similarity = self.state_clusters.match(s)
+        self.state_clusters.similarity_threshold.balance(increase=cluster is not None)
+
         if learn:
-            i_cluster = self.state_clusters.activate(s)
+            i_cluster = self.state_clusters.activate(
+                s, similarity=similarity, matched_cluster=i_cluster
+            )
             cluster = self.state_clusters.representatives[i_cluster]
-        else:
-            cluster, _, _ = self.state_clusters.match(s)
 
         if cluster is not None:
             s = np.sort(cluster)
 
-        delta = self.state_clusters.similarity_threshold_delta
-        if cluster is None:
-            delta *= -1
-        self.state_clusters.change_threshold(delta)
-
-        # nom_ = self.state_clusters.n_clusters
-        # if nom_ > nom and nom_ % 10 == 0:
-        #     print(nom_)
         return s
 
 

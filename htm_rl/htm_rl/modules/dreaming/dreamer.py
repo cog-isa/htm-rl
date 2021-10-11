@@ -4,7 +4,9 @@ from typing import Optional
 import numpy as np
 from numpy.random import Generator
 
+from htm_rl.agents.dreamer.dreaming_stats import DreamingStats
 from htm_rl.agents.dreamer.falling_asleep import AnomalyBasedFallingAsleep
+from htm_rl.agents.q.cluster_memory import ClusterMemory
 from htm_rl.agents.q.input_changes_detector import InputChangesDetector
 from htm_rl.agents.qmb.anomaly_model import AnomalyModel
 from htm_rl.agents.qmb.reward_model import RewardModel
@@ -38,6 +40,8 @@ class Dreamer:
     prediction_depth: int
     # min, max number of rollouts
     n_prediction_rollouts: tuple[int, int]
+
+    stats: DreamingStats
 
     _prev_action: Optional[int]
     _starting_state: Optional[SparseSdr]
@@ -100,6 +104,8 @@ class Dreamer:
         self._rng = np.random.default_rng(seed)
         self._episode = 0
 
+        self.stats = DreamingStats(self._cluster_memory.stats)
+
     def on_wake_step(self, state: SparseSdr, reward: float, action: int):
         """
         Callback that should be called after each agent's step.
@@ -138,6 +144,7 @@ class Dreamer:
         # the first (s, a) [non-learnable] activation
         self.reward_model.decay_learning_factors()
         self.anomaly_model.decay_learning_factors()
+        self.stats.reset()
 
     def can_dream(self, reward: float) -> bool:
         """
@@ -173,18 +180,20 @@ class Dreamer:
 
         i_rollout = 0
         min_n_rollouts, max_n_rollouts = self.n_prediction_rollouts
-        sum_depth, depths = 0, []
+        sum_depth, sum_depth_smoothed, depths = 0, 0, []
 
         # loop over separate rollouts
         while i_rollout < min_n_rollouts or (
-                i_rollout < max_n_rollouts and sum_depth >= 2
+                i_rollout < max_n_rollouts
+                and sum_depth_smoothed / (i_rollout + 1e-5) >= 2.5
         ):
             self._on_new_rollout(i_rollout)
             state, s = starting_state, starting_s
             depth = 0
             # loop over one rollout's trajectory states
-            for depth in range(self.prediction_depth):
+            while depth < self.prediction_depth:
                 next_state, next_s, a, anomaly = self._move_in_dream(state, s)
+                depth += 1
 
                 if len(next_s) < .6 * len(self._starting_s) or anomaly > .7:
                     # predicted pattern is too vague -> lower than TM's threshold
@@ -193,11 +202,13 @@ class Dreamer:
                 state, s = next_state, next_s
 
             i_rollout += 1
-            sum_depth += depth ** .6
+            sum_depth += depth
+            sum_depth_smoothed += depth ** .6
             depths.append(depth)
 
         # if depths: print(depths)
         self._wake()
+        self.stats.on_dreamed(i_rollout, sum_depth)
 
     def _move_in_dream(self, state: SparseSdr, s: SparseSdr):
         reward = self.reward_model.state_reward(s)
@@ -228,9 +239,9 @@ class Dreamer:
         # noinspection PyUnresolvedReferences
         if self.sa_encoder.state_clusters is not None:
             # noinspection PyUnresolvedReferences
-            s_next = self.sa_encoder.restore_s(s_next, restoration_threshold=.7)
+            s_next = self.sa_encoder.restore_s(s_next)
 
-        state_next = self.sa_encoder.decode_s_to_state(s_next, decoding_threshold=.7)
+        state_next = self.sa_encoder.decode_s_to_state(s_next)
         anomaly = self.anomaly_model.state_anomaly(s_next, prev_action=action)
         return state_next, s_next, action, anomaly
 
@@ -238,12 +249,14 @@ class Dreamer:
         self._save_tm_checkpoint()
         self._starting_state = starting_state
         self._starting_s = starting_s
+        self._cluster_memory.stats = self.stats.dreaming_cluster_memory_stats
 
     def _on_new_rollout(self, i_rollout):
         if i_rollout > 0:
             self._restore_tm_checkpoint()
 
     def _wake(self):
+        self._cluster_memory.stats = self.stats.wake_cluster_memory_stats
         self._restore_tm_checkpoint()
 
     def _anomaly_based_dreaming(self, anomaly):
@@ -298,6 +311,10 @@ class Dreamer:
         # activate (s,a) w/o learning
         s_a = self.sa_encoder.concat_s_action(s, action, learn=False)
         self.transition_model.process(s_a, learn=False)
+
+    @property
+    def _cluster_memory(self) -> ClusterMemory:
+        return self.sa_encoder.state_clusters
 
     @property
     def name(self):

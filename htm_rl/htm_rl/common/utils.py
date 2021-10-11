@@ -109,3 +109,9 @@ def softmax(x, temp=1.):
         temp = _softmax_temperature_limit
     e_x = np.exp((x - np.max(x, axis=-1)) / temp)
     return e_x / e_x.sum(axis=-1)
+
+
+def safe_divide(x, y):
+    if y == 0:
+        return y
+    return x / y

@@ -58,9 +58,10 @@ class DreamerSaEncoder(SpSaEncoder):
         s_a = self.concat_s_a(s, a, learn=learn)
         return s_a
 
-    def decode_s_to_state(self, s: SparseSdr, decoding_threshold: float) -> SparseSdr:
+    def decode_s_to_state(self, s: SparseSdr) -> SparseSdr:
         cluster, i_cluster, similarity = self.state_clusters.match(
-            s, similarity_threshold=decoding_threshold
+            s,
+            similarity_threshold=self.state_clusters.similarity_threshold.min_value
         )
         if cluster is None:
             return np.empty(0)
@@ -72,6 +73,7 @@ class DreamerSaEncoder(SpSaEncoder):
 
     def _cluster_s(self, s: SparseSdr, learn: bool) -> SparseSdr:
         cluster, i_cluster, similarity = self.state_clusters.match(s)
+        self.state_clusters.similarity_threshold.balance(increase=cluster is not None)
 
         if learn:
             if cluster is None and self.state_clusters.full:
@@ -88,11 +90,6 @@ class DreamerSaEncoder(SpSaEncoder):
 
         if cluster is not None:
             s = np.sort(cluster)
-
-        delta = self.state_clusters.similarity_threshold_delta
-        if cluster is None:
-            delta *= -1
-        self.state_clusters.change_threshold(delta)
 
         return s, i_cluster
 
