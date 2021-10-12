@@ -989,6 +989,7 @@ class HTMAgentRunner:
         self.logger.log({
             'task': self.task,
             'main_metrics/steps_per_task': self.steps_per_task,
+            'main_metrics/t_task_steps': self.steps_per_task,
             'main_metrics/t_total_steps': self.steps_total
         }, step=self.episode)
 
@@ -1071,9 +1072,6 @@ if __name__ == '__main__':
     else:
         logger = None
 
-    if logger is not None:
-        logger = logger.init(project=config['project'], entity=config['entity'], config=config)
-
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
 
@@ -1087,6 +1085,9 @@ if __name__ == '__main__':
                 k = int(k)
             c = c[k]
         c[tokens[-1]] = value
+
+    if logger is not None:
+        logger = logger.init(project=config['project'], entity=config['entity'], config=config)
 
     # with open('../../experiments/htm_agent/htm_config_unpacked.yaml', 'w') as file:
     #     yaml.dump(configure(config), file, Dumper=yaml.Dumper)
