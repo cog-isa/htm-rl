@@ -114,26 +114,7 @@ class DreamingDouble(QModelBasedAgent):
         self.exploration_eps = exp_decay(self.exploration_eps)
         self.softmax_temp = exp_decay(self.softmax_temp)
 
-        # ds = self.stats.dreaming_cluster_memory_stats
-        # ws = self.stats.wake_cluster_memory_stats
-        # print(
-        #     'roll dep', self.stats.rollouts, self.stats.avg_depth,
-        # )
-        # print(
-        #     'wake rate sim',
-        #     ws.matched + ws.mismatched, ws.matched,
-        #     round(ws.avg_match_similarity, 3), round(ws.avg_mismatch_similarity, 3),
-        #     ' | ',
-        #     ws.added, ws.removed,
-        #     ' | ',
-        #     round(ws.avg_removed_cluster_intra_similarity, 3),
-        #     round(ws.avg_removed_cluster_trace, 6)
-        # )
-        # print(
-        #     'dreaming rate sim',
-        #     ds.matched + ds.mismatched, ds.matched,
-        #     round(ds.avg_match_similarity, 3), round(ds.avg_mismatch_similarity, 3),
-        # )
+        # self._print_dreaming_stats()
 
     def on_new_goal(self):
         self.stats.reset()
@@ -328,3 +309,25 @@ class DreamingDouble(QModelBasedAgent):
     @property
     def name(self):
         return 'dreaming_double'
+
+    def _print_dreaming_stats(self):
+        ds = self.stats.dreaming_cluster_memory_stats
+        ws = self.stats.wake_cluster_memory_stats
+        print(
+            'roll dep', self.stats.rollouts, self.stats.avg_depth,
+        )
+        print(
+            'wake rate sim',
+            ws.matched + ws.mismatched, ws.matched,
+            round(ws.avg_match_similarity, 3), round(ws.avg_mismatch_similarity, 3),
+            ' | ',
+            ws.added, ws.removed,
+            ' | ',
+            round(ws.avg_removed_cluster_intra_similarity, 3),
+            round(ws.avg_removed_cluster_trace, 6)
+        )
+        print(
+            'dreaming rate sim',
+            ds.matched + ds.mismatched, ds.matched,
+            round(ds.avg_match_similarity, 3), round(ds.avg_mismatch_similarity, 3),
+        )

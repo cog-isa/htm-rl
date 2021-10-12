@@ -34,7 +34,7 @@ class DreamerAgent(QModelBasedAgent):
         super(DreamerAgent, self).on_new_episode()
         if self.train:
             self.dreamer.on_new_episode()
-            self.dreamer.on_new_goal()
+            # self.dreamer.on_new_goal()
 
     def act(self, reward: float, state: SparseSdr, first: bool):
         if first and self._step > 0:
