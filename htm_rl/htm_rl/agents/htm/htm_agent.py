@@ -330,7 +330,7 @@ class HTMAgentRunner:
         if self.logger is not None:
             self.define_logging_metrics()
 
-        while self.episode < n_episodes and (not self.early_stop):
+        while self.episode < n_episodes:
             if self.scenario is not None:
                 self.scenario.check_conditions()
 
@@ -556,6 +556,8 @@ class HTMAgentRunner:
                 self.current_action = self.agent.make_action(obs)
                 if self.task_complete:
                     self.log_task_complete()
+                if self.early_stop:
+                    break
 
                 self.episode += 1
                 self.steps = 0
