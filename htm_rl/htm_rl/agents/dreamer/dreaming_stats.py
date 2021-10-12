@@ -3,6 +3,7 @@ from htm_rl.common.utils import safe_divide
 
 
 class DreamingStats:
+    times: int
     rollouts: int
     sum_depth: int
 
@@ -16,6 +17,7 @@ class DreamingStats:
         self.reset()
 
     def reset(self):
+        self.times = 0
         self.rollouts = 0
         self.sum_depth = 0
         if self.wake_cluster_memory_stats is not None:
@@ -23,6 +25,7 @@ class DreamingStats:
             self.dreaming_cluster_memory_stats.reset()
 
     def on_dreamed(self, rollouts: int, sum_depth: int):
+        self.times += 1
         self.rollouts += rollouts
         self.sum_depth += sum_depth
 

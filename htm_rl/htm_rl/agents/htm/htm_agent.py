@@ -10,6 +10,7 @@ import wandb
 
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.muscles import Muscles
+from htm_rl.common.utils import safe_divide
 from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
 from htm_rl.modules.dreaming.dreamer import Dreamer
 from htm_rl.modules.empowerment import Empowerment
@@ -262,7 +263,8 @@ class HTMAgentRunner:
         self.current_action = None
         self.early_stop = False
         self.map_change_indicator = 0
-        self.task_episode = 0
+        self.goal_reached = True
+        self.task_complete = True
 
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
@@ -307,6 +309,8 @@ class HTMAgentRunner:
         self.task = 0
         self.animation = False
         self.agent_pos = list()
+        self.goal_reached = True
+        self.task_complete = True
 
         if self.logger is not None:
             self.define_logging_metrics()
@@ -321,6 +325,12 @@ class HTMAgentRunner:
             reward, obs, is_first = self.environment.observe()
 
             if is_first:
+                self.steps_per_goal += self.steps
+                self.steps_per_task += self.steps
+                self.steps_total += self.steps
+                if self.goal_reached:
+                    self.log_goal_complete()
+
                 # ///logging///
                 if self.animation:
                     # log all saved frames for this episode
@@ -518,18 +528,22 @@ class HTMAgentRunner:
 
                 # Ad hoc terminal state
                 self.current_action = self.agent.make_action(obs)
+                if self.task_complete:
+                    self.log_task_complete()
+
+                self.episode += 1
+                self.steps = 0
+                self.total_reward = 0
+
+                if self.goal_reached:
+                    self.on_new_goal()
+                if self.task_complete:
+                    self.on_new_task()
 
                 self.agent.reset()
                 if self.agent.use_dreaming:
                     self.agent.dreamer.on_new_episode()
 
-                self.episode += 1
-                self.task_episode += 1
-                self.steps_per_goal += self.steps
-                self.steps_per_task += self.steps
-                self.steps_total += self.steps
-                self.steps = 0
-                self.total_reward = 0
             else:
                 self.steps += 1
                 self.total_reward += reward
@@ -558,7 +572,16 @@ class HTMAgentRunner:
 
             # ///logging///
             if self.environment.callmethod('is_terminal') and (self.environment.env.items_collected > 0):
-                self.on_terminal()
+                self.goal_reached = True
+                pos = get_unshifted_pos(
+                    self.environment.env.agent.position,
+                    self.environment.env.renderer.shape.top_left_point
+                )
+                if pos in self.terminal_pos_stat:
+                    self.terminal_pos_stat[pos] += 1
+                else:
+                    self.terminal_pos_stat[pos] = 1
+                self.last_terminal_stat = self.terminal_pos_stat[pos]
             # \\\logging\\\
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
@@ -840,7 +863,8 @@ class HTMAgentRunner:
         self.environment.callmethod('reset')
         if self.logger is not None:
             self.draw_map(self.logger)
-            self.on_new_task()
+
+        self.task_complete = True
 
     def set_pos_in_order(self, agent_positions, food_positions):
         if self.task < len(agent_positions):
@@ -853,6 +877,7 @@ class HTMAgentRunner:
         if self.logger is not None:
             if self.task < len(agent_positions):
                 self.draw_map(self.logger)
+        self.task_complete = True
 
     def level_up(self):
         self.level += 1
@@ -876,7 +901,7 @@ class HTMAgentRunner:
         cl_dreaming_stats = dreaming_stats.dreaming_cluster_memory_stats
         stats_to_log = {
             'rollouts': dreaming_stats.rollouts,
-            'avg_dreaming_rate': dreaming_stats.rollouts / self.steps_per_goal,
+            'avg_dreaming_rate': safe_divide(dreaming_stats.times, self.steps_per_goal),
             'avg_depth': dreaming_stats.avg_depth,
             'cl_wake_match_rate': cl_wake_stats.avg_match_rate,
             'cl_wake_avg_match_similarity': cl_wake_stats.avg_match_similarity,
@@ -896,21 +921,7 @@ class HTMAgentRunner:
 
         self.agent.dreamer.on_new_goal()
 
-    def on_terminal(self):
-        pos = get_unshifted_pos(
-            self.environment.env.agent.position,
-            self.environment.env.renderer.shape.top_left_point
-        )
-        if pos in self.terminal_pos_stat:
-            self.terminal_pos_stat[pos] += 1
-        else:
-            self.terminal_pos_stat[pos] = 1
-        self.last_terminal_stat = self.terminal_pos_stat[pos]
-        self.total_terminals += 1
-
-        if self.agent.use_dreaming:
-            self.log_dreaming_stats()
-
+    def log_goal_complete(self):
         self.logger.log({
             'goal': self.total_terminals,
             'main_metrics/g_goal_steps': self.steps_per_goal,
@@ -919,20 +930,26 @@ class HTMAgentRunner:
             'main_metrics/g_episode': self.episode,
         }, step=self.episode)
 
+        if self.agent.use_dreaming:
+            self.log_dreaming_stats()
+
+    def on_new_goal(self):
+        self.goal_reached = False
+        self.total_terminals += 1
         self.steps_per_goal = 0
 
-    def on_new_task(self):
-        if self.task > 0:
-            self.logger.log({
-                'task': self.task,
-                'main_metrics/steps_per_task': self.steps_per_task,
-                'main_metrics/t_total_steps': self.steps_total
-            }, step=self.episode)
+    def log_task_complete(self):
+        self.logger.log({
+            'task': self.task,
+            'main_metrics/steps_per_task': self.steps_per_task,
+            'main_metrics/t_total_steps': self.steps_total
+        }, step=self.episode)
 
+    def on_new_task(self):
+        self.task_complete = False
         self.steps_per_task = 0
         self.task += 1
         self.map_change_indicator = 1
-        self.task_episode = 0
 
     @staticmethod
     def define_logging_metrics():

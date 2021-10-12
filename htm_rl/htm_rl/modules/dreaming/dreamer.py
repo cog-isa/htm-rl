@@ -13,7 +13,7 @@ from htm_rl.agents.qmb.reward_model import RewardModel
 from htm_rl.agents.qmb.transition_model import TransitionModel
 from htm_rl.agents.qmb.transition_models import make_transition_model
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import isnone
+from htm_rl.common.utils import isnone, safe_divide
 from htm_rl.modules.dreaming.sa_encoder import DreamerSaEncoder
 
 
@@ -186,8 +186,7 @@ class Dreamer:
 
         # loop over separate rollouts
         while i_rollout < min_n_rollouts or (
-                i_rollout < max_n_rollouts
-                and sum_depth_smoothed / (i_rollout + 1e-5) >= 2.5
+                i_rollout < max_n_rollouts and safe_divide(sum_depth_smoothed, i_rollout) >= 2.5
         ):
             self._on_new_rollout(i_rollout)
             state, s = starting_state, starting_s

@@ -11,7 +11,7 @@ from htm_rl.agents.q.cluster_memory import ClusterMemory
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
 from htm_rl.agents.qmb.agent import QModelBasedAgent
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, DecayingValue
+from htm_rl.common.utils import multiply_decaying_value, exp_decay, isnone, DecayingValue, safe_divide
 
 
 class DreamingDouble(QModelBasedAgent):
@@ -168,8 +168,7 @@ class DreamingDouble(QModelBasedAgent):
         sum_depth, sum_depth_smoothed, depths = 0, 0, []
 
         while i_rollout < min_n_rollouts or (
-                i_rollout < max_n_rollouts
-                and sum_depth_smoothed / (i_rollout + 1e-5) >= 2.5
+                i_rollout < max_n_rollouts and safe_divide(sum_depth_smoothed, i_rollout) >= 2.5
         ):
             self._on_new_rollout(i_rollout)
             state = starting_state
