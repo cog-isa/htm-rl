@@ -54,9 +54,12 @@ class EmpowermentVis:
             input_state.sparse = observation
             self.visual_block_sp.compute(input_state, False, output_state)
 
-            learned_emp[unshifted_pos] = self.empowerment.eval_state(output_state.sparse,
-                                                                     self.horizon,
-                                                                     use_memory=True)[0]
+            if self.empowerment.filename is None:
+                learned_emp[unshifted_pos] = self.empowerment.eval_state(output_state.sparse,
+                                                                         self.horizon,
+                                                                         use_memory=True)[0]
+            else:
+                learned_emp[unshifted_pos] = self.empowerment.eval_from_file(pos)
 
         figure = plt.figure(figsize=style['figure_size'])
         sns.heatmap(real_emp, annot=True, fmt=style['annotation_format'], cbar=False,
@@ -164,6 +167,7 @@ class OptionVis:
                 plt.imsave(os.path.join(path_to_store_logs,
                                         f'option_{logger.id}_{episode}_{key}.png'), image / max_n_uses, vmax=1,
                            cmap='inferno')
+                plt.close()
                 logger.log({f'options/option_{key}': wandb.Image(os.path.join(path_to_store_logs,
                                                                   f'option_{logger.id}_{episode}_{key}.png'))},
                            step=episode)
@@ -262,14 +266,14 @@ def draw_dual_values(env_shape: tuple[int, int], env: Environment, agent, path_e
 
     plt.figure(figsize=style['figure_size'])
     ax = sns.heatmap(values_ext, annot=True, fmt=style['annotation_format'], cbar=False, linewidths=style['linewidth'],
-                     annot_kws={"size": style['font_size']})
+                     annot_kws={"size": style['font_size']}, cmap='RdYlBu_r')
     figure = ax.get_figure()
     figure.savefig(path_ext)
     plt.close(figure)
 
     plt.figure(figsize=style['figure_size'])
     ax = sns.heatmap(values_int, annot=True, fmt=style['annotation_format'], cbar=False, linewidths=style['linewidth'],
-                     annot_kws={"size": style['font_size']})
+                     annot_kws={"size": style['font_size']}, cmap='RdYlBu_r')
     figure = ax.get_figure()
     figure.savefig(path_int)
     plt.close(figure)

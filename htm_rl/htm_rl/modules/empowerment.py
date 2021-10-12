@@ -6,6 +6,7 @@ from htm.bindings.algorithms import TemporalMemory
 from htm.bindings.algorithms import SpatialPooler
 from itertools import product
 from copy import deepcopy
+import json
 
 EPS = 1e-12
 
@@ -173,41 +174,50 @@ class Empowerment:
                  sp_config=None,
                  memory=False,
                  similarity_threshold=0.6,
-                 evaluate=True):
-        self.evaluate = evaluate
-        if evaluate:
-            self.anomalies = []
-            self.IoU = []
-        self.sdr_0 = SDR(encode_size)
-        self.sdr_1 = SDR(encode_size)
-        self.sparsity = sparsity
+                 evaluate=True,
+                 filename=None):
+        self.filename = filename
+        if self.filename is None:
+            self.evaluate = evaluate
+            if evaluate:
+                self.anomalies = []
+                self.IoU = []
+            self.sdr_0 = SDR(encode_size)
+            self.sdr_1 = SDR(encode_size)
+            self.sparsity = sparsity
 
-        if sp_config is not None:
-            self.sp = SpatialPooler(inputDimensions=[encode_size],
-                                    seed=seed,
-                                    localAreaDensity=sparsity,
-                                    **sp_config,
-                                    )
-            self.tm = TemporalMemory(
-                columnDimensions=self.sp.getColumnDimensions(),
-                seed=seed,
-                **tm_config,
-            )
-            self.sdr_sp = SDR(self.sp.getColumnDimensions())
-            self.size = self.sp.getColumnDimensions()[0]
-        else:
-            self.sp = None
-            self.tm = TemporalMemory(
-                columnDimensions=[encode_size],
-                seed=seed,
-                **tm_config,
-            )
-            self.size = self.tm.getColumnDimensions()[0]
+            if sp_config is not None:
+                self.sp = SpatialPooler(inputDimensions=[encode_size],
+                                        seed=seed,
+                                        localAreaDensity=sparsity,
+                                        **sp_config,
+                                        )
+                self.tm = TemporalMemory(
+                    columnDimensions=self.sp.getColumnDimensions(),
+                    seed=seed,
+                    **tm_config,
+                )
+                self.sdr_sp = SDR(self.sp.getColumnDimensions())
+                self.size = self.sp.getColumnDimensions()[0]
+            else:
+                self.sp = None
+                self.tm = TemporalMemory(
+                    columnDimensions=[encode_size],
+                    seed=seed,
+                    **tm_config,
+                )
+                self.size = self.tm.getColumnDimensions()[0]
 
-        if memory:
-            self.memory = Memory(self.tm.getColumnDimensions()[0], threshold=similarity_threshold)
+            if memory:
+                self.memory = Memory(self.tm.getColumnDimensions()[0], threshold=similarity_threshold)
+            else:
+                self.memory = None
         else:
-            self.memory = None
+            with open(self.filename) as json_file:
+                self.empowerment_data = json.load(json_file)
+
+    def eval_from_file(self, position):
+        return self.empowerment_data[str(position[0])][str(position[1])]
 
     def eval_state(self, state, horizon, use_segments=False, use_memory=False):
         """This function evaluates empowerment for given state.

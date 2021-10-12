@@ -93,6 +93,7 @@ class HTMAgent:
         self.sp_input = SDR(self.hierarchy.output_block.get_in_sizes()[-1])
         self.previous_obs = np.empty(0)
         self.backup = None
+        self.real_pos = None
 
     def make_action(self, state_pattern):
         self.state_pattern.sparse = state_pattern
@@ -114,17 +115,20 @@ class HTMAgent:
         action = self.action.get_action(action_pattern)
 
         # train empowerment tm
-        if self.use_intrinsic_reward:
-            current_obs = self.hierarchy.visual_block.get_output('basal')
-            if (self.previous_obs.size > 0) and (current_obs.size > 0):
-                self.empowerment.learn(self.previous_obs, current_obs)
-            self.previous_obs = current_obs
+        # if self.use_intrinsic_reward:
+        #     current_obs = self.hierarchy.visual_block.get_output('basal')
+        #     if (self.previous_obs.size > 0) and (current_obs.size > 0) and self.empowerment.filename is None:
+        #         self.empowerment.learn(self.previous_obs, current_obs)
+        #     self.previous_obs = current_obs
         return action
 
     def get_intrinsic_reward(self):
-        state = self.hierarchy.visual_block.get_output('basal')
-        reward = self.empowerment.eval_state(state, self.empowerment_horizon,
+        if self.empowerment.filename is None:
+            state = self.hierarchy.visual_block.get_output('basal')
+            reward = self.empowerment.eval_state(state, self.empowerment_horizon,
                                              use_memory=True)[0]
+        else:
+            reward = self.empowerment.eval_from_file(self.real_pos)
         return reward
 
     def reinforce(self, reward: float):
@@ -149,6 +153,7 @@ class HTMAgent:
         self.action_pattern = np.empty(0)
         self.state_pattern.sparse = np.empty(0)
         self.previous_obs = np.empty(0)
+        self.real_pos = None
 
     def generate_patterns(self):
         """
@@ -255,6 +260,8 @@ class HTMAgentRunner:
         self.steps_per_goal = 0
         self.steps_per_task = 0
         self.steps_total = 0
+        self.steps_cumulative = 0
+        self.all_steps = 0
         self.episode = 0
         self.option_actions = list()
         self.option_predicted_actions = list()
@@ -312,6 +319,14 @@ class HTMAgentRunner:
         self.goal_reached = True
         self.task_complete = True
 
+        #logging priorities
+        if self.agent.use_intrinsic_reward:
+            max_reward_log = 0
+            mean_reward_log = 0
+            min_reward_log = 0
+            priority_ext_log = 0
+            intrinsic_off_log = 0
+
         if self.logger is not None:
             self.define_logging_metrics()
 
@@ -332,6 +347,7 @@ class HTMAgentRunner:
                     self.log_goal_complete()
 
                 # ///logging///
+                self.all_steps += self.steps
                 if self.animation:
                     # log all saved frames for this episode
                     self.animation = False
@@ -355,11 +371,21 @@ class HTMAgentRunner:
                         {'main_metrics/steps': self.steps, 'reward': self.total_reward, 'episode': self.episode,
                          'main_metrics/level': self.level,
                          'main_metrics/total_terminals': self.total_terminals,
-                         'main_metrics/steps_cumulative': self.steps_per_task,
+                         'main_metrics/steps_cumulative': self.steps_cumulative,
                          'main_metrics/total_steps': self.steps_total,
                          'main_metrics/map_change_indicator': self.map_change_indicator,
+                         'main_metrics/all_steps': self.all_steps,
                          },
                         step=self.episode)
+                    if self.agent.use_intrinsic_reward:
+                        self.logger.log(
+                            {'priority/mean_reward': mean_reward_log/self.steps,
+                             'priority/max_reward': max_reward_log/self.steps,
+                             'priority/min_reward': min_reward_log/self.steps,
+                             'priority/priority_ext': priority_ext_log/self.steps,
+                             'priority/intrinsic_off': intrinsic_off_log/self.steps},
+                            step=self.episode
+                        )
                     self.map_change_indicator = 0
                     if log_segments:
                         self.logger.log(
@@ -540,13 +566,29 @@ class HTMAgentRunner:
                 if self.task_complete:
                     self.on_new_task()
 
+                self.steps_cumulative += self.steps
+                self.agent.real_pos = self.environment.env.agent.position
+                if self.agent.use_intrinsic_reward:
+                    max_reward_log = 0
+                    mean_reward_log = 0
+                    min_reward_log = 0
+                    priority_ext_log = 0
+                    intrinsic_off_log = 0
+
                 self.agent.reset()
                 if self.agent.use_dreaming:
                     self.agent.dreamer.on_new_episode()
-
             else:
                 self.steps += 1
                 self.total_reward += reward
+                # logging
+                if self.agent.use_intrinsic_reward:
+                    mean_reward_log += self.agent.hierarchy.output_block.bg.mean_reward
+                    max_reward_log += self.agent.hierarchy.output_block.bg.max_reward
+                    min_reward_log += self.agent.hierarchy.output_block.bg.min_reward
+                    priority_ext_log += self.agent.hierarchy.output_block.bg.priority_ext
+                    intrinsic_off_log += self.agent.hierarchy.output_block.bg.intrinsic_off
+                # logging
 
             if self.agent.use_dreaming and self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
@@ -569,6 +611,7 @@ class HTMAgentRunner:
             # \\\logging\\\
 
             self.environment.act(self.current_action)
+            self.agent.real_pos = self.environment.env.agent.position
 
             # ///logging///
             if self.environment.callmethod('is_terminal') and (self.environment.env.items_collected > 0):
@@ -653,6 +696,7 @@ class HTMAgentRunner:
 
         plt.imsave(os.path.join(self.path_to_store_logs,
                                 f'{logger.id}_episode_{episode}_step_{steps}.png'), pic.astype('uint8'))
+        plt.close()
 
     def update_option_stats(self, is_terminal):
         option_block = self.agent.hierarchy.blocks[5]
@@ -891,6 +935,7 @@ class HTMAgentRunner:
             map_image = map_image[0]
         plt.imsave(os.path.join(self.path_to_store_logs,
                                 f'map_{config["environment"]["seed"]}_{self.episode}.png'), map_image.astype('uint8'))
+        plt.close()
         logger.log({'maps/map': wandb.Image(os.path.join(self.path_to_store_logs,
                                                           f'map_{config["environment"]["seed"]}_{self.episode}.png'))},
                    step=self.episode)
@@ -1015,7 +1060,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_rooms_9x9_swap_options'
+        default_config_name = 'four_rooms_9x9_swap_empowered_dreaming'
     with open(f'../../experiments/htm_agent/configs/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
@@ -1047,7 +1092,7 @@ if __name__ == '__main__':
     runner = HTMAgentRunner(configure(config), logger=logger)
     runner.agent.train_patterns()
 
-    #if logger is not None:
-        #runner.draw_map(logger)
+    # if logger is not None:
+    #     runner.draw_map(logger)
 
     runner.run_episodes(**config['run_options'])

@@ -2,9 +2,9 @@ seed: &seed 847582
 levels: 2
 agent: hima
 project: four_rooms_swap_options
-entity: hauska  # don't forget to change if you use logging
+entity: you  # don't forget to change if you use logging
 
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap_hard.yaml'
+scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
 
 vis_options:
   size: 21
@@ -181,7 +181,7 @@ blocks:
       alpha_int: 0.01
       beta_int: 0.01
       off_policy: true
-      softmax_beta: 1.2
+      softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
       modulate_tm_lr: true
@@ -210,7 +210,7 @@ blocks:
       alpha: 0.1
       beta: 0.1
       off_policy: true
-      softmax_beta: 1.0
+      softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
       level: 2
@@ -348,7 +348,7 @@ temporal_memory_default:
   connected_threshold_inhib: 0.5
   permanence_increment_inhib: 0.1
   permanence_decrement_inhib: 0.01
-  predicted_segment_decrement_inhib: 0.0001
+  predicted_segment_decrement_inhib: 0.001
   enable_pruning_basal: False
   enable_pruning_apical: False
   enable_pruning_exec: False
