@@ -29,12 +29,12 @@ class TrajectoryTracker(Debugger):
     def on_act(self, agent, act, *args, **kwargs):
         action = act(*args, **kwargs)
         if action is not None:
-            # if not agent.train:
-            #     from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
-            #     print(self.agent_state_provider.position, DIRECTIONS_ORDER[action])
-            if self.heatmap.mask[self.agent_state_provider.position]:
-                self.heatmap[self.agent_state_provider.position] = 0
-            self.heatmap[self.agent_state_provider.position] += 1
+            position = self.agent_state_provider.position
+            # from htm_rl.envs.biogwlab.move_dynamics import DIRECTIONS_ORDER
+            # print(position, DIRECTIONS_ORDER[action])
+            if self.heatmap.mask[position]:
+                self.heatmap[position] = 0
+            self.heatmap[position] += 1
         # else:
         #     print('===================')
         return action

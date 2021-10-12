@@ -3,8 +3,10 @@ from typing import Optional
 import numpy as np
 
 from htm_rl.agents.rnd.debug.debugger import Debugger
-from htm_rl.common.utils import ensure_list
+from htm_rl.common.debug import inject_debug_tools
+from htm_rl.common.utils import ensure_list, isnone
 from htm_rl.envs.biogwlab.environment import Environment
+from htm_rl.envs.biogwlab.modules.regenerator import Regenerator
 from htm_rl.scenarios.debug_output import ImageOutput
 from htm_rl.scenarios.standard.scenario import Scenario
 
@@ -12,15 +14,18 @@ from htm_rl.scenarios.standard.scenario import Scenario
 class EnvMapProvider(Debugger):
     env: Environment
 
+    _regenerator: Optional[Regenerator]
     _maps: Optional[list[np.ndarray]]
     _titles: list[str]
     name_str: str
     with_outer_walls: bool
+    _last_seeds_tuple: tuple[int]
 
     def __init__(self, scenario: Scenario, with_outer_walls=True):
         super().__init__(scenario)
 
         self._maps = None
+        self._regenerator = None
         config = self.scenario.config
         self.name_str = f'map_{config["env"]}_{config["env_seed"]}'
         self._titles = [
@@ -31,11 +36,20 @@ class EnvMapProvider(Debugger):
 
     @property
     def maps(self) -> list[np.ndarray]:
-        if self._maps is None:
+        if self._regenerator is None:
+            self._regenerator = self.env.get_module('regenerate')
+
+        current_seeds_tuple = tuple(self._regenerator.seeds.values())
+        maps = self._maps
+
+        if self._maps is None or self._last_seeds_tuple != current_seeds_tuple:
             self._maps = ensure_list(self.env.render_rgb(
                 show_outer_walls=self.with_outer_walls
             ))
-        return self._maps
+            self._last_seeds_tuple = current_seeds_tuple
+
+        maps = isnone(maps, self._maps)
+        return maps
 
     @property
     def titles(self):

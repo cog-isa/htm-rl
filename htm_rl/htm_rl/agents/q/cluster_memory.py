@@ -44,6 +44,7 @@ class ClusterMemory:
     changes the order of clusters, but you can track down this change if needed.
     """
     density_decay: float = .9
+    cluster_trace_decay: float = .999
 
     sdr_size: int
     n_active_bits: int
@@ -418,5 +419,5 @@ class ClusterMemory:
         return overlap
 
     def _update_cluster_traces(self, active_cluster: int):
-        self._cluster_traces[:self.n_clusters] *= .99
+        self._cluster_traces[:self.n_clusters] *= self.cluster_trace_decay
         self._cluster_traces[active_cluster] += 1.

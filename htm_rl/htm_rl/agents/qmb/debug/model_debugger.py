@@ -46,4 +46,7 @@ class ModelDebugger(Debugger):
             output = self.output_renderer.flush(output_filename)
             plot_grid_images(show=False, cols_per_row=3, **output)
 
+        if not self.agent.train:
+            self.trajectory_tracker.reset()
+
         func(*args, **kwargs)
