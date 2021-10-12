@@ -343,7 +343,7 @@ class HTMAgentRunner:
                 self.steps_per_goal += self.steps
                 self.steps_per_task += self.steps
                 self.steps_total += self.steps
-                if self.goal_reached:
+                if self.logger is not None and self.goal_reached:
                     self.log_goal_complete()
 
                 # ///logging///
@@ -554,19 +554,10 @@ class HTMAgentRunner:
 
                 # Ad hoc terminal state
                 self.current_action = self.agent.make_action(obs)
-                if self.task_complete:
+                if self.logger is not None and self.task_complete:
                     self.log_task_complete()
                 if self.early_stop:
                     break
-
-                self.episode += 1
-                self.steps = 0
-                self.total_reward = 0
-
-                if self.goal_reached:
-                    self.on_new_goal()
-                if self.task_complete:
-                    self.on_new_task()
 
                 self.steps_cumulative += self.steps
                 self.agent.real_pos = self.environment.env.agent.position
@@ -576,6 +567,15 @@ class HTMAgentRunner:
                     min_reward_log = 0
                     priority_ext_log = 0
                     intrinsic_off_log = 0
+
+                self.episode += 1
+                self.steps = 0
+                self.total_reward = 0
+
+                if self.goal_reached:
+                    self.on_new_goal()
+                if self.task_complete:
+                    self.on_new_task()
 
                 self.agent.reset()
                 if self.agent.use_dreaming:
@@ -1078,13 +1078,13 @@ if __name__ == '__main__':
         value = ast.literal_eval(value)
 
         key = key.lstrip('-')
+        if key.endswith('.'):
+            # a trick that allow distinguishing sweep params from config params
+            # by adding a suffix `.` to sweep param - now we should ignore it
+            key = key[:-1]
         tokens = key.split('.')
         c = config
         for k in tokens[:-1]:
-            if not k:
-                # a trick that allow distinguish sweep params from config params
-                # by adding a prefix `.` to sweep param - it can be safely ignored
-                continue
             if 0 in c:
                 k = int(k)
             c = c[k]
