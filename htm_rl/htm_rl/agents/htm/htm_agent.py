@@ -1081,6 +1081,10 @@ if __name__ == '__main__':
         tokens = key.split('.')
         c = config
         for k in tokens[:-1]:
+            if not k:
+                # a trick that allow distinguish sweep params from config params
+                # by adding a prefix `.` to sweep param - it can be safely ignored
+                continue
             if 0 in c:
                 k = int(k)
             c = c[k]
