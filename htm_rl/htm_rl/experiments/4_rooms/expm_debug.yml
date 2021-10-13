@@ -8,9 +8,11 @@ _type_: standard
 #env_seeds: [27, 31, 32, 33, 36, 39, 42, 44]
 #env_seeds: [27, 36, 42, 44, 52, 60, 62, 65]
 env_seeds: [3, 4, 6, 10] #, 11, 13, 14, 15, 16, 18]
-agent_seeds: [1, 2, 3, 4]
+#env_seeds: [3] #, 4, 6, 10] #, 11, 13, 14, 15, 16, 18]
+#agent_seeds: [1, 2, 3, 4]
 #agent_seeds: [1, 2, 3, 4, 5]
 #agent_seeds: [10, 11, 12, 13, 14, 15]
+agent_seeds: [1, 2]
 #agent_seeds: [1]
 
 #agent_seeds: !generate_seeds
@@ -31,7 +33,7 @@ agent_seeds: [1, 2, 3, 4]
 ##  - 1984
 ##  - 3433
 
-n_episodes: 500
+n_episodes: 900
 train_ep_before_eval: 1
 
 envs:

@@ -76,7 +76,7 @@ def update_slice_exp_sum(s, ind, decay, val):
 
 def update_slice_lin_sum(s, ind, lr, val):
     """Updates slice value estimate with specified learning rate."""
-    s[ind] = (1 - lr) * s[ind] + lr * val
+    s[ind] += lr * (val - s[ind])
 
 
 def update_exp_trace(traces, tr, decay, val=1., with_reset=False):

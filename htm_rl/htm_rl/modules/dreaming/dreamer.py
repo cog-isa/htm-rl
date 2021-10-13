@@ -270,7 +270,7 @@ class Dreamer:
         p = 1 - anomaly
 
         # alpha in [0, 1] <=> break point p value
-        alpha, beta = params.alpha, params.beta
+        alpha, beta = params.breaking_point, params.power
         # make non-linear by boosting p > alpha and inhibiting p < alpha, if b > 1
         # --> [0, > 1]
         p = (p / alpha)**beta

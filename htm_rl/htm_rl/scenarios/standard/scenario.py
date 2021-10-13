@@ -53,6 +53,8 @@ class Scenario:
                 train_stats, eval_stats, wandb_run
             )
 
+        print(self.agent.dreamer._print_dreaming_stats())
+
         return train_stats, eval_stats
 
     def run_episode_with_mode(
@@ -62,9 +64,9 @@ class Scenario:
         train_stats.append_stats(steps, reward, elapsed_time)
 
         if self.should_eval:
-            self.progress.end_episode(increase_episode=False)
-            self.switch_to_state('eval')
-            (steps, reward), elapsed_time = self.run_episode()
+            # self.progress.end_episode(increase_episode=False)
+            # self.switch_to_state('eval')
+            # (steps, reward), elapsed_time = self.run_episode()
             eval_stats.append_stats(steps, reward, elapsed_time)
 
             if wandb_run is not None:

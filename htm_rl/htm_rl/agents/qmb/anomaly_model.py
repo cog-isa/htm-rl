@@ -16,16 +16,21 @@ class AnomalyModel:
     """
     anomaly: np.ndarray
     learning_rate: tuple[float, float]
+    last_error: float
 
     def __init__(self, cells_sdr_size, n_actions: int, learning_rate: tuple[float, float]):
         self.learning_rate = learning_rate
         self.anomaly = np.ones((cells_sdr_size, n_actions), dtype=np.float)
+        self.last_error = 0.
 
     def update(self, prev_action: int, s: SparseSdr, anomaly: float):
-        update_slice_lin_sum(
-            s=self.anomaly, ind=(s, prev_action),
-            lr=self.learning_rate[0], val=anomaly
-        )
+        lr = self.learning_rate[0]
+        # anomaly_estimate = self.state_anomaly(s, prev_action)
+        anomaly_estimate = self.anomaly[s, prev_action]
+        error = anomaly - anomaly_estimate
+
+        self.anomaly[s, prev_action] += lr * error
+        self.last_error = error.mean()
 
     def state_anomaly(self, s: SparseSdr, prev_action: int = None):
         if len(s) == 0:

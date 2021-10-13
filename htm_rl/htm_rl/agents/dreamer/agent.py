@@ -102,3 +102,10 @@ class DreamerAgent(QModelBasedAgent):
         if dream:
             # print('-- dream --')
             self.dreamer.dream(s, prev_sa)
+
+    def _on_transition_to_new_state(
+            self, prev_action: int, s: SparseSdr, reward: float, learn: bool
+    ):
+        super(DreamerAgent, self)._on_transition_to_new_state(prev_action, s, reward, learn)
+        if learn:
+            self.dreamer.on_transition_to_new_state(reward)

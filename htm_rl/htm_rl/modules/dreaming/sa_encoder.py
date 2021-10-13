@@ -73,7 +73,7 @@ class DreamerSaEncoder(SpSaEncoder):
 
     def _cluster_s(self, s: SparseSdr, learn: bool) -> SparseSdr:
         cluster, i_cluster, similarity = self.state_clusters.match(s)
-        self.state_clusters.similarity_threshold.balance(increase=cluster is not None)
+        self.state_clusters.adapt_similarity_threshold(is_hit=cluster is not None)
 
         if learn:
             if cluster is None and self.state_clusters.full:

@@ -1,3 +1,4 @@
+from htm_rl.agents.q.balancing_param import BalancingParam
 from htm_rl.common.utils import DecayingValue
 
 
@@ -13,16 +14,17 @@ class TdErrorBasedFallingAsleep:
 
 
 class AnomalyBasedFallingAsleep:
-    anomaly_threshold: float
-    alpha: float
-    beta: float
-    max_prob: float
+    anomaly_threshold: BalancingParam
+    probability: BalancingParam
+    breaking_point: float
+    power: float
 
     def __init__(
-            self, anomaly_threshold: float, alpha: float,
-            beta: float, max_prob: float,
+            self, anomaly_threshold: list[float], probability: list[float],
+            breaking_point: float, power: float,
     ):
-        self.anomaly_threshold = anomaly_threshold
-        self.alpha = alpha
-        self.beta = beta
-        self.max_prob = max_prob
+        self.anomaly_threshold = BalancingParam(*anomaly_threshold)
+        self.probability = BalancingParam(*probability)
+        # from anomaly- to recall-based
+        self.breaking_point = 1 - breaking_point
+        self.power = power

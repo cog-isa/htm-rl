@@ -2,24 +2,22 @@ class BalancingParam:
     value: float
     min_value: float
     max_value: float
-    delta: float
-    negative_delta_rate: float
 
-    def __init__(
-            self, initial_value: float, min_value: float, max_value: float,
-            delta: float, negative_delta_rate: float,
-    ):
+    def __init__(self, initial_value: float, min_value: float, max_value: float):
         self.value = initial_value
         self.min_value = min_value
         self.max_value = max_value
-        self.delta = delta
-        self.negative_delta_rate = negative_delta_rate
 
-    def balance(self, increase: bool = True):
-        if increase:
-            new_value = self.value + self.delta
-        else:
-            new_value = self.value - self.delta * self.negative_delta_rate
+    def add(self, delta):
+        self.update(self.value + delta)
 
-        if self.min_value < new_value < self.max_value:
-            self.value = new_value
+    def scale(self, factor):
+        self.update(self.value * factor)
+
+    def update(self, new_value):
+        if new_value > self.max_value:
+            new_value = self.max_value
+        elif new_value < self.min_value:
+            new_value = self.min_value
+
+        self.value = new_value

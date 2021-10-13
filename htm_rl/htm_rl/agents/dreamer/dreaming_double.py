@@ -6,6 +6,7 @@ from numpy.random import Generator
 
 from htm_rl.agents.dreamer.dreaming_stats import DreamingStats
 from htm_rl.agents.dreamer.falling_asleep import TdErrorBasedFallingAsleep, AnomalyBasedFallingAsleep
+from htm_rl.agents.dreamer.moving_average_tracker import MovingAverageTracker
 from htm_rl.agents.dreamer.qvn_double import QValueNetworkDouble
 from htm_rl.agents.q.cluster_memory import ClusterMemory
 from htm_rl.agents.q.eligibility_traces import EligibilityTraces
@@ -29,6 +30,9 @@ class DreamingDouble(QModelBasedAgent):
     n_prediction_rollouts: tuple[int, int]
 
     stats: DreamingStats
+    depth_ma_tracker: MovingAverageTracker
+    reward_ma_tracker: MovingAverageTracker
+    anomaly_ma_tracker: MovingAverageTracker
 
     _starting_sa_sdr: Optional[SparseSdr]
     _starting_state: Optional[SparseSdr]
@@ -47,6 +51,9 @@ class DreamingDouble(QModelBasedAgent):
             derive_e_traces: bool,
             prediction_depth: int,
             n_prediction_rollouts: tuple[int, int],
+            depth_ma_tracker: list[int],
+            reward_ma_tracker: list[int],
+            anomaly_ma_tracker: list[int],
             enabled: bool = True,
             first_dreaming_episode: int = None,
             last_dreaming_episode: int = None,
@@ -89,6 +96,10 @@ class DreamingDouble(QModelBasedAgent):
         self.n_prediction_rollouts = n_prediction_rollouts
         self.first_dreaming_episode = isnone(first_dreaming_episode, 0)
         self.last_dreaming_episode = isnone(last_dreaming_episode, 999999)
+
+        self.depth_ma_tracker = MovingAverageTracker(*depth_ma_tracker)
+        self.reward_ma_tracker = MovingAverageTracker(*reward_ma_tracker)
+        self.anomaly_ma_tracker = MovingAverageTracker(*anomaly_ma_tracker)
 
         self.train = True
         self._starting_sa_sdr = None
@@ -167,8 +178,8 @@ class DreamingDouble(QModelBasedAgent):
             depths.append(depth)
 
         # if depths: print(depths)
-        self._wake()
         self.stats.on_dreamed(i_rollout, sum_depth)
+        self._wake()
 
     def _move_in_dream(self, state: SparseSdr):
         s = state
@@ -230,6 +241,8 @@ class DreamingDouble(QModelBasedAgent):
         self.exploration_eps = self._exploration_eps_backup
         if self._cluster_memory is not None:
             self._cluster_memory.stats = self.stats.wake_cluster_memory_stats
+
+        self._on_wake()
         self._restore_tm_checkpoint()
 
     def act(self, reward: float, s: SparseSdr, first: bool) -> int:
@@ -257,6 +270,54 @@ class DreamingDouble(QModelBasedAgent):
         self._current_sa_sdr = chosen_sa_sdr
         return action
 
+    def on_transition_to_new_state(self, reward: float):
+        anomaly = self.anomaly_model.last_error
+        self.reward_ma_tracker.update(reward)
+        self.anomaly_ma_tracker.update(anomaly)
+
+        dreaming_probability = self.anomaly_based_falling_asleep.probability
+        anomaly_threshold = self.anomaly_based_falling_asleep.anomaly_threshold
+
+        if abs(self.reward_model.last_error) > .2:
+            if anomaly > .3:
+                dreaming_probability.add(-.01)
+                anomaly_threshold.add(-.02)
+            elif self.reward_model.last_error > .2:
+                dreaming_probability.add(.025)
+            elif self.reward_model.last_error < .2:
+                dreaming_probability.add(.02)
+
+        if self.reward_ma_tracker.short_ma > self.reward_ma_tracker.long_ma + .05:
+            dreaming_probability.add(.0005)
+        elif self.reward_ma_tracker.short_ma < self.reward_ma_tracker.long_ma - .05:
+            dreaming_probability.add(-.0005)
+
+        if self.anomaly_ma_tracker.short_ma < self.anomaly_ma_tracker.long_ma - .1:
+            anomaly_threshold.add(-.002)
+        elif self.anomaly_ma_tracker.short_ma > self.anomaly_ma_tracker.long_ma + .1:
+            anomaly_threshold.add(.002)
+
+    def _on_complete_rollout(self, depth):
+        self.depth_ma_tracker.update(depth)
+
+        dreaming_probability = self.anomaly_based_falling_asleep.probability
+        anomaly_threshold = self.anomaly_based_falling_asleep.anomaly_threshold
+        if self.depth_ma_tracker.short_ma < self.depth_ma_tracker.long_ma + .5:
+            dreaming_probability.add(-.003)
+            anomaly_threshold.add(.003)
+        elif self.depth_ma_tracker.short_ma < self.depth_ma_tracker.long_ma - .5:
+            dreaming_probability.add(.004)
+            anomaly_threshold.add(-.003)
+
+    def _on_wake(self):
+        dreaming_probability = self.anomaly_based_falling_asleep.probability
+        dreaming_probability.scale(.98)
+
+        if self._cluster_memory is not None:
+            dreaming_stats = self.stats.dreaming_cluster_memory_stats
+            if dreaming_stats.avg_match_rate < self._cluster_memory.similarity_threshold.value:
+                dreaming_probability.add(-.0005)
+
     def _td_error_based_dreaming(self, td_error):
         boost_prob_alpha = self.td_error_based_falling_asleep.boost_prob_alpha[0]
         prob_threshold = self.td_error_based_falling_asleep.prob_threshold
@@ -268,22 +329,22 @@ class DreamingDouble(QModelBasedAgent):
     def _anomaly_based_dreaming(self, anomaly):
         params = self.anomaly_based_falling_asleep
 
-        if anomaly > params.anomaly_threshold:
+        if anomaly > params.anomaly_threshold.value:
             return False
 
         # p in [0, 1]
         p = 1 - anomaly
 
         # alpha in [0, 1] <=> break point p value
-        alpha, beta = params.alpha, params.beta
+        breaking_point, alpha = params.breaking_point, params.power
         # make non-linear by boosting p > alpha and inhibiting p < alpha, if b > 1
         # --> [0, > 1]
-        p = (p / alpha)**beta
+        p = (p / breaking_point)**alpha
         # re-normalize back --> [0, 1]
-        p /= (1 / alpha)**beta
+        p /= (1 / breaking_point)**alpha
 
         # shrink to max allowed probability --> [0, max_prob]
-        p *= params.max_prob
+        p *= params.probability.value
         # sample
         return self._rng.random() < p
 
@@ -311,23 +372,39 @@ class DreamingDouble(QModelBasedAgent):
         return 'dreaming_double'
 
     def _print_dreaming_stats(self):
+        if self._episode == 0:
+            return
         ds = self.stats.dreaming_cluster_memory_stats
         ws = self.stats.wake_cluster_memory_stats
+        prob = self.anomaly_based_falling_asleep.probability
+        threshold = self.anomaly_based_falling_asleep.anomaly_threshold
+
+        print(
+            'prob thresh', round(prob.value, 4), round(threshold.value, 4),
+        )
+        print(
+            'd r a',
+            round(isnone(self.depth_ma_tracker.short_ma, 0), 2),
+            round(isnone(self.depth_ma_tracker.long_ma, 0), 2),
+            round(self.reward_ma_tracker.short_ma, 3), round(self.reward_ma_tracker.long_ma, 3),
+            round(self.anomaly_ma_tracker.short_ma, 3), round(self.anomaly_ma_tracker.long_ma, 3),
+        )
         print(
             'roll dep', self.stats.rollouts, self.stats.avg_depth,
         )
-        print(
-            'wake rate sim',
-            ws.matched + ws.mismatched, ws.matched,
-            round(ws.avg_match_similarity, 3), round(ws.avg_mismatch_similarity, 3),
-            ' | ',
-            ws.added, ws.removed,
-            ' | ',
-            round(ws.avg_removed_cluster_intra_similarity, 3),
-            round(ws.avg_removed_cluster_trace, 6)
-        )
-        print(
-            'dreaming rate sim',
-            ds.matched + ds.mismatched, ds.matched,
-            round(ds.avg_match_similarity, 3), round(ds.avg_mismatch_similarity, 3),
-        )
+        # print(
+        #     'wake rate sim',
+        #     ws.matched + ws.mismatched, ws.matched,
+        #     round(ws.avg_match_similarity, 3), round(ws.avg_mismatch_similarity, 3),
+        #     ' | ',
+        #     ws.added, ws.removed,
+        #     ' | ',
+        #     round(ws.avg_removed_cluster_intra_similarity, 3),
+        #     round(ws.avg_removed_cluster_trace, 6)
+        # )
+        # print(
+        #     'dreaming rate sim',
+        #     ds.matched + ds.mismatched, ds.matched,
+        #     round(ds.avg_match_similarity, 3), round(ds.avg_mismatch_similarity, 3),
+        # )
+        print('-----------------------')

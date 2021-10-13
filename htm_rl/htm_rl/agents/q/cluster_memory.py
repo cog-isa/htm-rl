@@ -49,6 +49,8 @@ class ClusterMemory:
     sdr_size: int
     n_active_bits: int
     similarity_threshold: BalancingParam
+    similarity_threshold_delta_on_hit: float
+    similarity_threshold_delta_on_miss: float
 
     stats: ClusterMemoryStats
 
@@ -76,12 +78,16 @@ class ClusterMemory:
 
     def __init__(
             self, input_sdr_size: int, n_active_bits: int,
-            similarity_threshold: dict,
+            similarity_threshold: list[float],
+            similarity_threshold_delta_on_hit: float,
+            similarity_threshold_delta_on_miss: float,
             max_n_clusters: int, max_tracked_bits_rate: float = 3.,
     ):
         self.sdr_size = input_sdr_size
         self.n_active_bits = n_active_bits
-        self.similarity_threshold = BalancingParam(**similarity_threshold)
+        self.similarity_threshold = BalancingParam(*similarity_threshold)
+        self.similarity_threshold_delta_on_hit = similarity_threshold_delta_on_hit
+        self.similarity_threshold_delta_on_miss = similarity_threshold_delta_on_miss
 
         max_n_tracked_bits = int(n_active_bits * max_tracked_bits_rate)
         self.n_clusters = 0
@@ -417,6 +423,12 @@ class ClusterMemory:
             # zeroes back to full zero
             self._cache_sdr[sdr] = 0
         return overlap
+
+    def adapt_similarity_threshold(self, is_hit: bool):
+        if is_hit:
+            self.similarity_threshold.add(self.similarity_threshold_delta_on_hit)
+        else:
+            self.similarity_threshold.add(self.similarity_threshold_delta_on_miss)
 
     def _update_cluster_traces(self, active_cluster: int):
         self._cluster_traces[:self.n_clusters] *= self.cluster_trace_decay
