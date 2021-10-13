@@ -6,40 +6,40 @@ parameters:
   seed.:
     values:
       - 4654
-      - 16459
+#      - 16459
 #      - 98410
 
-  environment.seed.:
+  environment..seed:
     values:
       - 45812
 #      - 98091
 #      - 23050
 
-#  cagent.dreaming.anomaly_based_falling_asleep.max_prob.:
+#  cagent..dreaming.anomaly_based_falling_asleep.max_prob:
 #    values:
 #      - 0.08
 #      - 0.12
 #      - 0.16
 
-  cagent.dreaming.anomaly_based_falling_asleep.anomaly_threshold.:
+  cagent..dreaming.anomaly_based_falling_asleep.anomaly_threshold:
     values:
       - .35
 #      - .4
-      - .45
+#      - .45
 #
-#  cagent.dreaming.sa_encoder.state_clusters.max_n_clusters.:
+#  cagent..dreaming.sa_encoder.state_clusters.max_n_clusters:
 #    values:
 #      - 80
 #      - 90
 #      - 100
 #
-#  blocks.0.sp.boostStrength.:
+#  blocks..0.sp.boostStrength:
 #    values:
 #      - 0.5
 #      - 1.0
 #      - 1.5
 #
-#  blocks.1.bg.softmax_beta.:
+#  blocks..1.bg.softmax_beta:
 #    values:
 #      - .2
 #      - .25
