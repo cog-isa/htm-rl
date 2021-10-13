@@ -148,11 +148,9 @@ cagent:
         max_tracked_bits_rate: 2.
 
     reward_model:
-#      learning_rate: [ .2, 1. ]
       learning_rate: [ .5, 1. ]
 
     anomaly_model:
-#      learning_rate: [ .1, 1. ]
       learning_rate: [ .2, 1. ]
 
     transition_model:
@@ -178,15 +176,17 @@ blocks:
       level: 1
     sm: {}
     sp:
+      #
 #      boostStrength: 0.0
-      boostStrength: 1.
+      boostStrength: 1.0  # !important!
       localAreaDensity: 0.02
       potentialPct: 0.5
-      dutyCyclePeriod: 40000
-      minPctOverlapDutyCycle: 0.0002
+      # ------new overriden params ---------
+      dutyCyclePeriod: 40000  # should be big enough if boostStrength > 0: 20k+
+      minPctOverlapDutyCycle: 0.0002  # or set to 0: !important!
       synPermConnected: 0.5
-      synPermActiveInc: 0.02
-      synPermInactiveDec: 0.01
+      synPermActiveInc: 0.02  # lower LR to slow down encoding change: may be unimportant
+      synPermInactiveDec: 0.01  # -//-
     tm:
       basal_columns: 1000
   1:
