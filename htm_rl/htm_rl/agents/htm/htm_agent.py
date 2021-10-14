@@ -128,6 +128,7 @@ class HTMAgent:
             reward = self.empowerment.eval_state(state, self.empowerment_horizon,
                                              use_memory=True)[0]
         else:
+
             reward = self.empowerment.eval_from_file(self.real_pos)
         return reward
 
@@ -153,7 +154,6 @@ class HTMAgent:
         self.action_pattern = np.empty(0)
         self.state_pattern.sparse = np.empty(0)
         self.previous_obs = np.empty(0)
-        self.real_pos = None
 
     def generate_patterns(self):
         """
@@ -338,6 +338,11 @@ class HTMAgentRunner:
                 self.agent.train_patterns()
 
             reward, obs, is_first = self.environment.observe()
+
+            self.agent.real_pos = get_unshifted_pos(
+                    self.environment.env.agent.position,
+                    self.environment.env.renderer.shape.top_left_point
+                )
 
             if is_first:
                 self.steps_per_goal += self.steps
@@ -560,7 +565,6 @@ class HTMAgentRunner:
                     break
 
                 self.steps_cumulative += self.steps
-                self.agent.real_pos = self.environment.env.agent.position
                 if self.agent.use_intrinsic_reward:
                     max_reward_log = 0
                     mean_reward_log = 0
@@ -613,7 +617,6 @@ class HTMAgentRunner:
             # \\\logging\\\
 
             self.environment.act(self.current_action)
-            self.agent.real_pos = self.environment.env.agent.position
 
             # ///logging///
             if self.environment.callmethod('is_terminal') and (self.environment.env.items_collected > 0):
@@ -628,6 +631,9 @@ class HTMAgentRunner:
                     self.terminal_pos_stat[pos] = 1
                 self.last_terminal_stat = self.terminal_pos_stat[pos]
             # \\\logging\\\
+
+        if self.logger is not None:
+            self.logger.log({"total_steps": self.steps_total})
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
         pic = self.environment.callmethod('render_rgb')
@@ -1063,7 +1069,7 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
     else:
-        default_config_name = 'four_rooms_9x9_swap_empowered_dreaming'
+        default_config_name = 'four_rooms_9x9_swap_all_together'
     with open(f'../../experiments/htm_agent/configs/{default_config_name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
