@@ -59,7 +59,7 @@ class EmpowermentVis:
                                                                          self.horizon,
                                                                          use_memory=True)[0]
             else:
-                learned_emp[unshifted_pos] = self.empowerment.eval_from_file(pos)
+                learned_emp[unshifted_pos] = self.empowerment.eval_from_file(unshifted_pos)
 
         figure = plt.figure(figsize=style['figure_size'])
         sns.heatmap(real_emp, annot=True, fmt=style['annotation_format'], cbar=False,
