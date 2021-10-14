@@ -2,6 +2,8 @@ project: four_rooms_swap_together_small
 entity: hauska
 program: ../../agents/htm/htm_agent.py
 method: grid
+metric:
+  name: 'total_steps'
 parameters:
   seed:
     values: [43872, 16959, 18410]
@@ -12,14 +14,23 @@ parameters:
       - 23051
   block_default.feedback_boost_range:
     values:
-      - [0, 0.0]
+      - [ 0, 0.8 ]
+      - [ 0, 1.0 ]
   blocks.1.bg.softmax_beta:
     values:
       - 0.25
+      - 0.7
+      - 1.0
+  blocks.3.bg.softmax_beta:
+    values:
+      - 0.25
+      - 0.7
+      - 1.0
+
 command:
   - ${env}
   - python
   - ${program}
-  - four_rooms_9x9_swap_baseline
+  - four_rooms_9x9_swap_all_together
   - ${args}
 

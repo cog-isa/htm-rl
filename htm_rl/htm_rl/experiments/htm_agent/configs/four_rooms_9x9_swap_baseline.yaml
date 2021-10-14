@@ -1,10 +1,10 @@
 seed: &seed 847582
 levels: 1
-agent: hima
-project: four_rooms_swap_options
+agent: baseline
+project: project
 entity: hauska  # don't forget to change if you use logging
 
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
+scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap_simple.yaml'
 
 vis_options:
   size: 21
@@ -58,13 +58,12 @@ environment:
     - stay
 
   rendering:
-    view_rectangle: [[-1, -1], [1, 1]]
+    view_rectangle: [[-2, -2], [2, 2]]
 
   areas:
-    n_types: 4
+    n_types: 5
 
   obstacle:
-    density: 0.1
     map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
 
   food:
@@ -169,9 +168,17 @@ blocks:
       level: 1
     sm: {}
     sp:
-      boostStrength: 0.0
+      #
+#      boostStrength: 0.0
+      boostStrength: 1.0  # !important!
       localAreaDensity: 0.02
       potentialPct: 0.5
+      # ------new overriden params ---------
+      dutyCyclePeriod: 40000  # should be big enough if boostStrength > 0: 20k+
+      minPctOverlapDutyCycle: 0.0002  # or set to 0: !important!
+      synPermConnected: 0.5
+      synPermActiveInc: 0.02  # lower LR to slow down encoding change: may be unimportant
+      synPermInactiveDec: 0.01  # -//-
     tm:
       basal_columns: 1000
   1:
