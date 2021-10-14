@@ -586,8 +586,11 @@ class Block:
         else:
             self.min_reward *= self.min_reward_decay
 
-        self.reward_modulation_signal = np.clip((self.mean_reward - self.min_reward) / (self.max_reward + EPS), 0.0,
-                                                1.0)
+        if abs(self.max_reward) < EPS:
+            self.reward_modulation_signal = 0
+        else:
+            self.reward_modulation_signal = np.clip((self.mean_reward - self.min_reward) / self.max_reward, 0.0,
+                                                    1.0)
 
 class InputBlock:
     """
