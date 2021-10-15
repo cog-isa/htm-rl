@@ -4,7 +4,7 @@ agent: baseline
 project: project
 entity: hauska  # don't forget to change if you use logging
 
-scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap_simple.yaml'
+scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
 
 vis_options:
   size: 21
@@ -188,7 +188,7 @@ blocks:
       alpha_int: 0.01
       beta_int: 0.01
       off_policy: true
-      softmax_beta: 1.2
+      softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
       modulate_tm_lr: true
