@@ -1,0 +1,141 @@
+project: 4_rooms_dreaming_modulation
+entity: pkuderov
+program: ../../run_experiment.py
+method: grid
+#method: bayes
+#metric:
+#  name: total_steps
+#  goal: minimize
+#early_terminate:
+#  type: hyperband
+#  min_iter: 1000
+
+parameters:
+  # use `FF0.` to prefix params that should overwrite config before reading subconfigs
+
+  FF0.agents.dreamer_base:
+    value: dreamer
+
+  # CHANGE HERE
+  agent:
+#    value: wake
+    value: dreamer_base
+  agents..wake.dreaming.enabled:
+    value: false
+  # ============================
+
+  env_seeds:
+    value: [44, 65, 36]
+  agent_seeds:
+    value: [15, 16, 17]
+  env:
+    value: obs_swap
+
+  n_episodes:
+    value: 3000
+  train_ep_before_eval:
+    value: 10
+
+  envs..obs_swap.regenerate.agent:
+    value: 300
+  envs..obs_swap.regenerate.food:
+    value: 300
+
+  agents..dreamer_base.dreaming.anomaly_based_falling_asleep.anomaly_threshold:
+#    value: [.4, .3, .45]
+    value: [.4, .4, .4]
+  agents..dreamer_base.dreaming.anomaly_based_falling_asleep.probability:
+    value: [.12, .12, .12]
+#      - [.02, .005, .18]
+#      - [.02, .05, .18]
+#      - [.02, .005, .12]
+#      - [.02, .05, .12]
+#
+#  agents..dreamer.dreaming.on_wake_dreaming_match_rate_threshold: # .9
+#    distribution: uniform
+#    min: .8
+#    max: .95
+#
+#  agents..dreamer.dreaming.on_wake_dreaming_match_rate_prob_inh: # -.001
+#    distribution: log_uniform
+#    min: -9.21
+#    max: -4.6
+#  agents..dreamer.dreaming.on_wake_dreaming_match_rate_an_th_inh: # -.001
+#    distribution: log_uniform
+#    min: -9.21
+#    max: -4.6
+#  agents..dreamer.dreaming.on_wake_prob_decay: # .98
+#    distribution: uniform
+#    min: .95
+#    max: .995
+#
+#  agents..dreamer.dreaming.on_awake_step_surprise_threshold: # .1
+#    distribution: uniform
+#    min: .05
+#    max: .4
+#  agents..dreamer.dreaming.on_awake_step_anticipation_decay: # .98
+#    distribution: uniform
+#    min: .95
+#    max: .995
+#  agents..dreamer.dreaming.on_awake_step_reward_ma_eps: # .005
+#    distribution: log_uniform
+#    min: -9.21
+#    max: -3.
+#  agents..dreamer.dreaming.on_awake_step_prob_delta_anticipation_scale: # .01
+#    distribution: log_uniform
+#    min: -9.21
+#    max: -3.
+#  agents..dreamer.dreaming.on_awake_step_anomaly_err_ma_eps: # .02
+#    distribution: log_uniform
+#    min: -9.21
+#    max: -2.3
+#  agents..dreamer.dreaming.on_awake_step_ma_based_an_th_delta: # .002
+#    distribution: log_uniform
+#    min: -9.21
+#    max: -3.
+#  agents..dreamer.dreaming.on_awake_step_long_ma_based_an_th_threshold: # .03
+#    distribution: log_uniform
+#    min: -6.91
+#    max: -2.3
+#  agents..dreamer.dreaming.on_awake_step_long_ma_based_an_th_delta: # .0002
+#    distribution: log_uniform
+#    min: -11.5
+#    max: -5.3
+#
+#  agents..dreamer.dreaming.dreaming_match_rate_ma_tracker:
+#    values:
+#      - [1., .1, .5]
+#      - [1., .05, .5]
+#  agents..dreamer.dreaming.reward_ma_tracker:
+#    values:
+#      - [.02, .005, .0]
+#      - [.05, .01, .0]
+#      - [.1, .025, .0]
+#  agents..dreamer.dreaming.anomaly_error_ma_tracker:
+#    values:
+#      - [.05, .005, -.1]
+#      - [.05, .02, -.1]
+#      - [.1, .02, -.1]
+
+  agents..dreamer_base.qvn.learning_rate:
+    value: [.04, 1.0]
+  agents..dreamer_base.eligibility_traces.trace_decay:
+    value: [.0, 1.0]
+  agents..dreamer_base.dreaming.eligibility_traces.trace_decay:
+    value: [.0, 1.0]
+  agents..dreamer_base.softmax_temp:
+    value: [.02, 1.0]
+  agents..dreamer_base.dreaming.softmax_temp:
+    value: [.02, 1.0]
+  agents..dreamer_base.im_weight:
+    value: [.004, 1.0]
+
+command:
+  - ${interpreter}
+  - ${program}
+  - '-c'
+  - sweep
+  - '-w'
+  - '-s'
+  - ${args}
+

@@ -1,4 +1,4 @@
-project: 4_rooms_dreaming_modulation_500
+project: 4_rooms_dreaming_modulation
 entity: pkuderov
 program: ../../run_experiment.py
 method: grid
@@ -13,13 +13,13 @@ method: grid
 parameters:
   # use `FF0.` to prefix params that should overwrite config before reading subconfigs
 
-#  FF0.agents.dreamer:
-#    value: dreamer
+  FF0.agents.dreamer_base:
+    value: dreamer
 
   # CHANGE HERE
   agent:
 #    value: wake
-    value: dreamer
+    value: dreamer_base
   agents..wake.dreaming.enabled:
     value: false
   # ============================
@@ -36,16 +36,16 @@ parameters:
   train_ep_before_eval:
     value: 10
 
-#  envs..obs_swap.regenerate.agent:
-#    value: 500
-#  envs..obs_swap.regenerate.food:
-#    value: 500
+  envs..obs_swap.regenerate.agent:
+    value: 300
+  envs..obs_swap.regenerate.food:
+    value: 300
 
-  agents..dreamer.dreaming.anomaly_based_falling_asleep.anomaly_threshold:
+  agents..dreamer_base.dreaming.anomaly_based_falling_asleep.anomaly_threshold:
 #    value: [.4, .3, .45]
-    value: [.4, .38, .42]
-  agents..dreamer.dreaming.anomaly_based_falling_asleep.probability:
-    value: [.12, .1, .14]
+    value: [.4, .4, .4]
+  agents..dreamer_base.dreaming.anomaly_based_falling_asleep.probability:
+    value: [.12, .12, .12]
 #      - [.02, .005, .18]
 #      - [.02, .05, .18]
 #      - [.02, .005, .12]
@@ -117,17 +117,17 @@ parameters:
 #      - [.05, .02, -.1]
 #      - [.1, .02, -.1]
 
-  agents..dreamer.qvn.learning_rate:
+  agents..dreamer_base.qvn.learning_rate:
     value: [.04, 1.0]
-  agents..dreamer.eligibility_traces.trace_decay:
+  agents..dreamer_base.eligibility_traces.trace_decay:
     value: [.0, 1.0]
-  agents..dreamer.dreaming.eligibility_traces.trace_decay:
+  agents..dreamer_base.dreaming.eligibility_traces.trace_decay:
     value: [.0, 1.0]
-  agents..dreamer.softmax_temp:
+  agents..dreamer_base.softmax_temp:
     value: [.02, 1.0]
-  agents..dreamer.dreaming.softmax_temp:
+  agents..dreamer_base.dreaming.softmax_temp:
     value: [.02, 1.0]
-  agents..dreamer.im_weight:
+  agents..dreamer_base.im_weight:
     value: [.004, 1.0]
 
 command:
