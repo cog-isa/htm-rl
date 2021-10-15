@@ -76,23 +76,57 @@ def parse_str(val):
     return val
 
 
-def add_overwrite_attributes(config: Config, overwrites: list[str]):
+def add_overwrite_attributes(
+        config: Config, overwrites: list[str], prefix: str = None, ignore: str = None
+):
     i = 0
+    step = None
     while i < len(overwrites):
         key = overwrites[i]
         if not key.startswith('--'):
             raise ValueError(
                 f'Config attribute name started with `--` is expected, got `{key}`!'
             )
+
+        # remove starting `--`
         key = key[2:]
-        value = overwrites[i+1]
-        if value.startswith('--'):
-            raise ValueError(
-                f'Config attribute value is expected, got `{value}`, which looks like an attribute name!'
-            )
+
+        # resolve params format if not yet
+        if step is None:
+            if '=' in key:
+                # step = 1 for `--key=value` wandb format
+                step = 1
+            else:
+                # step = 2 for `--key value` for default arg.parse format
+                step = 2
+
+        if step == 1:
+            key, value = key.split('=')
+        else:
+            value = overwrites[i+1]
+            if value.startswith('--'):
+                raise ValueError(
+                    f'Config attribute value is expected, got `{value}`, '
+                    f'which looks like an attribute name!'
+                )
+
+        # materialize value from string
         value = parse_str(value)
+
+        if prefix is not None:
+            if key.startswith(prefix):
+                key = key[len(prefix):]
+            else:
+                i += step
+                continue
+        elif ignore is not None:
+            if key.startswith(ignore):
+                i += step
+                continue
+
         config[key] = value
-        i += 2
+        i += step
+    return i
 
 
 def get_filtered_names_for(config: Config, key: str) -> list[str]:

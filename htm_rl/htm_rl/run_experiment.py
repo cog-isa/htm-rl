@@ -10,8 +10,8 @@ from htm_rl.scenarios.factories import materialize_experiment
 def register_arguments(parser: ArgumentParser):
     # todo: comment arguments with examples
     parser.add_argument('-c', '--config', dest='config', required=True)
-    parser.add_argument('-e', '--envs_filter', dest='envs_filter', default=None, nargs='+')
-    parser.add_argument('-a', '--agents_filter', dest='agents_filter', default=None, nargs='+')
+    parser.add_argument('-e', '--filter_envs', dest='envs_filter', default=None, nargs='+')
+    parser.add_argument('-a', '--filter_agents', dest='agents_filter', default=None, nargs='+')
     parser.add_argument('-d', '--print_debug', dest='debug_enabled', action='store_true', default=False)
     parser.add_argument('-w', '--wandb_enabled', dest='wandb_enabled', action='store_true', default=False)
     parser.add_argument('-o', '--output', dest='results_dir', default='results')

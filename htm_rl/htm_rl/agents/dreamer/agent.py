@@ -74,6 +74,8 @@ class DreamerAgent(QModelBasedAgent):
         self._current_sa_sdr = chosen_sa_sdr
         self._prev_action = action
         self._step += 1
+        if train:
+            self.dreamer.on_new_step()
         return action
 
     def _try_dreaming(self, prev_sa, r, s, next_actions_sa_sdr, eval_r):

@@ -96,7 +96,7 @@ class QModelBasedAgent(QAgent):
     def _get_im_reward(self, train: bool) -> float:
         if train and self.im_weight[0] > 0.:
             # it takes anomaly from the most recent transition (s', a') -> s
-            x = self.transition_model.anomaly ** 2
+            x = self.anomaly_model.last_error ** 2
             return self.im_weight[0] * x
         return 0.
 

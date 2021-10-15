@@ -37,6 +37,9 @@ class Config(dict):
             return super(Config, self).__getitem__(item)
         res = self
         for key in keys:
+            if not key:
+                # allows additional dots that are skipped
+                continue
             res = res[key]
         return res
 
@@ -52,6 +55,9 @@ class Config(dict):
 
         res = self
         for k in keys[:-1]:
+            if not k:
+                # allows additional dots that are skipped
+                continue
             if k not in res:
                 res[k] = dict()
             res = res[k]
@@ -76,7 +82,7 @@ class FileConfig(Config):
         return self._name
 
     def read_subconfigs(self, key, prefix):
-        self._ensure_dict(key)
+        self[key] = self._ensure_dict(self[key])
         for name, val in self[key].items():
             if isinstance(val, dict):
                 continue
@@ -101,18 +107,39 @@ class FileConfig(Config):
             name = f'_autosave_{rng.integers(10000):05d}.yml'
             autosave = autosave_dir.joinpath(name)
             if not autosave.exists():
-                save_config(autosave, self)
+                save_config(autosave, self.as_dict())
                 print(f'Autosave config to {autosave}')
                 break
 
-    def _ensure_dict(self, key):
-        if not isinstance(self[key], dict):
-            # has to be the name/names
-            self[key] = ensure_list(self[key])
+    @staticmethod
+    def _ensure_dict(val) -> dict:
+        if not isinstance(val, dict):
+            val = ensure_list(val)
             d = dict()
-            for name in self[key]:
+            for name in val:
                 d[name] = name
-            self[key] = d
+            return d
+        return val
+
+    def as_dict(self):
+        def _as_dict(d):
+            res = {}
+            for k, v in d.items():
+                if isinstance(v, FileConfig):
+                    res[k] = v.as_dict()
+                elif isinstance(v, dict):
+                    res[k] = _as_dict(v)
+                elif isinstance(v, Path):
+                    res[k] = str(v)
+                else:
+                    res[k] = v
+            return res
+
+        result = _as_dict(self)
+        result.update({
+            'name': self.name, 'path': str(self.path)
+        })
+        return result
 
 
 class DictConfig(Config):

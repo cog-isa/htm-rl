@@ -3,6 +3,7 @@ from htm_rl.common.utils import safe_divide
 
 
 class DreamingStats:
+    steps: int
     times: int
     rollouts: int
     sum_depth: int
@@ -17,6 +18,7 @@ class DreamingStats:
         self.reset()
 
     def reset(self):
+        self.steps = 0
         self.times = 0
         self.rollouts = 0
         self.sum_depth = 0
@@ -32,3 +34,10 @@ class DreamingStats:
     @property
     def avg_depth(self):
         return safe_divide(self.sum_depth, self.rollouts)
+
+    @property
+    def dreaming_rate(self):
+        return safe_divide(self.rollouts, self.steps)
+
+    def add_step(self):
+        self.steps += 1

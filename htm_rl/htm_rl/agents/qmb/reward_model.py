@@ -19,12 +19,13 @@ class RewardModel:
 
     def update(self, s: SparseSdr, reward: float):
         lr = self.learning_rate[0]
-        # reward_estimate = self.state_reward(s)
-        reward_estimate = self.rewards[s]
+        reward_estimate = self.state_reward(s)
+        # reward_estimate = self.rewards[s]
         error = reward - reward_estimate
 
         self.rewards[s] += lr * error
-        self.last_error = error.mean()
+        # self.last_error = error.mean()
+        self.last_error = error
 
     def state_reward(self, s: SparseSdr):
         return np.median(self.rewards[s])

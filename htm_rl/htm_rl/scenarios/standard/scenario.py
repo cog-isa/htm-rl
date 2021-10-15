@@ -53,7 +53,7 @@ class Scenario:
                 train_stats, eval_stats, wandb_run
             )
 
-        print(self.agent.dreamer._print_dreaming_stats())
+        self.agent.dreamer._print_dreaming_stats()
 
         return train_stats, eval_stats
 
@@ -64,17 +64,13 @@ class Scenario:
         train_stats.append_stats(steps, reward, elapsed_time)
 
         if self.should_eval:
-            # self.progress.end_episode(increase_episode=False)
-            # self.switch_to_state('eval')
-            # (steps, reward), elapsed_time = self.run_episode()
+            self.progress.end_episode(increase_episode=False)
+            self.switch_to_state('eval')
+            (steps, reward), elapsed_time = self.run_episode()
             eval_stats.append_stats(steps, reward, elapsed_time)
 
             if wandb_run is not None:
-                wandb_run.log({
-                    'steps': steps,
-                    'reward': reward,
-                    'elapsed_time': elapsed_time
-                })
+                self.log_eval(wandb_run, steps, reward, elapsed_time)
             self.progress.end_episode()
             self.switch_to_state('train')
         else:
@@ -115,6 +111,23 @@ class Scenario:
 
     def episode_ended(self, first: bool):
         return first and self.progress.step > 0
+
+    def log_eval(self, wandb_run, steps, reward, elapsed_time):
+        if wandb_run is None:
+            return
+
+        wandb_run.log({
+            'steps': steps,
+            'reward': reward,
+            'elapsed_time': elapsed_time
+        }, step=self.progress.episode)
+
+        self.try_log_dreamer(wandb_run)
+
+    def try_log_dreamer(self, wandb_run, with_reset=True):
+        from htm_rl.agents.dreamer.agent import DreamerAgent
+        if isinstance(self.agent, DreamerAgent):
+            self.agent.dreamer.log_stats(wandb_run, self.progress.episode, with_reset)
 
     def init_wandb_run(self):
         if not self.wandb['enabled']:

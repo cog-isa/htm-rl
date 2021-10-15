@@ -42,6 +42,9 @@ def materialize_experiment(config: FileConfig) -> Experiment:
     elif scenario_type == 'dreaming condition':
         from htm_rl.scenarios.dream_cond.experiment import DreamingConditionExperiment
         return DreamingConditionExperiment(config)
+    elif scenario_type == 'sweep':
+        from htm_rl.scenarios.sweep.experiment import SweepExperiment
+        return SweepExperiment(config)
     else:
         raise NameError(scenario_type)
 

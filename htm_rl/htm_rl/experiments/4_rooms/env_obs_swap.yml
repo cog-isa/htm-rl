@@ -9,18 +9,18 @@ actions:
   - move up
 
 actions_cost:
-  base_cost: -.008
+  base_cost: -.004
   weights:
 #    stay: .5
     turn: 1.
     move: 1.
 
 rendering:
-  view_rectangle: [[-3, -3], [3, 3]]
-#  view_rectangle: [[-2, -2], [2, 2]]
+#  view_rectangle: [[-3, -3], [3, 3]]
+  view_rectangle: [[-2, -2], [2, 2]]
 
 areas:
-  n_types: 5
+  n_types: 4
 
 obstacle:
   map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
@@ -29,6 +29,10 @@ food:
   n_items: 1
   reward: 1.
 
+regenerate:
+  food: 300
+  agent: 300
+
 terminate:
-  episode_max_steps: 100
+  episode_max_steps: 200
   early_stop: true
