@@ -1,7 +1,7 @@
 import numpy as np
 
 from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import update_slice_lin_sum, exp_decay
+from htm_rl.common.utils import exp_decay
 
 
 class RewardModel:
