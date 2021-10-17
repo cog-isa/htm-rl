@@ -226,7 +226,7 @@ blocks:
       alpha: 0.1
       beta: 0.1
       off_policy: true
-      softmax_beta: 1.0
+      softmax_beta: 0.25
       epsilon_noise: 0.0
     block:
       level: 2
@@ -406,7 +406,7 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997  # discount factor for option rewards
   predicted_boost: 0.0  # boost predicted elementary actions
-  feedback_boost_range: [0.0, 0.8]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
+  feedback_boost_range: [0.0, 1.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
   modulate_tm_lr: false  # use reward modulation for lr of TM
   sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
   sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement

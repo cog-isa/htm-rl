@@ -1,7 +1,7 @@
 seed: &seed 847582
 levels: 2
 agent: hima_dreaming
-project: four_rooms_swap_dreaming
+project: four_rooms_swap_dreaming_test
 entity: pkuderov  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
@@ -13,11 +13,11 @@ vis_options:
   action_rotation: [0, 0, 0, 0]
 
 log: true  # wand logging
-path_to_store_logs: './logs/'  # important: change, if you are Windows user
+path_to_store_logs: '/Users/kuderov/dev/logs/hima/'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 100000
-  log_every_episode: 25
+  log_every_episode: 100
   log_values_int: True
   log_values_ext: True
   log_priorities: True
@@ -87,18 +87,17 @@ environment:
 
 cagent:
   use_intrinsic_reward: false
-#  use_dreaming: false
   use_dreaming: true
   alpha: 1.0
-  punish_intrinsic_reward: -10
+  punish_intrinsic_reward: 0
   action:
     do_nothing_action: 4
     noise_tolerance: 0.1
     patterns:
-    - [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
+      - [ 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+      - [ 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0 ]
+      - [ 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0 ]
+      - [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1 ]
   muscles:
     connected_permanence: 0.5
     depolarized_decrement: 0.01
@@ -110,9 +109,9 @@ cagent:
     sample_size: 1.0
     seed: *seed
   empowerment:
-    horizon: 3
+    horizon: 4
     similarity_threshold: 0.6
-    memory: true
+    memory: false
     evaluate: false
     tm_config:
       noise_tolerance: 0.25
@@ -125,25 +124,41 @@ cagent:
       predictedSegmentDecrement: 0.001
       maxSegmentsPerCell: 5
     seed: *seed
+    filename: '../../experiments/htm_agent/empowerments/empowerment_real_4_p1_3.json'
   dreaming:
     enabled: true
     anomaly_based_falling_asleep:
-      anomaly_threshold: .4
-      alpha: .75
-      beta: 1.3
-      max_prob: .12
+      anomaly_threshold: [0.4, 0.3, 0.45]
+      probability: [.0, .005, .24]
+      breaking_point: .25
+      power: 1.25
 
-    prediction_depth: 15
-    n_prediction_rollouts: [1, 1]
+    on_wake_dreaming_match_rate_threshold: .871
+    on_wake_dreaming_match_rate_prob_inh: .0018
+    on_wake_dreaming_match_rate_an_th_inh: .0002
+    on_wake_prob_decay: .97
+
+    on_awake_step_surprise_threshold: .28
+    on_awake_step_anticipation_decay: .987
+    on_awake_step_reward_ma_eps: .003
+    on_awake_step_prob_delta_anticipation_scale: .003
+    on_awake_step_anomaly_err_ma_eps: .0073
+    on_awake_step_ma_based_an_th_delta: .00064
+    on_awake_step_long_ma_based_an_th_threshold: .0071
+    on_awake_step_long_ma_based_an_th_delta: .00126
+
+    dreaming_match_rate_ma_tracker: [1.0, 0.1, 0.5]
+    reward_ma_tracker: [0.02, 0.005, 0.0]
+    anomaly_error_ma_tracker: [0.1, 0.02, -0.1]
+
+    prediction_depth: 30
+    max_n_rollouts: 2
 
     sa_encoder:
       state_clusters:
-        similarity_threshold:
-          initial_value: .7
-          min_value: .6
-          max_value: .8
-          delta: .02
-          negative_delta_rate: 2.5
+        similarity_threshold: [.7, .6, .8]
+        similarity_threshold_delta_on_hit: .02
+        similarity_threshold_delta_on_miss: -0.05
         max_n_clusters: 80
         max_tracked_bits_rate: 2.
 
@@ -196,10 +211,10 @@ blocks:
       alpha_int: 0.01
       beta_int: 0.01
       off_policy: true
-      softmax_beta: .25
+      softmax_beta: 1.2
       epsilon_noise: 0.0
     block:
-      modulate_tm_lr: false
+      modulate_tm_lr: true
       level: 1
     sm: {}
     sp:
@@ -317,7 +332,7 @@ temporal_memory_default:
   connected_threshold_inhib: 0.5
   permanence_increment_inhib: 0.1
   permanence_decrement_inhib: 0.001
-  predicted_segment_decrement_inhib: 0.0001
+  predicted_segment_decrement_inhib: 0.005
   enable_pruning_basal: False
   enable_pruning_apical: False
   enable_pruning_exec: False
@@ -361,7 +376,7 @@ block_default:
   feedback_boost_range: [0.0, 0.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
   modulate_tm_lr: false  # use reward modulation for lr of TM
   sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
-  sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement
+  sm_reward_dec: 0.98  # smooth factor for reward modulation during decrement
   sm_max_reward: 0.99  # smooth factor for max reward
   sm_min_reward: 0.99  # smooth factor for min reward
   max_reward_decay: 0.999  # decay factor for max reward

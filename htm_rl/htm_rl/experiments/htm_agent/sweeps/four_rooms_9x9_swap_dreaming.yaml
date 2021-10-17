@@ -1,48 +1,58 @@
-project: four_rooms_dreaming_final
+project: four_rooms_dreaming_vs_baseline
 entity: pkuderov
 program: ../../agents/htm/htm_agent.py
 method: grid
 parameters:
   seed.:
     values:
-      - 4654
-#      - 16459
-#      - 98410
+      - 43872
+      - 16959
+      - 18410
+#      - 1337
+#      - 7331
+#      - 8008
 
   environment..seed:
     values:
-      - 45812
-#      - 98091
-#      - 23050
+      - 43812
+      - 98191
+      - 23051
+#      - 58008
+#      - 777
+#      - 0804
 
-#  cagent..dreaming.anomaly_based_falling_asleep.max_prob:
-#    values:
-#      - 0.08
-#      - 0.12
-#      - 0.16
+  agent.:
+    value: dreamer_mod
+#    value: dreamer
 
+  # CHANGE FOR BASELINE
+  cagent..use_dreaming:
+    value: true
+  cagent..dreaming.enabled:
+    value: true
+  blocks.1.bg.softmax_beta:
+#    value: 1.0
+    value: 0.25
+
+  # BASE DREAMING
+#  cagent..dreaming.anomaly_based_falling_asleep.anomaly_threshold:
+#    value: [0.4, 0.4, 0.4]
+#  cagent..dreaming.anomaly_based_falling_asleep.probability:
+#    value: [0.12, 0.12, 0.12]
+#  cagent..dreaming.prediction_depth:
+#    value: 15
+#  cagent..dreaming.max_n_rollouts:
+#    value: 1
+
+  # MODULATED DREAMING
   cagent..dreaming.anomaly_based_falling_asleep.anomaly_threshold:
-    values:
-      - .35
-#      - .4
-#      - .45
-#
-#  cagent..dreaming.sa_encoder.state_clusters.max_n_clusters:
-#    values:
-#      - 80
-#      - 90
-#      - 100
-#
-#  blocks..0.sp.boostStrength:
-#    values:
-#      - 0.5
-#      - 1.0
-#      - 1.5
-#
-#  blocks..1.bg.softmax_beta:
-#    values:
-#      - .2
-#      - .25
+    value: [0.4, 0.3, 0.45]
+  cagent..dreaming.anomaly_based_falling_asleep.probability:
+    value: [.0, .005, .24]
+  cagent..dreaming.prediction_depth:
+    value: 30
+  cagent..dreaming.max_n_rollouts:
+    value: 2
 
 command:
   - ${env}

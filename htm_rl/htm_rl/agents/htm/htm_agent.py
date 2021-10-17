@@ -22,6 +22,8 @@ from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, co
     draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
 from htm.bindings.sdr import SDR
 
+from htm_rl.scenarios.utils import parse_str
+
 
 class BioGwLabAction:
     """
@@ -954,7 +956,7 @@ class HTMAgentRunner:
         cl_dreaming_stats = dreaming_stats.dreaming_cluster_memory_stats
         stats_to_log = {
             'rollouts': dreaming_stats.rollouts,
-            'avg_dreaming_rate': safe_divide(dreaming_stats.times, self.steps_per_goal),
+            'avg_dreaming_rate': safe_divide(dreaming_stats.dreaming_times, self.steps_per_goal),
             'avg_depth': dreaming_stats.avg_depth,
             'cl_wake_match_rate': cl_wake_stats.avg_match_rate,
             'cl_wake_avg_match_similarity': cl_wake_stats.avg_match_similarity,
@@ -984,7 +986,7 @@ class HTMAgentRunner:
         }, step=self.episode)
 
         if self.agent.use_dreaming:
-            self.log_dreaming_stats()
+            self.agent.dreamer.log_stats(self.logger, step=self.episode)
 
     def on_new_goal(self):
         self.goal_reached = False
@@ -1081,7 +1083,8 @@ if __name__ == '__main__':
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
 
-        value = ast.literal_eval(value)
+        # accepts everything non-parseable as is, i.e as a str
+        value = parse_str(value)
 
         key = key.lstrip('-')
         if key.endswith('.'):
