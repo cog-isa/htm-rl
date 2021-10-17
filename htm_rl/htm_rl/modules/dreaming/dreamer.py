@@ -6,7 +6,6 @@ from numpy.random import Generator
 
 from htm_rl.agents.dreamer.dreaming_stats import DreamingStats
 from htm_rl.agents.dreamer.falling_asleep import AnomalyBasedFallingAsleep
-from htm_rl.agents.dreamer.moving_average_tracker import MovingAverageTracker
 from htm_rl.agents.q.cluster_memory import ClusterMemory
 from htm_rl.agents.q.input_changes_detector import InputChangesDetector
 from htm_rl.agents.qmb.anomaly_model import AnomalyModel
@@ -42,27 +41,8 @@ class Dreamer:
 
     anomaly_based_falling_asleep: AnomalyBasedFallingAsleep
 
-    on_wake_dreaming_match_rate_threshold: float
-    on_wake_dreaming_match_rate_prob_inh: float
-    on_wake_dreaming_match_rate_an_th_inh: float
-    on_wake_prob_decay: float
-
-    on_awake_step_surprise_threshold: float
-    on_awake_step_anticipation_decay: float
-    on_awake_step_reward_ma_eps: float
-    on_awake_step_prob_delta_anticipation_scale: float
-    on_awake_step_anomaly_err_ma_eps: float
-    on_awake_step_ma_based_an_th_delta: float
-    on_awake_step_long_ma_based_an_th_threshold: float
-    on_awake_step_long_ma_based_an_th_delta: float
-
     stats: DreamingStats
     total_stats: DreamingStats
-    last_matched_mismatched: tuple[int, int]
-    dreaming_match_rate_ma_tracker: MovingAverageTracker
-    reward_ma_tracker: MovingAverageTracker
-    anomaly_error_ma_tracker: MovingAverageTracker
-    anticipation: float
 
     _prev_action: Optional[int]
     _starting_state: Optional[SparseSdr]
@@ -87,22 +67,6 @@ class Dreamer:
             anomaly_based_falling_asleep: dict,
             prediction_depth: int,
             max_n_rollouts: int,
-            dreaming_match_rate_ma_tracker: list[int],
-            reward_ma_tracker: list[int],
-            anomaly_error_ma_tracker: list[int],
-            on_wake_dreaming_match_rate_threshold: float,
-            on_wake_dreaming_match_rate_prob_inh: float,
-            on_wake_dreaming_match_rate_an_th_inh: float,
-            on_wake_prob_decay: float,
-
-            on_awake_step_surprise_threshold: float,
-            on_awake_step_anticipation_decay: float,
-            on_awake_step_reward_ma_eps: float,
-            on_awake_step_prob_delta_anticipation_scale: float,
-            on_awake_step_anomaly_err_ma_eps: float,
-            on_awake_step_ma_based_an_th_delta: float,
-            on_awake_step_long_ma_based_an_th_threshold: float,
-            on_awake_step_long_ma_based_an_th_delta: float,
             enabled: bool = True,
     ):
         self.n_actions = n_actions
@@ -133,27 +97,6 @@ class Dreamer:
         )
         self.prediction_depth = prediction_depth
         self.max_n_rollouts = max_n_rollouts
-
-        self.last_matched_mismatched = (0, 0)
-        self.dreaming_match_rate_ma_tracker = MovingAverageTracker(*dreaming_match_rate_ma_tracker)
-        self.reward_ma_tracker = MovingAverageTracker(*reward_ma_tracker)
-        self.anomaly_error_ma_tracker = MovingAverageTracker(*anomaly_error_ma_tracker)
-        self.anticipation = 0.
-        self.dreaming_aug = 0.
-
-        self.on_wake_dreaming_match_rate_threshold = on_wake_dreaming_match_rate_threshold
-        self.on_wake_dreaming_match_rate_prob_inh = on_wake_dreaming_match_rate_prob_inh
-        self.on_wake_dreaming_match_rate_an_th_inh = on_wake_dreaming_match_rate_an_th_inh
-        self.on_wake_prob_decay = on_wake_prob_decay
-
-        self.on_awake_step_surprise_threshold = on_awake_step_surprise_threshold
-        self.on_awake_step_anticipation_decay = on_awake_step_anticipation_decay
-        self.on_awake_step_reward_ma_eps = on_awake_step_reward_ma_eps
-        self.on_awake_step_prob_delta_anticipation_scale = on_awake_step_prob_delta_anticipation_scale
-        self.on_awake_step_anomaly_err_ma_eps = on_awake_step_anomaly_err_ma_eps
-        self.on_awake_step_ma_based_an_th_delta = on_awake_step_ma_based_an_th_delta
-        self.on_awake_step_long_ma_based_an_th_threshold = on_awake_step_long_ma_based_an_th_threshold
-        self.on_awake_step_long_ma_based_an_th_delta = on_awake_step_long_ma_based_an_th_delta
 
         self._prev_action = None
         self._starting_state = None
@@ -255,7 +198,7 @@ class Dreamer:
             depth = 0
             # loop over one rollout's trajectory states
             while depth < self.prediction_depth:
-                next_state, next_s, a, anomaly, goal_reached = self._move_in_dream(state, s)
+                next_state, next_s, a, anomaly = self._move_in_dream(state, s)
                 depth += 1
 
                 if len(next_s) < .6 * len(self._starting_s) or anomaly > .7:
@@ -268,7 +211,6 @@ class Dreamer:
             sum_depth += depth
             sum_depth_smoothed += depth ** .6
             # depths.append(depth)
-            self._on_complete_rollout(depth, goal_reached)
 
         # if depths: print(depths)
         self.stats.on_dreamed(i_rollout, sum_depth)
@@ -281,10 +223,10 @@ class Dreamer:
         action = self.agent.make_action(state)
         self.agent.reinforce(reward)
 
-        if reward > 2 * self.on_awake_step_surprise_threshold:
+        if reward > .3:
             # found goal ==> should stop rollout
             state_next, s_next, anomaly = [], [], 1.
-            return state_next, s_next, action, anomaly, True
+            return state_next, s_next, action, anomaly
 
         # (s', a') -> s
         self.transition_model.process(s, learn=False)
@@ -308,7 +250,7 @@ class Dreamer:
 
         state_next = self.sa_encoder.decode_s_to_state(s_next)
         anomaly = self.anomaly_model.state_anomaly(s_next, prev_action=action)
-        return state_next, s_next, action, anomaly, False
+        return state_next, s_next, action, anomaly
 
     def _put_into_dream(self, starting_state: SparseSdr, starting_s: SparseSdr):
         self._save_tm_checkpoint()
@@ -322,7 +264,6 @@ class Dreamer:
 
     def _wake(self):
         self._cluster_memory.stats = self.stats.wake_cluster_memory_stats
-        self._on_wake()
         self._restore_tm_checkpoint()
 
     def _anomaly_based_dreaming(self, anomaly):
@@ -372,90 +313,6 @@ class Dreamer:
         self.anomaly_model.update(prev_action, s, self.transition_model.anomaly)
         # also update reward model
         self.reward_model.update(s, reward)
-
-        # ==========================================
-
-        anomaly_error = self.anomaly_model.last_error
-        self.reward_ma_tracker.update(reward)
-        self.anomaly_error_ma_tracker.update(anomaly_error)
-
-        # return
-        dreaming_probability = self.anomaly_based_falling_asleep.probability
-        anomaly_threshold = self.anomaly_based_falling_asleep.anomaly_threshold
-
-        anomaly_error_short_ma = self.anomaly_error_ma_tracker.short_ma
-        anomaly_error_long_ma = self.anomaly_error_ma_tracker.long_ma
-        certainty = 1 - abs(anomaly_error_short_ma)
-        longtime_certainty = 1 - abs(anomaly_error_long_ma)
-
-        if abs(self.reward_model.last_error) * certainty > self.on_awake_step_surprise_threshold:
-            # surprising event
-            self.anticipation = 1.
-            self.dreaming_aug = self.anticipation
-        elif reward > self.on_awake_step_surprise_threshold:
-            self.anticipation *= self.on_awake_step_anticipation_decay
-            if self.anticipation > .3:
-                self.dreaming_aug += self.anticipation
-            else:
-                self.dreaming_aug -= self.anticipation
-            if self.dreaming_aug < 0:
-                self.dreaming_aug = 0
-
-        reward_short_ma = self.reward_ma_tracker.short_ma
-        reward_long_ma = self.reward_ma_tracker.long_ma
-        r_eps = self.on_awake_step_reward_ma_eps
-        anticipation_scale = self.on_awake_step_prob_delta_anticipation_scale
-        alpha = self.dreaming_aug * 1.5 * (1 - self.on_awake_step_anticipation_decay)
-        # alpha = self.anticipation
-        if reward_short_ma > reward_long_ma + r_eps:
-            # good place
-            dreaming_probability.add(
-                anticipation_scale * alpha * longtime_certainty
-            )
-        elif reward_short_ma < reward_long_ma - r_eps:
-            # lackluster
-            dreaming_probability.add(
-                -anticipation_scale * alpha * longtime_certainty
-            )
-
-        an_eps = self.on_awake_step_anomaly_err_ma_eps
-        if abs(anomaly_error_short_ma) + an_eps < abs(anomaly_error_long_ma):
-            # short-radius lower anomaly err
-            anomaly_threshold.add(self.on_awake_step_ma_based_an_th_delta)
-        elif abs(anomaly_error_short_ma) > abs(anomaly_error_long_ma) + an_eps:
-            # short-radius higher anomaly err
-            anomaly_threshold.add(-self.on_awake_step_ma_based_an_th_delta)
-        elif abs(anomaly_error_long_ma) < self.on_awake_step_long_ma_based_an_th_threshold:
-            # long-radius good anomaly approx - stable encoding
-            anomaly_threshold.add(self.on_awake_step_long_ma_based_an_th_delta)
-        else:
-            # long-radius bad anomaly approx
-            anomaly_threshold.add(-self.on_awake_step_long_ma_based_an_th_delta)
-
-    def _on_wake(self):
-        dcl_stats = self.stats.dreaming_cluster_memory_stats
-
-        last_matched, last_mismatched = self.last_matched_mismatched
-        matched, mismatched = dcl_stats.matched, dcl_stats.mismatched
-        instant_match_rate = safe_divide(
-            matched - last_matched,
-            matched - last_matched + mismatched - last_mismatched
-        )
-        self.dreaming_match_rate_ma_tracker.update(instant_match_rate)
-
-        dreaming_probability = self.anomaly_based_falling_asleep.probability
-        anomaly_threshold = self.anomaly_based_falling_asleep.anomaly_threshold
-
-        if self.dreaming_match_rate_ma_tracker.long_ma < self.on_wake_dreaming_match_rate_threshold:
-            # bad TM ==>
-            dreaming_probability.add(-self.on_wake_dreaming_match_rate_prob_inh)
-            anomaly_threshold.add(-self.on_wake_dreaming_match_rate_an_th_inh)
-
-        # relaxing dreaming probability decay
-        dreaming_probability.scale(self.on_wake_prob_decay)
-
-    def _on_complete_rollout(self, depth, goal_reached):
-        ...
 
     def _on_action_selection(self, s: SparseSdr, action: int):
         # activate (s,a) w/o learning
