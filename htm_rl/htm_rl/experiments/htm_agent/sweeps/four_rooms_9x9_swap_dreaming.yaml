@@ -22,7 +22,7 @@ parameters:
 #      - 0804
 
   agent.:
-    value: dreamer_mod
+    value: dreamer_mod2
 #    value: dreamer
 
   # CHANGE FOR BASELINE
@@ -46,13 +46,13 @@ parameters:
 
   # MODULATED DREAMING
   cagent..dreaming.anomaly_based_falling_asleep.anomaly_threshold:
-    value: [0.4, 0.3, 0.45]
+    value: [0.4, 0.35, 0.45]
   cagent..dreaming.anomaly_based_falling_asleep.probability:
-    value: [.0, .005, .24]
+    value: [.08, .08, .15]
   cagent..dreaming.prediction_depth:
     value: 30
   cagent..dreaming.max_n_rollouts:
-    value: 2
+    value: 1
 
 command:
   - ${env}
