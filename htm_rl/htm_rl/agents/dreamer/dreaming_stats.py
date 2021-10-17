@@ -3,8 +3,8 @@ from htm_rl.common.utils import safe_divide
 
 
 class DreamingStats:
-    steps: int
-    times: int
+    wake_steps: int
+    dreaming_times: int
     rollouts: int
     sum_depth: int
 
@@ -18,17 +18,19 @@ class DreamingStats:
         self.reset()
 
     def reset(self):
-        self.steps = 0
-        self.times = 0
+        self.wake_steps = 0
+        self.dreaming_times = 0
         self.rollouts = 0
         self.sum_depth = 0
+
         if self.wake_cluster_memory_stats is not None:
             self.wake_cluster_memory_stats.reset()
             self.dreaming_cluster_memory_stats.reset()
 
     def on_dreamed(self, rollouts: int, sum_depth: int):
-        self.times += 1
+        self.dreaming_times += 1
         self.rollouts += rollouts
+
         self.sum_depth += sum_depth
 
     @property
@@ -37,7 +39,7 @@ class DreamingStats:
 
     @property
     def dreaming_rate(self):
-        return safe_divide(self.rollouts, self.steps)
+        return safe_divide(self.rollouts, self.wake_steps)
 
     def add_step(self):
-        self.steps += 1
+        self.wake_steps += 1

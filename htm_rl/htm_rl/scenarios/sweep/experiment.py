@@ -1,3 +1,5 @@
+import random
+
 from htm_rl.scenarios.config import FileConfig
 from htm_rl.scenarios.experiment import Experiment
 from htm_rl.scenarios.standard.run_stats import RunStats
@@ -37,6 +39,8 @@ class SweepExperiment(Experiment):
             config['env_seed'] = env_seed
             agent_results = []
             for agent_seed in agent_seeds:
+                # FIX ME
+                # agent_seed = random.randint(0, 1000000)
                 config['agent_seed'] = agent_seed
                 print(f'AGENT: {config["agent"]}     SEED: {env_seed} {agent_seed}')
 

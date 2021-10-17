@@ -20,7 +20,7 @@ rendering:
   view_rectangle: [[-2, -2], [2, 2]]
 
 areas:
-  n_types: 4
+  n_types: 5
 
 obstacle:
   map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'

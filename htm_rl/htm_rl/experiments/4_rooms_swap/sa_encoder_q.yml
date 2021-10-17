@@ -15,7 +15,7 @@ state_sp:
 state_clusters:
   similarity_threshold: [.7, .6, .8]
   similarity_threshold_delta_on_hit: .02
-  similarity_threshold_delta_on_miss: -.05
+  similarity_threshold_delta_on_miss: -0.05
   max_n_clusters: 80
   max_tracked_bits_rate: 2.
 

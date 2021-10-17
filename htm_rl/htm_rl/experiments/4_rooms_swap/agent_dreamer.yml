@@ -25,28 +25,43 @@ dreaming:
   anomaly_based_falling_asleep:
     anomaly_threshold: [.4, .3, .45]
 #    anomaly_threshold: [.4, .4, .4]
-    probability: [.0, .005, .18]
+    probability: [.0, .005, .24]
 #    probability: [.12, .12, .12]
     breaking_point: .25
     power: 1.25
 
-  on_wake_dreaming_match_rate_threshold: .9
-  on_wake_dreaming_match_rate_prob_inh: .001
-  on_wake_dreaming_match_rate_an_th_inh: .001
-  on_wake_prob_decay: .98
+#  on_wake_dreaming_match_rate_threshold: .9
+  on_wake_dreaming_match_rate_threshold: .871
+#  on_wake_dreaming_match_rate_prob_inh: .001
+  on_wake_dreaming_match_rate_prob_inh: .0018
+#  on_wake_dreaming_match_rate_an_th_inh: .001
+  on_wake_dreaming_match_rate_an_th_inh: .0002
+#  on_wake_prob_decay: .98
+  on_wake_prob_decay: .97
 
-  on_awake_step_surprise_threshold: .1
-  on_awake_step_anticipation_decay: .98
-  on_awake_step_reward_ma_eps: .005
-  on_awake_step_prob_delta_anticipation_scale: .01
-  on_awake_step_anomaly_err_ma_eps: .02
-  on_awake_step_ma_based_an_th_delta: .002
-  on_awake_step_long_ma_based_an_th_threshold: .03
-  on_awake_step_long_ma_based_an_th_delta: .0002
+#  on_awake_step_surprise_threshold: .1
+#  on_awake_step_surprise_threshold: .15
+  on_awake_step_surprise_threshold: .28
+#  on_awake_step_anticipation_decay: .98
+  on_awake_step_anticipation_decay: .987
+#  on_awake_step_reward_ma_eps: .004
+  on_awake_step_reward_ma_eps: .003
+#  on_awake_step_prob_delta_anticipation_scale: .01
+  on_awake_step_prob_delta_anticipation_scale: .003
+#  on_awake_step_prob_delta_anticipation_scale: .00275
+#  on_awake_step_anomaly_err_ma_eps: .02
+  on_awake_step_anomaly_err_ma_eps: .0073
+#  on_awake_step_ma_based_an_th_delta: .002
+  on_awake_step_ma_based_an_th_delta: .00064
+#  on_awake_step_long_ma_based_an_th_threshold: .03
+  on_awake_step_long_ma_based_an_th_threshold: .0071
+#  on_awake_step_long_ma_based_an_th_delta: .0002
+  on_awake_step_long_ma_based_an_th_delta: .00126
 
-  dreaming_match_rate_ma_tracker: [1., .1, .5]
-  reward_ma_tracker: [.05, .01, .0]
-  anomaly_error_ma_tracker: [.1, .02, -.1]
+  dreaming_match_rate_ma_tracker: [1.0, 0.1, 0.5]
+#  reward_ma_tracker: [0.05, 0.01, 0.0]
+  reward_ma_tracker: [0.02, 0.005, 0.0]
+  anomaly_error_ma_tracker: [0.1, 0.02, -0.1]
 
   qvn:
     learning_rate_factor: 1.
@@ -59,8 +74,8 @@ dreaming:
   exploration_eps: [.15, .997]
   trajectory_exploration_eps_decay: 1.
 
-  prediction_depth: 15
-  n_prediction_rollouts: [1, 1]
+  prediction_depth: 30
+  max_n_rollouts: 2
 
 reward_model:
   learning_rate: [.5, 1.]
