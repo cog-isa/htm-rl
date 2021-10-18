@@ -950,32 +950,6 @@ class HTMAgentRunner:
                                                           f'map_{config["environment"]["seed"]}_{self.episode}.png'))},
                    step=self.episode)
 
-    def log_dreaming_stats(self):
-        dreaming_stats = self.agent.dreamer.stats
-        cl_wake_stats = dreaming_stats.wake_cluster_memory_stats
-        cl_dreaming_stats = dreaming_stats.dreaming_cluster_memory_stats
-        stats_to_log = {
-            'rollouts': dreaming_stats.rollouts,
-            'avg_dreaming_rate': safe_divide(dreaming_stats.dreaming_times, self.steps_per_goal),
-            'avg_depth': dreaming_stats.avg_depth,
-            'cl_wake_match_rate': cl_wake_stats.avg_match_rate,
-            'cl_wake_avg_match_similarity': cl_wake_stats.avg_match_similarity,
-            'cl_wake_avg_mismatch_similarity': cl_wake_stats.avg_mismatch_similarity,
-            'cl_wake_all': cl_wake_stats.matched + cl_wake_stats.mismatched,
-            'cl_wake_added': cl_wake_stats.added,
-            'cl_wake_removed': cl_wake_stats.removed,
-            'cl_wake_avg_removed_cluster_intra_similarity': cl_wake_stats.avg_removed_cluster_intra_similarity,
-            'cl_wake_avg_removed_cluster_trace': cl_wake_stats.avg_removed_cluster_trace,
-            'cl_dreaming_all': cl_dreaming_stats.matched + cl_dreaming_stats.mismatched,
-            'cl_dreaming_match_rate': cl_dreaming_stats.avg_match_rate,
-            'cl_dreaming_avg_match_similarity': cl_dreaming_stats.avg_match_similarity,
-            'cl_dreaming_avg_mismatch_similarity': cl_dreaming_stats.avg_mismatch_similarity,
-        }
-        for k in stats_to_log.keys():
-            self.logger.log({f'dreaming/{k}': stats_to_log[k]}, step=self.episode)
-
-        self.agent.dreamer.on_new_goal()
-
     def log_goal_complete(self):
         self.logger.log({
             'goal': self.total_terminals,
@@ -987,6 +961,7 @@ class HTMAgentRunner:
 
         if self.agent.use_dreaming:
             self.agent.dreamer.log_stats(self.logger, step=self.episode)
+            self.agent.dreamer.on_new_goal()
 
     def on_new_goal(self):
         self.goal_reached = False
