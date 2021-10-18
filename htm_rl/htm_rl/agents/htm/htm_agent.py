@@ -987,6 +987,7 @@ class HTMAgentRunner:
 
         if self.agent.use_dreaming:
             self.agent.dreamer.log_stats(self.logger, step=self.episode)
+            self.agent.dreamer.on_new_goal()
 
     def on_new_goal(self):
         self.goal_reached = False

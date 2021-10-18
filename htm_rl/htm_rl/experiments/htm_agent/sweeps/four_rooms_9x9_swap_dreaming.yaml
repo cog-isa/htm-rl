@@ -22,7 +22,7 @@ parameters:
 #      - 0804
 
   agent.:
-    value: dreamer_mod2
+    value: dreamer_mod5
 #    value: dreamer
 
   # CHANGE FOR BASELINE
@@ -32,7 +32,7 @@ parameters:
     value: true
   blocks.1.bg.softmax_beta:
 #    value: 1.0
-    value: 0.25
+    value: 0.35
 
   # BASE DREAMING
 #  cagent..dreaming.anomaly_based_falling_asleep.anomaly_threshold:
@@ -46,11 +46,11 @@ parameters:
 
   # MODULATED DREAMING
   cagent..dreaming.anomaly_based_falling_asleep.anomaly_threshold:
-    value: [0.4, 0.35, 0.45]
+    value: [0.4, 0.38, 0.45]
   cagent..dreaming.anomaly_based_falling_asleep.probability:
-    value: [.08, .08, .15]
+    value: [.08, .005, .18]
   cagent..dreaming.prediction_depth:
-    value: 30
+    value: 18
   cagent..dreaming.max_n_rollouts:
     value: 1
 

@@ -1,10 +1,12 @@
 class BalancingParam:
     value: float
+    baseline: float
     min_value: float
     max_value: float
 
     def __init__(self, initial_value: float, min_value: float, max_value: float):
         self.value = initial_value
+        self.baseline = initial_value
         self.min_value = min_value
         self.max_value = max_value
 

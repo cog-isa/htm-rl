@@ -386,36 +386,21 @@ class Dreamer:
         anomaly_error_short_ma = self.anomaly_error_ma_tracker.short_ma
         anomaly_error_long_ma = self.anomaly_error_ma_tracker.long_ma
         certainty = 1 - abs(anomaly_error_short_ma)
-        longtime_certainty = 1 - abs(anomaly_error_long_ma)
 
         if abs(self.reward_model.last_error) * certainty > self.on_awake_step_surprise_threshold:
             # surprising event
             self.anticipation = 1.
-            self.dreaming_aug = self.anticipation
-        elif reward > self.on_awake_step_surprise_threshold:
-            self.anticipation *= self.on_awake_step_anticipation_decay
-            if self.anticipation > .3:
-                self.dreaming_aug += self.anticipation
-            else:
-                self.dreaming_aug -= self.anticipation
-            if self.dreaming_aug < 0:
-                self.dreaming_aug = 0
-
-        reward_short_ma = self.reward_ma_tracker.short_ma
-        reward_long_ma = self.reward_ma_tracker.long_ma
-        r_eps = self.on_awake_step_reward_ma_eps
-        anticipation_scale = self.on_awake_step_prob_delta_anticipation_scale
-        alpha = self.dreaming_aug * 1.5 * (1 - self.on_awake_step_anticipation_decay)
-        # alpha = self.anticipation
-        if reward_short_ma > reward_long_ma + r_eps:
-            # good place
-            dreaming_probability.add(
-                anticipation_scale * alpha * longtime_certainty
+            surprise_scale = .5 * self.on_awake_step_surprise_threshold / abs(self.reward_model.last_error)
+            dreaming_probability.scale(
+                dreaming_probability.baseline +
+                (dreaming_probability.max_value - dreaming_probability.baseline) * surprise_scale
             )
-        elif reward_short_ma < reward_long_ma - r_eps:
-            # lackluster
-            dreaming_probability.add(
-                -anticipation_scale * alpha * longtime_certainty
+        elif reward > self.on_awake_step_surprise_threshold:
+            # expected reward
+            self.anticipation *= self.on_awake_step_anticipation_decay
+            dreaming_probability.update(
+                dreaming_probability.min_value +
+                (dreaming_probability.max_value - dreaming_probability.min_value) * self.anticipation
             )
 
         an_eps = self.on_awake_step_anomaly_err_ma_eps
@@ -431,6 +416,71 @@ class Dreamer:
         else:
             # long-radius bad anomaly approx
             anomaly_threshold.add(-self.on_awake_step_long_ma_based_an_th_delta)
+
+    # def _on_transition_to_new_state(
+    #         self, prev_action: int, s: SparseSdr, reward: float, learn: bool
+    # ):
+    #     # learn transition and anomaly for (s',a') -> s
+    #     self.transition_model.process(s, learn=learn)
+    #     if not learn:
+    #         return
+    #
+    #     self.anomaly_model.update(prev_action, s, self.transition_model.anomaly)
+    #     # also update reward model
+    #     self.reward_model.update(s, reward)
+    #
+    #     # ==========================================
+    #
+    #     anomaly_error = self.anomaly_model.last_error
+    #     self.reward_ma_tracker.update(reward)
+    #     self.anomaly_error_ma_tracker.update(anomaly_error)
+    #
+    #     # return
+    #     dreaming_probability = self.anomaly_based_falling_asleep.probability
+    #     anomaly_threshold = self.anomaly_based_falling_asleep.anomaly_threshold
+    #
+    #     anomaly_error_short_ma = self.anomaly_error_ma_tracker.short_ma
+    #     anomaly_error_long_ma = self.anomaly_error_ma_tracker.long_ma
+    #     certainty = 1 - abs(anomaly_error_short_ma)
+    #     longtime_certainty = 1 - abs(anomaly_error_long_ma)
+    #
+    #     if abs(self.reward_model.last_error) * certainty > self.on_awake_step_surprise_threshold:
+    #         # surprising event
+    #         self.anticipation = 1.
+    #         self.dreaming_aug = self.anticipation
+    #     elif reward > self.on_awake_step_surprise_threshold:
+    #         self.anticipation *= self.on_awake_step_anticipation_decay
+    #
+    #     reward_short_ma = self.reward_ma_tracker.short_ma
+    #     reward_long_ma = self.reward_ma_tracker.long_ma
+    #     r_eps = self.on_awake_step_reward_ma_eps
+    #     anticipation_scale = self.on_awake_step_prob_delta_anticipation_scale
+    #     # alpha = self.dreaming_aug * 1.4 * (1 - self.on_awake_step_anticipation_decay)
+    #     alpha = self.anticipation
+    #     if reward_short_ma > reward_long_ma + r_eps:
+    #         # good place
+    #         dreaming_probability.add(
+    #             anticipation_scale * alpha * longtime_certainty
+    #         )
+    #     elif reward_short_ma < reward_long_ma - r_eps:
+    #         # lackluster
+    #         dreaming_probability.add(
+    #             -.9 * anticipation_scale * alpha * longtime_certainty
+    #         )
+    #
+    #     an_eps = self.on_awake_step_anomaly_err_ma_eps
+    #     if abs(anomaly_error_short_ma) + an_eps < abs(anomaly_error_long_ma):
+    #         # short-radius lower anomaly err
+    #         anomaly_threshold.add(self.on_awake_step_ma_based_an_th_delta)
+    #     elif abs(anomaly_error_short_ma) > abs(anomaly_error_long_ma) + an_eps:
+    #         # short-radius higher anomaly err
+    #         anomaly_threshold.add(-self.on_awake_step_ma_based_an_th_delta)
+    #     elif abs(anomaly_error_long_ma) < self.on_awake_step_long_ma_based_an_th_threshold:
+    #         # long-radius good anomaly approx - stable encoding
+    #         anomaly_threshold.add(self.on_awake_step_long_ma_based_an_th_delta)
+    #     else:
+    #         # long-radius bad anomaly approx
+    #         anomaly_threshold.add(-self.on_awake_step_long_ma_based_an_th_delta)
 
     def _on_wake(self):
         dcl_stats = self.stats.dreaming_cluster_memory_stats
