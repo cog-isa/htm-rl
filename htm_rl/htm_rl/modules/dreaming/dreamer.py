@@ -390,17 +390,20 @@ class Dreamer:
         if abs(self.reward_model.last_error) * certainty > self.on_awake_step_surprise_threshold:
             # surprising event
             self.anticipation = 1.
-            surprise_scale = .5 * self.on_awake_step_surprise_threshold / abs(self.reward_model.last_error)
-            dreaming_probability.scale(
-                dreaming_probability.baseline +
-                (dreaming_probability.max_value - dreaming_probability.baseline) * surprise_scale
-            )
+            dreaming_probability.update(dreaming_probability.baseline)
         elif reward > self.on_awake_step_surprise_threshold:
             # expected reward
             self.anticipation *= self.on_awake_step_anticipation_decay
             dreaming_probability.update(
                 dreaming_probability.min_value +
                 (dreaming_probability.max_value - dreaming_probability.min_value) * self.anticipation
+            )
+        else:
+            relax_to_baseline_scale = 1 - (1 - self.on_awake_step_anticipation_decay) / 15
+            delta_baseline = dreaming_probability.value - dreaming_probability.baseline
+            dreaming_probability.update(
+                dreaming_probability.baseline +
+                delta_baseline * relax_to_baseline_scale
             )
 
         an_eps = self.on_awake_step_anomaly_err_ma_eps
@@ -492,17 +495,6 @@ class Dreamer:
             matched - last_matched + mismatched - last_mismatched
         )
         self.dreaming_match_rate_ma_tracker.update(instant_match_rate)
-
-        dreaming_probability = self.anomaly_based_falling_asleep.probability
-        anomaly_threshold = self.anomaly_based_falling_asleep.anomaly_threshold
-
-        if self.dreaming_match_rate_ma_tracker.long_ma < self.on_wake_dreaming_match_rate_threshold:
-            # bad TM ==>
-            dreaming_probability.add(-self.on_wake_dreaming_match_rate_prob_inh)
-            anomaly_threshold.add(-self.on_wake_dreaming_match_rate_an_th_inh)
-
-        # relaxing dreaming probability decay
-        dreaming_probability.scale(self.on_wake_prob_decay)
 
     def _on_complete_rollout(self, depth, goal_reached):
         ...

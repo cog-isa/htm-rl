@@ -138,7 +138,7 @@ cagent:
     on_wake_dreaming_match_rate_an_th_inh: .0002
     on_wake_prob_decay: 1.
 
-    on_awake_step_surprise_threshold: .28
+    on_awake_step_surprise_threshold: .2
 #    on_awake_step_anticipation_decay: .987
     on_awake_step_anticipation_decay: .98
     on_awake_step_reward_ma_eps: .003
