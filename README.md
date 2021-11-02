@@ -1,5 +1,7 @@
 # HTM applied to RL setting
 
+[![DOI](https://zenodo.org/badge/264959456.svg)](https://zenodo.org/badge/latestdoi/264959456)
+
 - [HTM applied to RL setting](#htm-applied-to-rl-setting)
   - [Links](#links)
   - [Quick install](#quick-install)
