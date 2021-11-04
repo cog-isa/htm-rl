@@ -1,4 +1,4 @@
-from htm_rl.agents.cc.cortical_column import MovingDelayedFeedbackTM
+from htm_rl.agents.cc.temporal_memory import MovingDelayedFeedbackTM
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.common.sdr_encoders import IntBucketEncoder
 from htm.bindings.algorithms import SpatialPooler

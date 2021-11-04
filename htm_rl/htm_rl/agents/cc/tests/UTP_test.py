@@ -1,5 +1,5 @@
 from htm.bindings.sdr import SDR
-from htm_rl.agents.cc.cortical_column import UnionTemporalPooler
+from htm_rl.agents.cc.temporal_memory import UnionTemporalPooler
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np

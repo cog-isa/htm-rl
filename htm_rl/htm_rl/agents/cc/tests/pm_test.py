@@ -1,4 +1,4 @@
-from htm_rl.agents.cc.memory import PatternMemory
+from htm_rl.agents.cc.pattern_memory import PatternMemory
 import numpy as np
 from htm.bindings.sdr import SDR
 from tqdm import tqdm
