@@ -775,6 +775,7 @@ class UnionTemporalPooler(SpatialPooler):
 class TemporalDifferencePooler(SpatialPooler):
     def __init__(self, **kwargs):
         super(TemporalDifferencePooler, self).__init__(**kwargs)
+        self._activeCells = SDR(self.getNumColumns())
         self._predictedCells = SDR(self.getNumColumns())
 
     def compute(self, input_active: SDR, input_predicted: SDR,
@@ -790,7 +791,7 @@ class TemporalDifferencePooler(SpatialPooler):
 
         # minus phase
         if input_predicted.sparse.size > 0:
-            overlapsPredicted = self.connections.computeActivity(input_predicted, learn)
+            overlapsPredicted = self.connections.computeActivity(input_predicted, learn).astype(UINT_DTYPE)
             predictedCells = self._inhibitColumns(overlapsPredicted)
             self._predictedCells.sparse = predictedCells
         else:

@@ -173,9 +173,9 @@ class ImageMovement:
             [[0, 1], [0, -1], [1, 0], [-1, 0]]
         """
         self.image = np.empty(0)
-        self.position = (0, 0)
-        self.top_left = (0, 0)
-        self.bottom_right = (0, 0)
+        self.position = [0, 0]
+        self.top_left = [0, 0]
+        self.bottom_right = [0, 0]
 
         self.window_pos = window_pos
         self.actions = actions
@@ -184,11 +184,11 @@ class ImageMovement:
         self.image = image
 
     def set_position(self, position):
-        self.position = position
-        self.top_left = (self.position[0] + self.window_pos[0],
-                         self.position[1] + self.window_pos[1])
-        self.bottom_right = (self.position[0] + self.window_pos[2],
-                             self.position[1] + self.window_pos[3])
+        self.position = list(position)
+        self.top_left = [self.position[0] + self.window_pos[0],
+                         self.position[1] + self.window_pos[1]]
+        self.bottom_right = [self.position[0] + self.window_pos[2],
+                             self.position[1] + self.window_pos[3]]
 
     def get_possible_actions(self):
         actions = list()
