@@ -1,4 +1,4 @@
-from htm_rl.agents.cc.utils import ImageMovement
+from htm_rl.agents.cc.utils import ImageMovement, get_receptive_field
 from htm_rl.agents.cc.spatial_pooler import TemporalDifferencePooler
 from htm_rl.agents.cc.temporal_memory import GeneralFeedbackTM
 from htm_rl.common.sdr_encoders import IntBucketEncoder
@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
+import wandb
 
 
 def run(images: np.ndarray, tm: GeneralFeedbackTM, sp: TemporalDifferencePooler,
@@ -18,9 +19,14 @@ def run(images: np.ndarray, tm: GeneralFeedbackTM, sp: TemporalDifferencePooler,
         crop_image_pos: ImageMovement,
         crop_image_neg: ImageMovement,
         action_encoder: IntBucketEncoder,
-        learn=True):
-    for epoch in tqdm(range(n_epochs)):
-        for image in tqdm(images):
+        learn=True,
+        logger=None):
+    indices = np.arange(images.shape[0])
+    cells = np.random.choice(np.arange(sp.getNumColumns()), size=20, replace=False)
+    for epoch in range(n_epochs):
+        np.random.shuffle(indices)
+        for i, idx in enumerate(indices):
+            image = images[idx]
             crop_image_pos.set_image(image)
             crop_image_neg.set_image(1 - image)
             crop_image_pos.set_position((image.shape[0] // 2, image.shape[1] // 2))
@@ -52,6 +58,12 @@ def run(images: np.ndarray, tm: GeneralFeedbackTM, sp: TemporalDifferencePooler,
                 tm.set_active_columns(input_sp.sparse)
                 tm.activate_cells(learn)
 
+                if logger is not None:
+                    if (i == 0) and (step == 0):
+                        logger.log({f'receptive_field_cell{cell}': wandb.Image(plt.imshow(get_receptive_field(sp, cell))) for cell in cells},
+                                   commit=False)
+                    logger.log({'anomaly': tm.anomaly[-1], 'confidence': tm.confidence[-1]})
+
                 possible_actions = crop_image_pos.get_possible_actions()
                 if len(possible_actions) != 0:
                     action = np.random.choice(possible_actions)
@@ -63,6 +75,7 @@ def run(images: np.ndarray, tm: GeneralFeedbackTM, sp: TemporalDifferencePooler,
 
 
 def main(seed):
+    np.random.seed(seed)
     X, y = load_digits(return_X_y=True)
     X = binarize(X, threshold=X.mean())
 
@@ -71,15 +84,15 @@ def main(seed):
     )
 
     general_config = dict(bucket_size=3,
-                          input_x=8,
-                          input_y=16,
-                          col_x=50,
-                          col_y=50,
+                          input_x=5,
+                          input_y=10,
+                          col_x=10,
+                          col_y=10,
                           sdr_sparsity=0.05,
                           noise_tolerance=0.01
                           )
 
-    crop_config = dict(window_pos=[-1, -1, 1, 1],
+    crop_config = dict(window_pos=[-2, -2, 2, 2],
                        actions=[[0, 1], [0, -1], [1, 0], [-1, 0],
                                 [1, 1], [-1, -1], [-1, 1], [1, -1]]
                        )
@@ -87,7 +100,7 @@ def main(seed):
     action_encoder = IntBucketEncoder(len(crop_config['actions']), bucket_size=general_config['bucket_size'])
 
     tm_config = dict(columns=general_config['input_x'] * general_config['input_y'],
-                     cells_per_column=15,
+                     cells_per_column=16,
                      context_cells=general_config['col_x'] * general_config['col_y'],
                      feedback_cells=action_encoder.output_sdr_size,
                      activation_threshold_basal=int(
@@ -140,14 +153,21 @@ def main(seed):
                      spVerbosity=0,
                      wrapAround=False)
 
+    config = dict(general=general_config,
+                  tm=tm_config,
+                  sp=sp_config,
+                  crop=crop_config)
+
     crop_image_pos = ImageMovement(window_pos=crop_config['window_pos'], actions=crop_config['actions'])
     crop_image_neg = ImageMovement(window_pos=crop_config['window_pos'], actions=crop_config['actions'])
 
     tm = GeneralFeedbackTM(**tm_config)
     sp = TemporalDifferencePooler(**sp_config)
 
-    run(X_train.reshape((-1, 8, 8)), tm, sp, 15, 10,
-        crop_image_pos, crop_image_neg, action_encoder, True)
+    logger = wandb.init(project='test_tdsp', entity='hauska', config=config)
+
+    run(X_train.reshape((-1, 8, 8)), tm, sp, 30, 3,
+        crop_image_pos, crop_image_neg, action_encoder, True, logger)
 
 
 if __name__ == '__main__':

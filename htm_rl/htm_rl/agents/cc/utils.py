@@ -1,5 +1,6 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
+from htm.bindings.algorithms import SpatialPooler
 
 
 class ExciteFunctionBase(object):
@@ -216,3 +217,15 @@ class ImageMovement:
         self.top_left[1] += self.actions[action][1]
         self.bottom_right[0] += self.actions[action][0]
         self.bottom_right[1] += self.actions[action][1]
+
+
+def get_receptive_field(sp: SpatialPooler, cell: int):
+    receptive_field = np.zeros(sp.getInputDimensions())
+    segment = sp.connections.getSegment(cell, 0)
+    synapses = sp.connections.synapsesForSegment(segment)
+    for synapse in synapses:
+        if sp.connections.permanenceForSynapse(synapse) > sp.getSynPermConnected():
+            presynaptic_cell = sp.connections.presynapticCellForSynapse(synapse)
+            receptive_field[presynaptic_cell // receptive_field.shape[1],
+                            presynaptic_cell % receptive_field.shape[1]] = 1
+    return receptive_field
