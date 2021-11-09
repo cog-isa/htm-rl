@@ -207,7 +207,7 @@ class ImageMovement:
         return actions
 
     def observe(self):
-        return self.image[self.top_left[0]:self.bottom_right[0]][:, self.top_left[1]:self.bottom_right[1]]
+        return self.image[self.top_left[0]:self.bottom_right[0]+1][:, self.top_left[1]:self.bottom_right[1]+1]
 
     def act(self, action):
         self.position[0] += self.actions[action][0]
