@@ -5,10 +5,8 @@ from htm_rl.common.sdr_encoders import IntBucketEncoder
 from sklearn.datasets import load_digits
 from sklearn.preprocessing import binarize
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
 from htm.bindings.sdr import SDR
-from tqdm import tqdm
-
-import matplotlib.pyplot as plt
 import numpy as np
 import wandb
 
@@ -24,15 +22,17 @@ def run(images: np.ndarray,
         action_encoder: IntBucketEncoder,
         learn=True,
         logger=None,
-        use_prediction=True):
+        use_prediction=True,
+        receptive_field_sample_size=40,
+        behavior_sample_prob=0.01):
     classes, counts = np.unique(labels, return_counts=True)
     class_counts = {cls: counts[i] for i, cls in enumerate(classes)}
 
     indices = np.arange(images.shape[0])
-    cells = np.random.choice(np.arange(sp.getNumColumns()), size=40, replace=False)
+    cells = np.random.choice(np.arange(sp.getNumColumns()), size=receptive_field_sample_size, replace=False)
     for epoch in range(n_epochs):
-        total_anomaly_per_class = {cls: 0 for cls in classes}
-        step_anomaly_per_class = {cls: np.zeros(n_steps) for cls in classes}
+        total_f1_per_class = {cls: 0 for cls in classes}
+        step_f1_per_class = {cls: np.zeros(n_steps) for cls in classes}
         np.random.shuffle(indices)
         for i, idx in enumerate(indices):
             image = images[idx]
@@ -45,9 +45,16 @@ def run(images: np.ndarray,
             tm.reset()
             input_sp = SDR(sp.getInputDimensions())
             predicted_input_sp = SDR(sp.getInputDimensions())
+            prev_input_sp = SDR(sp.getInputDimensions())
             output_sp = SDR(sp.getColumnDimensions())
+            action = None
             action_code = np.empty(0)
-            anomalies = np.zeros(n_steps)
+            f1s = np.zeros(n_steps)
+            animation = list()
+            if np.random.random() < behavior_sample_prob:
+                draw_frame = True
+            else:
+                draw_frame = False
 
             for step in range(n_steps):
                 obs_pos = crop_image_pos.observe()
@@ -71,7 +78,14 @@ def run(images: np.ndarray,
                 tm.activate_cells(learn)
                 # log
                 if step != 0:
-                    anomalies[step] = float(tm.anomaly[-1])
+                    f1s[step] = f1_score(input_sp.dense.flatten(), predicted_input_sp.dense.flatten())
+
+                if draw_frame:
+                    animation.append(draw_animation_frame(crop_image_pos,
+                                                          input_sp,
+                                                          predicted_input_sp,
+                                                          prev_input_sp,
+                                                          action))
                 # log
                 possible_actions = crop_image_pos.get_possible_actions()
                 if len(possible_actions) != 0:
@@ -81,34 +95,72 @@ def run(images: np.ndarray,
                     crop_image_neg.act(action)
                 else:
                     action_code = np.empty(0)
-            # log
-            step_anomaly_per_class[label] += (anomalies/(class_counts[label]))
-            total_anomaly_per_class[label] += (anomalies.mean()/(class_counts[label]))
+
+                prev_input_sp.sparse = np.copy(input_sp.sparse)
+        # log
+            step_f1_per_class[label] += (f1s / (class_counts[label]))
+            total_f1_per_class[label] += (f1s[1:].mean() / (class_counts[label]))
+            if len(animation) > 0:
+                if logger is not None:
+                    logger.log(
+                        {f'behavior_samples/animation': [wandb.Image(x) for x in animation]})
+                animation.clear()
 
         if logger is not None:
             logger.log(
-                {f'receptive_field': [wandb.Image(0.9 - 0.9 * get_receptive_field(sp, cell)) for cell
-                 in cells]},
+                {f'receptive_field': [wandb.Image(0.9 - 0.85 * get_receptive_field(sp, cell)) for cell
+                                      in cells]},
                 commit=False)
             logger.log(
-                {'anomaly_per_step':
+                {'f1_per_step':
                     wandb.plot.line_series(
                         xs=list(range(n_steps)),
-                        ys=list(step_anomaly_per_class.values()),
-                        keys=list(step_anomaly_per_class.keys()),
-                        title="Anomaly Per Step",
+                        ys=list(step_f1_per_class.values()),
+                        keys=list(step_f1_per_class.keys()),
+                        title="F1 Per Step",
                         xname="Step"
                     )},
                 commit=False
             )
-            table = wandb.Table(data=[[label, val] for (label, val) in total_anomaly_per_class.items()],
-                                columns=["class", "total_anomaly"])
+            table = wandb.Table(data=[[label, val] for (label, val) in total_f1_per_class.items()],
+                                columns=["class", "total_f1"])
             logger.log(
-                {'anomaly_per_class':
-                     wandb.plot.bar(table, "class", "total_anomaly",
-                                    title="Total Anomaly Per Class")}
+                {'f1_per_class':
+                     wandb.plot.bar(table, "class", "total_f1",
+                                    title="Total F1 Per Class")}
             )
         # log
+
+
+def draw_animation_frame(crop_image_pos: ImageMovement, input_sp: SDR, predicted_input_sp: SDR, prev_input_sp: SDR,
+                         action: int):
+    frame_x_size = crop_image_pos.image.shape[0] + 2 * input_sp.dimensions[0] + 2
+    frame_y_size = max(crop_image_pos.image.shape[1], 2 * input_sp.dimensions[1]) + 1
+    frame = np.zeros((frame_x_size, frame_y_size))
+    # full image
+    frame[:crop_image_pos.image.shape[0], :crop_image_pos.image.shape[1]] = crop_image_pos.image
+    # highlight window
+    frame[crop_image_pos.top_left[0]:crop_image_pos.bottom_right[0]+1,
+    crop_image_pos.top_left[1]:crop_image_pos.bottom_right[1]+1] = 0.8 * frame[crop_image_pos.top_left[0]:
+                                                                             crop_image_pos.bottom_right[0]+1,
+                                                                       crop_image_pos.top_left[1]:
+                                                                       crop_image_pos.bottom_right[1]+1] + 0.1
+    # previous crop
+    frame[crop_image_pos.image.shape[0]+1: crop_image_pos.image.shape[0] + input_sp.dimensions[0] + 1,
+    :input_sp.dimensions[1]] = prev_input_sp.dense
+    # current crop
+    frame[crop_image_pos.image.shape[0]+1: crop_image_pos.image.shape[0] + input_sp.dimensions[0] + 1,
+    input_sp.dimensions[1]+1: 2 * input_sp.dimensions[1]+1] = input_sp.dense
+    # predicted crop
+    frame[crop_image_pos.image.shape[0] + input_sp.dimensions[0]+2:,
+    input_sp.dimensions[1]+1: 2 * input_sp.dimensions[1]+1] = predicted_input_sp.dense
+    # action
+    action_pixel = [frame.shape[0] - 2, 1]
+    if action is not None:
+        action_pixel[0] += crop_image_pos.actions[action][0]
+        action_pixel[1] += crop_image_pos.actions[action][1]
+    frame[action_pixel[0], action_pixel[1]] = 1
+    return frame
 
 
 def main(seed):
@@ -127,7 +179,7 @@ def main(seed):
                           col_y=10,
                           sdr_sparsity=0.05,
                           noise_tolerance=0.01,
-                          use_prediction=False
+                          use_prediction=True
                           )
 
     crop_config = dict(window_pos=[-2, -2, 2, 2],
@@ -151,22 +203,22 @@ def main(seed):
                      learning_threshold_apical=action_encoder.n_active_bits,
                      connected_threshold_basal=0.5,
                      permanence_increment_basal=0.1,
-                     permanence_decrement_basal=0.001,
-                     initial_permanence_basal=0.6,
-                     predicted_segment_decrement_basal=0.001,
+                     permanence_decrement_basal=0.01,
+                     initial_permanence_basal=0.1,
+                     predicted_segment_decrement_basal=0.005,
                      sample_size_basal=int(
                          general_config['sdr_sparsity'] * general_config['col_x'] * general_config['col_y']),
                      max_synapses_per_segment_basal=int(
                          general_config['sdr_sparsity'] * general_config['col_x'] * general_config['col_y']),
-                     max_segments_per_cell_basal=32,
+                     max_segments_per_cell_basal=8,
                      connected_threshold_apical=0.5,
                      permanence_increment_apical=0.1,
-                     permanence_decrement_apical=0.001,
-                     initial_permanence_apical=0.6,
-                     predicted_segment_decrement_apical=0.001,
+                     permanence_decrement_apical=0.01,
+                     initial_permanence_apical=0.1,
+                     predicted_segment_decrement_apical=0.005,
                      sample_size_apical=-1,
                      max_synapses_per_segment_apical=action_encoder.n_active_bits,
-                     max_segments_per_cell_apical=32,
+                     max_segments_per_cell_apical=8,
                      prune_zero_synapses=True,
                      timeseries=False,
                      anomaly_window=1000,
