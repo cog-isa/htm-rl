@@ -533,7 +533,7 @@ class GeneralFeedbackTM:
         num_connected, num_potential = connections.computeActivityFull(presynaptic_cells,
                                                                        learn)  # The role of "learn" parameter isn't clear
         active_segments = np.flatnonzero(num_connected >= activation_threshold)
-        predictive_cells = connections.mapSegmentsToCells(active_segments)  # with duplicates
+        predictive_cells = np.unique(connections.mapSegmentsToCells(active_segments))
 
         # Matching
         matching_segments = np.flatnonzero(num_potential >= learning_threshold)
