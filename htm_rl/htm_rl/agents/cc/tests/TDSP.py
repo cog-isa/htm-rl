@@ -13,20 +13,30 @@ import numpy as np
 import wandb
 
 
-def run(images: np.ndarray, tm: GeneralFeedbackTM, sp: TemporalDifferencePooler,
+def run(images: np.ndarray,
+        labels: np.ndarray,
+        tm: GeneralFeedbackTM,
+        sp: TemporalDifferencePooler,
         n_steps: int,
         n_epochs: int,
         crop_image_pos: ImageMovement,
         crop_image_neg: ImageMovement,
         action_encoder: IntBucketEncoder,
         learn=True,
-        logger=None):
+        logger=None,
+        use_prediction=True):
+    classes, counts = np.unique(labels, return_counts=True)
+    class_counts = {cls: counts[i] for i, cls in enumerate(classes)}
+
     indices = np.arange(images.shape[0])
-    cells = np.random.choice(np.arange(sp.getNumColumns()), size=20, replace=False)
+    cells = np.random.choice(np.arange(sp.getNumColumns()), size=40, replace=False)
     for epoch in range(n_epochs):
+        total_anomaly_per_class = {cls: 0 for cls in classes}
+        step_anomaly_per_class = {cls: np.zeros(n_steps) for cls in classes}
         np.random.shuffle(indices)
         for i, idx in enumerate(indices):
             image = images[idx]
+            label = labels[idx]
             crop_image_pos.set_image(image)
             crop_image_neg.set_image(1 - image)
             crop_image_pos.set_position((image.shape[0] // 2, image.shape[1] // 2))
@@ -37,6 +47,7 @@ def run(images: np.ndarray, tm: GeneralFeedbackTM, sp: TemporalDifferencePooler,
             predicted_input_sp = SDR(sp.getInputDimensions())
             output_sp = SDR(sp.getColumnDimensions())
             action_code = np.empty(0)
+            anomalies = np.zeros(n_steps)
 
             for step in range(n_steps):
                 obs_pos = crop_image_pos.observe()
@@ -51,19 +62,17 @@ def run(images: np.ndarray, tm: GeneralFeedbackTM, sp: TemporalDifferencePooler,
                 tm.activate_basal_dendrites(learn)
                 tm.predict_cells()
 
-                predicted_input_sp.sparse = tm.predicted_columns.sparse
+                if use_prediction:
+                    predicted_input_sp.sparse = tm.predicted_columns.sparse
 
                 output_sp = sp.compute(input_sp, predicted_input_sp, learn=learn)
 
                 tm.set_active_columns(input_sp.sparse)
                 tm.activate_cells(learn)
-
-                if logger is not None:
-                    if (i == 0) and (step == 0):
-                        logger.log({f'receptive_field_cell{cell}': wandb.Image(plt.imshow(get_receptive_field(sp, cell))) for cell in cells},
-                                   commit=False)
-                    logger.log({'anomaly': tm.anomaly[-1], 'confidence': tm.confidence[-1]})
-
+                # log
+                if step != 0:
+                    anomalies[step] = float(tm.anomaly[-1])
+                # log
                 possible_actions = crop_image_pos.get_possible_actions()
                 if len(possible_actions) != 0:
                     action = np.random.choice(possible_actions)
@@ -72,6 +81,34 @@ def run(images: np.ndarray, tm: GeneralFeedbackTM, sp: TemporalDifferencePooler,
                     crop_image_neg.act(action)
                 else:
                     action_code = np.empty(0)
+            # log
+            step_anomaly_per_class[label] += (anomalies/(class_counts[label]))
+            total_anomaly_per_class[label] += (anomalies.mean()/(class_counts[label]))
+
+        if logger is not None:
+            logger.log(
+                {f'receptive_field': [wandb.Image(0.9 - 0.9 * get_receptive_field(sp, cell)) for cell
+                 in cells]},
+                commit=False)
+            logger.log(
+                {'anomaly_per_step':
+                    wandb.plot.line_series(
+                        xs=list(range(n_steps)),
+                        ys=list(step_anomaly_per_class.values()),
+                        keys=list(step_anomaly_per_class.keys()),
+                        title="Anomaly Per Step",
+                        xname="Step"
+                    )},
+                commit=False
+            )
+            table = wandb.Table(data=[[label, val] for (label, val) in total_anomaly_per_class.items()],
+                                columns=["class", "total_anomaly"])
+            logger.log(
+                {'anomaly_per_class':
+                     wandb.plot.bar(table, "class", "total_anomaly",
+                                    title="Total Anomaly Per Class")}
+            )
+        # log
 
 
 def main(seed):
@@ -89,7 +126,8 @@ def main(seed):
                           col_x=10,
                           col_y=10,
                           sdr_sparsity=0.05,
-                          noise_tolerance=0.01
+                          noise_tolerance=0.01,
+                          use_prediction=False
                           )
 
     crop_config = dict(window_pos=[-2, -2, 2, 2],
@@ -166,8 +204,8 @@ def main(seed):
 
     logger = wandb.init(project='test_tdsp', entity='hauska', config=config)
 
-    run(X_train.reshape((-1, 8, 8)), tm, sp, 30, 3,
-        crop_image_pos, crop_image_neg, action_encoder, True, logger)
+    run(X_train.reshape((-1, 8, 8)), y_train, tm, sp, 30, 3,
+        crop_image_pos, crop_image_neg, action_encoder, True, logger, use_prediction=general_config['use_prediction'])
 
 
 if __name__ == '__main__':
