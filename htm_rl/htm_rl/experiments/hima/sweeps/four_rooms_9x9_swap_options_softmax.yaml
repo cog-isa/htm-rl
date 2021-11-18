@@ -1,0 +1,33 @@
+project: four_rooms_swap_options_softmax
+entity: hauska
+program: scripts/run_agent.py
+method: grid
+parameters:
+  seed:
+    values: [63423, 98791, 3219]
+  environment.seed:
+    values:
+      - 46320
+      - 34298
+      - 43281
+  block_default.feedback_boost_range:
+    values:
+      - [0.0, 0.8]
+  blocks.1.bg.softmax_beta:
+    values:
+      - 0.25
+      - 0.6
+      - 1.0
+  blocks.3.bg.softmax_beta:
+    values:
+      - 0.25
+      - 0.5
+      - 1.0
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_swap_options
+  - ${args}
+

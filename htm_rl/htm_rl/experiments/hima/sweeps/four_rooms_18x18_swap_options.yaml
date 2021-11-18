@@ -1,0 +1,24 @@
+project: four_rooms_18x18_options_final
+entity: you
+program: scripts/run_agent.py
+method: grid
+parameters:
+  seed:
+    values: [45345, 15614, 9084]
+  environment.seed:
+    values:
+      - 94583
+      - 46383
+      - 46339
+  block_default.feedback_boost_range:
+    values:
+      - [0.0, 0.8]
+      - [0.0, 0.0]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_18x18_swap_options
+  - ${args}
+

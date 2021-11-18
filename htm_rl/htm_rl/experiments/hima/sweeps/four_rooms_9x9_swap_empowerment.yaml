@@ -1,0 +1,26 @@
+project: four_rooms_empowerment_full
+entity: hauska
+program: scripts/run_agent.py
+method: grid
+parameters:
+  seed:
+    values: [909028, 98917, 32312]
+  environment.seed:
+    values:
+      - 93289
+      - 19857
+      - 38571
+  cagent.use_intrinsic_reward:
+    values:
+      - True
+  blocks.1.bg.softmax_beta:
+    values:
+      - 0.25
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_swap_empowerment
+  - ${args}
+

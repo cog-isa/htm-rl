@@ -1,0 +1,26 @@
+project: four_rooms_9x9_free_new_final
+entity: hauska
+program: scripts/run_agent.py
+method: grid
+parameters:
+  seed:
+    values: [6549, 46850, 43081]
+  environment.seed:
+    values:
+      - 65989
+      - 98696
+      - 54739
+  block_default.feedback_boost_range:
+    values:
+      - [0.0, 0.8]
+  blocks.1.bg.softmax_beta:
+    values:
+      - 1.2
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_free_options
+  - ${args}
+

@@ -1,0 +1,31 @@
+project: four_rooms_swap_together_full
+entity: hauska
+program: scripts/run_agent.py
+method: grid
+metric:
+  name: 'total_steps'
+parameters:
+  seed:
+    values: [54372, 43213, 90483]
+  environment.seed:
+    values:
+      - 43802
+      - 90191
+      - 73051
+  block_default.feedback_boost_range:
+    values:
+      - [ 0, 0.0 ]
+  blocks.1.bg.softmax_beta:
+    values:
+      - 0.25
+  #blocks.3.bg.softmax_beta:
+    #values:
+      #- 0.25
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_swap_baseline
+  - ${args}
+
