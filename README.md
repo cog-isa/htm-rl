@@ -58,7 +58,7 @@ pip install -e .
 
 ### How to run HIMA agent
 
-See corresponding [readme](./htm_rl/htm_rl/agents/htm/README.md)
+See corresponding [readme](./htm_rl/htm_rl/experiments/hima/README.md)
 
 ### Non-HIMA Q-learning agent
 

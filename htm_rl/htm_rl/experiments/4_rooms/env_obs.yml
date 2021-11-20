@@ -23,7 +23,7 @@ areas:
   n_types: 5
 
 obstacle:
-  map_name: '../../experiments/htm_agent/maps/four_rooms_9x9.map'
+  map_name: '../../experiments/hima/maps/four_rooms_9x9.map'
 
 food:
   n_items: 1

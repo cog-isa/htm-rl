@@ -1,0 +1,31 @@
+project: cross_11x11_temp
+entity: hauska
+program: scripts/run_agent.py
+method: grid
+parameters:
+  seed:
+    values: [34297]
+  environment.seed:
+    values:
+      - 5123
+      - 5837
+  block_default.feedback_boost_range:
+    values:
+      - [0.0, 0.0]
+  run_options.n_episodes:
+    values:
+      - 600
+  blocks.1.bg.softmax_beta:
+    values:
+      - 0.55
+      - 0.6
+      - 0.7
+      - 1.0
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - cross_11x11_options
+  - ${args}
+
