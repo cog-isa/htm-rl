@@ -74,6 +74,29 @@ def create_gabor_convolution(
     return convolution
 
 
+def kWTA(preactivation: np.ndarray, activity_level: float) -> np.ndarray:
+    # 1st step kWTA
+    active_cells = np.argmax(preactivation, axis=0)
+    cells_value = np.max(preactivation, axis=0)
+
+    # 2nd step kWTA
+    k = int(cells_value.size * activity_level)
+    active_hypcol = np.argpartition(-cells_value, k, axis=None)[:k]
+    active_rows = active_hypcol // cells_value.shape[1]
+    active_cols = active_hypcol % cells_value.shape[1]
+
+    # final activation
+    activation = np.zeros_like(preactivation)
+    i = np.arange(activation.shape[1])
+    j = np.arange(activation.shape[2])
+    ii, jj = np.meshgrid(i, j, indexing='ij')
+    active_cells = active_cells[active_rows, active_cols]
+    ii = ii[active_rows, active_cols]
+    jj = jj[active_rows, active_cols]
+    activation[active_cells, ii, jj] = cells_value.flatten()[active_hypcol]
+    return activation
+
+
 class V1Simple:
 
     def __init__(self,
@@ -127,26 +150,7 @@ class V1Simple:
         gray = rgb2gray(image)
         gray = torch.tensor(gray.reshape((1, 1, *gray.shape)),  dtype=torch.float32)
         preactivation = self.convolution(gray).squeeze().numpy()
-
-        # 1st step kWTA
-        active_cells = np.argmax(preactivation, axis=0)
-        cells_value = np.max(preactivation, axis=0)
-
-        # 2nd step kWTA
-        k = int(cells_value.size * self.activity_level)
-        active_hypcol = np.argpartition(-cells_value, k, axis=None)[:k]
-        active_rows = active_hypcol // cells_value.shape[1]
-        active_cols = active_hypcol % cells_value.shape[1]
-
-        # final activation
-        activation = np.zeros_like(preactivation)
-        i = np.arange(activation.shape[1])
-        j = np.arange(activation.shape[2])
-        ii, jj = np.meshgrid(i, j, indexing='ij')
-        active_cells = active_cells[active_rows, active_cols]
-        ii = ii[active_rows, active_cols]
-        jj = jj[active_rows, active_cols]
-        activation[active_cells, ii, jj] = cells_value.flatten()[active_hypcol]
+        activation = kWTA(preactivation, self.activity_level)
         return activation
 
 
@@ -157,7 +161,9 @@ class V1SimpleMax:
                  g_stride: int,
                  g_sigma: float,
                  input_shape: tuple[int, int, int],
+                 activity_level: float,
                  ):
+        self.activity_level = activity_level
         self.gaus_filter, wi, wj = create_gaus_filter(g_kernel_size, g_sigma)
         pad_w = (-np.min(wj), np.max(wj))
         pad_h = (-np.min(wi), np.max(wi))
@@ -179,6 +185,7 @@ class V1SimpleMax:
 
     def compute(self, input: np.ndarray) -> np.ndarray:
         input_pad = np.pad(input, ((0, 0), *self.pad))
-        output = input_pad[:, self.i, self.j] * self.gaus_filter
-        output = output.max(axis=3)
-        return output
+        preactivation = input_pad[:, self.i, self.j] * self.gaus_filter
+        preactivation = preactivation.max(axis=3)
+        activation = kWTA(preactivation, self.activity_level)
+        return activation
