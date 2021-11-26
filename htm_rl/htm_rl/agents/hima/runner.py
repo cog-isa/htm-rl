@@ -18,6 +18,7 @@ from htm_rl.agents.hima.utils import OptionVis, draw_values, compute_q_policy, c
     draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
 from htm_rl.common.scenario import Scenario
 from htm_rl.agents.hima.hima import HIMA
+from htm_rl.agents.hima.adapters import BioGwLabAdapter, PulseAdapter
 
 
 class HIMAgentRunner:
@@ -66,8 +67,16 @@ class HIMAgentRunner:
         else:
             self.scenario = None
         self.agent = HIMA(config['agent'], hierarchy)
+
         self.env_config = config['environment']
-        self.environment = BioGwLabEnvironment(**config['environment'])
+        if config['environment_type'] == 'gw':
+            self.environment = BioGwLabEnvironment(**config['environment'])
+        elif config['environment_type'] == 'pulse':
+            # TODO add pulse environment
+            self.environment = ...
+        else:
+            raise ValueError(f'Unknown environment type: {config["environment_type"]}! ')
+
         self.terminal_pos_stat = dict()
         self.last_terminal_stat = 0
         self.total_terminals = 0
@@ -93,6 +102,15 @@ class HIMAgentRunner:
         self.map_change_indicator = 0
         self.goal_reached = True
         self.task_complete = True
+
+        if 'pulse_adapter' in config.keys():
+            assert config['environment_type'] == 'pulse'
+            self.action_adapter = PulseAdapter(self.environment, **config['pulse_adapter'])
+        elif 'gw_adapter' in config.keys():
+            assert config['environment_type'] == 'gw'
+            self.action_adapter = BioGwLabAdapter(**config['gw_adapter'])
+        else:
+            raise ValueError('Set up adapter!')
 
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
@@ -121,13 +139,28 @@ class HIMAgentRunner:
         self.seed = seed
         self.rng = random.Random(self.seed)
 
-    def run_episodes(self, n_episodes, train_patterns=True, log_values=False, log_policy=False,
+    def run_episodes(self, n_episodes,
+                     log_values=False,
+                     log_policy=False,
                      log_every_episode=50,
-                     log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
-                     opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
-                     log_td_error=False, log_anomaly=False, log_confidence=False, log_modulation=False,
-                     log_values_int=True, log_values_ext=True, log_priorities=True, log_empowerment=False,
-                     log_number_of_clusters=False, animation_fps=3):
+                     log_segments=False,
+                     draw_options=False,
+                     log_terminal_stat=False,
+                     draw_options_stats=False,
+                     opt_threshold=0,
+                     log_option_values=False,
+                     log_option_policy=False,
+                     log_options_usage=False,
+                     log_td_error=False,
+                     log_anomaly=False,
+                     log_confidence=False,
+                     log_modulation=False,
+                     log_values_int=True,
+                     log_values_ext=True,
+                     log_priorities=True,
+                     log_empowerment=False,
+                     log_number_of_clusters=False,
+                     animation_fps=3):
         self.total_reward = 0
         self.steps = 0
         self.steps_per_goal = 0
@@ -140,7 +173,7 @@ class HIMAgentRunner:
         self.goal_reached = True
         self.task_complete = True
 
-        #logging priorities
+        # logging priorities
         if self.agent.use_intrinsic_reward:
             max_reward_log = 0
             mean_reward_log = 0
@@ -154,9 +187,6 @@ class HIMAgentRunner:
         while self.episode < n_episodes:
             if self.scenario is not None:
                 self.scenario.check_conditions()
-
-            if train_patterns:
-                self.agent.train_patterns()
 
             reward, obs, is_first = self.environment.observe()
 
@@ -403,6 +433,7 @@ class HIMAgentRunner:
                     self.on_new_task()
 
                 self.agent.reset()
+                self.action_adapter.reset()
                 if self.agent.use_dreaming:
                     self.agent.dreamer.on_new_episode()
             else:
@@ -420,7 +451,8 @@ class HIMAgentRunner:
             if self.agent.use_dreaming and self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
 
-            self.current_action = self.agent.make_action(obs)
+            action_pattern = self.agent.make_action(obs)
+            self.current_action = self.action_adapter.adapt(action_pattern)
 
             self.agent.reinforce(reward)
             if self.agent.use_dreaming:
@@ -455,6 +487,9 @@ class HIMAgentRunner:
 
         if self.logger is not None:
             self.logger.log({"total_steps": self.steps_total})
+
+    def convert_to_env_action(self, action_pattern):
+        pass
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
         pic = self.environment.callmethod('render_rgb')
@@ -502,11 +537,8 @@ class HIMAgentRunner:
                     self.agent.hierarchy.output_block.predicted_options)
                 for o in predicted_options:
                     predicted_action_pattern = np.flatnonzero(o)
-                    self.agent.muscles.set_active_input(predicted_action_pattern)
-                    self.agent.muscles.depolarize_muscles()
-                    action_pattern = self.agent.muscles.get_depolarized_muscles()
-                    # convert muscles activation pattern to environment action
-                    p_action = self.agent.action.get_action(action_pattern)
+                    p_action = self.action_adapter.adapt(predicted_action_pattern)
+
                     direction = c_direction - self.option_stat.action_rotation[p_action]
                     if direction < 0:
                         direction = 4 - direction
@@ -555,11 +587,7 @@ class HIMAgentRunner:
                     self.agent.hierarchy.output_block.predicted_options)
                 for o in predicted_options:
                     predicted_action_pattern = np.flatnonzero(o)
-                    self.agent.muscles.set_active_input(predicted_action_pattern)
-                    self.agent.muscles.depolarize_muscles()
-                    action_pattern = self.agent.muscles.get_depolarized_muscles()
-                    # convert muscles activation pattern to environment action
-                    a = self.agent.action.get_action(action_pattern)
+                    a = self.action_adapter.adapt(predicted_action_pattern)
                     predicted_actions.append(a)
 
                 self.option_actions.append(self.current_action)
