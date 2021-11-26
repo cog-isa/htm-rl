@@ -73,12 +73,16 @@ class Agent(Entity):
             self.init_direction = DIRECTIONS_ORDER.index(direction)
 
         self.change_position = change_position
+        self.rng = np.random.default_rng(self.env.seed)
 
     def generate(self, seeds):
         # it's crucial
         self.initialized = False
 
-        rng = np.random.default_rng(seeds['agent'])
+        if self.change_position:
+            rng = self.rng
+        else:
+            rng = np.random.default_rng(seeds['agent'])
 
         if self.positions is not None:
             self.position = self._select_from_fixed_positions(rng)
@@ -94,7 +98,7 @@ class Agent(Entity):
 
     def _select_from_fixed_positions(self, rng):
         ind = 0
-        if len(self.positions) > 1 or self.change_position:
+        if len(self.positions) > 1:
             ind = rng.integers(len(self.positions))
 
         return self.positions[ind]
