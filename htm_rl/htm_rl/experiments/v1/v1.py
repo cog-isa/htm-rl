@@ -201,6 +201,7 @@ class V1SimpleMax:
         activation = kWTA(preactivation, self.activity_level)
         return activation, preactivation
 
+
 class V1Complex:
 
     def __init__(self,
@@ -215,18 +216,18 @@ class V1Complex:
             g_kernel_size, g_stride, g_sigma, input_shape, activity_level
         )
         self.length_filters = [
+            np.array([[1 / 3, 1 / 3, 1 / 3]]),
+            np.array(
+                [[1 / 3, 0, 0],
+                 [0, 1 / 3, 0],
+                 [0, 0, 1 / 3]]
+            ),
             np.array([[1 / 3], [1 / 3], [1 / 3]]),
             np.array(
                 [[0, 0, 1 / 3],
                  [0, 1 / 3, 0],
                  [1 / 3, 0, 0]]
             ),
-            np.array([[1/3, 1/3, 1/3]]),
-            np.array(
-                [[1 / 3, 0, 0],
-                 [0, 1 / 3, 0],
-                 [0, 0, 1 / 3]]
-            )
         ]
 
     def max_polarity(self, input: np.ndarray) -> np.ndarray:
