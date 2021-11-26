@@ -1,10 +1,10 @@
 seed: &seed 847582
 levels: 2
 agent: hima
-project: cross_options
+project: test
 entity: hauska  # don't forget to change if you use logging
 
-scenario: '../../experiments/hima/scenarios/cross_11x11.yaml'
+scenario: '../scenarios/cross_11x11.yaml'
 
 vis_options:
   size: 21
@@ -21,8 +21,8 @@ run_options:
   log_values_int: False
   log_values_ext: False
   log_priorities: False
-  log_values: True
-  log_policy: True
+  log_values: False
+  log_policy: False
   log_option_values: False
   log_option_policy: False
   log_options_usage: True
@@ -37,9 +37,9 @@ run_options:
   draw_options: True
   draw_options_stats: True
   opt_threshold: 50
-  train_patterns: True
   animation_fps: 3
 
+environment_type: gw
 environment:
   seed: 432921
   shape_xy: [11, 11]
@@ -65,7 +65,7 @@ environment:
 
   obstacle:
     density: 0.1
-    map_name: '../../experiments/hima/maps/cross_11x11.map'
+    map_name: '../maps/cross_11x11.map'
 
   food:
     n_items: 1
@@ -87,29 +87,19 @@ environment:
     early_stop: true
     n_items_to_collect: 1
 
+gw_adapter:
+  default_value: 'random'
+  seed: *seed
+
 cagent:
   use_intrinsic_reward: false
   use_dreaming: false
   alpha: 1.0
   punish_intrinsic_reward: -10
-  action:
-    do_nothing_action: 4
-    noise_tolerance: 0.1
-    patterns:
-    - [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
-  muscles:
-    connected_permanence: 0.5
-    depolarized_decrement: 0.01
-    initial_permanence: 0.6
-    max_segments_per_cell: 32
-    noise_tolerance: 0.1
-    permanence_decrement: 0.01
-    permanence_increment: 0.1
-    sample_size: 1.0
-    seed: *seed
+  n_actions_to_accumulate: 1
+  elementary_actions:
+    n_actions: 4
+    bucket_size: 3
   empowerment:
     horizon: 3
     similarity_threshold: 0.6
@@ -187,12 +177,9 @@ blocks:
       modulate_tm_lr: true
       level: 1
     sm: {}
-    sp:
-      boostStrength: 0.0
-      localAreaDensity: 0.02
-      potentialPct: 0.5
+    sp: null
     tm:
-      basal_columns: 1000
+      basal_columns: 12
 
   2:
     bg: null

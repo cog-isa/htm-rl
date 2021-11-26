@@ -48,7 +48,8 @@ class Block:
                  max_reward_decay: float = 0.99,
                  sm_max_reward: float = 0.9,
                  sm_min_reward: float = 0.9,
-                 modulate_tm_lr: bool = False):
+                 modulate_tm_lr: bool = False,
+                 sparsity: float = 0):
         
         self.tm = tm
         self.sp = sp
@@ -118,6 +119,7 @@ class Block:
         self.feedback_in_size = 0
         self.apical_in_size = 0
         self.basal_in_size = 0
+        self.sparsity = sparsity
 
         self.reward_ext = 0
         self.reward_int = 0
@@ -498,16 +500,18 @@ class Block:
             self.reward_modulation_signal = np.clip((self.mean_reward - self.min_reward) / self.max_reward, 0.0,
                                                     1.0)
 
+
 class InputBlock:
     """
     Dummy block for input patterns
     :param columns: int
     Number of input columns
     """
-    def __init__(self, columns, id_=None, level=None):
+    def __init__(self, columns, id_=None, level=None, sparsity=None):
         self.pattern = np.empty(0)
 
         self.basal_columns = columns
+        self.sparsity = sparsity
         self.basal_in = list()
         self.apical_in = list()
         self.feedback_in = list()
