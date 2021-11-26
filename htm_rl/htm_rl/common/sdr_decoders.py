@@ -13,7 +13,7 @@ class Decoder:
 
 class IntBucketDecoder(Decoder):
     def __init__(self, n_values, bucket_size, bucket_step=None, default_value: Union[str, int] = 'random', seed=None):
-        super(Decoder, self).__init__(default_value)
+        super(IntBucketDecoder, self).__init__(default_value)
 
         self._rng = np.random.default_rng(seed)
 
@@ -25,7 +25,7 @@ class IntBucketDecoder(Decoder):
         self.bucket_step = bucket_step
 
     def decode(self, pattern: Sequence):
-        if len(Sequence) > 0:
+        if len(pattern) > 0:
             buckets, counts = np.unique(
                 np.array(pattern)//self.bucket_size,
                 return_counts=True)

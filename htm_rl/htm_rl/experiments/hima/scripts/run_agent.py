@@ -9,7 +9,7 @@ import wandb
 if len(sys.argv) > 1:
     default_config_name = sys.argv[1]
 else:
-    default_config_name = 'four_rooms_9x9_swap_all_together'
+    default_config_name = 'cross_11x11_options'
 with open(f'../configs/{default_config_name}.yaml', 'r') as file:
     config = yaml.load(file, Loader=yaml.Loader)
 
@@ -47,7 +47,6 @@ if logger is not None:
 #     yaml.dump(configure(config), file, Dumper=yaml.Dumper)
 
 runner = HIMAgentRunner(configure(config), logger=logger)
-runner.agent.train_patterns()
 
 # if logger is not None:
 #     runner.draw_map(logger)
