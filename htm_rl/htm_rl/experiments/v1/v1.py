@@ -165,7 +165,7 @@ class V1Simple:
         return activation
 
 
-class V1SimpleMax:
+class V1Complex:
 
     def __init__(self,
         g_kernel_size: int,
@@ -175,6 +175,8 @@ class V1SimpleMax:
         activity_level: float,
     ):
         self.activity_level = activity_level
+
+        # gaus filters
         self.gaus_filter, wi, wj = create_gaus_filter(g_kernel_size, g_sigma)
         pad_w = (-np.min(wj), np.max(wj))
         pad_h = (-np.min(wi), np.max(wi))
@@ -191,30 +193,12 @@ class V1SimpleMax:
              pad_w[0] // g_stride + 1:ii.shape[1] - pad_w[1] // g_stride]
         jj = jj[pad_h[0] // g_stride + 1:jj.shape[0] - pad_h[1] // g_stride,
              pad_w[0] // g_stride + 1:jj.shape[1] - pad_w[1] // g_stride]
-        self.i = ii[:, :, np.newaxis] + wi.flatten()
-        self.j = jj[:, :, np.newaxis] + wj.flatten()
-        self.out_shape = (input_shape[0], self.i.shape[0], self.i.shape[1])
+        ii = ii[:, :, np.newaxis] + wi.flatten()
+        jj = jj[:, :, np.newaxis] + wj.flatten()
+        self.gaus_mask = (ii, jj)
+        gaus_shape = (ii.shape[0], ii.shape[1])
 
-    def compute(self, input: np.ndarray) -> np.ndarray:
-        input_pad = np.pad(input, ((0, 0), *self.pad))
-        preactivation = input_pad[:, self.i, self.j] * self.gaus_filter
-        preactivation = preactivation.max(axis=3)
-        return preactivation
-
-
-class V1Complex:
-
-    def __init__(self,
-        g_kernel_size: int,
-        g_stride: int,
-        g_sigma: float,
-        input_shape: tuple[int, int, int],
-        activity_level: float,
-    ):
-        self.activity_level = activity_level
-        self.v1_simple_max = V1SimpleMax(
-            g_kernel_size, g_stride, g_sigma, input_shape, activity_level
-        )
+        # len sum filters
         self.length_filters = [
             np.array([[1 / 3, 1 / 3, 1 / 3]]),
             np.array(
@@ -232,8 +216,8 @@ class V1Complex:
 
         # end stop
         pad_shape = (
-            self.v1_simple_max.out_shape[1] + 2,
-            self.v1_simple_max.out_shape[2] + 2
+            gaus_shape[0] + 2,
+            gaus_shape[1] + 2
         )
         i = np.arange(pad_shape[0])
         j = np.arange(pad_shape[1])
@@ -277,6 +261,12 @@ class V1Complex:
         ), (0, 1, 3, 2))
         self.off_mask = (off_kkk, off_iii, off_jjj)
 
+    def gaus_max_pool(self,  input: np.ndarray) -> np.ndarray:
+        input_pad = np.pad(input, ((0, 0), *self.pad))
+        preactivation = input_pad[:, self.gaus_mask[0], self.gaus_mask[1]] * self.gaus_filter
+        preactivation = preactivation.max(axis=3)
+        return preactivation
+
     def max_polarity(self, input: np.ndarray) -> np.ndarray:
         num_filteres = input.shape[0]
         angles = num_filteres // 2
@@ -311,7 +301,7 @@ class V1Complex:
 
 
     def compute(self, input: np.ndarray) -> np.ndarray:
-        v1simplemax = self.v1_simple_max.compute(input)
+        v1simplemax = self.gaus_max_pool(input)
         angles_only_preact = self.max_polarity(v1simplemax)
         v1lensum = self.length_sum(angles_only_preact)
         v1estop = self.end_stop(angles_only_preact, v1lensum)
