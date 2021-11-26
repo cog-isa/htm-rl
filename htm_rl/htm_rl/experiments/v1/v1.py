@@ -193,13 +193,13 @@ class V1SimpleMax:
              pad_w[0] // g_stride + 1:jj.shape[1] - pad_w[1] // g_stride]
         self.i = ii[:, :, np.newaxis] + wi.flatten()
         self.j = jj[:, :, np.newaxis] + wj.flatten()
+        self.out_shape = (input_shape[0], self.i.shape[0], self.i.shape[1])
 
-    def compute(self, input: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def compute(self, input: np.ndarray) -> np.ndarray:
         input_pad = np.pad(input, ((0, 0), *self.pad))
         preactivation = input_pad[:, self.i, self.j] * self.gaus_filter
         preactivation = preactivation.max(axis=3)
-        activation = kWTA(preactivation, self.activity_level)
-        return activation, preactivation
+        return preactivation
 
 
 class V1Complex:
@@ -230,6 +230,53 @@ class V1Complex:
             ),
         ]
 
+        # end stop
+        pad_shape = (
+            self.v1_simple_max.out_shape[1] + 2,
+            self.v1_simple_max.out_shape[2] + 2
+        )
+        i = np.arange(pad_shape[0])
+        j = np.arange(pad_shape[1])
+        ii, jj = np.meshgrid(i, j, indexing='ij')
+        ii = ii[1:ii.shape[0] - 1, 1:ii.shape[1] - 1]
+        jj = jj[1:jj.shape[0] - 1, 1:jj.shape[1] - 1]
+
+        shift_i = np.array([0, 1, 1, 1, 0, -1, -1, -1])
+        shift_j = np.array([1, 1, 0, -1, -1, -1, 0, 1])
+        kkk = np.tile(
+            np.arange(4), (pad_shape[0]-2, pad_shape[1]-2, 2)
+        )
+        iii = shift_i + ii[:, :, np.newaxis]
+        jjj = shift_j + jj[:, :, np.newaxis]
+        self.lsum_mask = (kkk, iii, jjj)
+
+        off_i = np.array([
+            [1, 0, -1],
+            [0, -1, -1],
+            [-1, -1, -1],
+            [-1, -1, -0],
+            [-1, 0, 1],
+            [0, 1, 1],
+            [1, 1, 1],
+            [1, 1, 0],
+        ])
+        off_j = np.array([
+            [-1, -1, -1],
+            [-1, -1, 0],
+            [-1, 0, 1],
+            [0, 1, 1],
+            [1, 1, 1],
+            [1, 1, 0],
+            [1, 0, -1],
+            [0, -1, -1],
+        ])
+        off_iii = off_i + ii[:, :, np.newaxis, np.newaxis]
+        off_jjj = off_j + jj[:, :, np.newaxis, np.newaxis]
+        off_kkk = np.transpose(np.tile(
+            np.arange(4), (pad_shape[0]-2, pad_shape[1]-2, 3, 2)
+        ), (0, 1, 3, 2))
+        self.off_mask = (off_kkk, off_iii, off_jjj)
+
     def max_polarity(self, input: np.ndarray) -> np.ndarray:
         num_filteres = input.shape[0]
         angles = num_filteres // 2
@@ -242,11 +289,32 @@ class V1Complex:
         preactivation = np.zeros_like(input)
         for i, filter_ in enumerate(self.length_filters):
             preactivation[i] = conv2d(input[i], filter_)
-        activation = kWTA(preactivation, self.activity_level)
-        return activation
+        return preactivation
+
+    def end_stop(self, input: np.ndarray, lsum: np.ndarray) -> np.ndarray:
+        lsum_pad = np.pad(lsum, [[0], [1], [1]])
+        lsum_masked = lsum_pad[
+            self.lsum_mask[0],
+            self.lsum_mask[1],
+            self.lsum_mask[2]
+        ]
+        input_pad = np.pad(input, [[0], [1], [1]])
+        off_masked = input_pad[
+            self.off_mask[0],
+            self.off_mask[1],
+            self.off_mask[2]
+        ]
+        off_masked = off_masked.max(axis=3)
+        preactivation = lsum_masked - off_masked
+        preactivation = np.transpose(preactivation, (2, 0, 1))
+        return preactivation
+
 
     def compute(self, input: np.ndarray) -> np.ndarray:
-        v1simplemax, preactivation = self.v1_simple_max.compute(input)
-        angles_only_preact = self.max_polarity(preactivation)
+        v1simplemax = self.v1_simple_max.compute(input)
+        angles_only_preact = self.max_polarity(v1simplemax)
         v1lensum = self.length_sum(angles_only_preact)
-        return np.concatenate((v1simplemax, v1lensum), axis=0)
+        v1estop = self.end_stop(angles_only_preact, v1lensum)
+        preactivation = np.concatenate((v1simplemax, v1lensum, v1estop), axis=0)
+        activation = kWTA(preactivation, self.activity_level)
+        return activation
