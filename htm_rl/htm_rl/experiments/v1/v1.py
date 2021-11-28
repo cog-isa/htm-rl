@@ -112,6 +112,35 @@ def kWTA(preactivation: np.ndarray, activity_level: float) -> np.ndarray:
     return activation
 
 
+def plot_3d_data(data: np.ndarray, columns: int):
+    channels = data.shape[0]
+    if channels % columns == 0:
+        rows = channels // columns
+    else:
+        rows = channels // columns + 1
+    fig, axs = plt.subplots(rows, columns, sharex=True, sharey=True)
+    width = 20
+    height = rows * data.shape[1] * width / (columns * data.shape[2])
+    fig.set_size_inches(width, height)
+    for i in range(rows):
+        for j in range(columns):
+            if j + i * columns < channels:
+                axs[i, j].imshow(data[j + i * columns], cmap='gray',  aspect='auto')
+            else:
+                axs[i, j].set_axis_off()
+    plt.show()
+
+
+def plot3d_3d_data(data: np.ndarray):
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection='3d')
+    f, i, j = data.nonzero()
+
+    ax.scatter3D(f, i, j)
+    ax.set_zlabel('Filters')
+    plt.show()
+
+
 class V1Simple:
 
     def __init__(self,
@@ -128,38 +157,11 @@ class V1Simple:
             g_kernel_size, g_stride, g_pad, g_sigma_x,
             g_sigma_y, g_lambda_, g_filters
         )
-        self.num_filters = g_filters
         self.activity_level = activity_level
 
     @property
     def gabor_filters(self):
         return self.convolution.weight.squeeze().numpy()
-
-    def plot_filters(self):
-        cols = int(np.sqrt(self.num_filters)) + 1
-        rows = self.num_filters // cols + 1
-        fig, axs = plt.subplots(rows, cols, sharex=True, sharey=True)
-        fig.set_size_inches(10, 5)
-        for i in range(rows):
-            for j in range(cols):
-                if j + i * cols < self.num_filters:
-                    axs[i, j].imshow(self.gabor_filters[j + i * cols], cmap='gray')
-                else:
-                    axs[i, j].set_axis_off()
-        plt.show()
-
-    def plot_activation(self, activation: np.ndarray):
-        cols = int(np.sqrt(self.num_filters)) + 1
-        rows = self.num_filters // cols + 1
-        fig, axs = plt.subplots(rows, cols, sharex=True, sharey=True)
-        fig.set_size_inches(20, 10)
-        for i in range(rows):
-            for j in range(cols):
-                if j + i * cols < self.num_filters:
-                    axs[i, j].imshow(activation[j + i * cols], cmap='gray',  aspect='auto')
-                else:
-                    axs[i, j].set_axis_off()
-        plt.show()
 
     def compute(self, image: np.ndarray) -> np.ndarray:
         gray = rgb2gray(image)
