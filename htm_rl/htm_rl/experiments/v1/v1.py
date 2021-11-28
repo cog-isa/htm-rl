@@ -141,6 +141,20 @@ def plot3d_3d_data(data: np.ndarray):
     plt.show()
 
 
+def to_input_shape(
+    raw_image_shape: tuple[int, int], stride: int,
+    padding: int, ker_shape: tuple[int, int]
+) -> tuple[int, int]:
+    s1, s2 = raw_image_shape
+    k1, k2 = ker_shape
+    if stride == 1:
+        output = raw_image_shape
+    else:
+        s1 = int((s1 + 2 * padding - k1) / stride + 1)
+        s2 = int((s2 + 2 * padding - k2) / stride + 1)
+        output = (s1, s2)
+    return output
+
 class V1Simple:
 
     def __init__(self,
@@ -177,7 +191,7 @@ class V1Complex:
         g_kernel_size: int,
         g_stride: int,
         g_sigma: float,
-        input_shape: tuple[int, int, int],
+        input_shape: tuple[ int, int],
         activity_level: float,
     ):
         self.activity_level = activity_level
@@ -189,8 +203,8 @@ class V1Complex:
         self.pad = (pad_h, pad_w)
 
         pad_shape = (
-            input_shape[1] + pad_h[0] + pad_h[1],
-            input_shape[2] + pad_w[0] + pad_w[1]
+            input_shape[0] + pad_h[0] + pad_h[1],
+            input_shape[1] + pad_w[0] + pad_w[1]
         )
         i = np.arange(0, pad_shape[0], g_stride)
         j = np.arange(0, pad_shape[1], g_stride)
@@ -203,6 +217,7 @@ class V1Complex:
         jj = jj[:, :, np.newaxis] + wj.flatten()
         self.gaus_mask = (ii, jj)
         gaus_shape = (ii.shape[0], ii.shape[1])
+        self.output_shape = gaus_shape
 
         # len sum filters
         self.length_filters = [
@@ -314,3 +329,41 @@ class V1Complex:
         preactivation = np.concatenate((v1simplemax, v1lensum, v1estop), axis=0)
         activation = kWTA(preactivation, self.activity_level)
         return activation
+
+
+class V1:
+
+    def __init__(self,
+        raw_image_shape: tuple[int, int],
+        complex_config: dict,
+        *simple_configs: dict
+    ):
+        self.num_paths = 0
+        self.simple_cells = []
+        self.complex_cells = []
+        self.output_sizes = []
+        for simple_config in simple_configs:
+            self.num_paths += 1
+            self.simple_cells.append(V1Simple(**simple_config))
+            input_shape = to_input_shape(
+                raw_image_shape,
+                simple_config['g_stride'],
+                simple_config['g_pad'],
+                (simple_config['g_kernel_size'], simple_config['g_kernel_size']))
+            self.complex_cells.append(
+                V1Complex(**complex_config, input_shape=input_shape)
+            )
+            s1, s2 = self.complex_cells[-1].output_shape
+            self.output_sizes.append(s1 * s2 * 20)
+
+    def compute(self, img: np.ndarray):
+        dense = []
+        sparse = []
+        for i in range(self.num_paths):
+            sim = self.simple_cells[i].compute(img)
+            com = self.complex_cells[i].compute(sim)
+            dense.append(com)
+            inds = np.nonzero(com)
+            ind = com.shape[1] * com.shape[2] * inds[0] + com.shape[2] * inds[1] + inds[2]
+            sparse.append(ind)
+        return sparse, dense
