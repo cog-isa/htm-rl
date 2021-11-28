@@ -85,26 +85,30 @@ def conv2d(signal_: np.ndarray, filter_: np.ndarray) -> np.ndarray:
     return np.einsum('ij,ijkl->kl', filter_, sub_matr)
 
 
+def relu(x):
+    out = np.zeros_like(x)
+    out[x > 0] = x[x > 0]
+    return out
+
+
+def nxx1(x, gamma):
+    mask = x == 0
+    out = np.zeros_like(x)
+    out[~mask] = 1 / (1 + 1 / (gamma * x[~mask]))
+    return out
+
+
 def kWTA(preactivation: np.ndarray, activity_level: float) -> np.ndarray:
+    preact = relu(preactivation)
+
     # 1st step kWTA
-    active_cells = np.argmax(preactivation, axis=0)
-    cells_value = np.max(preactivation, axis=0)
+    cells_value = np.max(preact, axis=0)
 
     # 2nd step kWTA
-    k = int(cells_value.size * activity_level)
-    active_hypcol = np.argpartition(-cells_value, k, axis=None)[:k]
-    active_rows = active_hypcol // cells_value.shape[1]
-    active_cols = active_hypcol % cells_value.shape[1]
+    threshold = np.quantile(cells_value, 1 - activity_level)
 
     # final activation
-    activation = np.zeros_like(preactivation)
-    i = np.arange(activation.shape[1])
-    j = np.arange(activation.shape[2])
-    ii, jj = np.meshgrid(i, j, indexing='ij')
-    active_cells = active_cells[active_rows, active_cols]
-    ii = ii[active_rows, active_cols]
-    jj = jj[active_rows, active_cols]
-    activation[active_cells, ii, jj] = cells_value.flatten()[active_hypcol]
+    activation = nxx1(relu(preact - threshold), 1)
     return activation
 
 
