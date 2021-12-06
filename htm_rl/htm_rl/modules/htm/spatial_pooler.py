@@ -1,11 +1,11 @@
-from htm_rl.agents.htm.connections import Connections
+from htm_rl.modules.htm.connections import Connections
 from htm.bindings.sdr import SDR
 from htm.advanced.support.numpy_helpers import setCompare
 import numpy as np
 from htm.bindings.math import Random
 import copy
 from htm.bindings.algorithms import SpatialPooler
-from htm_rl.agents.cc.utils import ExponentialDecayFunction, NoDecayFunction, LogisticExciteFunction, \
+from htm_rl.modules.htm.utils import ExponentialDecayFunction, NoDecayFunction, LogisticExciteFunction, \
     FixedExciteFunction
 
 EPS = 1e-12

@@ -12,12 +12,14 @@ from htm_rl.modules.htm.pattern_memory import SpatialMemory
 from htm_rl.common.utils import safe_divide
 from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
+from htm_rl.envs.coppelia.environment import PulseEnv
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.modules.htm.temporal_memory import ApicalBasalFeedbackTM
 from htm_rl.agents.hima.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, \
     draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
 from htm_rl.common.scenario import Scenario
 from htm_rl.agents.hima.hima import HIMA
+from htm_rl.agents.hima.adapters import BioGwLabActionAdapter, PulseActionAdapter, BioGwLabObsAdapter, PulseObsAdapter
 
 
 class HIMAgentRunner:
@@ -66,8 +68,19 @@ class HIMAgentRunner:
         else:
             self.scenario = None
         self.agent = HIMA(config['agent'], hierarchy)
+
         self.env_config = config['environment']
-        self.environment = BioGwLabEnvironment(**config['environment'])
+        if config['environment_type'] == 'gw':
+            self.environment = BioGwLabEnvironment(**config['environment'])
+            self.action_adapter = BioGwLabActionAdapter(**config['gw_action_adapter'])
+            self.observation_adapter = BioGwLabObsAdapter()
+        elif config['environment_type'] == 'pulse':
+            self.environment = PulseEnv(**config['environment'])
+            self.action_adapter = PulseActionAdapter(self.environment, **config['pulse_action_adapter'])
+            self.observation_adapter = PulseObsAdapter(self.environment, config['pulse_observation_adapter'])
+        else:
+            raise ValueError(f'Unknown environment type: {config["environment_type"]}! ')
+
         self.terminal_pos_stat = dict()
         self.last_terminal_stat = 0
         self.total_terminals = 0
@@ -97,11 +110,16 @@ class HIMAgentRunner:
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
 
-        self.option_stat = OptionVis(self.env_config['shape_xy'], **config['vis_options'])
-        self.empowerment_vis = EmpowermentVis(self.env_config['shape_xy'], self.agent.empowerment,
-                                              self.environment,
-                                              self.agent.empowerment_horizon,
-                                              self.agent.hierarchy.visual_block.sp)
+        if config['environment_type'] == 'gw':
+            self.option_stat = OptionVis(self.env_config['shape_xy'], **config['vis_options'])
+            self.empowerment_vis = EmpowermentVis(self.env_config['shape_xy'], self.agent.empowerment,
+                                                  self.environment,
+                                                  self.agent.empowerment_horizon,
+                                                  self.agent.hierarchy.visual_block.sp)
+        else:
+            self.option_stat = None
+            self.environment_vis = None
+
         self.option_start_pos = None
         self.option_end_pos = None
         self.last_options_usage = dict()
@@ -121,13 +139,28 @@ class HIMAgentRunner:
         self.seed = seed
         self.rng = random.Random(self.seed)
 
-    def run_episodes(self, n_episodes, train_patterns=True, log_values=False, log_policy=False,
+    def run_episodes(self, n_episodes,
+                     log_values=False,
+                     log_policy=False,
                      log_every_episode=50,
-                     log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
-                     opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
-                     log_td_error=False, log_anomaly=False, log_confidence=False, log_modulation=False,
-                     log_values_int=True, log_values_ext=True, log_priorities=True, log_empowerment=False,
-                     log_number_of_clusters=False, animation_fps=3):
+                     log_segments=False,
+                     draw_options=False,
+                     log_terminal_stat=False,
+                     draw_options_stats=False,
+                     opt_threshold=0,
+                     log_option_values=False,
+                     log_option_policy=False,
+                     log_options_usage=False,
+                     log_td_error=False,
+                     log_anomaly=False,
+                     log_confidence=False,
+                     log_modulation=False,
+                     log_values_int=True,
+                     log_values_ext=True,
+                     log_priorities=True,
+                     log_empowerment=False,
+                     log_number_of_clusters=False,
+                     animation_fps=3):
         self.total_reward = 0
         self.steps = 0
         self.steps_per_goal = 0
@@ -140,7 +173,7 @@ class HIMAgentRunner:
         self.goal_reached = True
         self.task_complete = True
 
-        #logging priorities
+        # logging priorities
         if self.agent.use_intrinsic_reward:
             max_reward_log = 0
             mean_reward_log = 0
@@ -155,15 +188,15 @@ class HIMAgentRunner:
             if self.scenario is not None:
                 self.scenario.check_conditions()
 
-            if train_patterns:
-                self.agent.train_patterns()
-
             reward, obs, is_first = self.environment.observe()
 
-            self.agent.real_pos = get_unshifted_pos(
-                    self.environment.env.agent.position,
-                    self.environment.env.renderer.shape.top_left_point
-                )
+            obs = self.observation_adapter.adapt(obs)
+
+            if isinstance(self.environment, BioGwLabEnvironment):
+                self.agent.real_pos = get_unshifted_pos(
+                        self.environment.env.agent.position,
+                        self.environment.env.renderer.shape.top_left_point
+                    )
 
             if is_first:
                 self.steps_per_goal += self.steps
@@ -403,6 +436,7 @@ class HIMAgentRunner:
                     self.on_new_task()
 
                 self.agent.reset()
+                self.action_adapter.reset()
                 if self.agent.use_dreaming:
                     self.agent.dreamer.on_new_episode()
             else:
@@ -420,7 +454,8 @@ class HIMAgentRunner:
             if self.agent.use_dreaming and self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
                 self.agent.dreamer.dream(obs)
 
-            self.current_action = self.agent.make_action(obs)
+            action_pattern = self.agent.make_action(obs)
+            self.current_action = self.action_adapter.adapt(action_pattern)
 
             self.agent.reinforce(reward)
             if self.agent.use_dreaming:
@@ -440,21 +475,29 @@ class HIMAgentRunner:
             self.environment.act(self.current_action)
 
             # ///logging///
-            if self.environment.callmethod('is_terminal') and (self.environment.env.items_collected > 0):
-                self.goal_reached = True
-                pos = get_unshifted_pos(
-                    self.environment.env.agent.position,
-                    self.environment.env.renderer.shape.top_left_point
-                )
-                if pos in self.terminal_pos_stat:
-                    self.terminal_pos_stat[pos] += 1
-                else:
-                    self.terminal_pos_stat[pos] = 1
-                self.last_terminal_stat = self.terminal_pos_stat[pos]
+            if log_terminal_stat:
+                if self.environment.callmethod('is_terminal') and (self.environment.env.items_collected > 0):
+                    self.goal_reached = True
+                    pos = get_unshifted_pos(
+                        self.environment.env.agent.position,
+                        self.environment.env.renderer.shape.top_left_point
+                    )
+                    if pos in self.terminal_pos_stat:
+                        self.terminal_pos_stat[pos] += 1
+                    else:
+                        self.terminal_pos_stat[pos] = 1
+                    self.last_terminal_stat = self.terminal_pos_stat[pos]
             # \\\logging\\\
 
         if self.logger is not None:
             self.logger.log({"total_steps": self.steps_total})
+
+        if isinstance(self.environment, PulseEnv):
+            self.environment.shutdown()
+        print('Run finished.')
+
+    def convert_to_env_action(self, action_pattern):
+        pass
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
         pic = self.environment.callmethod('render_rgb')
@@ -502,11 +545,8 @@ class HIMAgentRunner:
                     self.agent.hierarchy.output_block.predicted_options)
                 for o in predicted_options:
                     predicted_action_pattern = np.flatnonzero(o)
-                    self.agent.muscles.set_active_input(predicted_action_pattern)
-                    self.agent.muscles.depolarize_muscles()
-                    action_pattern = self.agent.muscles.get_depolarized_muscles()
-                    # convert muscles activation pattern to environment action
-                    p_action = self.agent.action.get_action(action_pattern)
+                    p_action = self.action_adapter.adapt(predicted_action_pattern)
+
                     direction = c_direction - self.option_stat.action_rotation[p_action]
                     if direction < 0:
                         direction = 4 - direction
@@ -555,11 +595,7 @@ class HIMAgentRunner:
                     self.agent.hierarchy.output_block.predicted_options)
                 for o in predicted_options:
                     predicted_action_pattern = np.flatnonzero(o)
-                    self.agent.muscles.set_active_input(predicted_action_pattern)
-                    self.agent.muscles.depolarize_muscles()
-                    action_pattern = self.agent.muscles.get_depolarized_muscles()
-                    # convert muscles activation pattern to environment action
-                    a = self.agent.action.get_action(action_pattern)
+                    a = self.action_adapter.adapt(predicted_action_pattern)
                     predicted_actions.append(a)
 
                 self.option_actions.append(self.current_action)

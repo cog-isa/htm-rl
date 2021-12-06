@@ -3,7 +3,7 @@
 # 3. Winner cells
 # 4. Segments for cell
 # 5. Synapses for segment: Presynaptic cell and permanence
-from htm_rl.htm_rl.modules.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
+from htm_rl.modules.htm.temporal_memory import ApicalBasalFeedbackTM
 from pickle import dump
 import os
 

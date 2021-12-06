@@ -12,7 +12,7 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: true  # wand logging
+log: false  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
@@ -29,76 +29,59 @@ run_options:
   log_td_error: True
   log_anomaly: False
   log_confidence: False
-  log_modulation: True
+  log_modulation: False
   log_segments: True
-  log_terminal_stat: True
+  log_terminal_stat: False
   log_empowerment: False
   log_number_of_clusters: False
-  draw_options: True
-  draw_options_stats: True
+  draw_options: False
+  draw_options_stats: False
   opt_threshold: 50
   animation_fps: 3
 
-environment_type: gw
+environment_type: pulse
 environment:
+  action_cost: -0.01
+  goal_reward: 1.0
+  position_threshold: 0.1  # goal position radius in meters
+  change_position: false  #  target position
+  initial_pose: null  # initial robot joint positions
+  joints_to_manage:
+    - 4
+    - 3
+  observation:
+    - joint_pos
+    - joint_vel
+  n_sim_steps_for_action: 2  # 1 step = 50 ms
   seed: 432921
-  shape_xy: [11, 11]
+  scene_file: '/home/gsys/Desktop/Activity/HTM/htm_rl_tepo/htm-rl/htm_rl/htm_rl/envs/coppelia/scenes/main_scene.ttt'
+  headless: false
 
-  actions_cost:
-    base_cost: -0.005
-    weights:
-      stay: 2.0
-      turn: 1.0
-      move: 1.0
-  actions:
-    - move right
-    - move down
-    - move left
-    - move up
-    - stay
-
-  rendering:
-    view_rectangle: [[-1, -1], [1, 1]]
-
-  areas:
-    n_types: 4
-
-  obstacle:
-    density: 0.1
-    map_name: '../maps/cross_11x11.map'
-
-  food:
-    n_items: 1
-    reward: 1.
-    positions: [ [ 6, 6 ] ]
-
-  agent:
-    positions: [ [ 6, 1 ], [ 1, 6 ], [ 6, 11 ], [ 11, 6 ] ]
-    change_position: true
-    direction: up
-  #  rendering:
-  #    what:
-  #      - position
-  ##      - view direction
-  #    bucket_size: 3
-
-  terminate:
-    episode_max_steps: 200
-    early_stop: true
-    n_items_to_collect: 1
-
-gw_action_adapter:
+pulse_action_adapter:
+  speed_delta: 2  # degrees per second
+  time_delta: 0.1  # seconds
   default_value: 'random'
   seed: *seed
+
+pulse_observation_adapter:
+  joint_pos:
+    min_delta: 0.5  # radians
+    max_delta: 1.0
+    n_active_bits: 10
+  joint_vel:
+    min_delta: 0.5  # radians/s
+    max_delta: 1.0
+    n_active_bits: 10
+
 
 cagent:
   use_intrinsic_reward: false
   use_dreaming: false
   alpha: 1.0
   punish_intrinsic_reward: -10
-  n_actions_to_accumulate: 1
+  n_actions_to_accumulate: 2
   elementary_actions:
-    n_actions: 4
+    n_actions: 3
     bucket_size: 3
   empowerment:
     horizon: 3
@@ -179,7 +162,7 @@ blocks:
     sm: {}
     sp: null
     tm:
-      basal_columns: 12
+      basal_columns: 9
 
   2:
     bg: null

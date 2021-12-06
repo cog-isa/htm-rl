@@ -1,4 +1,6 @@
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
+from htm_rl.envs.coppelia.environment import PulseEnv
+from htm_rl.agents.hima.adapters import PulseObsAdapter
 from copy import deepcopy
 
 
@@ -7,14 +9,31 @@ def configure(config):
     new_config['environment'] = config['environment']
     new_config['hierarchy'] = config['hierarchy']
     new_config['vis_options'] = config['vis_options']
+    new_config['environment_type'] = config['environment_type']
+
     if 'scenario' in config.keys():
         new_config['scenario'] = config['scenario']
 
-    environment = BioGwLabEnvironment(**config['environment'])
+    if config['environment_type'] == 'gw':
+        environment = BioGwLabEnvironment(**config['environment'])
+        obs_sdr_size = environment.env.output_sdr_size
+    elif config['environment_type'] == 'pulse':
+        headless = config['environment']['headless']
+        config['environment'].update({'headless': True})
+        environment = PulseEnv(**config['environment'])
+        config['environment'].update({'headless': headless})
+        obs_adapter = PulseObsAdapter(environment, config['pulse_observation_adapter'])
+        obs_sdr_size = obs_adapter.output_sdr_size
+        environment.shutdown()
+    else:
+        raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')
 
     # define input blocks
-    new_config['input_blocks'] = [{'level': 0, 'columns': environment.env.output_sdr_size},
-                                  {'level': 0, 'columns': config['muscles_size']}]
+    motor_size = config['cagent']['elementary_actions']['n_actions'] * config['cagent']['elementary_actions']['bucket_size']
+    new_config['input_blocks'] = [{'level': 0, 'columns': obs_sdr_size,
+                                   'sparsity': 1},
+                                  {'level': 0, 'columns': motor_size,
+                                   'sparsity': config['cagent']['elementary_actions']['bucket_size']/motor_size}]
 
     # other blocks
     input_blocks = config['hierarchy']['input_blocks']
@@ -25,11 +44,19 @@ def configure(config):
     config['spatial_pooler_default']['seed'] = config['seed']
     config['temporal_memory_default']['seed'] = config['seed']
     config['basal_ganglia_default']['seed'] = config['seed']
-    config['cagent']['muscles']['seed'] = config['seed']
     config['cagent']['empowerment']['seed'] = config['seed']
 
     blocks = [{'block': deepcopy(config['block_default']),
                'tm': deepcopy(config['temporal_memory_default'])} for _ in range(len(config['blocks']))]
+
+    for i, block, con in zip(range(len(config['blocks'])), config['blocks'].values(), connections):
+        if block['sp'] is not None:
+            blocks[i]['sparsity'] = config['blocks'][i]['sp']['localAreaDensity']
+        else:
+            if con['basal_in'][0] not in input_blocks:
+                blocks[i]['sparsity'] = config['blocks'][con['basal_in'][0] - len(input_blocks)]['sparsity']
+            else:
+                blocks[i]['sparsity'] = new_config['input_blocks'][con['basal_in'][0]]['sparsity']
 
     for i, block, con in zip(range(len(config['blocks'])), config['blocks'].values(), connections):
         basal_input_size = 0
@@ -43,7 +70,7 @@ def configure(config):
         active_feedback_columns = 0
         for inf in con['feedback_in']:
             feedback_in_size += config['blocks'][inf - len(input_blocks)]['tm']['basal_columns']
-            active_feedback_columns += int(config['blocks'][inf - len(input_blocks)]['sp']['localAreaDensity'] *
+            active_feedback_columns += int(blocks[inf - len(input_blocks)]['sparsity'] *
                                            config['blocks'][inf - len(input_blocks)]['tm']['basal_columns'])
 
         blocks[i]['block'].update(deepcopy(block['block']))
@@ -71,13 +98,17 @@ def configure(config):
             blocks[i]['sp'].update({'inputDimensions': [basal_input_size],
                                     'columnDimensions': [block['tm']['basal_columns']],
                                     'potentialRadius': basal_input_size})
+        else:
+            blocks[i]['sp'] = None
 
         blocks[i]['tm'].update(dict(
-            activation_inhib_feedback_threshold=int(active_feedback_columns * (1 - blocks[i]['tm']['noise_tolerance'])),
-            learning_inhib_feedback_threshold=int(active_feedback_columns * (1 - blocks[i]['tm']['noise_tolerance'])),
+            activation_inhib_feedback_threshold=int(
+                active_feedback_columns * (1 - blocks[i]['tm']['noise_tolerance'])),
+            learning_inhib_feedback_threshold=int(
+                active_feedback_columns * (1 - blocks[i]['tm']['noise_tolerance'])),
             activation_exec_threshold=int(active_feedback_columns * (1 - blocks[i]['tm']['noise_tolerance'])),
             learning_exec_threshold=int(active_feedback_columns * (1 - blocks[i]['tm']['noise_tolerance'])),
-            max_inhib_synapses_per_segment=active_feedback_columns + int(blocks[i]['sp']['localAreaDensity'] *
+            max_inhib_synapses_per_segment=active_feedback_columns + int(blocks[i]['sparsity'] *
                                                                          blocks[i]['tm']['basal_columns']),
             max_exec_synapses_per_segment=active_feedback_columns,
             sample_inhib_feedback_size=active_feedback_columns,
@@ -89,11 +120,11 @@ def configure(config):
         apical_active_size = 0
         for inap in con['apical_in']:
             apical_input_size += blocks[inap - len(input_blocks)]['tm']['basal_columns']
-            apical_active_size += int(config['blocks'][inap - len(input_blocks)]['sp']['localAreaDensity'] *
+            apical_active_size += int(blocks[inap - len(input_blocks)]['sparsity'] *
                                       config['blocks'][inap - len(input_blocks)]['tm']['basal_columns'])
 
         block['tm'].update({'apical_columns': apical_input_size})
-        n_active_bits = int(block['tm']['basal_columns'] * block['sp']['localAreaDensity'])
+        n_active_bits = int(block['tm']['basal_columns'] * blocks[i]['sparsity'])
         block['tm'].update(dict(
             activation_threshold=int(n_active_bits*(1 - block['tm']['noise_tolerance'])),
             learning_threshold=int(n_active_bits*(1 - block['tm']['noise_tolerance'])),
@@ -106,7 +137,7 @@ def configure(config):
             activation_apical_threshold=int(apical_active_size*(1 - block['tm']['noise_tolerance'])),
             learning_apical_threshold=int(apical_active_size*(1 - block['tm']['noise_tolerance'])),
 
-            max_apical_synapses_per_segment = apical_active_size,
+            max_apical_synapses_per_segment=apical_active_size,
             sample_inhib_basal_size=n_active_bits,
             sample_apical_size=apical_active_size
         ))
@@ -117,30 +148,12 @@ def configure(config):
     new_config['blocks'] = blocks
     # agent
     new_config['agent'] = config['cagent']
-    new_config['agent']['state_size'] = environment.env.output_sdr_size
-    new_config['agent']['action'].update(
-        dict(
-            muscles_size=config['muscles_size'],
-            n_actions=environment.n_actions
-        )
-    )
-    n_active_bits = int(blocks[output_block - len(input_blocks)]['sp']['localAreaDensity'] *
-                        blocks[output_block - len(input_blocks)]['tm']['basal_columns'])
-    new_config['agent']['muscles'].update(
-        dict(
-            input_size=blocks[output_block - len(input_blocks)]['tm']['basal_columns'],
-            muscles_size=config['muscles_size'],
-            activation_threshold=int(n_active_bits * (1 - config['cagent']['muscles']['noise_tolerance'])),
-            learning_threshold=int(n_active_bits * (1 - config['cagent']['muscles']['noise_tolerance'])),
-            max_synapses_per_segment=n_active_bits,
-            sample_size=n_active_bits
-             )
-    )
+    new_config['agent']['state_size'] = obs_sdr_size
 
     noise_tolerance = config['cagent']['empowerment']['tm_config']['noise_tolerance']
     learning_margin = config['cagent']['empowerment']['tm_config']['learning_margin']
-    input_size = blocks[visual_block - len(input_blocks)]['sp']['columnDimensions'][0]
-    input_sparsity = blocks[visual_block - len(input_blocks)]['sp']['localAreaDensity']
+    input_size = blocks[visual_block - len(input_blocks)]['tm']['basal_columns']
+    input_sparsity = blocks[visual_block - len(input_blocks)]['sparsity']
 
     new_config['agent']['empowerment'] = deepcopy(config['cagent']['empowerment'])
     new_config['agent']['empowerment']['tm_config'].pop('noise_tolerance')
@@ -161,4 +174,23 @@ def configure(config):
     new_config['seed'] = config['seed']
     new_config['levels'] = config['levels']
     new_config['path_to_store_logs'] = config['path_to_store_logs']
+
+    if config['environment_type'] == 'pulse':
+        new_config['pulse_observation_adapter'] = config['pulse_observation_adapter']
+        new_config['pulse_action_adapter'] = config['pulse_action_adapter']
+        new_config['pulse_action_adapter'].update(dict(
+            seed=config['seed'],
+            bucket_size=config['cagent']['elementary_actions']['bucket_size']
+        ))
+        new_config['agent']['elementary_actions']['n_actions'] = 3
+    elif config['environment_type'] == 'gw':
+        new_config['gw_action_adapter'] = config['gw_action_adapter']
+        new_config['gw_action_adapter'].update(dict(
+            seed=config['seed'],
+            bucket_size=config['cagent']['elementary_actions']['bucket_size'],
+            n_actions=config['cagent']['elementary_actions']['n_actions']
+        ))
+    else:
+        raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')
+
     return new_config

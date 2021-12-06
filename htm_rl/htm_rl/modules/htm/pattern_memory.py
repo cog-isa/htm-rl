@@ -1,4 +1,4 @@
-from htm_rl.agents.htm.connections import Connections
+from htm_rl.modules.htm.connections import Connections
 from htm.bindings.sdr import SDR
 import numpy as np
 from htm.bindings.math import Random
@@ -100,7 +100,6 @@ class SpatialMemory:
 
     def get_options_by_id(self, unique_ids):
         return self.patterns[np.in1d(self.unique_id, unique_ids)]
-
 
 
 class PatternMemory:
@@ -295,5 +294,3 @@ class KohonenPatternMemory:
         for segment, n_syn in zip(segments_to_punish, n_syn_to_punish):
             active_cells_noise.sparse = self._rng.choice(active_cells.sparse, n_syn, replace=False)
             self.connections.adaptSegment(segment, active_cells_noise, -self.segment_decrement, 0, False, 0)
-
-
