@@ -1,4 +1,12 @@
+import os
+# os.environ['COPPELIASIM_ROOT'] = '/home/gsys/Applications/CoppeliaSim_Edu_V4_2_0_Ubuntu20_04'
+# os.environ['LD_LIBRARY_PATH'] = f'{os.environ["COPPELIASIM_ROOT"]}'
+# os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = os.environ['COPPELIASIM_ROOT']
+# print(os.environ['COPPELIASIM_ROOT'])
+
 from os.path import dirname, join, abspath
+from typing import Union
+
 from pyrep import PyRep
 from pyrep.objects.vision_sensor import VisionSensor
 from pyrep.objects.force_sensor import ForceSensor
@@ -9,7 +17,7 @@ import matplotlib.pyplot as plt
 
 SCENE_FILE = join(dirname(abspath(__file__)), 'scenes/main_scene.ttt')
 POS_MIN, POS_MAX = [0.8, -0.2, 1.0], [1.0, 0.2, 1.4]
-EPISODES = 2
+EPISODES = 10
 EPISODE_LENGTH = 10
 EPS = 0.01
 
@@ -17,12 +25,14 @@ EPS = 0.01
 class PulseEnv:
     def __init__(self,
                  scene_file: str,
+                 joints_to_manage: list[bool],
                  observation: list[str],
                  n_sim_steps_for_action: int,
                  action_cost: float,
                  goal_reward: float,
                  position_threshold: float,
                  change_position: bool,
+                 initial_pose: list[tuple[float, float]] = None,
                  headless=False,
                  seed=None):
         self.pr = PyRep()
@@ -31,9 +41,14 @@ class PulseEnv:
         self.agent = Pulse75()
         self.agent.set_control_loop_enabled(True)
         self.agent.set_motor_locked_at_zero_velocity(True)
+
+        if initial_pose is not None:
+            self.initial_joint_positions = initial_pose
+        else:
+            self.initial_joint_positions = self.agent.get_joint_positions()
+
         self.target = Shape('target')
         self.tip = ForceSensor('pulse75_connection')
-        self.initial_joint_positions = self.agent.get_joint_positions()
         self.camera = VisionSensor('camera')
         self.observation = set(observation)
         self.is_first = True
@@ -42,9 +57,14 @@ class PulseEnv:
         self.goal_reward = goal_reward
         self.position_threshold = position_threshold
         self.change_position = change_position
+        self.joints_to_manage = np.array(joints_to_manage)
+        self.n_joints = sum(joints_to_manage)
+
         self.rng = np.random.default_rng(seed)
 
-    def reset(self) -> np.ndarray:
+        self.reset()
+
+    def reset(self):
         # Get a random position within a cuboid and set the target position
         if self.change_position:
             pos = list(self.rng.uniform(POS_MIN, POS_MAX))
@@ -52,11 +72,19 @@ class PulseEnv:
 
         self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
         self.is_first = True
-        return self.camera.capture_rgb()
 
-    def act(self, action: list[float]):
+    def act(self, action: Union[list[float], np.ndarray]):
         self.is_first = False
-        self.agent.set_joint_target_positions(action)
+
+        target_positions = np.zeros(self.agent.get_joint_count())
+        target_positions[self.joints_to_manage] = np.array(action)
+
+        for i, joint in enumerate(self.agent.joints):
+            if self.joints_to_manage[i]:
+                joint.set_joint_target_position(target_positions[i])
+            else:
+                joint.set_joint_target_velocity(0.0)
+
         for step in range(self.n_sim_steps_for_action):
             self.pr.step()
 
@@ -65,9 +93,11 @@ class PulseEnv:
         if 'camera' in self.observation:
             obs.append(self.camera.capture_rgb())
         if 'joint_pos' in self.observation:
-            obs.append(self.agent.get_joint_positions())
+            joint_pos = np.array(self.agent.get_joint_positions())
+            obs.append(joint_pos[self.joints_to_manage])
         if 'joint_vel' in self.observation:
-            obs.append(self.agent.get_joint_velocities())
+            joint_vel = np.array(self.agent.get_joint_velocities())
+            obs.append(joint_vel[self.joints_to_manage])
         if 'target_pos' in self.observation:
             obs.append(self.target.get_position())
         if 'target_vel' in self.observation:
@@ -90,16 +120,29 @@ class PulseEnv:
 
 
 if __name__ == '__main__':
-    env = PulseEnv(SCENE_FILE, ['force'], 2, -0.1, 1)
+    env = PulseEnv(SCENE_FILE,
+                   joints_to_manage=[False, False, False, True, True, True],
+                   observation=['joint_vel'],
+                   n_sim_steps_for_action=10,
+                   action_cost=-0.1,
+                   goal_reward=1,
+                   position_threshold=EPS,
+                   change_position=True,
+                   headless=False)
+    print('joint intervals', env.agent.get_joint_intervals())
+    print('joint velocity limits', env.agent.get_joint_upper_velocity_limits())
+    print('joint count', env.agent.get_joint_count())
+
     for e in range(EPISODES):
         print('Starting episode %d' % e)
         env.reset()
         for i in range(EPISODE_LENGTH):
             print(f'Step {i}')
-            action = list(np.random.uniform(-1.0, 1.0, size=(6,)))
+            action = list(np.random.uniform(-1.0, 1.0, size=(3,)))
             env.act(action)
             state = env.observe()
             print(f'pos {env.tip.get_position()}')
+            print(f'vel {env.agent.get_joint_velocities()}')
             # save images from camera
             # plt.imshow(state)
             # plt.savefig(join(dirname(abspath(__file__)), f'image_{e}_{i}.png'))
