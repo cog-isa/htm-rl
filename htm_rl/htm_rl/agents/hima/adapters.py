@@ -4,20 +4,21 @@ from htm_rl.common.sdr_decoders import DecoderStack, IntBucketDecoder
 from htm_rl.common.sdr_encoders import RangeDynamicEncoder, VectorDynamicEncoder
 from htm_rl.envs.coppelia.environment import PulseEnv
 
+from math import pi
+
 import numpy as np
 
 
 class PulseActionAdapter:
     def __init__(self,
                  environment: PulseEnv,
-                 n_joints,
                  speed_delta,
                  time_delta,
                  bucket_size,
                  default_value,
                  seed):
         self.environment = environment
-        self.n_joints = n_joints
+        self.n_joints = environment.n_joints
         self.speed_delta = speed_delta
         self.time_delta = time_delta
         self.decoder_stack = DecoderStack()
@@ -31,8 +32,8 @@ class PulseActionAdapter:
                 bit_range=(shift, shift + 3 * bucket_size))
             shift += 3 * bucket_size
 
-        self.current_speeds = np.zeros(n_joints)
-        self.speed_deltas = np.array([0, speed_delta / 180, -speed_delta / 180])
+        self.current_speeds = np.zeros(self.n_joints)
+        self.speed_deltas = np.array([0, pi*speed_delta / 180, -pi*speed_delta / 180])
 
     def adapt(self, action):
         actions = self.decoder_stack.decode(action)
@@ -54,7 +55,7 @@ class PulseActionAdapter:
 class PulseObsAdapter:
     def __init__(self, environment: PulseEnv, config):
         self.environment = environment
-        self.n_joints = self.environment.agent.get_joint_count()
+        self.n_joints = self.environment.n_joints
         # setup encoders
         self.encoders = dict()
         self.observations = list()
