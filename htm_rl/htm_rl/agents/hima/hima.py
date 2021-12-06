@@ -68,7 +68,7 @@ class HIMA:
                 self.empowerment.learn(self.previous_obs, current_obs)
             self.previous_obs = current_obs
 
-        return self.accumulated_action
+        return self.accumulated_action.astype(np.int32)
 
     def get_intrinsic_reward(self):
         if self.empowerment.filename is None:

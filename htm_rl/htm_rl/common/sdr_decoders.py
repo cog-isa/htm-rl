@@ -39,7 +39,7 @@ class IntBucketDecoder(Decoder):
                 value = self._rng.integers(self.n_values)
             else:
                 value = self.default_value
-        return value
+        return int(value)
 
 
 class DecoderStack:
@@ -49,10 +49,10 @@ class DecoderStack:
     def add_decoder(self, decoder: Type[Decoder], bit_range: (int, int)):
         self.decoders.append((decoder, bit_range))
 
-    def decode(self, pattern: SDR):
+    def decode(self, pattern: np.ndarray):
         values = list()
         for decoder, bit_range in self.decoders:
-            mask = (pattern.sparse > bit_range[0]) & (pattern.sparse < bit_range[1])
+            mask = (pattern > bit_range[0]) & (pattern < bit_range[1])
             active_bits = pattern[mask] - bit_range[0]
             value = decoder.decode(active_bits)
             values.append(value)

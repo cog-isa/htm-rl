@@ -272,10 +272,10 @@ class VectorDynamicEncoder:
         self.output_sdr_size = size * encoder.output_sdr_size
 
     def encode(self, value_vector, speed_vector):
-        assert value_vector.size == speed_vector.size
+        assert len(value_vector) == len(speed_vector)
         outputs = list()
         shift = 0
-        for i in range(value_vector.size):
+        for i in range(len(value_vector)):
             sparse = self.encoder.encode(value_vector[i], speed_vector[i])
             outputs.append(sparse + shift)
             shift += self.encoder.output_sdr_size
