@@ -1,4 +1,6 @@
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
+from htm_rl.envs.coppelia.environment import PulseEnv
+from htm_rl.agents.hima.adapters import PulseObsAdapter
 from copy import deepcopy
 
 
@@ -12,11 +14,22 @@ def configure(config):
     if 'scenario' in config.keys():
         new_config['scenario'] = config['scenario']
 
-    environment = BioGwLabEnvironment(**config['environment'])
+    if config['environment_type'] is 'gw':
+        environment = BioGwLabEnvironment(**config['environment'])
+        obs_sdr_size = environment.env.output_sdr_size
+    elif config['environment_type'] is 'pulse':
+        headless = config['environment']['headless']
+        config['environment'].update({'headless': True})
+        environment = PulseEnv(**config['environment'])
+        config['environment'].update({'headless': headless})
+        obs_adapter = PulseObsAdapter(environment, config['pulse_observation_adapter'])
+        obs_sdr_size = obs_adapter.output_sdr_size
+    else:
+        raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')
 
     # define input blocks
     motor_size = config['cagent']['elementary_actions']['n_actions'] * config['cagent']['elementary_actions']['bucket_size']
-    new_config['input_blocks'] = [{'level': 0, 'columns': environment.env.output_sdr_size,
+    new_config['input_blocks'] = [{'level': 0, 'columns': obs_sdr_size,
                                    'sparsity': 1},
                                   {'level': 0, 'columns': motor_size,
                                    'sparsity': config['cagent']['elementary_actions']['bucket_size']/motor_size}]
@@ -123,7 +136,7 @@ def configure(config):
             activation_apical_threshold=int(apical_active_size*(1 - block['tm']['noise_tolerance'])),
             learning_apical_threshold=int(apical_active_size*(1 - block['tm']['noise_tolerance'])),
 
-            max_apical_synapses_per_segment = apical_active_size,
+            max_apical_synapses_per_segment=apical_active_size,
             sample_inhib_basal_size=n_active_bits,
             sample_apical_size=apical_active_size
         ))
@@ -134,7 +147,7 @@ def configure(config):
     new_config['blocks'] = blocks
     # agent
     new_config['agent'] = config['cagent']
-    new_config['agent']['state_size'] = environment.env.output_sdr_size
+    new_config['agent']['state_size'] = obs_sdr_size
 
     noise_tolerance = config['cagent']['empowerment']['tm_config']['noise_tolerance']
     learning_margin = config['cagent']['empowerment']['tm_config']['learning_margin']
@@ -161,18 +174,22 @@ def configure(config):
     new_config['levels'] = config['levels']
     new_config['path_to_store_logs'] = config['path_to_store_logs']
 
-    if 'pulse_adapter' in config.keys():
-        new_config['pulse_adapter'] = config['pulse_adapter']
-        new_config['pulse_adapter'].update(dict(
+    if config['environment_type'] is 'pulse':
+        new_config['pulse_observation_adapter'] = config['observation_adapter']
+        new_config['pulse_action_adapter'] = config['pulse_action_adapter']
+        new_config['pulse_action_adapter'].update(dict(
             seed=config['seed'],
             bucket_size=config['cagent']['elementary_actions']['bucket_size']
         ))
         new_config['agent']['elementary_actions']['n_actions'] = 3
-    elif 'gw_adapter' in config.keys():
-        new_config['gw_adapter'] = config['gw_adapter']
-        new_config['gw_adapter'].update(dict(
+    elif config['environment_type'] is 'gw':
+        new_config['gw_action_adapter'] = config['gw_action_adapter']
+        new_config['gw_action_adapter'].update(dict(
             seed=config['seed'],
             bucket_size=config['cagent']['elementary_actions']['bucket_size'],
             n_actions=config['cagent']['elementary_actions']['n_actions']
         ))
+    else:
+        raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')
+
     return new_config
