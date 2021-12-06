@@ -24,6 +24,7 @@ def configure(config):
         config['environment'].update({'headless': headless})
         obs_adapter = PulseObsAdapter(environment, config['pulse_observation_adapter'])
         obs_sdr_size = obs_adapter.output_sdr_size
+        environment.shutdown()
     else:
         raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')
 
