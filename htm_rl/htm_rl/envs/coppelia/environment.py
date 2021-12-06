@@ -11,7 +11,7 @@ from pyrep import PyRep
 from pyrep.objects.vision_sensor import VisionSensor
 from pyrep.objects.force_sensor import ForceSensor
 from pyrep.objects.shape import Shape
-from arm import Pulse75
+from htm_rl.envs.coppelia.arm import Pulse75
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -25,7 +25,7 @@ EPS = 0.01
 class PulseEnv:
     def __init__(self,
                  scene_file: str,
-                 joints_to_manage: list[bool],
+                 joints_to_manage: list[int],
                  observation: list[str],
                  n_sim_steps_for_action: int,
                  action_cost: float,
@@ -57,8 +57,11 @@ class PulseEnv:
         self.goal_reward = goal_reward
         self.position_threshold = position_threshold
         self.change_position = change_position
-        self.joints_to_manage = np.array(joints_to_manage)
-        self.n_joints = sum(joints_to_manage)
+
+        joints_mask = np.zeros(self.agent.get_joint_count(), dtype=bool)
+        joints_mask[joints_to_manage] = True
+        self.joints_to_manage = joints_mask
+        self.n_joints = int(sum(joints_mask))
 
         self.rng = np.random.default_rng(seed)
 
@@ -121,7 +124,7 @@ class PulseEnv:
 
 if __name__ == '__main__':
     env = PulseEnv(SCENE_FILE,
-                   joints_to_manage=[False, False, False, True, True, True],
+                   joints_to_manage=[3, 4],
                    observation=['joint_vel'],
                    n_sim_steps_for_action=10,
                    action_cost=-0.1,
@@ -138,7 +141,7 @@ if __name__ == '__main__':
         env.reset()
         for i in range(EPISODE_LENGTH):
             print(f'Step {i}')
-            action = list(np.random.uniform(-1.0, 1.0, size=(3,)))
+            action = list(np.random.uniform(-1.0, 1.0, size=(2,)))
             env.act(action)
             state = env.observe()
             print(f'pos {env.tip.get_position()}')
