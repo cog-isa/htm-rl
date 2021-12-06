@@ -356,14 +356,13 @@ class V1:
             s1, s2 = self.complex_cells[-1].output_shape
             self.output_sizes.append(s1 * s2 * 20)
 
-    def compute(self, img: np.ndarray):
+    def compute(self, img: np.ndarray) -> tuple[list[np.ndarray], list[np.ndarray]]:
         dense = []
         sparse = []
         for i in range(self.num_paths):
             sim = self.simple_cells[i].compute(img)
             com = self.complex_cells[i].compute(sim)
             dense.append(com)
-            inds = np.nonzero(com)
-            ind = com.shape[1] * com.shape[2] * inds[0] + com.shape[2] * inds[1] + inds[2]
-            sparse.append(ind)
+            inds = np.nonzero(com.flatten())[0]
+            sparse.append(inds)
         return sparse, dense
