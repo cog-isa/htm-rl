@@ -113,7 +113,7 @@ class PulseEnv:
             reward += self.goal_reward
             self.reset()
 
-        return obs, reward, self.is_first
+        return reward, obs, self.is_first
 
     def shutdown(self):
         self.pr.stop()
