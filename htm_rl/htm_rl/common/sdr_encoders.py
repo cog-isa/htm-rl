@@ -174,3 +174,114 @@ class SdrConcatenator:
             result[l:r] = sdr
             result[l:r] += self._shifts[i - 1]
         return result
+
+
+class RangeDynamicEncoder:
+    def __init__(self,
+                 min_value,
+                 max_value,
+                 min_speed,
+                 max_speed,
+                 min_delta,
+                 max_delta,
+                 n_active_bits,
+                 cyclic: bool,
+                 seed=None):
+        self.min_value = min_value
+        self.max_value = max_value
+        self.min_speed = min_speed
+        self.max_speed = max_speed
+        self.min_delta = min_delta
+        self.max_delta = max_delta
+        assert min_value < max_value
+        assert min_speed < max_speed
+        assert min_delta < max_delta
+
+        self.n_active_bits = n_active_bits
+        self.cyclic = cyclic
+
+        self.min_diameter = self.n_active_bits
+
+        self.rng = np.random.default_rng(seed)
+
+        assert self.min_delta > 0
+        self.output_sdr_size = self.n_active_bits * int(
+            round((self.max_value - self.min_value) / self.min_delta))
+        assert self.output_sdr_size > 0
+        self.max_diameter = self.output_sdr_size // int(
+            round((self.max_value - self.min_value) / self.max_delta))
+
+        self.sample_order = self.rng.random(size=self.output_sdr_size)
+
+    def encode(self, value, speed):
+        speed = min(max(self.min_speed, speed), self.max_speed)
+        value = min(max(self.min_value, value), self.max_value)
+
+        norm_speed = (speed - self.min_speed) / (self.max_speed - self.min_speed)
+
+        diameter = int(round(self.min_diameter + norm_speed * (self.max_diameter - self.min_diameter)))
+
+        norm_value = (value - self.min_value) / (self.max_value - self.min_value)
+
+        center = int(round(norm_value * self.output_sdr_size))
+
+        l_radius = (diameter - 1) // 2
+        r_radius = diameter // 2
+
+        if not self.cyclic:
+            if (center - l_radius) <= 0:
+                start = 0
+                end = diameter
+            elif (center + r_radius) >= self.output_sdr_size:
+                start = center - diameter
+                end = self.output_sdr_size - 1
+            else:
+                start = center - l_radius
+                end = center + r_radius
+
+            potential = np.arange(start, end + 1)
+        else:
+            if (center - l_radius) < 0:
+                start = self.output_sdr_size - 1 + center - l_radius
+                end = center + r_radius
+
+                potential = np.concatenate([np.arange(start, self.output_sdr_size),
+                                            np.arange(0, end + 1)])
+            elif (center + r_radius) >= self.output_sdr_size:
+                start = center - l_radius
+                end = center + r_radius - self.output_sdr_size
+
+                potential = np.concatenate([np.arange(start, self.output_sdr_size),
+                                            np.arange(0, end + 1)])
+            else:
+                start = center - l_radius
+                end = center + r_radius
+                potential = np.arange(start, end + 1)
+
+        active_arg = np.argpartition(self.sample_order[potential],
+                                     kth=-self.n_active_bits)[-self.n_active_bits:]
+        active = potential[active_arg]
+
+        return active
+
+
+class VectorDynamicEncoder:
+    def __init__(self, size, encoder: RangeDynamicEncoder):
+        self.size = size
+        self.encoder = encoder
+        self.output_sdr_size = size * encoder.output_sdr_size
+
+    def encode(self, value_vector, speed_vector):
+        assert value_vector.size == speed_vector.size
+        outputs = list()
+        shift = 0
+        for i in range(value_vector.size):
+            sparse = self.encoder.encode(value_vector[i], speed_vector[i])
+            outputs.append(sparse + shift)
+            shift += self.encoder.output_sdr_size
+
+        return np.concatenate(outputs)
+
+
+if __name__ == '__main__':
+    pass
