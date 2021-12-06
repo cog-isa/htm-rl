@@ -117,15 +117,15 @@ class PulseObsAdapter:
         shift = 0
         for i, obs_type in enumerate(self.observations):
             encoder = self.encoders[obs_type]
-            if obs_type is 'camera':
+            if obs_type == 'camera':
                 sparse = np.empty(0)
-            elif obs_type is 'joint_pos':
-                sparse = encoder.encode(obs[i], self.environment.agent.get_joint_velocities())
-            elif obs_type is 'joint_vel':
+            elif obs_type == 'joint_pos':
+                sparse = encoder.encode(obs[i], self.environment.get_joint_velocities())
+            elif obs_type == 'joint_vel':
                 sparse = encoder.encode(obs[i], np.zeros_like(obs[i]))
-            elif obs_type is 'target_pos':
+            elif obs_type == 'target_pos':
                 sparse = encoder.encode(obs[i], self.environment.target.get_velocity())
-            elif obs_type is 'target_vel':
+            elif obs_type == 'target_vel':
                 sparse = encoder.encode(obs[i], np.zeros_like(obs[i]))
             else:
                 raise ValueError

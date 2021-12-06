@@ -14,10 +14,10 @@ def configure(config):
     if 'scenario' in config.keys():
         new_config['scenario'] = config['scenario']
 
-    if config['environment_type'] is 'gw':
+    if config['environment_type'] == 'gw':
         environment = BioGwLabEnvironment(**config['environment'])
         obs_sdr_size = environment.env.output_sdr_size
-    elif config['environment_type'] is 'pulse':
+    elif config['environment_type'] == 'pulse':
         headless = config['environment']['headless']
         config['environment'].update({'headless': True})
         environment = PulseEnv(**config['environment'])
@@ -174,15 +174,15 @@ def configure(config):
     new_config['levels'] = config['levels']
     new_config['path_to_store_logs'] = config['path_to_store_logs']
 
-    if config['environment_type'] is 'pulse':
-        new_config['pulse_observation_adapter'] = config['observation_adapter']
+    if config['environment_type'] == 'pulse':
+        new_config['pulse_observation_adapter'] = config['pulse_observation_adapter']
         new_config['pulse_action_adapter'] = config['pulse_action_adapter']
         new_config['pulse_action_adapter'].update(dict(
             seed=config['seed'],
             bucket_size=config['cagent']['elementary_actions']['bucket_size']
         ))
         new_config['agent']['elementary_actions']['n_actions'] = 3
-    elif config['environment_type'] is 'gw':
+    elif config['environment_type'] == 'gw':
         new_config['gw_action_adapter'] = config['gw_action_adapter']
         new_config['gw_action_adapter'].update(dict(
             seed=config['seed'],
