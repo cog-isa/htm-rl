@@ -37,7 +37,7 @@ class PulseActionAdapter:
 
     def adapt(self, action):
         actions = self.decoder_stack.decode(action)
-        current_angles = self.environment.agent.get_joint_positions()
+        current_angles = self.environment.get_joint_positions()
 
         # speed update
         speed_deltas = self.speed_deltas[actions]
