@@ -29,27 +29,35 @@ run_options:
   log_td_error: True
   log_anomaly: False
   log_confidence: False
-  log_modulation: True
+  log_modulation: False
   log_segments: True
-  log_terminal_stat: True
+  log_terminal_stat: False
   log_empowerment: False
   log_number_of_clusters: False
-  draw_options: True
-  draw_options_stats: True
+  draw_options: False
+  draw_options_stats: False
   opt_threshold: 50
   animation_fps: 3
 
 environment_type: pulse
 environment:
+  action_cost: -0.01
+  goal_reward: 1.0
+  position_threshold: 0.1  # goal position radius in meters
+  change_position: false  #  target position
+  initial_pose: null  # initial robot joint positions
+  joints_to_manage:
+    - 4
+    - 3
+  observation:
+    - joint_pos
+    - joint_vel
+  n_sim_steps_for_action: 2  # 1 step = 50 ms
   seed: 432921
   scene_file: '/home/gsys/Desktop/Activity/HTM/htm_rl_tepo/htm-rl/htm_rl/htm_rl/envs/coppelia/scenes/main_scene.ttt'
   headless: false
-  n_sim_steps_for_action: 2
-  observation:
-    - joint_pos
 
 pulse_action_adapter:
-  n_joints: 6
   speed_delta: 2  # degrees per second
   time_delta: 0.1  # seconds
   default_value: 'random'
@@ -57,12 +65,12 @@ pulse_action_adapter:
 
 pulse_observation_adapter:
   joint_pos:
-    min_delta: 0.1  # radians
-    max_delta: 1
+    min_delta: 0.5  # radians
+    max_delta: 1.0
     n_active_bits: 10
   joint_vel:
-    min_delta: 0.1  # radians/s
-    max_delta: 1
+    min_delta: 0.5  # radians/s
+    max_delta: 1.0
     n_active_bits: 10
 
 
@@ -71,9 +79,9 @@ cagent:
   use_dreaming: false
   alpha: 1.0
   punish_intrinsic_reward: -10
-  n_actions_to_accumulate: 1
+  n_actions_to_accumulate: 2
   elementary_actions:
-    n_actions: 4
+    n_actions: 3
     bucket_size: 3
   empowerment:
     horizon: 3
@@ -154,7 +162,7 @@ blocks:
     sm: {}
     sp: null
     tm:
-      basal_columns: 12
+      basal_columns: 9
 
   2:
     bg: null
