@@ -96,11 +96,9 @@ class PulseEnv:
         if 'camera' in self.observation:
             obs.append(self.camera.capture_rgb())
         if 'joint_pos' in self.observation:
-            joint_pos = np.array(self.agent.get_joint_positions())
-            obs.append(joint_pos[self.joints_to_manage])
+            obs.append(self.get_joint_positions())
         if 'joint_vel' in self.observation:
-            joint_vel = np.array(self.agent.get_joint_velocities())
-            obs.append(joint_vel[self.joints_to_manage])
+            obs.append(self.get_joint_velocities())
         if 'target_pos' in self.observation:
             obs.append(self.target.get_position())
         if 'target_vel' in self.observation:
@@ -120,6 +118,14 @@ class PulseEnv:
     def shutdown(self):
         self.pr.stop()
         self.pr.shutdown()
+
+    def get_joint_positions(self):
+        joint_pos = np.array(self.agent.get_joint_positions())
+        return joint_pos[self.joints_to_manage]
+
+    def get_joint_velocities(self):
+        joint_vel = np.array(self.agent.get_joint_velocities())
+        return joint_vel[self.joints_to_manage]
 
 
 if __name__ == '__main__':
