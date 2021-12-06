@@ -115,3 +115,10 @@ def safe_divide(x, y):
     if y == 0:
         return y
     return x / y
+
+
+def relu(x):
+    if x > 0:
+        return x
+    else:
+        return 0
