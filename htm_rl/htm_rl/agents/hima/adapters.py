@@ -59,6 +59,8 @@ class PulseObsAdapter:
         # setup encoders
         self.encoders = dict()
         self.observations = list()
+        self.output_sdr_size = 0
+
         if 'camera' in self.environment.observation:
             self.encoders['camera'] = None
             self.observations.append('camera')
@@ -106,6 +108,9 @@ class PulseObsAdapter:
                     **config['target_vel'])
             )
             self.observations.append('target_vel')
+
+        for encoder in self.encoders.values():
+            self.output_sdr_size += encoder.output_sdr_size
 
     def adapt(self, obs):
         outputs = list()
