@@ -12,13 +12,14 @@ from htm_rl.modules.htm.pattern_memory import SpatialMemory
 from htm_rl.common.utils import safe_divide
 from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
+from htm_rl.envs.coppelia.environment import PulseEnv
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.modules.htm.temporal_memory import ApicalBasalFeedbackTM
 from htm_rl.agents.hima.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, \
     draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
 from htm_rl.common.scenario import Scenario
 from htm_rl.agents.hima.hima import HIMA
-from htm_rl.agents.hima.adapters import BioGwLabAdapter, PulseAdapter
+from htm_rl.agents.hima.adapters import BioGwLabActionAdapter, PulseActionAdapter, BioGwLabObsAdapter, PulseObsAdapter
 
 
 class HIMAgentRunner:
@@ -71,9 +72,12 @@ class HIMAgentRunner:
         self.env_config = config['environment']
         if config['environment_type'] == 'gw':
             self.environment = BioGwLabEnvironment(**config['environment'])
+            self.action_adapter = BioGwLabActionAdapter(**config['gw_action_adapter'])
+            self.observation_adapter = BioGwLabObsAdapter()
         elif config['environment_type'] == 'pulse':
-            # TODO add pulse environment
-            self.environment = ...
+            self.environment = PulseEnv(**config['environment'])
+            self.action_adapter = PulseActionAdapter(self.environment, **config['pulse_action_adapter'])
+            self.observation_adapter = PulseObsAdapter(self.environment, config['pulse_obs_adapter'])
         else:
             raise ValueError(f'Unknown environment type: {config["environment_type"]}! ')
 
@@ -102,15 +106,6 @@ class HIMAgentRunner:
         self.map_change_indicator = 0
         self.goal_reached = True
         self.task_complete = True
-
-        if 'pulse_adapter' in config.keys():
-            assert config['environment_type'] == 'pulse'
-            self.action_adapter = PulseAdapter(self.environment, **config['pulse_adapter'])
-        elif 'gw_adapter' in config.keys():
-            assert config['environment_type'] == 'gw'
-            self.action_adapter = BioGwLabAdapter(**config['gw_adapter'])
-        else:
-            raise ValueError('Set up adapter!')
 
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
@@ -189,6 +184,8 @@ class HIMAgentRunner:
                 self.scenario.check_conditions()
 
             reward, obs, is_first = self.environment.observe()
+
+            obs = self.observation_adapter.adapt(obs)
 
             self.agent.real_pos = get_unshifted_pos(
                     self.environment.env.agent.position,
