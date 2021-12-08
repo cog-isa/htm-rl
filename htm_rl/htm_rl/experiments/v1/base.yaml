@@ -1,0 +1,22 @@
+project: V1
+entity: arkol
+log: False
+
+simple: [
+  {
+    g_kernel_size: 6,
+    g_stride: 1,
+    g_pad: None,
+    g_sigma_x: 1.8,
+    g_sigma_y: 1.2,
+    g_lambda_: 6,
+    g_filters: 8,
+    activity_level: 0.6
+  },
+]
+
+complex:
+  g_kernel_size: 24
+  g_stride: 12
+  g_sigma: 19.2
+  activity_level: 0.6
