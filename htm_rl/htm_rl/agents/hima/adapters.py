@@ -3,6 +3,7 @@ from typing import Union
 from htm_rl.common.sdr_decoders import DecoderStack, IntBucketDecoder
 from htm_rl.common.sdr_encoders import RangeDynamicEncoder, VectorDynamicEncoder
 from htm_rl.envs.coppelia.environment import PulseEnv
+from htm_rl.modules.v1 import V1
 
 from math import pi
 
@@ -62,7 +63,9 @@ class PulseObsAdapter:
         self.output_sdr_size = 0
 
         if 'camera' in self.environment.observation:
-            self.encoders['camera'] = None
+            self.encoders['camera'] = V1(self.environment.camera.get_resolution(),
+                                         config['v1']['complex'],
+                                         *config['v1']['simple'])
             self.observations.append('camera')
         if 'joint_pos' in self.environment.observation:
             joint_pos_range = self.environment.agent.get_joint_intervals()[1][0]
@@ -118,7 +121,8 @@ class PulseObsAdapter:
         for i, obs_type in enumerate(self.observations):
             encoder = self.encoders[obs_type]
             if obs_type == 'camera':
-                sparse = np.empty(0)
+                sparse, _ = encoder.compute(obs[i])
+                sparse = np.concatenate(sparse)
             elif obs_type == 'joint_pos':
                 sparse = encoder.encode(obs[i], self.environment.get_joint_velocities())
             elif obs_type == 'joint_vel':

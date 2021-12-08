@@ -64,6 +64,9 @@ pulse_action_adapter:
   seed: *seed
 
 pulse_observation_adapter:
+  v1:
+    complex:
+    simple:
   joint_pos:
     min_delta: 0.5  # radians
     max_delta: 1.0
