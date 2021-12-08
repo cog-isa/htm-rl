@@ -1,25 +1,14 @@
-import os
-# os.environ['COPPELIASIM_ROOT'] = '/home/gsys/Applications/CoppeliaSim_Edu_V4_2_0_Ubuntu20_04'
-# os.environ['LD_LIBRARY_PATH'] = f'{os.environ["COPPELIASIM_ROOT"]}'
-# os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = os.environ['COPPELIASIM_ROOT']
-# print(os.environ['COPPELIASIM_ROOT'])
-
-from os.path import dirname, join, abspath
-from typing import Union
-
 from pyrep import PyRep
 from pyrep.objects.vision_sensor import VisionSensor
 from pyrep.objects.force_sensor import ForceSensor
 from pyrep.objects.shape import Shape
 from htm_rl.envs.coppelia.arm import Pulse75
-import numpy as np
-import matplotlib.pyplot as plt
 
-SCENE_FILE = join(dirname(abspath(__file__)), 'scenes/main_scene.ttt')
+from os.path import dirname, join, abspath
+from typing import Union
+import numpy as np
+
 POS_MIN, POS_MAX = [0.8, -0.2, 1.0], [1.0, 0.2, 1.4]
-EPISODES = 10
-EPISODE_LENGTH = 10
-EPS = 0.01
 
 
 class PulseEnv:
@@ -129,6 +118,11 @@ class PulseEnv:
 
 
 if __name__ == '__main__':
+    EPISODES = 0
+    EPISODE_LENGTH = 10
+    EPS = 0.01
+    SCENE_FILE = join(dirname(abspath(__file__)), 'scenes/main_scene.ttt')
+
     env = PulseEnv(SCENE_FILE,
                    joints_to_manage=[3, 4],
                    observation=['joint_vel'],
@@ -137,10 +131,11 @@ if __name__ == '__main__':
                    goal_reward=1,
                    position_threshold=EPS,
                    change_position=True,
-                   headless=False)
+                   headless=True)
     print('joint intervals', env.agent.get_joint_intervals())
     print('joint velocity limits', env.agent.get_joint_upper_velocity_limits())
     print('joint count', env.agent.get_joint_count())
+    print('camera resolution', env.camera.get_resolution())
 
     for e in range(EPISODES):
         print('Starting episode %d' % e)

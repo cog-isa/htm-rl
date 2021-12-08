@@ -35,7 +35,6 @@ def create_gabor_filter(
 def create_gaus_filter(
         size: int, sigma: float
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-
     filter_ = np.zeros((size, size))
     wi = np.zeros((size, size), dtype=np.int32)
     wj = np.zeros((size, size), dtype=np.int32)
@@ -125,7 +124,7 @@ def plot_3d_data(data: np.ndarray, columns: int):
     for i in range(rows):
         for j in range(columns):
             if j + i * columns < channels:
-                axs[i, j].imshow(data[j + i * columns], cmap='gray',  aspect='auto')
+                axs[i, j].imshow(data[j + i * columns], cmap='gray', aspect='auto')
             else:
                 axs[i, j].set_axis_off()
     plt.show()
@@ -142,8 +141,8 @@ def plot3d_3d_data(data: np.ndarray):
 
 
 def to_input_shape(
-    raw_image_shape: tuple[int, int], stride: int,
-    padding: int, ker_shape: tuple[int, int]
+        raw_image_shape: tuple[int, int], stride: int,
+        padding: int, ker_shape: tuple[int, int]
 ) -> tuple[int, int]:
     s1, s2 = raw_image_shape
     k1, k2 = ker_shape
@@ -155,18 +154,18 @@ def to_input_shape(
         output = (s1, s2)
     return output
 
-class V1Simple:
 
+class V1Simple:
     def __init__(self,
-        g_kernel_size: int,
-        g_stride: int,
-        g_pad: int,
-        g_sigma_x: float,
-        g_sigma_y: float,
-        g_lambda_: float,
-        g_filters: int,
-        activity_level: float
-    ):
+                 g_kernel_size: int,
+                 g_stride: int,
+                 g_pad: int,
+                 g_sigma_x: float,
+                 g_sigma_y: float,
+                 g_lambda_: float,
+                 g_filters: int,
+                 activity_level: float
+                 ):
         self.convolution = create_gabor_convolution(
             g_kernel_size, g_stride, g_pad, g_sigma_x,
             g_sigma_y, g_lambda_, g_filters
@@ -179,7 +178,7 @@ class V1Simple:
 
     def compute(self, image: np.ndarray) -> np.ndarray:
         gray = rgb2gray(image)
-        gray = torch.tensor(gray.reshape((1, 1, *gray.shape)),  dtype=torch.float32)
+        gray = torch.tensor(gray.reshape((1, 1, *gray.shape)), dtype=torch.float32)
         preactivation = self.convolution(gray).squeeze().numpy()
         activation = kWTA(preactivation, self.activity_level)
         return activation
@@ -188,12 +187,12 @@ class V1Simple:
 class V1Complex:
 
     def __init__(self,
-        g_kernel_size: int,
-        g_stride: int,
-        g_sigma: float,
-        input_shape: tuple[ int, int],
-        activity_level: float,
-    ):
+                 g_kernel_size: int,
+                 g_stride: int,
+                 g_sigma: float,
+                 input_shape: tuple[int, int],
+                 activity_level: float,
+                 ):
         self.activity_level = activity_level
 
         # gaus filters
@@ -249,7 +248,7 @@ class V1Complex:
         shift_i = np.array([0, 1, 1, 1, 0, -1, -1, -1])
         shift_j = np.array([1, 1, 0, -1, -1, -1, 0, 1])
         kkk = np.tile(
-            np.arange(4), (pad_shape[0]-2, pad_shape[1]-2, 2)
+            np.arange(4), (pad_shape[0] - 2, pad_shape[1] - 2, 2)
         )
         iii = shift_i + ii[:, :, np.newaxis]
         jjj = shift_j + jj[:, :, np.newaxis]
@@ -278,11 +277,11 @@ class V1Complex:
         off_iii = off_i + ii[:, :, np.newaxis, np.newaxis]
         off_jjj = off_j + jj[:, :, np.newaxis, np.newaxis]
         off_kkk = np.transpose(np.tile(
-            np.arange(4), (pad_shape[0]-2, pad_shape[1]-2, 3, 2)
+            np.arange(4), (pad_shape[0] - 2, pad_shape[1] - 2, 3, 2)
         ), (0, 1, 3, 2))
         self.off_mask = (off_kkk, off_iii, off_jjj)
 
-    def gaus_max_pool(self,  input: np.ndarray) -> np.ndarray:
+    def gaus_max_pool(self, input: np.ndarray) -> np.ndarray:
         input_pad = np.pad(input, ((0, 0), *self.pad))
         preactivation = input_pad[:, self.gaus_mask[0], self.gaus_mask[1]] * self.gaus_filter
         preactivation = preactivation.max(axis=3)
@@ -293,7 +292,7 @@ class V1Complex:
         angles = num_filteres // 2
         output = np.zeros((angles, input.shape[1], input.shape[2]))
         for i in range(angles):
-            output[i] = input[[i, i+angles]].max(axis=0)
+            output[i] = input[[i, i + angles]].max(axis=0)
         return output
 
     def length_sum(self, input: np.ndarray) -> np.ndarray:
@@ -320,7 +319,6 @@ class V1Complex:
         preactivation = np.transpose(preactivation, (2, 0, 1))
         return preactivation
 
-
     def compute(self, input: np.ndarray) -> np.ndarray:
         v1simplemax = self.gaus_max_pool(input)
         angles_only_preact = self.max_polarity(v1simplemax)
@@ -332,12 +330,11 @@ class V1Complex:
 
 
 class V1:
-
     def __init__(self,
-        raw_image_shape: tuple[int, int],
-        complex_config: dict,
-        *simple_configs: dict
-    ):
+                 raw_image_shape: tuple[int, int],
+                 complex_config: dict,
+                 *simple_configs: dict
+                 ):
         self.num_paths = 0
         self.simple_cells = []
         self.complex_cells = []
