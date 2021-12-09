@@ -22,6 +22,7 @@ class PulseEnv:
                  position_threshold: float,
                  change_position: bool,
                  initial_pose: list[tuple[float, float]] = None,
+                 camera_resolution: list[int] = None,
                  headless=False,
                  seed=None):
         self.pr = PyRep()
@@ -38,7 +39,11 @@ class PulseEnv:
 
         self.target = Shape('target')
         self.tip = ForceSensor('pulse75_connection')
+
         self.camera = VisionSensor('camera')
+        if camera_resolution is not None:
+            self.camera.set_resolution(camera_resolution)
+
         self.observation = set(observation)
         self.is_first = True
         self.n_sim_steps_for_action = n_sim_steps_for_action
