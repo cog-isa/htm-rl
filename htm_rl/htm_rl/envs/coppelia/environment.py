@@ -20,8 +20,9 @@ class PulseEnv:
                  action_cost: float,
                  goal_reward: float,
                  position_threshold: float,
-                 change_position: bool,
                  initial_pose: list[tuple[float, float]] = None,
+                 initial_target_position: list[int] = None,
+                 joints_speed_limit: float = None,
                  camera_resolution: list[int] = None,
                  headless=False,
                  seed=None):
@@ -31,14 +32,19 @@ class PulseEnv:
         self.agent = Pulse75()
         self.agent.set_control_loop_enabled(True)
         self.agent.set_motor_locked_at_zero_velocity(True)
+        self.agent.set_joint_intervals([True]*6, [[-np.pi, np.pi]]*6)
+        self.target = Shape('target')
+        self.tip = ForceSensor('pulse75_connection')
 
         if initial_pose is not None:
             self.initial_joint_positions = initial_pose
         else:
             self.initial_joint_positions = self.agent.get_joint_positions()
 
-        self.target = Shape('target')
-        self.tip = ForceSensor('pulse75_connection')
+        if initial_target_position is not None:
+            self.initial_target_position = initial_target_position
+        else:
+            self.initial_target_position = self.target.get_position()
 
         self.camera = VisionSensor('camera')
         if camera_resolution is not None:
@@ -50,7 +56,7 @@ class PulseEnv:
         self.action_cost = action_cost
         self.goal_reward = goal_reward
         self.position_threshold = position_threshold
-        self.change_position = change_position
+        self.joints_speed_limit = np.pi*joints_speed_limit/180
 
         joints_mask = np.zeros(self.agent.get_joint_count(), dtype=bool)
         joints_mask[joints_to_manage] = True
@@ -62,11 +68,7 @@ class PulseEnv:
         self.reset()
 
     def reset(self):
-        # Get a random position within a cuboid and set the target position
-        if self.change_position:
-            pos = list(self.rng.uniform(POS_MIN, POS_MAX))
-            self.target.set_position(pos)
-
+        self.target.set_position(self.initial_target_position)
         self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
         self.is_first = True
 
@@ -121,6 +123,9 @@ class PulseEnv:
         joint_vel = np.array(self.agent.get_joint_velocities())
         return joint_vel[self.joints_to_manage]
 
+    def get_joints_speed_limit(self):
+        return self.joints_speed_limit
+
 
 if __name__ == '__main__':
     EPISODES = 0
@@ -135,12 +140,13 @@ if __name__ == '__main__':
                    action_cost=-0.1,
                    goal_reward=1,
                    position_threshold=EPS,
-                   change_position=True,
                    headless=True)
     print('joint intervals', env.agent.get_joint_intervals())
     print('joint velocity limits', env.agent.get_joint_upper_velocity_limits())
     print('joint count', env.agent.get_joint_count())
     print('camera resolution', env.camera.get_resolution())
+    print('tip coords', env.tip.get_position())
+    print('robot pose', env.agent.get_joint_positions())
 
     for e in range(EPISODES):
         print('Starting episode %d' % e)

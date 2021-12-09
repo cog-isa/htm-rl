@@ -34,6 +34,7 @@ class PulseActionAdapter:
             shift += 3 * bucket_size
 
         self.current_speeds = np.zeros(self.n_joints)
+        self.speed_limit = self.environment.get_joints_speed_limit()
         self.speed_deltas = np.array([0, pi*speed_delta / 180, -pi*speed_delta / 180])
 
     def adapt(self, action):
@@ -43,6 +44,7 @@ class PulseActionAdapter:
         # speed update
         speed_deltas = self.speed_deltas[actions]
         self.current_speeds += speed_deltas
+        self.current_speeds = np.clip(self.current_speeds, -self.speed_limit, self.speed_limit)
 
         # angle update
         next_angles = current_angles + self.current_speeds * self.time_delta
@@ -69,7 +71,7 @@ class PulseObsAdapter:
             self.observations.append('camera')
         if 'joint_pos' in self.environment.observation:
             joint_pos_range = self.environment.agent.get_joint_intervals()[1][0]
-            joint_vel_limit = self.environment.agent.get_joint_upper_velocity_limits()[0]
+            joint_vel_limit = self.environment.get_joints_speed_limit()
             self.encoders['joint_pos'] = VectorDynamicEncoder(
                 self.n_joints,
                 RangeDynamicEncoder(max_value=joint_pos_range[1],
@@ -81,7 +83,7 @@ class PulseObsAdapter:
             )
             self.observations.append('joint_pos')
         if 'joint_vel' in self.environment.observation:
-            joint_vel_limit = self.environment.agent.get_joint_upper_velocity_limits()[0]
+            joint_vel_limit = self.environment.get_joints_speed_limit()
             self.encoders['joint_vel'] = VectorDynamicEncoder(
                 self.n_joints,
                 RangeDynamicEncoder(

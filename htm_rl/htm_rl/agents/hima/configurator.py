@@ -5,10 +5,12 @@ from copy import deepcopy
 
 
 def configure(config):
+    print('Configure ... ')
     new_config = dict()
     new_config['environment'] = config['environment']
     new_config['hierarchy'] = config['hierarchy']
-    new_config['vis_options'] = config['vis_options']
+    if 'vis_config' in config.keys():
+        new_config['vis_options'] = config['vis_options']
     new_config['environment_type'] = config['environment_type']
 
     if 'scenario' in config.keys():
@@ -27,7 +29,7 @@ def configure(config):
         environment.shutdown()
     else:
         raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')
-
+    print(f'obs sdr size: {obs_sdr_size}')
     # define input blocks
     motor_size = config['cagent']['elementary_actions']['n_actions'] * config['cagent']['elementary_actions']['bucket_size']
     new_config['input_blocks'] = [{'level': 0, 'columns': obs_sdr_size,
@@ -192,5 +194,5 @@ def configure(config):
         ))
     else:
         raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')
-
+    print('Configured.')
     return new_config

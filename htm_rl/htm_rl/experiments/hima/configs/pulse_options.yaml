@@ -4,14 +4,6 @@ agent: hima
 project: test
 entity: hauska  # don't forget to change if you use logging
 
-scenario: '../scenarios/cross_11x11.yaml'
-
-vis_options:
-  size: 21
-  max_options: 50
-  action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
-  action_rotation: [0, 0, 0, 0]
-
 log: false  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
@@ -43,24 +35,24 @@ environment_type: pulse
 environment:
   action_cost: -0.01
   goal_reward: 1.0
-  position_threshold: 0.1  # goal position radius in meters
-  change_position: false  #  target position
-  initial_pose: null  # initial robot joint positions
+  position_threshold: 0.05  # goal position radius in meters
+  initial_pose: [ 0.0, 0.0, 0.0, 0.0, 1.57, 0.0 ]  # initial robot joint positions
+  initial_target_position: [ 0.500, 0.2763, 1.85274 ]
+  joints_speed_limit: 80  # degrees per second
   joints_to_manage:
     - 4
-    - 3
   camera_resolution: [ 128, 128 ]
   observation:
     - camera
     - joint_pos
     - joint_vel
-  n_sim_steps_for_action: 2  # 1 step = 50 ms
+  n_sim_steps_for_action: 5  # 1 step = 50 ms
   seed: 432921
   scene_file: '/home/gsys/Desktop/Activity/HTM/htm_rl_tepo/htm-rl/htm_rl/htm_rl/envs/coppelia/scenes/main_scene.ttt'
   headless: false
 
 pulse_action_adapter:
-  speed_delta: 2  # degrees per second
+  speed_delta: 10  # degrees per second
   time_delta: 0.1  # seconds
   default_value: 'random'
   seed: *seed
