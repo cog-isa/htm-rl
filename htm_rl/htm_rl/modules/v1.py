@@ -353,6 +353,8 @@ class V1:
             s1, s2 = self.complex_cells[-1].output_shape
             self.output_sizes.append(s1 * s2 * 20)
 
+        self.output_sdr_size = sum(self.output_sizes)
+
     def compute(self, img: np.ndarray) -> tuple[list[np.ndarray], list[np.ndarray]]:
         dense = []
         sparse = []
