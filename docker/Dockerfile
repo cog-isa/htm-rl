@@ -32,9 +32,8 @@ RUN pip install --no-cache-dir --upgrade \
     && pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir .
 
-#! TODO merge with prev after testing
-RUN rm -rf * \
-    && rm -rf .*
+WORKDIR /app/deps
+RUN rm -r htm.core
 
 
 # ============= 2. HIMA ==================
@@ -67,10 +66,8 @@ ENV LD_LIBRARY_PATH $LD_LIBRARY_PATH:$COPPELIASIM_ROOT:$COPPELIASIM_ROOT/platfor
 ENV QT_QPA_PLATFORM_PLUGIN_PATH $COPPELIASIM_ROOT
 
 # ==> 2.2.2 Get CoppeliaSim archive, extract, remove
-RUN wget https://www.coppeliarobotics.com/files/$CoppeliaSimFilename.tar.xz
-
-#! TODO merge with prev after testing
-RUN tar -xf $CoppeliaSimFilename.tar.xz \
+RUN wget https://www.coppeliarobotics.com/files/$CoppeliaSimFilename.tar.xz \
+    && tar -xf $CoppeliaSimFilename.tar.xz \
     && rm $CoppeliaSimFilename.tar.xz
 
 # ==> 2.3.1 Install prereqs for PyRep
@@ -92,33 +89,72 @@ RUN DEBIAN_FRONTEND=noninteractive \
         # qt5-default \
         libffi-dev \
         xvfb \
+        git-lfs \
+        g++ \
     && rm -rf /var/lib/apt/lists/*
-
-# ==> 2.3.2 Clone PyRep
-RUN git clone --depth 1 --branch master https://github.com/stepjam/PyRep.git
 
 # ==========> 2.4 Start building Python Virtual Env
 
-# ==> 2.5 Copy venv with `htm.core` from `htm-core-fork` image
+# ==> 2.5 Init venv and copy `htm.core`
+
+# copy venv with `htm.core` from `htm-core-fork` image
+#   pip and other setup tools are copied updated from htm-core-fork
 COPY --from=htm-core-fork /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# pip and other setup tools are copied updated from htm-core-fork
+# ==> 2.6 Install PyRep: clone, install, remove sources
 
-# ==> 2.6 Install PyRep
-
-WORKDIR /app/deps/PyRep
-RUN pip install --no-cache-dir --upgrade \
+WORKDIR /app/deps
+RUN git clone --depth 1 --branch master \
+        https://github.com/stepjam/PyRep.git \
+    && cd PyRep \
+    && pip install --no-cache-dir --upgrade \
         cython \
     && pip install --no-cache-dir --upgrade \
         -r requirements.txt \
     && pip install --no-cache-dir --upgrade \
-        .
-
-#! TODO merge with prev
-WORKDIR /app/deps
-RUN rm -r PyRep
+        . \
+    && cd .. \
+    && rm -r PyRep
 
 # ==> 2.7 Install HIMA
-WORKDIR /app
+WORKDIR /app/hima/
 
+#! Temporary solution until requirements.txt is updated in master
+COPY requirements.txt /app/hima/
+RUN pip install --no-cache-dir --upgrade \
+        -r requirements.txt \
+    && pip install --no-cache-dir \
+        -f https://download.pytorch.org/whl/cpu/torch_stable.html \
+        torch==1.10.0+cpu \
+        torchvision==0.11.1+cpu \
+        torchaudio==0.10.0+cpu
+RUN rm requirements.txt
+
+# # ==> 2.7.1-2 Get + install requirements
+# RUN wget https://github.com/cog-isa/htm-rl/blob/master/requirements.txt \
+#     && pip install --no-cache-dir --upgrade \
+#         -r requirements.txt \
+#     && pip install --no-cache-dir \
+#         -f https://download.pytorch.org/whl/cpu/torch_stable.html \
+#         torch==1.10.0+cpu \
+#         torchvision==0.11.1+cpu \
+#         torchaudio==0.10.0+cpu \
+#     && rm requirements.txt
+
+# ==> 2.7.3 Clone + install HIMA
+WORKDIR /app
+RUN git lfs install \
+    && git clone --depth 1 --branch master \
+        https://github.com/cog-isa/htm-rl.git \
+        hima
+
+WORKDIR /app/hima/htm_rl
+RUN pip install -e .
+
+WORKDIR /app/hima
+
+# ========== 3. Mount HIMA dev ===============
+ADD docker/entrypoint.sh /bin/entrypoint.sh
+RUN chmod +x /bin/entrypoint.sh
+ENTRYPOINT ["/bin/entrypoint.sh"]

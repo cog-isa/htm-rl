@@ -12,20 +12,20 @@
       2. apt-get update/install minimal && rm
       3. install oh-my-zsh
    2. get CoppeliaSim to `/app/deps/
-      1. wget && extract && rm xz
-      2. set env vars
+      1. set env vars
+      2. wget && extract && rm xz
    3. install pre-reqs for PyRep
       1. apt-get update/install qt and etc && rm
    4. ===== start building python venv ====
    5. copy htm.core to `/app/deps/htm.core`
       1. copy venv from htm.core
    6. install pyrep to `/app/deps/PyRep`
-      1. git clone
-      2. pip install req && pip install pyrep && rm PyRep
-   7. install hima reqs
-      1. git clone hima to `/app/hima`
-      2. pip install reqs && pip install -e .
-3. Make dev hima image
+      1. git clone && pip install req && pip install pyrep && rm PyRep
+   7. install hima
+      1. get hima requirements to `/app/hima`
+      2. pip install reqs + pytorch
+      3. git clone hima && pip install -e .
+3. Mount dev hima
    1. from hima image
    2. rm `/app/hima`
    3. bind local hima to `/app/hima`
