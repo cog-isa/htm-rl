@@ -1,5 +1,7 @@
-# >>>>>>>>> conda requirements
-python>=3.8
+# Install before (see README):
+#   1. Our fork of the htm.core
+#   2. CoppeliaSim + PyRep
+
 numpy
 matplotlib
 jupyterlab
@@ -8,20 +10,6 @@ tqdm
 wandb
 imageio
 seaborn
-#   htm.core dependencies
-mock
 
-# <<<<<<<<< conda requirements
-
-
-# >>>>>>>>> pip requirements
-#   htm.core dependencies
-hexy
-prettytable
-pytest>=4.6.5
-
-# <<<<<<<<< pip requirements
-
-
-# >>>>>>>>> install from sources
-#   install our fork of the htm.core (see README)
+# Install after (see README):
+#   1. PyTorch
