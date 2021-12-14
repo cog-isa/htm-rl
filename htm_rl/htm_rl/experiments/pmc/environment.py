@@ -1,6 +1,8 @@
 import numpy as np
 from PIL import Image, ImageDraw
 
+EPS = 1e-12
+
 
 class ReachAndGrasp2D:
     def __init__(self,
@@ -8,8 +10,10 @@ class ReachAndGrasp2D:
                  grip_position,
                  grip_radius=0.07,
                  goal_radius=0.05,
-                 max_speed=0.1,
-                 max_acceleration=0.02,
+                 max_grip_speed=0.1,
+                 max_grip_acceleration=0.02,
+                 max_grab_speed=0.01,
+                 max_grab_acceleration=0.01,
                  action_cost=-0.01,
                  goal_reward=1,
                  grabbed_reward=0.1,
@@ -19,8 +23,10 @@ class ReachAndGrasp2D:
         self.action_cost = action_cost
         self.goal_reward = goal_reward
         self.grabbed_reward = grabbed_reward
-        self.max_acceleration = max_acceleration
-        self.max_speed = max_speed
+        self.max_grip_acceleration = max_grip_acceleration
+        self.max_grip_speed = max_grip_speed
+        self.max_grab_acceleration = max_grab_acceleration
+        self.max_grab_speed = max_grab_speed
         self.time_constant = time_constant
         self.init_grip_position = grip_position
         self.max_grip_radius = grip_radius
@@ -42,7 +48,7 @@ class ReachAndGrasp2D:
 
     def act(self, action):
         self.target_grip_position = np.array(action[:2])
-        self.target_grip_radius = action[2]
+        self.target_grip_radius = action[2] * self.max_grip_radius
 
     def obs(self):
         return self.reward(), self.render_rgb()
@@ -61,7 +67,7 @@ class ReachAndGrasp2D:
         self.target_grip_radius = None
 
     def reward(self):
-        reward = -self.action_cost
+        reward = -self.action_cost * self.distance_to_goal
         if self.can_grab:
             reward += self.goal_reward
         if self.goal_grabbed:
@@ -83,10 +89,12 @@ class ReachAndGrasp2D:
         self.grip_position, self.grip_speed = self.dynamics(
             self.grip_position,
             self.grip_speed,
-            self.max_acceleration,
+            self.max_grip_acceleration,
             self.target_grip_position,
-            self.max_speed
+            self.max_grip_speed
         )
+
+        self.grip_position = np.clip(self.grip_position, 0, 1)
 
         # check possibility to grab
         self.distance_to_goal = np.linalg.norm(self.goal_position
@@ -97,9 +105,9 @@ class ReachAndGrasp2D:
         self.grip_radius, self.grip_radius_speed = self.dynamics(
             self.grip_radius,
             self.grip_radius_speed,
-            self.max_acceleration,
+            self.max_grab_acceleration,
             self.target_grip_radius,
-            self.max_speed
+            self.max_grab_speed
         )
 
         self.grip_radius = min(self.max_grip_radius, self.grip_radius)
@@ -118,7 +126,9 @@ class ReachAndGrasp2D:
 
     def dynamics(self, x, dx, ddx, x_target, max_dx):
         speed_delta = x_target - x
-        dx += self.time_constant * ddx * speed_delta / np.linalg.norm(speed_delta)
+        norm_ddx = np.linalg.norm(speed_delta)
+        dx += self.time_constant * ddx * speed_delta / (norm_ddx + EPS)
+
         norm_speed = np.linalg.norm(dx)
         if norm_speed > max_dx:
             dx = max_dx * dx / norm_speed
