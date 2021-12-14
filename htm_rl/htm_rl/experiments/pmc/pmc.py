@@ -43,9 +43,15 @@ class PMCToM1Basic:
     def compute(self, sparse_pattern, weights=None):
         chosen_neurons = self.pmc.neurons[sparse_pattern, :].squeeze()
         if weights is None:
-            weights = np.ones_like(sparse_pattern)
+            weights = np.ones(sparse_pattern.size)
 
-        value = np.sum(chosen_neurons * weights.T, axis=0)/np.sum(weights)
+        weights = weights.reshape((weights.size, 1))
+        norm = np.sum(weights)
+
+        if norm != 0:
+            value = np.sum(chosen_neurons * weights, axis=0)/norm
+        else:
+            value = np.zeros(self.input_size)
 
         self.pmc.learn(value)
 
