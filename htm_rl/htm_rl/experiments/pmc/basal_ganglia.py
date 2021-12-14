@@ -109,7 +109,7 @@ class GPi:
         out = out + self._rng.normal(0, self.noise, out.size)
         probs = (out - out.min()) / (out.max() - out.min() + 1e-12)
         out = self._rng.random(self._output_size) < probs
-        return out, probs
+        return out, 1-probs
 
 
 class GPe:
@@ -139,20 +139,23 @@ class STN:
 
 
 class Thalamus:
-    def __init__(self, input_size: int, output_size: int, seed: int):
+    def __init__(self, input_size: int, output_size: int, sparsity: float, seed: int):
         self._input_size = input_size
         self._output_size = output_size
         self._rng = np.random.default_rng(seed)
         self.response_activity = None
         self.max_response = None
+        self.k_top = int(output_size * sparsity)
         if self._input_size != self._output_size:
             raise ValueError
 
     def compute(self, modulation, probs):
         bs = ~modulation
-
-        self.response_activity = bs.sum()
         sparse_response = np.flatnonzero(bs)
+        k_top = np.argpartition(probs[sparse_response], -self.k_top)[-self.k_top:]
+        sparse_response = sparse_response[k_top]
+
+        self.response_activity = sparse_response.size
         self.max_response = sparse_response
 
         return sparse_response, probs[sparse_response]
@@ -176,6 +179,7 @@ class BasalGanglia:
                  discount_factor: float,
                  off_policy: bool,
                  noise: float,
+                 sparsity: float,
                  seed: int,
                  **kwargs):
         self._input_size = input_size
@@ -185,7 +189,7 @@ class BasalGanglia:
         self.stn = STN(input_size, input_size)
         self.gpi = GPi(output_size, output_size, noise, seed)
         self.gpe = GPe(output_size, output_size)
-        self.tha = Thalamus(output_size, output_size, seed)
+        self.tha = Thalamus(output_size, output_size, sparsity, seed)
 
         self.off_policy = off_policy
 
