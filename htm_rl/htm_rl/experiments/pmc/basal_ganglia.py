@@ -98,15 +98,15 @@ class Striatum:
 
 
 class GPi:
-    def __init__(self, input_size: int, output_size: int, seed: int):
+    def __init__(self, input_size: int, output_size: int, noise: float, seed: int):
         self._input_size = input_size
         self._output_size = output_size
         self._rng = np.random.default_rng(seed)
-        # TODO убрать?
-        assert self._input_size == self._output_size, f"Input and output have different sizes: input: {input_size}, output {output_size}"
+        self.noise = noise
 
     def compute(self, exc_input: float, inh_input) -> (np.ndarray, np.ndarray):
         out = exc_input - inh_input[0] - inh_input[1]
+        out = out + self._rng.normal(0, self.noise, out.size)
         probs = (out - out.min()) / (out.max() - out.min() + 1e-12)
         out = self._rng.random(self._output_size) < probs
         return out, probs
@@ -116,8 +116,6 @@ class GPe:
     def __init__(self, input_size, output_size):
         self._input_size = input_size
         self._output_size = output_size
-        # TODO убрать?
-        assert self._input_size == self._output_size, f"Input and output have different sizes: input: {input_size}, output {output_size}"
 
     def compute(self, exc_input: float, inh_input: np.ndarray) -> np.ndarray:
         return exc_input - inh_input
@@ -177,8 +175,7 @@ class BasalGanglia:
                  beta: float,
                  discount_factor: float,
                  off_policy: bool,
-                 softmax_beta: float,
-                 epsilon_noise: float,
+                 noise: float,
                  seed: int,
                  **kwargs):
         self._input_size = input_size
@@ -186,13 +183,11 @@ class BasalGanglia:
 
         self.stri = Striatum(input_size, output_size, discount_factor, alpha, beta)
         self.stn = STN(input_size, input_size)
-        self.gpi = GPi(output_size, output_size, seed)
+        self.gpi = GPi(output_size, output_size, noise, seed)
         self.gpe = GPe(output_size, output_size)
         self.tha = Thalamus(output_size, output_size, seed)
 
         self.off_policy = off_policy
-        self.softmax_beta = softmax_beta
-        self.epsilon_noise = epsilon_noise
 
     @property
     def td_error(self):
