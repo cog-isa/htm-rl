@@ -77,6 +77,8 @@ class ReachAndGrasp2D:
 
     def simulation_step(self):
         self.goal_grabbed = False
+        if (self.target_grip_position is None) or (self.target_grip_radius is None):
+            return
 
         self.grip_position, self.grip_speed = self.dynamics(
             self.grip_position,
@@ -100,10 +102,14 @@ class ReachAndGrasp2D:
             self.max_speed
         )
 
+        self.grip_radius = min(self.max_grip_radius, self.grip_radius)
+        if self.grip_radius == self.max_grip_radius:
+            self.grip_speed = 0
+
         if self.can_grab:
             self.grip_radius = max(self.goal_radius, self.grip_radius)
             if self.grip_radius == self.goal_radius:
-                self.grip_speed = np.zeros(1)
+                self.grip_speed = 0
                 self.goal_grabbed = True
         else:
             self.grip_radius = max(0, self.grip_radius)
@@ -120,10 +126,13 @@ class ReachAndGrasp2D:
         x += self.time_constant * dx
         return x, dx
 
-    def render_rgb(self, show_goal=False):
-        image = Image.new('RGB', self.camera_resolution, (0, 0, 0))
+    def render_rgb(self, show_goal=False, camera_resolution=None):
+        if camera_resolution is None:
+            camera_resolution = self.camera_resolution
+
+        image = Image.new('RGB', camera_resolution, (0, 0, 0))
         draw = ImageDraw.Draw(image)
-        scale_factor = max(self.camera_resolution)
+        scale_factor = max(camera_resolution)
 
         goal_bbox = np.concatenate(
             [self.goal_position - self.goal_radius,
