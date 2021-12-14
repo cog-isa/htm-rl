@@ -14,6 +14,8 @@ class BasicAgent:
         config['bg']['input_size'] = self.v1.output_sdr_size
         self.bg = BasalGanglia(**config['bg'])
         self.pmc = PMCToM1Basic(**config['pmc'])
+        self.probs = None
+        self.response = None
 
     def make_action(self, obs):
         stimulus, _ = self.v1.compute(np.array(obs))
@@ -21,6 +23,8 @@ class BasicAgent:
         response, probs = self.bg.compute(stimulus, learn=True)
         self.bg.update_stimulus(stimulus)
         self.bg.update_response(response)
+        self.probs = probs
+        self.response = response
 
         action = self.pmc.compute(response, probs)
         return action
