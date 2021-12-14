@@ -2,7 +2,7 @@ max_steps: 200
 n_episodes: 100
 action_update_period: 100
 headless: false
-window_size: [ 500, 500 ]
+window_size: [ 600, 400 ]
 seed: &seed 839482
 
 agent:
@@ -32,25 +32,28 @@ agent:
       beta: 0.1
       discount_factor: 0.95
       off_policy: false
-      noise: 0.01
+      noise: 0.001
+      sparsity: 0.1
       seed: *seed
     pmc:
       input_size: 3
       limits: [ [ 0, 1 ], [ 0, 1 ], [ 0, 1 ]]
       n_neurons: 1000
-      learning_rate: 1
-      neighbourhood_radius: 0.1
-      noise: 0.1
+      learning_rate: 0.05
+      neighbourhood_radius: 0.05
+      noise: 0.05
       allow_add_new_neurons: false
       seed: *seed
 
 environment:
-  goal_position: [ 0.7, 0.7 ]
-  grip_position: [ 0.3, 0.3 ]
+  goal_position: [ 0.3, 0.7 ]
+  grip_position: [ 0.7, 0.3 ]
   grip_radius: 0.1
   goal_radius: 0.05
-  max_speed: 0.001
-  max_acceleration: 0.0001
+  max_grip_speed: 0.001
+  max_grip_acceleration: 0.0001
+  max_grab_speed: 0.0005
+  max_grab_acceleration: 0.00005
   action_cost: 0.01
   goal_reward: 1
   grabbed_reward: 0.005
