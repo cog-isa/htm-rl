@@ -19,6 +19,9 @@ class PMCToM1Basic:
         self.seed = seed
         self.rng = np.random.default_rng(seed)
 
+        self.low_borders = [x[0] for x in self.limits]
+        self.upper_borders = [x[1] for x in self.limits]
+
         assert len(limits) == input_size
 
         neighbourhood_radius *= n_neurons
@@ -50,6 +53,7 @@ class PMCToM1Basic:
 
         if norm != 0:
             value = np.sum(chosen_neurons * weights, axis=0)/norm
+            value = np.clip(value, self.low_borders, self.upper_borders)
         else:
             value = np.zeros(self.input_size)
 
