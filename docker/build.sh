@@ -36,5 +36,5 @@ docker build \
     $PWD
 
 # Push the new versions:
-# docker push pkuderov/htm-core-fork:latest
-# docker push pkuderov/hima:latest
+docker push pkuderov/htm-core-fork:latest
+docker push pkuderov/hima:latest
