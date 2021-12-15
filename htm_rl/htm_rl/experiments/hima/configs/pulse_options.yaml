@@ -51,6 +51,7 @@ environment:
   seed: 432921
   scene_file: '/home/gsys/Desktop/Activity/HTM/htm_rl_tepo/htm-rl/htm_rl/htm_rl/envs/coppelia/scenes/main_scene.ttt'
   headless: false
+  responsive_ui: true
 
 pulse_action_adapter:
   mode: angle  # angle | speed

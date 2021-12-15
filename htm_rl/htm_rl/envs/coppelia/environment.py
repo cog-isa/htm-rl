@@ -26,11 +26,12 @@ class PulseEnv:
                  joints_speed_limit: float = None,
                  camera_resolution: list[int] = None,
                  headless=False,
+                 responsive_ui=True,
                  seed=None):
         self.action_time_step = action_time_step
         self.simulation_time_step = simulation_time_step
         self.pr = PyRep()
-        self.pr.launch(scene_file, headless=headless)
+        self.pr.launch(scene_file, headless=headless, responsive_ui=responsive_ui)
         self.pr.set_simulation_timestep(simulation_time_step)
         self.pr.start()
         self.agent = Pulse75()
