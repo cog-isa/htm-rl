@@ -52,7 +52,8 @@ environment:
   headless: false
 
 pulse_action_adapter:
-  speed_delta: 10  # degrees per second
+  mode: angle  # angle | speed
+  delta: 10  # degrees
   time_delta: 0.1  # seconds
   default_value: 'random'
   seed: *seed

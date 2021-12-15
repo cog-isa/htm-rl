@@ -13,14 +13,16 @@ import numpy as np
 class PulseActionAdapter:
     def __init__(self,
                  environment: PulseEnv,
-                 speed_delta,
+                 mode,
+                 delta,
                  time_delta,
                  bucket_size,
                  default_value,
                  seed):
+        self.mode = mode
         self.environment = environment
         self.n_joints = environment.n_joints
-        self.speed_delta = speed_delta
+        self.delta = delta
         self.time_delta = time_delta
         self.decoder_stack = DecoderStack()
         shift = 0
@@ -35,19 +37,19 @@ class PulseActionAdapter:
 
         self.current_speeds = np.zeros(self.n_joints)
         self.speed_limit = self.environment.get_joints_speed_limit()
-        self.speed_deltas = np.array([0, pi*speed_delta / 180, -pi*speed_delta / 180])
+        self.deltas = np.array([0, pi*delta / 180, -pi*delta / 180])
 
     def adapt(self, action):
         actions = self.decoder_stack.decode(action)
         current_angles = self.environment.get_joint_positions()
-
-        # speed update
-        speed_deltas = self.speed_deltas[actions]
-        self.current_speeds += speed_deltas
-        self.current_speeds = np.clip(self.current_speeds, -self.speed_limit, self.speed_limit)
-
-        # angle update
-        next_angles = current_angles + self.current_speeds * self.time_delta
+        deltas = self.deltas[actions]
+        if self.mode == 'speed':
+            # speed update
+            self.current_speeds += deltas
+            self.current_speeds = np.clip(self.current_speeds, -self.speed_limit, self.speed_limit)
+            next_angles = current_angles + self.current_speeds * self.time_delta
+        else:
+            next_angles = current_angles + deltas
 
         return next_angles
 
