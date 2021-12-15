@@ -34,7 +34,7 @@ class HIMAgentRunner:
         use_intrinsic_reward = config['agent']['use_intrinsic_reward']
 
         blocks = list()
-
+        print('Hierarchy ...')
         for block_conf in input_block_configs:
             blocks.append(InputBlock(**block_conf))
 
@@ -62,7 +62,7 @@ class HIMAgentRunner:
             blocks.append(Block(tm=tm, sm=sm, sp=sp, bg=bg, **block_conf['block']))
 
         hierarchy = Hierarchy(blocks, **config['hierarchy'])
-
+        print('Agent ...')
         if 'scenario' in config.keys():
             self.scenario = Scenario(config['scenario'], self)
         else:
@@ -70,6 +70,8 @@ class HIMAgentRunner:
         self.agent = HIMA(config['agent'], hierarchy)
 
         self.env_config = config['environment']
+        self.environment_type = config['environment_type']
+        print('Environment')
         if config['environment_type'] == 'gw':
             self.environment = BioGwLabEnvironment(**config['environment'])
             self.action_adapter = BioGwLabActionAdapter(**config['gw_action_adapter'])
@@ -106,7 +108,7 @@ class HIMAgentRunner:
         self.map_change_indicator = 0
         self.goal_reached = True
         self.task_complete = True
-
+        print('Visuals ...')
         self.path_to_store_logs = config['path_to_store_logs']
         pathlib.Path(self.path_to_store_logs).mkdir(parents=True, exist_ok=True)
 
@@ -161,6 +163,7 @@ class HIMAgentRunner:
                      log_empowerment=False,
                      log_number_of_clusters=False,
                      animation_fps=3):
+        print('Starting run ...')
         self.total_reward = 0
         self.steps = 0
         self.steps_per_goal = 0
@@ -500,69 +503,71 @@ class HIMAgentRunner:
         pass
 
     def draw_animation_frame(self, logger, draw_options, agent_pos, episode, steps):
-        pic = self.environment.callmethod('render_rgb')
-        if isinstance(pic, list):
-            pic = pic[0]
+        if self.environment_type == 'gw':
+            pic = self.environment.callmethod('render_rgb')
+            if isinstance(pic, list):
+                pic = pic[0]
 
-        if draw_options:
-            option_block = self.agent.hierarchy.blocks[5]
-            c_pos = get_unshifted_pos(self.environment.env.agent.position,
-                                      self.environment.env.renderer.shape.top_left_point)
-            c_direction = self.environment.env.agent.view_direction
-            c_option_id = option_block.current_option
+            if draw_options:
+                option_block = self.agent.hierarchy.blocks[5]
+                c_pos = get_unshifted_pos(self.environment.env.agent.position,
+                                          self.environment.env.renderer.shape.top_left_point)
+                c_direction = self.environment.env.agent.view_direction
+                c_option_id = option_block.current_option
 
-            if self.agent.hierarchy.blocks[5].made_decision:
-                if c_option_id != self.last_option_id:
+                if self.agent.hierarchy.blocks[5].made_decision:
+                    if c_option_id != self.last_option_id:
+                        if len(agent_pos) > 0:
+                            agent_pos.clear()
+                    agent_pos.append(c_pos)
+                    if len(agent_pos) > 1:
+                        pic[tuple(zip(*agent_pos))] = [[255, 255, 150]] * len(agent_pos)
+                    else:
+                        pic[agent_pos[0]] = [255, 255, 255]
+                else:
                     if len(agent_pos) > 0:
                         agent_pos.clear()
-                agent_pos.append(c_pos)
-                if len(agent_pos) > 1:
-                    pic[tuple(zip(*agent_pos))] = [[255, 255, 150]] * len(agent_pos)
-                else:
-                    pic[agent_pos[0]] = [255, 255, 255]
-            else:
-                if len(agent_pos) > 0:
-                    agent_pos.clear()
 
-            self.last_option_id = c_option_id
+                self.last_option_id = c_option_id
 
-            term_draw_options = np.zeros((pic.shape[0], 3, 3))
-            c_option = self.agent.hierarchy.blocks[5].current_option
-            f_option = self.agent.hierarchy.blocks[5].failed_option
-            comp_option = self.agent.hierarchy.blocks[5].completed_option
-            self.agent.hierarchy.blocks[5].failed_option = None
-            self.agent.hierarchy.blocks[5].completed_option = None
+                term_draw_options = np.zeros((pic.shape[0], 3, 3))
+                c_option = self.agent.hierarchy.blocks[5].current_option
+                f_option = self.agent.hierarchy.blocks[5].failed_option
+                comp_option = self.agent.hierarchy.blocks[5].completed_option
+                self.agent.hierarchy.blocks[5].failed_option = None
+                self.agent.hierarchy.blocks[5].completed_option = None
 
-            if c_option is not None:
-                term_draw_options[c_option, 0] = [255, 255, 255]
-            if f_option is not None:
-                term_draw_options[f_option, 1] = [200, 0, 0]
-            if comp_option is not None:
-                term_draw_options[comp_option, 2] = [0, 0, 200]
+                if c_option is not None:
+                    term_draw_options[c_option, 0] = [255, 255, 255]
+                if f_option is not None:
+                    term_draw_options[f_option, 1] = [200, 0, 0]
+                if comp_option is not None:
+                    term_draw_options[comp_option, 2] = [0, 0, 200]
 
-            if self.agent.hierarchy.output_block.predicted_options is not None:
-                predicted_options = self.agent.hierarchy.output_block.sm.get_options_by_id(
-                    self.agent.hierarchy.output_block.predicted_options)
-                for o in predicted_options:
-                    predicted_action_pattern = np.flatnonzero(o)
-                    p_action = self.action_adapter.adapt(predicted_action_pattern)
+                if self.agent.hierarchy.output_block.predicted_options is not None:
+                    predicted_options = self.agent.hierarchy.output_block.sm.get_options_by_id(
+                        self.agent.hierarchy.output_block.predicted_options)
+                    for o in predicted_options:
+                        predicted_action_pattern = np.flatnonzero(o)
+                        p_action = self.action_adapter.adapt(predicted_action_pattern)
 
-                    direction = c_direction - self.option_stat.action_rotation[p_action]
-                    if direction < 0:
-                        direction = 4 - direction
-                    else:
-                        direction %= 4
-                    if (len(self.option_stat.action_displace) == 4) or (
-                            np.all(self.option_stat.action_displace[p_action] == 0)):
-                        displacement = self.option_stat.action_displace[p_action]
-                    else:
-                        displacement = self.option_stat.transform_displacement((0, 1), direction)
-                    p_pos = (c_pos[0] + displacement[0], c_pos[1] + displacement[1])
+                        direction = c_direction - self.option_stat.action_rotation[p_action]
+                        if direction < 0:
+                            direction = 4 - direction
+                        else:
+                            direction %= 4
+                        if (len(self.option_stat.action_displace) == 4) or (
+                                np.all(self.option_stat.action_displace[p_action] == 0)):
+                            displacement = self.option_stat.action_displace[p_action]
+                        else:
+                            displacement = self.option_stat.transform_displacement((0, 1), direction)
+                        p_pos = (c_pos[0] + displacement[0], c_pos[1] + displacement[1])
 
-                    if (p_pos[0] < pic.shape[0]) and (p_pos[1] < pic.shape[1]):
-                        pic[p_pos[0], p_pos[1]] = [255, 200, 120]
-            pic = np.concatenate([pic, term_draw_options], axis=1)
-
+                        if (p_pos[0] < pic.shape[0]) and (p_pos[1] < pic.shape[1]):
+                            pic[p_pos[0], p_pos[1]] = [255, 200, 120]
+                pic = np.concatenate([pic, term_draw_options], axis=1)
+        else:
+            pic = self.environment.camera.capture_rgb() * 255
         plt.imsave(os.path.join(self.path_to_store_logs,
                                 f'{logger.id}_episode_{episode}_step_{steps}.png'), pic.astype('uint8'))
         plt.close()
