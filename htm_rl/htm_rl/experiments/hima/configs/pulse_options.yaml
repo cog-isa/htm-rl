@@ -4,12 +4,12 @@ agent: hima
 project: test
 entity: hauska  # don't forget to change if you use logging
 
-log: false  # wand logging
+log: true  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 2000
-  log_every_episode: 25
+  log_every_episode: 10
   log_values_int: False
   log_values_ext: False
   log_priorities: False
@@ -17,7 +17,7 @@ run_options:
   log_policy: False
   log_option_values: False
   log_option_policy: False
-  log_options_usage: True
+  log_options_usage: False
   log_td_error: True
   log_anomaly: False
   log_confidence: False
@@ -29,10 +29,11 @@ run_options:
   draw_options: False
   draw_options_stats: False
   opt_threshold: 50
-  animation_fps: 3
+  animation_fps: 5
 
 environment_type: pulse
 environment:
+  max_steps: 200
   action_cost: -0.01
   goal_reward: 1.0
   position_threshold: 0.05  # goal position radius in meters
@@ -44,14 +45,12 @@ environment:
   camera_resolution: [ 128, 128 ]
   observation:
     - camera
-    - joint_pos
-    - joint_vel
   simulation_time_step: 0.05  # s
   action_time_step: 0.1  # s
-  seed: 432921
+  seed: *seed
   scene_file: '/home/gsys/Desktop/Activity/HTM/htm_rl_tepo/htm-rl/htm_rl/htm_rl/envs/coppelia/scenes/main_scene.ttt'
-  headless: false
-  responsive_ui: true
+  headless: true
+  responsive_ui: false
 
 pulse_action_adapter:
   mode: angle  # angle | speed

@@ -16,6 +16,7 @@ class PulseEnv:
                  scene_file: str,
                  joints_to_manage: list[int],
                  observation: list[str],
+                 max_steps: int,
                  action_time_step: float,
                  simulation_time_step: float,
                  action_cost: float,
@@ -62,6 +63,8 @@ class PulseEnv:
         self.goal_reward = goal_reward
         self.position_threshold = position_threshold
         self.joints_speed_limit = np.pi*joints_speed_limit/180
+        self.max_steps = max_steps
+        self.n_steps = 0
 
         joints_mask = np.zeros(self.agent.get_joint_count(), dtype=bool)
         joints_mask[joints_to_manage] = True
@@ -73,11 +76,15 @@ class PulseEnv:
         self.reset()
 
     def reset(self):
+        self.pr.stop()
         self.target.set_position(self.initial_target_position)
         self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
         self.is_first = True
+        self.n_steps = 0
+        self.pr.start()
 
     def act(self, action: Union[list[float], np.ndarray]):
+        self.n_steps += 1
         self.is_first = False
 
         target_positions = np.zeros(self.agent.get_joint_count())
@@ -112,6 +119,8 @@ class PulseEnv:
                 (abs(y - ty) < self.position_threshold) and
                 (abs(z - tz) < self.position_threshold)):
             reward += self.goal_reward
+            self.reset()
+        elif self.n_steps > self.max_steps:
             self.reset()
 
         return reward, obs, self.is_first
