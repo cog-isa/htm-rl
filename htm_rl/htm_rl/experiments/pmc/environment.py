@@ -69,9 +69,9 @@ class ReachAndGrasp2D:
     def reward(self):
         reward = -self.action_cost * self.distance_to_goal
         if self.can_grab:
-            reward += self.goal_reward
-        if self.goal_grabbed:
             reward += self.grabbed_reward
+        if self.goal_grabbed:
+            reward += self.goal_reward
 
         return reward
 
@@ -82,7 +82,6 @@ class ReachAndGrasp2D:
             return False
 
     def simulation_step(self):
-        self.goal_grabbed = False
         if (self.target_grip_position is None) or (self.target_grip_radius is None):
             return
 
@@ -119,10 +118,13 @@ class ReachAndGrasp2D:
             if self.grip_radius == self.goal_radius:
                 self.grip_speed = 0
                 self.goal_grabbed = True
+            else:
+                self.goal_grabbed = False
         else:
-            self.grip_radius = max(0, self.grip_radius)
+            self.grip_radius = max(0.0, self.grip_radius)
             if self.grip_radius == 0:
                 self.grip_speed = 0
+            self.goal_grabbed = False
 
     def dynamics(self, x, dx, ddx, x_target, max_dx):
         speed_delta = x_target - x
