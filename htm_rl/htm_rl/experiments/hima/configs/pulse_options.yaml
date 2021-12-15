@@ -1,4 +1,4 @@
-seed: &seed 847582
+seed: &seed 9998
 levels: 2
 agent: hima
 project: test
@@ -8,7 +8,7 @@ log: true  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
-  n_episodes: 2000
+  n_episodes: 200
   log_every_episode: 10
   log_values_int: False
   log_values_ext: False
@@ -45,6 +45,7 @@ environment:
   camera_resolution: [ 128, 128 ]
   observation:
     - camera
+  #  - joint_pos
   simulation_time_step: 0.05  # s
   action_time_step: 0.1  # s
   seed: *seed
@@ -79,11 +80,11 @@ pulse_observation_adapter:
       },
     ]
   joint_pos:
-    min_delta: 0.5  # radians
+    min_delta: 0.1  # radians
     max_delta: 1.0
     n_active_bits: 10
   joint_vel:
-    min_delta: 0.5  # radians/s
+    min_delta: 0.1  # radians/s
     max_delta: 1.0
     n_active_bits: 10
 

@@ -58,6 +58,7 @@ class PulseEnv:
 
         self.observation = set(observation)
         self.is_first = True
+        self.should_reset = False
         self.n_sim_steps_for_action = int(action_time_step / simulation_time_step)
         self.action_cost = action_cost
         self.goal_reward = goal_reward
@@ -80,6 +81,7 @@ class PulseEnv:
         self.target.set_position(self.initial_target_position)
         self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
         self.is_first = True
+        self.should_reset = False
         self.n_steps = 0
         self.pr.start()
 
@@ -100,6 +102,8 @@ class PulseEnv:
             self.pr.step()
 
     def observe(self):
+        if self.should_reset:
+            self.reset()
         obs = list()
         if 'camera' in self.observation:
             obs.append(self.camera.capture_rgb())
@@ -119,9 +123,9 @@ class PulseEnv:
                 (abs(y - ty) < self.position_threshold) and
                 (abs(z - tz) < self.position_threshold)):
             reward += self.goal_reward
-            self.reset()
+            self.should_reset = True
         elif self.n_steps > self.max_steps:
-            self.reset()
+            self.should_reset = True
 
         return reward, obs, self.is_first
 
