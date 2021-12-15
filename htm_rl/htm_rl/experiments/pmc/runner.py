@@ -1,11 +1,8 @@
 import PIL.Image
-import kohonen
-
 from environment import ReachAndGrasp2D
 from agent import BasicAgent
 import pygame
 import numpy as np
-import matplotlib.pyplot as plt
 from utils import heatmap
 
 
@@ -146,6 +143,10 @@ class Runner:
                     image = pil_image_to_surface(hm)
                     screen.blit(image, dest=(0, 0))
             if update_screen:
+                if self.environment.goal_grabbed:
+                    self.environment.reset()
+                    self.agent.reset()
+                    n_steps = 0
                 self.environment.simulation_step()
                 image = self.environment.render_rgb(
                     camera_resolution=self.camera_layout,
@@ -153,9 +154,6 @@ class Runner:
                 image = pil_image_to_surface(image)
                 screen.blit(image, dest=(self.bg_layout[0], 0))
                 action_time += 1
-                if self.environment.goal_grabbed:
-                    self.environment.reset()
-                    self.agent.reset()
             if update_map:
                 hm = self.agent.pmc.pmc.average_neuron_distance_heatmap()
                 hm = hm.resize(self.bg_layout, PIL.Image.NEAREST)
@@ -169,7 +167,7 @@ class Runner:
             # update text info
             txt = font.render(
                 (f"update: {round(screen_update_period * screen_update_factor, 2)} ms   "   
-                    f"reward: {round(reward, 3)}   step: {n_steps}   episode: {n_episodes}"),
+                    f"r: {round(reward, 3)}   s: {n_steps}   ep: {n_episodes}  fps: {round(clock.get_fps())}"),
                 False,
                 (255, 255, 255))
             screen.blit(txt, (self.window_size[0] // 3, 0))
