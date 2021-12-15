@@ -16,7 +16,8 @@ class PulseEnv:
                  scene_file: str,
                  joints_to_manage: list[int],
                  observation: list[str],
-                 n_sim_steps_for_action: int,
+                 action_time_step: float,
+                 simulation_time_step: float,
                  action_cost: float,
                  goal_reward: float,
                  position_threshold: float,
@@ -26,8 +27,11 @@ class PulseEnv:
                  camera_resolution: list[int] = None,
                  headless=False,
                  seed=None):
+        self.action_time_step = action_time_step
+        self.simulation_time_step = simulation_time_step
         self.pr = PyRep()
         self.pr.launch(scene_file, headless=headless)
+        self.pr.set_simulation_timestep(simulation_time_step)
         self.pr.start()
         self.agent = Pulse75()
         self.agent.set_control_loop_enabled(True)
@@ -52,7 +56,7 @@ class PulseEnv:
 
         self.observation = set(observation)
         self.is_first = True
-        self.n_sim_steps_for_action = n_sim_steps_for_action
+        self.n_sim_steps_for_action = int(action_time_step / simulation_time_step)
         self.action_cost = action_cost
         self.goal_reward = goal_reward
         self.position_threshold = position_threshold

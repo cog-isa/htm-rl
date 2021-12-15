@@ -46,7 +46,8 @@ environment:
     - camera
     - joint_pos
     - joint_vel
-  n_sim_steps_for_action: 5  # 1 step = 50 ms
+  simulation_time_step: 0.05  # s
+  action_time_step: 0.1  # s
   seed: 432921
   scene_file: '/home/gsys/Desktop/Activity/HTM/htm_rl_tepo/htm-rl/htm_rl/htm_rl/envs/coppelia/scenes/main_scene.ttt'
   headless: false
