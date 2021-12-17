@@ -40,6 +40,11 @@ wandb/
 # config auto-backups
 /htm_rl/**/_*.yml
 
+# data files for experiments in notebooks
+notebooks/**/*.npy
+notebooks/**/*.npz
+notebooks/**/*.tfrecords
+
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 # please, place all project specific rules above this line
