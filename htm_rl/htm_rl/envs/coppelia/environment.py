@@ -77,13 +77,11 @@ class PulseEnv:
         self.reset()
 
     def reset(self):
-        self.pr.stop()
         self.target.set_position(self.initial_target_position)
         self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
         self.is_first = True
         self.should_reset = False
         self.n_steps = 0
-        self.pr.start()
 
     def act(self, action: Union[list[float], np.ndarray]):
         self.n_steps += 1
@@ -154,7 +152,9 @@ if __name__ == '__main__':
     env = PulseEnv(SCENE_FILE,
                    joints_to_manage=[3, 4],
                    observation=['joint_vel'],
-                   n_sim_steps_for_action=10,
+                   max_steps=200,
+                   action_time_step=200,
+                   simulation_time_step=10,
                    action_cost=-0.1,
                    goal_reward=1,
                    position_threshold=EPS,
