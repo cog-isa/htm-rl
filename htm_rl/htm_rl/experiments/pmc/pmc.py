@@ -1,5 +1,8 @@
 import numpy as np
 from utils import softmax, bsu
+from scipy.spatial import distance_matrix
+import matplotlib.pyplot as plt
+from PIL import Image
 
 
 class ThaPMCToM1:
@@ -83,8 +86,17 @@ class ThaPMCToM1:
                                   axis=1)
         return distance
 
-    def distance_matrix(self):
-        ...
+    def distance_matrix_heatmap(self):
+        dmat = distance_matrix(self.neurons,
+                               self.neurons)
+        avdist = dmat.mean(axis=0)
+        image = np.zeros(int(round(avdist.size ** 0.5)) ** 2)
+        image[:avdist.size] = avdist
+        image = image.reshape((int(image.size ** 0.5), -1))
+        image /= avdist.max()
+        cm = plt.get_cmap()
+        colored = cm(image)
+        return Image.fromarray((colored[:, :, :3] * 255).astype(np.uint8))
 
 
 if __name__ == '__main__':
