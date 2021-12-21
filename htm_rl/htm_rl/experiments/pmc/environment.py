@@ -38,6 +38,7 @@ class ReachAndGrasp2D:
         self.grip_position = np.array(self.init_grip_position)
         self.grip_radius = self.max_grip_radius
         self.distance_to_goal = np.linalg.norm(self.goal_position - self.grip_position)
+        self.target_distance_to_goal = None
         self.can_grab = self.check_gripper()
         self.goal_grabbed = False
         self.grip_radius_speed = np.zeros(1)
@@ -58,6 +59,7 @@ class ReachAndGrasp2D:
         self.grip_position = np.array(self.init_grip_position)
         self.grip_radius = self.max_grip_radius
         self.distance_to_goal = np.linalg.norm(self.goal_position - self.grip_position)
+        self.target_distance_to_goal = None
         self.can_grab = self.check_gripper()
         self.goal_grabbed = False
         self.grip_radius_speed = np.zeros(1)
@@ -76,7 +78,8 @@ class ReachAndGrasp2D:
         return reward
 
     def check_gripper(self):
-        if self.distance_to_goal < (self.grip_radius - self.goal_radius):
+        if ((self.distance_to_goal < (self.grip_radius - self.goal_radius)) and
+                (self.target_distance_to_goal < (self.target_grip_radius - self.goal_radius))):
             return True
         else:
             return False
@@ -98,6 +101,8 @@ class ReachAndGrasp2D:
         # check possibility to grab
         self.distance_to_goal = np.linalg.norm(self.goal_position
                                                - self.grip_position)
+        self.target_distance_to_goal = np.linalg.norm(self.goal_position
+                                                      - self.target_grip_position)
 
         self.can_grab = self.check_gripper()
 
@@ -160,18 +165,18 @@ class ReachAndGrasp2D:
                 [self.target_grip_position - self.target_grip_radius,
                  self.target_grip_position + self.target_grip_radius
                  ]).flatten()
-            draw.ellipse(list(target_bbox*scale_factor),
+            draw.ellipse(list(target_bbox * scale_factor),
                          outline=(50, 255, 0, 30),
-                         width=max(1, int(0.02*scale_factor))
+                         width=max(1, int(0.02 * scale_factor))
                          )
 
-        draw.ellipse(list(goal_bbox*scale_factor),
+        draw.ellipse(list(goal_bbox * scale_factor),
                      outline=(0, 0, 0),
                      fill=(0, 255, 255),
                      width=0)
-        draw.ellipse(list(grip_bbox*scale_factor),
+        draw.ellipse(list(grip_bbox * scale_factor),
                      outline=(0, 0, 255),
-                     width=max(1, int(0.02*scale_factor)))
+                     width=max(1, int(0.02 * scale_factor)))
 
         return image
 
