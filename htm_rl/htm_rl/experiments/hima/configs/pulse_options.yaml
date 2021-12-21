@@ -1,8 +1,8 @@
 seed: &seed 9998
 levels: 2
 agent: hima
-project: test
-entity: hauska  # don't forget to change if you use logging
+project: hima_pulse
+entity: arkol  # don't forget to change if you use logging
 
 log: true  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
@@ -34,6 +34,7 @@ run_options:
 environment_type: pulse
 environment:
   max_steps: 200
+  reward_type: 'gaus_dist'
   action_cost: -0.01
   goal_reward: 1.0
   position_threshold: 0.05  # goal position radius in meters
@@ -49,7 +50,7 @@ environment:
   simulation_time_step: 0.05  # s
   action_time_step: 0.1  # s
   seed: *seed
-  scene_file: '/home/gsys/Desktop/Activity/HTM/htm_rl_tepo/htm-rl/htm_rl/htm_rl/envs/coppelia/scenes/main_scene.ttt'
+  scene_file: 'main_scene.ttt'
   headless: true
   responsive_ui: false
 

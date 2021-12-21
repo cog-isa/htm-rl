@@ -8,9 +8,6 @@ from os.path import dirname, join, abspath
 from typing import Union
 import numpy as np
 
-POS_MIN, POS_MAX = [0.8, -0.2, 1.0], [1.0, 0.2, 1.4]
-
-
 class PulseEnv:
     def __init__(self,
                  scene_file: str,
@@ -26,12 +23,14 @@ class PulseEnv:
                  initial_target_position: list[int] = None,
                  joints_speed_limit: float = None,
                  camera_resolution: list[int] = None,
-                 headless=False,
-                 responsive_ui=True,
+                 headless: bool = False,
+                 responsive_ui: bool = True,
+                 reward_type: str = 'sparse',
                  seed=None):
         self.action_time_step = action_time_step
         self.simulation_time_step = simulation_time_step
         self.pr = PyRep()
+        scene_file = join(dirname(abspath(__file__)), 'scenes', scene_file)
         self.pr.launch(scene_file, headless=headless, responsive_ui=responsive_ui)
         self.pr.set_simulation_timestep(simulation_time_step)
         self.pr.start()
@@ -41,6 +40,7 @@ class PulseEnv:
         self.agent.set_joint_intervals([True]*6, [[-np.pi, np.pi]]*6)
         self.target = Shape('target')
         self.tip = ForceSensor('pulse75_connection')
+        self.reward_type = reward_type
 
         if initial_pose is not None:
             self.initial_joint_positions = initial_pose
@@ -114,16 +114,25 @@ class PulseEnv:
         if 'target_vel' in self.observation:
             obs.append(self.target.get_velocity())
 
-        reward = self.action_cost
+        tip_in_loc = False
         x, y, z = self.tip.get_position()
         tx, ty, tz = self.target.get_position()
         if ((abs(x - tx) < self.position_threshold) and
                 (abs(y - ty) < self.position_threshold) and
                 (abs(z - tz) < self.position_threshold)):
-            reward += self.goal_reward
+            tip_in_loc = True
             self.should_reset = True
         elif self.n_steps > self.max_steps:
             self.should_reset = True
+
+        reward = self.action_cost
+        if self.reward_type == 'sparse':
+            if tip_in_loc:
+                reward += self.goal_reward
+        elif self.reward_type == 'gaus_dist':
+            r_2 = (x - tx) ** 2 + (y - ty) ** 2 + (z - tz) ** 2
+            d_2 = self.position_threshold ** 2
+            reward += self.goal_reward * np.exp(-r_2/d_2)
 
         return reward, obs, self.is_first
 
