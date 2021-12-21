@@ -1,8 +1,5 @@
-from typing import List
-
 import copy
 import numpy as np
-from numpy.random._generator import Generator
 from htm_rl.common.sdr import SparseSdr
 
 EPS = 1e-12
@@ -98,18 +95,15 @@ class Striatum:
 
 
 class GPi:
-    def __init__(self, input_size: int, output_size: int, noise: float, seed: int):
+    def __init__(self, input_size: int, output_size: int, seed: int):
         self._input_size = input_size
         self._output_size = output_size
         self._rng = np.random.default_rng(seed)
-        self.noise = noise
 
     def compute(self, exc_input: float, inh_input) -> (np.ndarray, np.ndarray):
         out = exc_input - inh_input[0] - inh_input[1]
-        out = out + self._rng.normal(0, self.noise, out.size)
         probs = (out - out.min()) / (out.max() - out.min() + 1e-12)
-        out = self._rng.random(self._output_size) < probs
-        return out, 1-probs
+        return 1-probs
 
 
 class GPe:
@@ -135,41 +129,13 @@ class STN:
         if learn:
             self.weights[exc_input] += 1
             self.time += 1
-        return np.mean(self.weights / self.time)
-
-
-class Thalamus:
-    def __init__(self, input_size: int, output_size: int, sparsity: float, seed: int):
-        self._input_size = input_size
-        self._output_size = output_size
-        self._rng = np.random.default_rng(seed)
-        self.response_activity = None
-        self.max_response = None
-        self.k_top = int(output_size * sparsity)
-        if self._input_size != self._output_size:
-            raise ValueError
-
-    def compute(self, modulation, probs):
-        bs = ~modulation
-        sparse_response = np.flatnonzero(bs)
-        k_top = np.argpartition(probs[sparse_response], -self.k_top)[-self.k_top:]
-        sparse_response = sparse_response[k_top]
-
-        self.response_activity = sparse_response.size
-        self.max_response = sparse_response
-
-        return sparse_response, probs[sparse_response]
-
-    def reset(self):
-        self.response_activity = None
-        self.max_response = None
+        return float(np.mean(self.weights / self.time))
 
 
 class BasalGanglia:
     alpha: float
     beta: float
     discount_factor: float
-    _rng: Generator
 
     def __init__(self,
                  input_size: int,
@@ -177,21 +143,17 @@ class BasalGanglia:
                  alpha: float,
                  beta: float,
                  discount_factor: float,
-                 off_policy: bool,
-                 noise: float,
-                 sparsity: float,
                  seed: int,
                  **kwargs):
         self._input_size = input_size
         self._output_size = output_size
 
+        self._rng: np.random.default_rng(seed)
+
         self.stri = Striatum(input_size, output_size, discount_factor, alpha, beta)
         self.stn = STN(input_size, input_size)
-        self.gpi = GPi(output_size, output_size, noise, seed)
+        self.gpi = GPi(output_size, output_size, seed)
         self.gpe = GPe(output_size, output_size)
-        self.tha = Thalamus(output_size, output_size, sparsity, seed)
-
-        self.off_policy = off_policy
 
     @property
     def td_error(self):
@@ -199,7 +161,6 @@ class BasalGanglia:
 
     def reset(self):
         self.stri.reset()
-        self.tha.reset()
 
     def compute(self, stimulus,
                 responses_boost: np.ndarray = None,
@@ -211,13 +172,10 @@ class BasalGanglia:
             d1 *= responses_boost
         gpi = self.gpi.compute(stn, (d1, gpe))
 
-        response, probs = self.tha.compute(*gpi)
-        self.stri.current_max_response = self.tha.max_response
-
-        return response, probs
+        return gpi
 
     def force_dopamine(self, reward: float, k: int = 0, **kwargs):
-        self.stri.learn(reward, k, self.off_policy)
+        self.stri.learn(reward, k)
 
     def update_response(self, response):
         """

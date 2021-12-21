@@ -155,7 +155,7 @@ class Runner:
                 screen.blit(image, dest=(self.bg_layout[0], 0))
                 action_time += 1
             if update_map:
-                hm = self.agent.pmc.pmc.average_neuron_distance_heatmap()
+                hm = self.agent.pmc.average_neuron_distance_heatmap()
                 hm = hm.resize(self.bg_layout, PIL.Image.NEAREST)
                 image = pil_image_to_surface(hm)
                 screen.blit(image, dest=(0, self.bg_layout[1]))
