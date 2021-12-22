@@ -155,10 +155,11 @@ class Runner:
                     image = pil_image_to_surface(hm)
                     screen.blit(image, dest=(self.sup_layout[0], 0))
                 if show_stimulus:
-                    im_size = int(round(self.agent.v1.output_sdr_size ** 0.5) + 1)
-                    probs = np.zeros(im_size ** 2)
+                    probs = np.zeros(self.agent.v1.output_sdr_size)
                     probs[self.agent.bg.stri.current_stimulus] = 1
-                    hm = heatmap(probs.reshape((im_size, im_size)))
+                    probs = probs.reshape((20, -1))
+                    probs = probs.reshape((20, int(probs.shape[1]**0.5), -1))
+                    hm = heatmap(probs.mean(axis=0))
                     hm = hm.resize(self.sup_layout, PIL.Image.NEAREST)
                     image = pil_image_to_surface(hm)
                     screen.blit(image, dest=(self.sup_layout[0], self.sup_layout[1]))
@@ -195,7 +196,8 @@ class Runner:
             # update text info
             txt = font.render(
                 (f"update: {round(screen_update_period * screen_update_factor, 2)} ms   "   
-                    f"r: {round(reward, 3)}   s: {n_steps}   ep: {n_episodes}  fps: {round(clock.get_fps())}"),
+                    f"r: {round(reward, 3)}   s: {n_steps}   ep: {n_episodes}"
+                 f"  fps: {round(clock.get_fps())}"),
                 False,
                 (255, 255, 255))
             screen.blit(txt, (self.window_size[0] // 3, 0))

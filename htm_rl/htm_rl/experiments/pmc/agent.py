@@ -18,8 +18,8 @@ class BasicAgent:
         self.response = None
 
     def make_action(self, obs):
-        stimulus, _ = self.v1.compute(np.array(obs))
-        stimulus = np.concatenate(stimulus)
+        sparse, _ = self.v1.compute(np.array(obs))
+        stimulus = np.concatenate(sparse)
         probs = self.bg.compute(stimulus, learn=True)
         action, response = self.pmc.compute(probs)
         self.probs = probs[response]
