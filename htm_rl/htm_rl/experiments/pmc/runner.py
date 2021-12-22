@@ -23,8 +23,8 @@ class Runner:
         else:
             self.window_size = None
 
-        self.camera_layout = (self.window_size[0] - int(self.window_size[0] / 3), self.window_size[1])
-        self.bg_layout = (int(self.window_size[0] / 3), self.window_size[1] // 2)
+        self.camera_layout = (self.window_size[0] // 2, self.window_size[1])
+        self.sup_layout = (self.window_size[0] // 4, self.window_size[1] // 2)
 
         self.action_update_period = config['action_update_period']
         self.max_steps = config['max_steps']
@@ -73,7 +73,9 @@ class Runner:
             (pygame.K_r, "reset"),
             (pygame.K_t, "show_target"),
             (pygame.K_m, "update_map"),
-            (pygame.K_a, "show_activation"))
+            (pygame.K_a, "show_activation"),
+            (pygame.K_c, "update_connections"),
+            (pygame.K_s, "show_stimulus"))
         # define a variable to control the main loop
         running = True
 
@@ -85,10 +87,12 @@ class Runner:
         screen_update_period = self.environment.time_constant
         action_update_period = self.action_update_period // self.environment.time_constant
         show_goal = False
-        show_activation = False
+        show_activation = 0
+        show_stimulus = False
         reward = 0
         screen_update_factor = 1
         while running:
+            update_connections = False
             update_map = False
             # event handling, gets all event from the event queue
             action = None
@@ -115,7 +119,12 @@ class Runner:
             elif action == 'update_map':
                 update_map = True
             elif action == 'show_activation':
-                show_activation = not show_activation
+                show_activation += 1
+                show_activation %= 3
+            elif action == 'update_connections':
+                update_connections = True
+            elif action == 'show_stimulus':
+                show_stimulus = not show_stimulus
 
             update_screen = False
             update_action = False
@@ -135,13 +144,25 @@ class Runner:
                     n_episodes += 1
                 n_steps += 1
                 if show_activation:
-                    im_size = int(round(self.agent.pmc.n_neurons ** 0.5))
+                    im_size = int(round(self.agent.pmc.n_neurons ** 0.5) + 1)
                     probs = np.zeros(im_size ** 2)
-                    probs[self.agent.response] = self.agent.probs
+                    if show_activation == 1:
+                        probs[self.agent.response] = self.agent.probs
+                    elif show_activation == 2:
+                        probs[self.agent.response] = 1
                     hm = heatmap(probs.reshape((im_size, im_size)))
-                    hm = hm.resize(self.bg_layout, PIL.Image.NEAREST)
+                    hm = hm.resize(self.sup_layout, PIL.Image.NEAREST)
                     image = pil_image_to_surface(hm)
-                    screen.blit(image, dest=(0, 0))
+                    screen.blit(image, dest=(self.sup_layout[0], 0))
+                if show_stimulus:
+                    im_size = int(round(self.agent.v1.output_sdr_size ** 0.5) + 1)
+                    probs = np.zeros(im_size ** 2)
+                    probs[self.agent.bg.stri.current_stimulus] = 1
+                    hm = heatmap(probs.reshape((im_size, im_size)))
+                    hm = hm.resize(self.sup_layout, PIL.Image.NEAREST)
+                    image = pil_image_to_surface(hm)
+                    screen.blit(image, dest=(self.sup_layout[0], self.sup_layout[1]))
+
             if update_screen:
                 if self.environment.can_grab:
                     self.environment.reset()
@@ -152,13 +173,20 @@ class Runner:
                     camera_resolution=self.camera_layout,
                     show_goal=show_goal)
                 image = pil_image_to_surface(image)
-                screen.blit(image, dest=(self.bg_layout[0], 0))
+                screen.blit(image, dest=(self.sup_layout[0]*2, 0))
                 action_time += 1
             if update_map:
                 hm = self.agent.pmc.distance_matrix_heatmap()
-                hm = hm.resize(self.bg_layout, PIL.Image.NEAREST)
+                hm = hm.resize(self.sup_layout, PIL.Image.NEAREST)
                 image = pil_image_to_surface(hm)
-                screen.blit(image, dest=(0, self.bg_layout[1]))
+                screen.blit(image, dest=(0, 0))
+            if update_connections:
+                hm = heatmap(
+                    (self.agent.pmc.connections > self.agent.pmc.connected_threshold).astype(float)
+                )
+                hm = hm.resize(self.sup_layout, PIL.Image.NEAREST)
+                image = pil_image_to_surface(hm)
+                screen.blit(image, dest=(0, self.sup_layout[1]))
 
             if n_steps > self.max_steps:
                 self.environment.reset()
