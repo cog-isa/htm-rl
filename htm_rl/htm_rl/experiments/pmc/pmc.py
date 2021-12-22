@@ -11,6 +11,7 @@ class ThaPMCToM1:
                  n_neurons: int,
                  learning_rate: float = 1,
                  sparsity: float = 0.01,
+                 neighbourhood_radius: float = None,
                  permanence_increment: float = 0.1,
                  permanence_decrement: float = 0.01,
                  connected_threshold: float = 0.5,
@@ -23,7 +24,11 @@ class ThaPMCToM1:
         self.n_neurons = n_neurons
         self.learning_rate = learning_rate
         self.sparsity = sparsity
-        self.k_top = int(self.sparsity * self.n_neurons)
+        self.neighbourhood_radius = neighbourhood_radius
+        if self.sparsity is not None:
+            self.k_top = int(self.sparsity * self.n_neurons)
+        else:
+            self.k_top = None
         self.permanence_increment = permanence_increment
         self.permanence_decrement = permanence_decrement
         self.connected_threshold = connected_threshold
@@ -61,7 +66,10 @@ class ThaPMCToM1:
 
     def learn(self, out):
         distance = self.cue_distance(out)
-        k_top = np.argpartition(distance, kth=-self.k_top)[-self.k_top:]
+        if self.k_top is not None:
+            k_top = np.argpartition(distance, kth=-self.k_top)[-self.k_top:]
+        elif self.neighbourhood_radius is not None:
+            k_top = np.flatnonzero(distance < self.neighbourhood_radius)
         # shift receptive field
         deltas = self.learning_rate * self.specializations[k_top] * (out - self.neurons[k_top])
         self.neurons[k_top] += deltas
@@ -71,15 +79,16 @@ class ThaPMCToM1:
 
         connections_to_increase = np.zeros_like(k_top_connections, dtype=bool)
         connections_to_increase[:, k_top] = True
-        # TODO should we make it reciprocal?
+
         connections_to_decrease = k_top_connected & ~connections_to_increase
+        k_top_indx, to_decrease_cells = np.nonzero(connections_to_decrease)
+        k_top_to_decrease_cells = k_top[k_top_indx]
 
         k_top_connections[connections_to_increase] += self.permanence_increment
         k_top_connections[connections_to_decrease] -= self.permanence_decrement
-
-        k_top_connections = np.clip(k_top_connections, 0, 1)
-
+        self.connections[to_decrease_cells, k_top_to_decrease_cells] -= self.permanence_decrement
         self.connections[k_top] = k_top_connections
+        self.connections = np.clip(self.connections, 0, 1)
 
     def cue_distance(self, cue):
         distance = np.linalg.norm(np.sqrt(self.specializations)*(cue - self.neurons),

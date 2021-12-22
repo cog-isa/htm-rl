@@ -1,8 +1,8 @@
 max_steps: 200
 n_episodes: 100
-action_update_period: 1000
+action_update_period: 200
 headless: false
-window_size: [ 600, 400 ]
+window_size: [ 1000, 500 ]
 seed: &seed 839482
 
 agent:
@@ -12,7 +12,7 @@ agent:
         g_kernel_size: 24
         g_stride: 12
         g_sigma: 19.2
-        activity_level: 0.6
+        activity_level: 0.3
       simple: [
         {
           g_kernel_size: 6,
@@ -30,18 +30,19 @@ agent:
       output_size: 2000
       alpha: 0.1
       beta: 0.1
-      discount_factor: 0.0
+      discount_factor: 0.9
       seed: *seed
     pmc:
       input_size: 3
       n_neurons: 2000
-      learning_rate: 0.001
-      sparsity: 0.01
-      permanence_increment: 0.01
+      learning_rate: 0.01
+      sparsity: 0.005
+      neighbourhood_radius: null
+      permanence_increment: 0.05
       permanence_decrement: 0.01
       connected_threshold: 0.5
       initial_permanence: 0.3
-      softmax_beta: 2.0
+      softmax_beta: 1.0
       bsu_k: 1.0
       seed: *seed
 
@@ -54,8 +55,8 @@ environment:
   max_grip_acceleration: 0.0001
   max_grab_speed: 0.0005
   max_grab_acceleration: 0.00005
-  action_cost: 0.001
+  action_cost: 0.01
   goal_reward: 1
-  grabbed_reward: 0.1
+  grabbed_reward: 1
   time_constant: 10
   camera_resolution: [ 128, 128 ]
