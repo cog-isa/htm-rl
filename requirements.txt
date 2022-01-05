@@ -10,6 +10,7 @@ tqdm
 wandb
 imageio
 seaborn
+pygame
 
 # Install after (see README):
 #   1. PyTorch
