@@ -17,12 +17,14 @@ class ReachAndGrasp2D:
                  action_cost=-0.01,
                  goal_reward=1,
                  grabbed_reward=0.1,
+                 dense_reward=0.1,
                  time_constant=1,
                  camera_resolution: tuple[int, int] = (128, 128)):
         self.camera_resolution = camera_resolution
         self.action_cost = action_cost
         self.goal_reward = goal_reward
         self.grabbed_reward = grabbed_reward
+        self.dense_reward = dense_reward
         self.max_grip_acceleration = max_grip_acceleration
         self.max_grip_speed = max_grip_speed
         self.max_grab_acceleration = max_grab_acceleration
@@ -46,6 +48,7 @@ class ReachAndGrasp2D:
 
         self.target_grip_position = None
         self.target_grip_radius = None
+        self.previous_position = np.copy(self.grip_position)
 
     def act(self, action):
         self.target_grip_position = np.array(action[:2])
@@ -69,13 +72,18 @@ class ReachAndGrasp2D:
         self.target_grip_radius = None
 
     def reward(self):
-        reward = -self.action_cost * self.distance_to_goal
+        reward = self.dense_reward/(1 + self.distance_to_goal)
+        reward -= self.get_action_cost()
         if self.can_grab:
             reward += self.grabbed_reward
         if self.goal_grabbed:
             reward += self.goal_reward
-
         return reward
+
+    def get_action_cost(self):
+        distance = np.linalg.norm(self.previous_position - self.grip_position)
+        self.previous_position = np.copy(self.grip_position)
+        return self.action_cost * distance/np.sqrt(2)
 
     def check_gripper(self):
         if ((self.distance_to_goal < (self.grip_radius - self.goal_radius)) and
