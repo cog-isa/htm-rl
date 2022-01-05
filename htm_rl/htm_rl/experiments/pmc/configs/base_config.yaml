@@ -1,6 +1,6 @@
-max_steps: 200
+max_steps: 5
 n_episodes: 100
-action_update_period: 200
+action_update_period: 1000
 headless: false
 window_size: [ 1000, 500 ]
 seed: &seed 839482
@@ -55,8 +55,9 @@ environment:
   max_grip_acceleration: 0.0001
   max_grab_speed: 0.0005
   max_grab_acceleration: 0.00005
-  action_cost: 0.01
+  action_cost: 0.1
   goal_reward: 1
   grabbed_reward: 1
+  dense_reward: 0.1
   time_constant: 10
   camera_resolution: [ 128, 128 ]
