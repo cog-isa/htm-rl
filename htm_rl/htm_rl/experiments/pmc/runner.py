@@ -158,7 +158,7 @@ class Runner:
                     probs = np.zeros(self.agent.v1.output_sdr_size)
                     probs[self.agent.bg.stri.current_stimulus] = 1
                     probs = probs.reshape((20, -1))
-                    probs = probs.reshape((20, int(probs.shape[1]**0.5), -1))
+                    probs = probs.reshape((20, int(probs.shape[1] ** 0.5), -1))
                     hm = heatmap(probs.mean(axis=0))
                     hm = hm.resize(self.sup_layout, PIL.Image.NEAREST)
                     image = pil_image_to_surface(hm)
@@ -166,6 +166,9 @@ class Runner:
 
             if update_screen:
                 if self.environment.can_grab:
+                    reward, obs = self.environment.obs()
+                    action = self.agent.make_action(obs)
+                    self.agent.reinforce(reward)
                     self.environment.reset()
                     self.agent.reset()
                     n_steps = 0
@@ -174,7 +177,7 @@ class Runner:
                     camera_resolution=self.camera_layout,
                     show_goal=show_goal)
                 image = pil_image_to_surface(image)
-                screen.blit(image, dest=(self.sup_layout[0]*2, 0))
+                screen.blit(image, dest=(self.sup_layout[0] * 2, 0))
                 action_time += 1
             if update_map:
                 hm = self.agent.pmc.distance_matrix_heatmap()
@@ -195,9 +198,12 @@ class Runner:
                 n_steps = 0
             # update text info
             txt = font.render(
-                (f"update: {round(screen_update_period * screen_update_factor, 2)} ms   "   
-                    f"r: {round(reward, 3)}   s: {n_steps}   ep: {n_episodes}"
-                 f"  fps: {round(clock.get_fps())}"),
+                "update: {:n} ms r: {:.3f}   s: {:n}   ep: {:n} fps: {:.0f}".format(
+                    screen_update_period * screen_update_factor,
+                    reward,
+                    n_steps,
+                    n_episodes,
+                    clock.get_fps()),
                 False,
                 (255, 255, 255))
             screen.blit(txt, (self.window_size[0] // 3, 0))
