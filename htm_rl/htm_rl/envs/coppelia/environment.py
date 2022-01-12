@@ -8,6 +8,7 @@ from os.path import dirname, join, abspath
 from typing import Union
 import numpy as np
 
+
 class PulseEnv:
     def __init__(self,
                  scene_file: str,
@@ -125,7 +126,7 @@ class PulseEnv:
         elif self.n_steps > self.max_steps:
             self.should_reset = True
 
-        reward = self.action_cost
+        reward = -self.action_cost
         if self.reward_type == 'sparse':
             if tip_in_loc:
                 reward += self.goal_reward
