@@ -151,6 +151,7 @@ def configure(config):
     # agent
     new_config['agent'] = config['cagent']
     new_config['agent']['state_size'] = obs_sdr_size
+    new_config['agent']['n_actions_to_accumulate'] = len(config['environment']['joints_to_manage'])
 
     noise_tolerance = config['cagent']['empowerment']['tm_config']['noise_tolerance']
     learning_margin = config['cagent']['empowerment']['tm_config']['learning_margin']

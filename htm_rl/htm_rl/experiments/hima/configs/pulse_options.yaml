@@ -97,7 +97,6 @@ cagent:
   use_dreaming: false
   alpha: 1.0
   punish_intrinsic_reward: -10
-  n_actions_to_accumulate: 2
   elementary_actions:
     n_actions: 3
     bucket_size: 3
