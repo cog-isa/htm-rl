@@ -181,12 +181,12 @@ class RangeDynamicEncoder:
                  min_value,
                  max_value,
                  min_delta,
-                 max_delta,
                  n_active_bits,
                  cyclic: bool,
+                 max_delta=None,
                  min_speed=None,
                  max_speed=None,
-                 use_speed_modulation: bool = True,
+                 use_speed_modulation: bool = False,
                  seed=None):
         self.min_value = min_value
         self.max_value = max_value
@@ -197,12 +197,12 @@ class RangeDynamicEncoder:
         self.use_speed_modulation = use_speed_modulation
 
         if self.use_speed_modulation:
-            if (min_speed is None) or (max_speed is None):
+            if (min_speed is None) or (max_speed is None) or (max_delta is None):
                 raise ValueError
             else:
                 assert min_speed < max_speed
+                assert min_delta < max_delta
         assert min_value < max_value
-        assert min_delta < max_delta
 
         self.n_active_bits = n_active_bits
         self.cyclic = cyclic
@@ -215,12 +215,17 @@ class RangeDynamicEncoder:
         self.output_sdr_size = self.n_active_bits * int(
             round((self.max_value - self.min_value) / self.min_delta))
         assert self.output_sdr_size > 0
-        self.max_diameter = self.output_sdr_size // int(
-            round((self.max_value - self.min_value) / self.max_delta))
+        if self.use_speed_modulation:
+            self.max_diameter = self.output_sdr_size // int(
+                round((self.max_value - self.min_value) / self.max_delta))
+        else:
+            self.max_diameter = self.min_diameter
 
         self.sample_order = self.rng.random(size=self.output_sdr_size)
 
     def encode(self, value, speed=None):
+        # print(f"joint pos {value}")
+        assert self.min_value <= value <= self.max_value
         if self.use_speed_modulation:
             if speed is None:
                 raise ValueError
@@ -229,8 +234,6 @@ class RangeDynamicEncoder:
                 norm_speed = (speed - self.min_speed) / (self.max_speed - self.min_speed)
         else:
             norm_speed = 0
-
-        value = min(max(self.min_value, value), self.max_value)
 
         diameter = int(round(self.min_diameter + norm_speed * (self.max_diameter - self.min_diameter)))
 
@@ -244,9 +247,9 @@ class RangeDynamicEncoder:
         if not self.cyclic:
             if (center - l_radius) <= 0:
                 start = 0
-                end = diameter
+                end = diameter - 1
             elif (center + r_radius) >= self.output_sdr_size:
-                start = center - diameter
+                start = self.output_sdr_size - diameter
                 end = self.output_sdr_size - 1
             else:
                 start = center - l_radius
@@ -255,7 +258,7 @@ class RangeDynamicEncoder:
             potential = np.arange(start, end + 1)
         else:
             if (center - l_radius) < 0:
-                start = self.output_sdr_size - 1 + center - l_radius
+                start = self.output_sdr_size + center - l_radius
                 end = center + r_radius
 
                 potential = np.concatenate([np.arange(start, self.output_sdr_size),
@@ -297,4 +300,9 @@ class VectorDynamicEncoder:
 
 
 if __name__ == '__main__':
-    pass
+    encoder = RangeDynamicEncoder(0, 1, 0.3, 10, True, seed=5)
+    for x in np.linspace(0, 1, 11):
+        code = encoder.encode(x)
+        dense = np.zeros(encoder.output_sdr_size, dtype=int)
+        dense[code] = 1
+        print(f"{round(x, 2)}: {dense}")
