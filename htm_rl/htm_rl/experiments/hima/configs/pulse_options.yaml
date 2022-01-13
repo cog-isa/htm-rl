@@ -81,15 +81,15 @@ pulse_observation_adapter:
       },
     ]
   joint_pos:
-    min_delta: 0.1  # radians
-    max_delta: 1.0
+    min_delta: 0.3  # radians
+    # max_delta: 1.0  # use with speed modulation
+    cyclic: False  # wrap encoding
     n_active_bits: 10
     use_speed_modulation: False
   joint_vel:
     min_delta: 0.1  # radians/s
-    max_delta: 1.0
+    cyclic: False
     n_active_bits: 10
-    use_speed_modulation: False
 
 
 cagent:

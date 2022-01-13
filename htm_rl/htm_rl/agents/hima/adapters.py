@@ -80,7 +80,6 @@ class PulseObsAdapter:
                                     min_value=joint_pos_range[0],
                                     max_speed=joint_vel_limit,
                                     min_speed=-joint_vel_limit,
-                                    cyclic=True,
                                     **config['joint_pos'])
             )
             self.observations.append('joint_pos')
@@ -91,9 +90,6 @@ class PulseObsAdapter:
                 RangeDynamicEncoder(
                     max_value=joint_vel_limit,
                     min_value=-joint_vel_limit,
-                    max_speed=1,
-                    min_speed=0,
-                    cyclic=True,
                     **config['joint_vel'])
             )
             self.observations.append('joint_vel')
