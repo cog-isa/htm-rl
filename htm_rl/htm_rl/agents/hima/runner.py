@@ -15,7 +15,8 @@ from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.envs.coppelia.environment import PulseEnv
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.modules.htm.temporal_memory import ApicalBasalFeedbackTM
-from htm_rl.agents.hima.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, \
+from htm_rl.agents.hima.utils import OptionVis, draw_values, draw_values_pulse, compute_q_policy, compute_mu_policy, \
+    draw_policy, \
     draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
 from htm_rl.common.scenario import Scenario
 from htm_rl.agents.hima.hima import HIMA
@@ -197,9 +198,9 @@ class HIMAgentRunner:
 
             if isinstance(self.environment, BioGwLabEnvironment):
                 self.agent.real_pos = get_unshifted_pos(
-                        self.environment.env.agent.position,
-                        self.environment.env.renderer.shape.top_left_point
-                    )
+                    self.environment.env.agent.position,
+                    self.environment.env.renderer.shape.top_left_point
+                )
 
             if is_first:
                 self.steps_per_goal += self.steps
@@ -241,11 +242,11 @@ class HIMAgentRunner:
                         step=self.episode)
                     if self.agent.use_intrinsic_reward:
                         self.logger.log(
-                            {'priority/mean_reward': mean_reward_log/self.steps,
-                             'priority/max_reward': max_reward_log/self.steps,
-                             'priority/min_reward': min_reward_log/self.steps,
-                             'priority/priority_ext': priority_ext_log/self.steps,
-                             'priority/intrinsic_off': intrinsic_off_log/self.steps},
+                            {'priority/mean_reward': mean_reward_log / self.steps,
+                             'priority/max_reward': max_reward_log / self.steps,
+                             'priority/min_reward': min_reward_log / self.steps,
+                             'priority/priority_ext': priority_ext_log / self.steps,
+                             'priority/intrinsic_off': intrinsic_off_log / self.steps},
                             step=self.episode
                         )
                     self.map_change_indicator = 0
@@ -299,9 +300,10 @@ class HIMAgentRunner:
 
                     self.reset_block_metrics()
 
-                if ((self.episode % log_every_episode) == 0) and (self.logger is not None) and (self.episode > 0):
+                if ((self.episode % log_every_episode) == 0) and (self.logger is not None):  # and (self.episode > 0):
                     if draw_options_stats:
-                        self.option_stat.draw_options(self.logger, self.episode, self.path_to_store_logs, threshold=opt_threshold,
+                        self.option_stat.draw_options(self.logger, self.episode, self.path_to_store_logs,
+                                                      threshold=opt_threshold,
                                                       obstacle_mask=clip_mask(
                                                           self.environment.env.entities['obstacle'].mask,
                                                           self.environment.env.renderer.shape.top_left_point,
@@ -319,7 +321,7 @@ class HIMAgentRunner:
                                                                f'empowerment_learned_{self.logger.id}.png'))
                         self.logger.log({
                             'empowerment/real': wandb.Image(os.path.join(self.path_to_store_logs,
-                                                                               f'empowerment_real_{self.logger.id}.png')),
+                                                                         f'empowerment_real_{self.logger.id}.png')),
                             'empowerment/learned': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
                                              f'empowerment_learned_{self.logger.id}.png'))
@@ -344,26 +346,36 @@ class HIMAgentRunner:
                                 step=self.episode)
 
                     if (log_values or log_policy) and (not self.agent.use_intrinsic_reward):
-                        if len(self.option_stat.action_displace) == 3:
-                            directions = {'right': 0, 'down': 1, 'left': 2, 'up': 3}
-                            actions_map = {0: 'move', 1: 'turn_right', 2: 'turn_left'}
+                        if self.option_stat is not None:
+                            if len(self.option_stat.action_displace) == 3:
+                                directions = {'right': 0, 'down': 1, 'left': 2, 'up': 3}
+                                actions_map = {0: 'move', 1: 'turn_right', 2: 'turn_left'}
+                            else:
+                                directions = None
+                                actions_map = {0: 'right', 1: 'down', 2: 'left', 3: 'up'}
                         else:
                             directions = None
-                            actions_map = {0: 'right', 1: 'down', 2: 'left', 3: 'up'}
+                            actions_map = {0: 'left', 1: 'stay', 2: 'right'}
 
-                        q, policy, actions = compute_q_policy(self.environment.env, self.agent, directions)
+                        q, policy, actions = compute_q_policy(self.environment, self, directions)
 
                         if log_values:
-                            draw_values(os.path.join(self.path_to_store_logs,
-                                                     f'values_{self.logger.id}_{self.episode}.png'),
-                                        self.env_config['shape_xy'],
-                                        q,
-                                        policy,
-                                        directions=directions)
+                            if isinstance(self.environment, PulseEnv):
+                                draw_values_pulse(os.path.join(self.path_to_store_logs,
+                                                               f'values_{self.logger.id}_{self.episode}.png'),
+                                                  q,
+                                                  policy)
+                            else:
+                                draw_values(os.path.join(self.path_to_store_logs,
+                                                         f'values_{self.logger.id}_{self.episode}.png'),
+                                            self.env_config['shape_xy'],
+                                            q,
+                                            policy,
+                                            directions=directions)
                             self.logger.log({'values/state_values': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
                                              f'values_{self.logger.id}_{self.episode}.png'))},
-                                            step=self.episode)
+                                step=self.episode)
                         if log_policy:
                             draw_policy(os.path.join(self.path_to_store_logs,
                                                      f'policy_{self.logger.id}_{self.episode}.png'),
@@ -395,7 +407,7 @@ class HIMAgentRunner:
                             self.logger.log({'values/option_state_values': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
                                              f'option_values_{self.logger.id}_{self.episode}.png'))},
-                                            step=self.episode)
+                                step=self.episode)
                         if log_option_policy:
                             draw_policy(os.path.join(self.path_to_store_logs,
                                                      f'option_policy_{self.logger.id}_{self.episode}.png'),
@@ -406,7 +418,7 @@ class HIMAgentRunner:
                             self.logger.log({'values/option_policy': wandb.Image(
                                 os.path.join(self.path_to_store_logs,
                                              f'option_policy_{self.logger.id}_{self.episode}.png'))},
-                                            step=self.episode)
+                                step=self.episode)
 
                 if ((((self.episode + 1) % log_every_episode) == 0) or (self.episode == 0)) and (
                         self.logger is not None):
@@ -414,8 +426,9 @@ class HIMAgentRunner:
                     self.agent_pos.clear()
                 # \\\logging\\\
 
-                # Ad hoc terminal state
-                self.current_action = self.agent.make_action(obs)
+                # Ad hoc terminal state WHY????
+                action_pattern = self.agent.make_action(obs)
+                self.current_action = self.action_adapter.adapt(action_pattern)
                 if self.logger is not None and self.task_complete:
                     self.log_task_complete()
                 if self.early_stop:
@@ -454,7 +467,8 @@ class HIMAgentRunner:
                     intrinsic_off_log += self.agent.hierarchy.output_block.bg.intrinsic_off
                 # logging
 
-            if self.agent.use_dreaming and self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(obs):
+            if self.agent.use_dreaming and self.agent.dreamer.can_dream(reward) and self.agent.dreamer.decide_to_dream(
+                    obs):
                 self.agent.dreamer.dream(obs)
 
             action_pattern = self.agent.make_action(obs)
@@ -706,7 +720,8 @@ class HIMAgentRunner:
         positions = [self.environment.env.renderer.shape.shift_relative_to_corner(pos) for pos in positions]
         self.environment.env.modules['agent'].positions = positions
 
-    def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None, door_positions=None, wall_thickness=1):
+    def set_pos_rand_rooms(self, agent_fixed_positions=None, food_fixed_positions=None, door_positions=None,
+                           wall_thickness=1):
         """
         Room numbers:
         |1|2|
@@ -807,7 +822,7 @@ class HIMAgentRunner:
                                 f'map_{logger.id}_{self.episode}.png'), map_image.astype('uint8'))
         plt.close()
         logger.log({'maps/map': wandb.Image(os.path.join(self.path_to_store_logs,
-                                                          f'map_{logger.id}_{self.episode}.png'))},
+                                                         f'map_{logger.id}_{self.episode}.png'))},
                    step=self.episode)
 
     def log_dreaming_stats(self):
