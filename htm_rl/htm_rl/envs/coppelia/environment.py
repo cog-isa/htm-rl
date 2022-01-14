@@ -1,6 +1,6 @@
 from pyrep import PyRep
 from pyrep.objects.vision_sensor import VisionSensor
-from pyrep.objects.force_sensor import ForceSensor
+from pyrep.errors import ConfigurationPathError
 from pyrep.objects.shape import Shape
 from htm_rl.envs.coppelia.arm import Pulse75
 
@@ -12,7 +12,7 @@ import numpy as np
 class PulseEnv:
     def __init__(self,
                  scene_file: str,
-                 joints_to_manage: list[int],
+                 joints_to_manage: Union[list[int], str],
                  observation: list[str],
                  max_steps: int,
                  action_time_step: float,
@@ -20,13 +20,14 @@ class PulseEnv:
                  action_cost: float,
                  goal_reward: float,
                  position_threshold: float,
-                 initial_pose: list[tuple[float, float]] = None,
-                 initial_target_position: list[int] = None,
-                 joints_speed_limit: float = None,
+                 initial_pose: list[float] = None,
+                 initial_target_position: list[float] = None,
+                 joints_speed_limit: float = 80,
                  camera_resolution: list[int] = None,
                  headless: bool = False,
                  responsive_ui: bool = True,
                  reward_type: str = 'sparse',
+                 action_type: str = 'joints',
                  seed=None):
         self.action_time_step = action_time_step
         self.simulation_time_step = simulation_time_step
@@ -40,8 +41,8 @@ class PulseEnv:
         self.agent.set_motor_locked_at_zero_velocity(True)
         self.agent.set_joint_intervals([True]*6, [[-np.pi, np.pi]]*6)
         self.target = Shape('target')
-        self.tip = ForceSensor('pulse75_connection')
         self.reward_type = reward_type
+        self.action_type = action_type
 
         if initial_pose is not None:
             self.initial_joint_positions = initial_pose
@@ -67,9 +68,18 @@ class PulseEnv:
         self.joints_speed_limit = np.pi*joints_speed_limit/180
         self.max_steps = max_steps
         self.n_steps = 0
+        # should use all joints if you use IK
+        # maybe we will remove this in future
+        assert (action_type != 'tip') or (joints_to_manage == 'all')
 
-        joints_mask = np.zeros(self.agent.get_joint_count(), dtype=bool)
-        joints_mask[joints_to_manage] = True
+        if isinstance(joints_to_manage, list):
+            joints_mask = np.zeros(self.agent.get_joint_count(), dtype=bool)
+            joints_mask[joints_to_manage] = True
+        elif joints_to_manage == 'all':
+            joints_mask = np.ones(self.agent.get_joint_count(), dtype=bool)
+        else:
+            raise ValueError
+
         self.joints_to_manage = joints_mask
         self.n_joints = int(sum(joints_mask))
 
@@ -88,17 +98,34 @@ class PulseEnv:
         self.n_steps += 1
         self.is_first = False
 
-        target_positions = np.zeros(self.agent.get_joint_count())
-        target_positions[self.joints_to_manage] = np.array(action)
+        if self.action_type == 'joints':
+            target_positions = np.zeros(self.agent.get_joint_count())
+            target_positions[self.joints_to_manage] = np.array(action)
 
-        for i, joint in enumerate(self.agent.joints):
-            if self.joints_to_manage[i]:
-                joint.set_joint_target_position(target_positions[i])
-            else:
-                joint.set_joint_target_velocity(0.0)
+            for i, joint in enumerate(self.agent.joints):
+                if self.joints_to_manage[i]:
+                    joint.set_joint_target_position(target_positions[i])
+                else:
+                    joint.set_joint_target_velocity(0.0)
 
-        for step in range(self.n_sim_steps_for_action):
-            self.pr.step()
+            for step in range(self.n_sim_steps_for_action):
+                self.pr.step()
+        elif self.action_type == 'tip':
+            try:
+                path = self.agent.get_path(
+                    position=action, euler=[0, np.pi, 0])
+            except ConfigurationPathError:
+                for step in range(self.n_sim_steps_for_action):
+                    self.pr.step()
+                return False
+
+            for step in range(self.n_sim_steps_for_action):
+                path.step()
+                self.pr.step()
+        else:
+            raise ValueError
+
+        return True
 
     def observe(self):
         if self.should_reset:
@@ -116,7 +143,7 @@ class PulseEnv:
             obs.append(self.target.get_velocity())
 
         tip_in_loc = False
-        x, y, z = self.tip.get_position()
+        x, y, z = self.agent.get_tip().get_position()
         tx, ty, tz = self.target.get_position()
         if ((abs(x - tx) < self.position_threshold) and
                 (abs(y - ty) < self.position_threshold) and
@@ -154,38 +181,33 @@ class PulseEnv:
 
 
 if __name__ == '__main__':
-    EPISODES = 0
-    EPISODE_LENGTH = 10
+    EPISODES = 1
+    EPISODE_LENGTH = 1
     EPS = 0.01
     SCENE_FILE = join(dirname(abspath(__file__)), 'scenes/main_scene.ttt')
 
     env = PulseEnv(SCENE_FILE,
-                   joints_to_manage=[3, 4],
-                   observation=['joint_vel'],
+                   joints_to_manage='all',
+                   observation=['joint_pos'],
                    max_steps=200,
                    action_time_step=200,
                    simulation_time_step=10,
                    action_cost=-0.1,
                    goal_reward=1,
                    position_threshold=EPS,
-                   headless=True)
-    print('joint intervals', env.agent.get_joint_intervals())
-    print('joint velocity limits', env.agent.get_joint_upper_velocity_limits())
-    print('joint count', env.agent.get_joint_count())
-    print('camera resolution', env.camera.get_resolution())
-    print('tip coords', env.tip.get_position())
-    print('robot pose', env.agent.get_joint_positions())
+                   action_type='tip',
+                   initial_pose=[0.0, 0.0, 0.0, 0.0, 1.57, 0.0],  # initial robot joint positions
+                   initial_target_position=[0.500, 0.2763, 1.85274],
+                   headless=False)
 
     for e in range(EPISODES):
         print('Starting episode %d' % e)
         env.reset()
         for i in range(EPISODE_LENGTH):
             print(f'Step {i}')
-            action = list(np.random.uniform(-1.0, 1.0, size=(2,)))
+            action = [0.500, 0.2763, 1.85274]
             env.act(action)
             state = env.observe()
-            print(f'pos {env.tip.get_position()}')
-            print(f'vel {env.agent.get_joint_velocities()}')
             # save images from camera
             # plt.imshow(state)
             # plt.savefig(join(dirname(abspath(__file__)), f'image_{e}_{i}.png'))

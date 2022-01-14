@@ -41,6 +41,7 @@ environment:
   initial_pose: [ 0.0, 0.0, 0.0, 0.0, 1.57, 0.0 ]  # initial robot joint positions
   initial_target_position: [ 0.500, 0.2763, 1.85274 ]
   joints_speed_limit: 80  # degrees per second
+  action_type: 'joints'
   joints_to_manage:
     - 4
   camera_resolution: [ 128, 128 ]
