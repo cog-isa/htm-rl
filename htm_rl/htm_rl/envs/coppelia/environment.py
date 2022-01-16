@@ -113,7 +113,11 @@ class PulseEnv:
         elif self.action_type == 'tip':
             try:
                 path = self.agent.get_path(
-                    position=action, euler=[0, np.pi, 0])
+                    position=action,
+                    euler=[0, np.pi, 0],
+                    ignore_collisions=True,
+                    relative_to=self.agent.get_object('pulse75')
+                )
             except ConfigurationPathError:
                 for step in range(self.n_sim_steps_for_action):
                     self.pr.step()
@@ -178,6 +182,9 @@ class PulseEnv:
 
     def get_joints_speed_limit(self):
         return self.joints_speed_limit
+
+    def set_target_position(self, pos):
+        self.target.set_position(pos, relative_to=self.agent.get_object('pulse75'))
 
 
 if __name__ == '__main__':

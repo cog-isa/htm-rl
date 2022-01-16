@@ -1,12 +1,19 @@
 import PIL.Image
 from environment import ReachAndGrasp2D
+from htm_rl.envs.coppelia.environment import PulseEnv
 from agent import BasicAgent
 import pygame
 import numpy as np
 from utils import heatmap
+from htm_rl.common.scenario import Scenario
+import imageio
+import os
+import wandb
+import matplotlib.pyplot as plt
+from adapters import ActionAdapter
 
 
-class Runner:
+class RunnerRAG2D:
     def __init__(self, config, logger=None):
         self.environment = ReachAndGrasp2D(**config['environment'])
 
@@ -213,12 +220,166 @@ class Runner:
             screen_time += dt
 
 
-if __name__ == '__main__':
-    import yaml
+class RunnerPulse:
+    def __init__(self, config, logger=None):
+        self.log_buffer = dict()
+        self.logger = logger
+        self.shuffle_tasks = config['shuffle_tasks']
+        self.n_tasks = config['n_tasks']
+        self.path_to_store_logs = config['path_to_store_logs']
+        self.recording_fps = config['recording_fps']
+        self.limits = config['workspace_limits']
+        # optional
+        self.goals = config.get('goals')
 
-    name = 'configs/base_config.yaml'
-    with open(name, 'r') as file:
-        config = yaml.load(file, Loader=yaml.Loader)
+        self.running = True
+        self.n_terminals = 0
+        self.step = 0
+        self.episode = 0
+        self.task = None
+        self.total_steps = 0
+        self.total_episodes = 0
+        self.episodes_per_epoch = 0
+        self.task_n = 0
+        self.task_id = None
+        self.epoch = 0
 
-    runner = Runner(config)
-    runner.run()
+        self.capture_frames = False
+
+        self.environment = PulseEnv(**config['environment'])
+
+        self.agent = BasicAgent(self.environment.camera.get_resolution(),
+                                **config['agent'])
+
+        self.action_adapter = ActionAdapter(self.limits)
+
+        self.scenario = Scenario(config['scenario'], self)
+
+        self.seed = config.get('seed')
+        self._rng = np.random.default_rng(self.seed)
+
+        self.tasks = None
+        self.tasks_ids = np.arange(self.n_tasks)
+        # min and max values for every axis
+        if self.goals is None:
+            self.goals = self.generate_goals()
+
+        if len(self.goals) != self.n_tasks:
+            self.tasks = self._rng.choice(self.goals, self.n_tasks)
+        else:
+            self.tasks = self.goals
+
+    def run(self):
+        while True:
+            self.scenario.check_conditions()
+            if not self.running:
+                self.environment.shutdown()
+                break
+
+            reward, obs, is_first = self.environment.observe()
+
+            if self.logger is not None:
+                self.log(is_first)
+
+            if is_first:
+                self.step = 0
+                self.episode += 1
+                self.total_episodes += 1
+                self.episodes_per_epoch += 1
+                self.agent.reset()
+            else:
+                self.step += 1
+                self.total_steps += 1
+
+            action = self.agent.make_action(obs[0])
+            action = self.action_adapter.adapt(action)
+            self.agent.reinforce(reward)
+            self.environment.act(action)
+
+    def next_task(self):
+        self.log_buffer['episodes_per_task'] = self.episode
+        self.episode = 0
+        self.task_n += 1
+
+        if self.task_n >= self.n_tasks:
+            self.task_n = 0
+            self.epoch += 1
+            self.log_buffer['episodes_per_epoch'] = self.episodes_per_epoch
+            self.episodes_per_epoch = 0
+            if self.shuffle_tasks:
+                self._rng.shuffle(self.tasks_ids)
+
+        self.task_id = self.tasks_ids[self.task_n]
+        self.task = self.tasks[self.task_id]
+
+        self.env_reset()
+        self.environment.set_target_position(self.task)
+
+    def stop(self):
+        self.running = False
+
+    def env_reset(self):
+        self.environment.reset()
+
+    def record(self):
+        self.capture_frames = True
+
+    def log(self, is_first):
+        if is_first:
+            if self.total_episodes > 0:
+                self.logger.log(
+                    {'main_metrics/steps': self.step, 'episode': self.total_episodes,
+                     'main_metrics/task_id': self.task_id,
+                     'main_metrics/total_steps': self.total_steps,
+                     },
+                    step=self.total_episodes)
+
+            if self.episode == 0 and self.total_episodes > 0:
+                self.logger.log(
+                    {'main_metrics/episodes_per_task': self.log_buffer['episodes_per_task']},
+                    step=self.task_id
+                )
+            if self.episodes_per_epoch == 0 and self.epoch > 0:
+                self.logger.log(
+                    {'main_metrics/episodes_per_epoch': self.log_buffer['episodes_per_epoch']},
+                    step=self.epoch
+                )
+
+            if self.capture_frames:
+                # log all saved frames for this episode
+                self.capture_frames = False
+                with imageio.get_writer(os.path.join(self.path_to_store_logs,
+                                                     f'{self.logger.id}_episode_{self.total_episodes}.gif'),
+                                        mode='I',
+                                        fps=self.recording_fps) as writer:
+                    for i in range(self.step):
+                        image = imageio.imread(os.path.join(self.path_to_store_logs,
+                                                            f'{self.logger.id}_episode_{self.total_episodes}_step_{i}.png'))
+                        writer.append_data(image)
+                self.logger.log(
+                    {f'behavior_samples/animation': wandb.Video(
+                        os.path.join(self.path_to_store_logs,
+                                     f'{self.logger.id}_episode_{self.total_episodes}.gif'),
+                        fps=self.recording_fps,
+                        format='gif')}, step=self.total_episodes)
+        else:
+            if self.capture_frames:
+                self.draw_animation_frame()
+
+    def draw_animation_frame(self):
+        pic = self.environment.camera.capture_rgb() * 255
+        plt.imsave(os.path.join(self.path_to_store_logs,
+                                f'{self.logger.id}_episode_{self.total_episodes}_step_{self.step}.png'), pic.astype('uint8'))
+        plt.close()
+
+    def generate_goals(self):
+        r = self._rng.uniform(self.limits['r'][0], self.limits['r'][1], self.n_tasks)
+        phi = self._rng.uniform(self.limits['phi'][0], self.limits['phi'][1], self.n_tasks)
+        phi = np.radians(phi)
+        h = self._rng.uniform(self.limits['h'][0], self.limits['h'][1], self.n_tasks)
+
+        x = r*np.cos(phi)
+        y = r*np.sin(phi)
+        return x, y, h
+
+
