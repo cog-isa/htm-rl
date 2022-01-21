@@ -34,7 +34,7 @@ run_options:
 environment_type: pulse
 environment:
   max_steps: 200
-  reward_type: 'sparse'
+  reward_type: 'gaus_dist'  # 'sparse' or 'gaus_dist'
   action_cost: 0.01
   goal_reward: 1.0
   position_threshold: 0.05  # goal position radius in meters
