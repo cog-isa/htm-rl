@@ -1,8 +1,7 @@
 from pyrep import PyRep
 from pyrep.objects.vision_sensor import VisionSensor
-from pyrep.errors import ConfigurationPathError
-from pyrep.objects.shape import Shape
 from htm_rl.envs.coppelia.arm import Pulse75
+from pyrep.objects.shape import Shape
 
 from os.path import dirname, join, abspath
 from typing import Union
@@ -16,7 +15,6 @@ class PulseEnv:
                  observation: list[str],
                  max_steps: int,
                  action_time_step: float,
-                 simulation_time_step: float,
                  action_cost: float,
                  goal_reward: float,
                  position_threshold: float,
@@ -30,17 +28,12 @@ class PulseEnv:
                  action_type: str = 'joints',
                  seed=None):
         self.action_time_step = action_time_step
-        self.simulation_time_step = simulation_time_step
         self.pr = PyRep()
         scene_file = join(dirname(abspath(__file__)), 'scenes', scene_file)
         self.pr.launch(scene_file, headless=headless, responsive_ui=responsive_ui)
-        self.pr.set_simulation_timestep(simulation_time_step)
         self.pr.start()
+        self.goal = Shape(f'goal')
         self.agent = Pulse75()
-        self.agent.set_control_loop_enabled(True)
-        self.agent.set_motor_locked_at_zero_velocity(True)
-        self.agent.set_joint_intervals([True]*6, [[-np.pi, np.pi]]*6)
-        self.target = Shape('target')
         self.reward_type = reward_type
         self.action_type = action_type
 
@@ -52,7 +45,7 @@ class PulseEnv:
         if initial_target_position is not None:
             self.initial_target_position = initial_target_position
         else:
-            self.initial_target_position = self.target.get_position()
+            self.initial_target_position = self.goal.get_position()
 
         self.camera = VisionSensor('camera')
         if camera_resolution is not None:
@@ -61,7 +54,8 @@ class PulseEnv:
         self.observation = set(observation)
         self.is_first = True
         self.should_reset = False
-        self.n_sim_steps_for_action = int(action_time_step / simulation_time_step)
+        self.n_sim_steps_for_action = int(action_time_step / self.pr.get_simulation_timestep())
+        assert self.n_sim_steps_for_action > 0
         self.action_cost = action_cost
         self.goal_reward = goal_reward
         self.position_threshold = position_threshold
@@ -88,7 +82,7 @@ class PulseEnv:
         self.reset()
 
     def reset(self):
-        self.target.set_position(self.initial_target_position)
+        self.goal.set_position(self.initial_target_position, relative_to=self.agent.base)
         self.agent.set_joint_positions(self.initial_joint_positions, disable_dynamics=True)
         self.is_first = True
         self.should_reset = False
@@ -107,29 +101,13 @@ class PulseEnv:
                     joint.set_joint_target_position(target_positions[i])
                 else:
                     joint.set_joint_target_velocity(0.0)
-
-            for step in range(self.n_sim_steps_for_action):
-                self.pr.step()
         elif self.action_type == 'tip':
-            try:
-                path = self.agent.get_path(
-                    position=action,
-                    euler=[0, np.pi, 0],
-                    ignore_collisions=True,
-                    relative_to=self.agent.get_object('pulse75')
-                )
-            except ConfigurationPathError:
-                for step in range(self.n_sim_steps_for_action):
-                    self.pr.step()
-                return False
-
-            for step in range(self.n_sim_steps_for_action):
-                path.step()
-                self.pr.step()
+            self.agent.target.set_position(action, relative_to=self.agent.base)
         else:
             raise ValueError
 
-        return True
+        for step in range(self.n_sim_steps_for_action):
+            self.pr.step()
 
     def observe(self):
         if self.should_reset:
@@ -142,13 +120,13 @@ class PulseEnv:
         if 'joint_vel' in self.observation:
             obs.append(self.get_joint_velocities())
         if 'target_pos' in self.observation:
-            obs.append(self.target.get_position())
+            obs.append(self.goal.get_position())
         if 'target_vel' in self.observation:
-            obs.append(self.target.get_velocity())
+            obs.append(self.goal.get_velocity())
 
         tip_in_loc = False
-        x, y, z = self.agent.get_tip().get_position()
-        tx, ty, tz = self.target.get_position()
+        x, y, z = self.agent.tip.get_position()
+        tx, ty, tz = self.goal.get_position()
         if ((abs(x - tx) < self.position_threshold) and
                 (abs(y - ty) < self.position_threshold) and
                 (abs(z - tz) < self.position_threshold)):
@@ -184,21 +162,21 @@ class PulseEnv:
         return self.joints_speed_limit
 
     def set_target_position(self, pos):
-        self.target.set_position(pos, relative_to=self.agent.get_object('pulse75'))
+        self.initial_target_position = pos
+        self.goal.set_position(pos, relative_to=self.agent.base)
 
 
 if __name__ == '__main__':
     EPISODES = 1
     EPISODE_LENGTH = 1
     EPS = 0.01
-    SCENE_FILE = join(dirname(abspath(__file__)), 'scenes/main_scene.ttt')
+    SCENE_FILE = join(dirname(abspath(__file__)), 'scenes/pulse75_tip.ttt')
 
     env = PulseEnv(SCENE_FILE,
                    joints_to_manage='all',
                    observation=['joint_pos'],
                    max_steps=200,
-                   action_time_step=200,
-                   simulation_time_step=10,
+                   action_time_step=1,
                    action_cost=-0.1,
                    goal_reward=1,
                    position_threshold=EPS,
