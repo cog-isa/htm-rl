@@ -270,6 +270,7 @@ class RunnerPulse:
             self.tasks = self.goals
 
     def run(self):
+        self.next_task()
         while True:
             self.scenario.check_conditions()
             if not self.running:
@@ -282,6 +283,8 @@ class RunnerPulse:
                 self.log(is_first)
 
             if is_first:
+                if self.step > 0:
+                    self.n_terminals += 1
                 self.step = 0
                 self.episode += 1
                 self.total_episodes += 1
@@ -297,6 +300,7 @@ class RunnerPulse:
             self.environment.act(action)
 
     def next_task(self):
+        self.n_terminals = 0
         self.log_buffer['episodes_per_task'] = self.episode
         self.episode = 0
         self.task_n += 1
