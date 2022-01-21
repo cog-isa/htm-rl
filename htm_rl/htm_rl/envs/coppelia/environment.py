@@ -38,7 +38,7 @@ class PulseEnv:
         self.action_type = action_type
 
         if initial_pose is not None:
-            self.initial_joint_positions = initial_pose
+            self.initial_joint_positions = np.radians(initial_pose)
         else:
             self.initial_joint_positions = self.agent.get_joint_positions()
 

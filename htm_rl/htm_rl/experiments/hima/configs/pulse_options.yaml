@@ -1,10 +1,10 @@
-seed: &seed 9998
+seed: &seed 5231
 levels: 2
 agent: hima
 project: hima_pulse
-entity: arkol  # don't forget to change if you use logging
+entity: hauska  # don't forget to change if you use logging
 
-log: true  # wand logging
+log: True  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
@@ -34,31 +34,30 @@ run_options:
 environment_type: pulse
 environment:
   max_steps: 200
-  reward_type: 'gaus_dist'
+  reward_type: 'sparse'
   action_cost: 0.01
   goal_reward: 1.0
   position_threshold: 0.05  # goal position radius in meters
-  initial_pose: [ 0.0, 0.0, 0.0, 0.0, 1.57, 0.0 ]  # initial robot joint positions
-  initial_target_position: [ 0.500, 0.2763, 1.85274 ]
+  initial_pose: [ 0.0, 0.0, 0.0, 0.0, 90, 0.0 ]  # initial robot joint positions in degrees
+  initial_target_position: [ 0.0, 0.275, 1.1 ]  # relative to arm base in meters
   joints_speed_limit: 80  # degrees per second
-  action_type: 'joints'
-  joints_to_manage:
+  action_type: 'joints'  # "joints"(pose) or "tip"(position)
+  scene_file: 'pulse75_joints.ttt'  # MUST be changed accordingly to action type
+  joints_to_manage:  # should be set to "all" if action type is "tip"
     - 4
   camera_resolution: [ 128, 128 ]
   observation:
     - camera
   #  - joint_pos
-  simulation_time_step: 0.05  # s
-  action_time_step: 0.1  # s
+  action_time_step: 0.2  # s
   seed: *seed
-  scene_file: 'main_scene.ttt'
   headless: true
   responsive_ui: false
 
 pulse_action_adapter:
   mode: angle  # angle | speed
-  delta: 10  # degrees
-  time_delta: 0.1  # seconds
+  delta: 20  # degrees
+  time_delta: 0.2  # seconds
   default_value: 'random'
   seed: *seed
 
@@ -377,7 +376,7 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997  # discount factor for option rewards
   predicted_boost: 0.0  # boost predicted elementary actions
-  feedback_boost_range: [0.0, 0.8]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
+  feedback_boost_range: [0.0, 0.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
   modulate_tm_lr: false  # use reward modulation for lr of TM
   sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
   sm_reward_dec: 0.98  # smooth factor for reward modulation during decrement
