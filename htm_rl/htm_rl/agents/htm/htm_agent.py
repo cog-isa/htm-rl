@@ -1106,8 +1106,15 @@ if __name__ == '__main__':
     # with open('../../experiments/htm_agent/htm_config_unpacked.yaml', 'w') as file:
     #     yaml.dump(configure(config), file, Dumper=yaml.Dumper)
 
-    runner = HTMAgentRunner(configure(config), logger=logger)
-    runner.agent.train_patterns()
+    agent_name = config['agent']
+    if agent_name == 'dqn':
+        from htm_rl.agents.dqn.runner import Runner
+        runner = Runner(config, logger=logger)
+    elif agent_name == 'hima':
+        runner = HTMAgentRunner(configure(config), logger=logger)
+        runner.agent.train_patterns()
+    else:
+        raise AttributeError('Unknown agent name in config.agent')
 
     # if logger is not None:
     #     runner.draw_map(logger)

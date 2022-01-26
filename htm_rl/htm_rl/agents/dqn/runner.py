@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import wandb
 
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
+from htm_rl.agents.htm.htm_agent import Scenario
 from htm_rl.common.utils import safe_divide
 from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
@@ -30,9 +31,10 @@ class Runner:
         else:
             self.scenario = None
 
-        self.agent = resolve_agent(config['agent'])
         self.env_config = config['environment']
-        self.environment = BioGwLabEnvironment(**config['environment'])
+        self.environment = BioGwLabEnvironment(**self.env_config)
+        self.agent = resolve_agent(config['agent'], env=self.environment)
+
         self.terminal_pos_stat = dict()
         self.last_terminal_stat = 0
         self.total_terminals = 0
@@ -246,12 +248,6 @@ class Runner:
                     break
 
                 self.steps_cumulative += self.steps
-                if self.agent.use_intrinsic_reward:
-                    max_reward_log = 0
-                    mean_reward_log = 0
-                    min_reward_log = 0
-                    priority_ext_log = 0
-                    intrinsic_off_log = 0
 
                 self.episode += 1
                 self.steps = 0
@@ -609,5 +605,7 @@ class Runner:
         wandb.define_metric("main_metrics/g_*", step_metric="goal")
 
 
-def resolve_agent(config):
-    ...
+def resolve_agent(config, env):
+    from htm_rl.agents.dqn.agent_proxy import DqnAgentProxy
+    agent = DqnAgentProxy(config, env)
+    return agent
