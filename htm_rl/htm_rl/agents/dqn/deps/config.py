@@ -12,6 +12,15 @@ class Config:
 
     def __init__(self):
         self.parser = argparse.ArgumentParser()
+        # new
+        self.batch_size = None
+        self.train_schedule = None
+        self.softmax_temp = None
+        self.seed = None
+        self.learning_rate = None
+        self.replay_buffer_size = None
+
+        # old
         self.task_fn = None
         self.optimizer_fn = None
         self.actor_optimizer_fn = None

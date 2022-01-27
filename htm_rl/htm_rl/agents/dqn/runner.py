@@ -33,7 +33,12 @@ class Runner:
 
         self.env_config = config['environment']
         self.environment = BioGwLabEnvironment(**self.env_config)
-        self.agent = resolve_agent(config['agent'], env=self.environment)
+        self.agent = resolve_agent(
+            config['agent'],
+            state_dim=self.environment.output_sdr_size,
+            action_dim=self.environment.n_actions,
+            **config['cagent']
+        )
 
         self.terminal_pos_stat = dict()
         self.last_terminal_stat = 0
@@ -73,12 +78,9 @@ class Runner:
 
     def run_episodes(
             self, n_episodes, train_patterns=True, log_values=False, log_policy=False,
-            log_every_episode=50,
-            log_segments=False, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
+            log_every_episode=50, draw_options=False, log_terminal_stat=False, draw_options_stats=False,
             opt_threshold=0, log_option_values=False, log_option_policy=False, log_options_usage=False,
-            log_td_error=False, log_anomaly=False, log_confidence=False, log_modulation=False,
-            log_values_int=True, log_values_ext=True, log_priorities=True, log_empowerment=False,
-            log_number_of_clusters=False, animation_fps=3
+            animation_fps=3, **_
     ):
         self.total_reward = 0
         self.steps = 0
@@ -92,23 +94,14 @@ class Runner:
         self.goal_reached = True
         self.task_complete = True
 
-        #logging priorities
-        if self.agent.use_intrinsic_reward:
-            max_reward_log = 0
-            mean_reward_log = 0
-            min_reward_log = 0
-            priority_ext_log = 0
-            intrinsic_off_log = 0
-
         if self.logger is not None:
             self.define_logging_metrics()
 
         while self.episode < n_episodes:
+            # print(self.steps)
+
             if self.scenario is not None:
                 self.scenario.check_conditions()
-
-            if train_patterns:
-                self.agent.train_patterns()
 
             reward, obs, is_first = self.environment.observe()
 
@@ -180,15 +173,15 @@ class Runner:
                             dict([(f'terminal_stats/{x[0]}', x[1]) for x in self.terminal_pos_stat.items()]),
                             step=self.episode)
 
-                    if (log_values or log_policy) and (not self.agent.use_intrinsic_reward):
-                        if len(self.option_stat.action_displace) == 3:
-                            directions = {'right': 0, 'down': 1, 'left': 2, 'up': 3}
-                            actions_map = {0: 'move', 1: 'turn_right', 2: 'turn_left'}
-                        else:
-                            directions = None
-                            actions_map = {0: 'right', 1: 'down', 2: 'left', 3: 'up'}
-
-                        q, policy, actions = compute_q_policy(self.environment.env, self.agent, directions)
+                    # if log_values or log_policy:
+                    #     if len(self.option_stat.action_displace) == 3:
+                    #         directions = {'right': 0, 'down': 1, 'left': 2, 'up': 3}
+                    #         actions_map = {0: 'move', 1: 'turn_right', 2: 'turn_left'}
+                    #     else:
+                    #         directions = None
+                    #         actions_map = {0: 'right', 1: 'down', 2: 'left', 3: 'up'}
+                    #
+                    #     q, policy, actions = compute_q_policy(self.environment.env, self.agent, directions)
 
                         # if log_policy:
                         #     draw_policy(os.path.join(self.path_to_store_logs,
@@ -241,13 +234,15 @@ class Runner:
                 # \\\logging\\\
 
                 # Ad hoc terminal state
-                self.current_action = self.agent.make_action(obs)
+                self.agent.observe(obs, reward, is_first)
+                self.current_action = self.agent.act()
                 if self.logger is not None and self.task_complete:
                     self.log_task_complete()
                 if self.early_stop:
                     break
 
                 self.steps_cumulative += self.steps
+                # print(self.total_reward)
 
                 self.episode += 1
                 self.steps = 0
@@ -257,15 +252,12 @@ class Runner:
                     self.on_new_goal()
                 if self.task_complete:
                     self.on_new_task()
-
-                self.agent.reset()
             else:
                 self.steps += 1
                 self.total_reward += reward
 
-            self.current_action = self.agent.make_action(obs)
-
-            self.agent.reinforce(reward)
+            self.agent.observe(obs, reward, is_first)
+            self.current_action = self.agent.act()
 
             # ///logging///
             # if draw_options_stats:
@@ -299,70 +291,12 @@ class Runner:
         if isinstance(pic, list):
             pic = pic[0]
 
-        if draw_options:
-            option_block = self.agent.hierarchy.blocks[5]
-            c_pos = get_unshifted_pos(self.environment.env.agent.position,
-                                      self.environment.env.renderer.shape.top_left_point)
-            c_direction = self.environment.env.agent.view_direction
-            c_option_id = option_block.current_option
-
-            if self.agent.hierarchy.blocks[5].made_decision:
-                if c_option_id != self.last_option_id:
-                    if len(agent_pos) > 0:
-                        agent_pos.clear()
-                agent_pos.append(c_pos)
-                if len(agent_pos) > 1:
-                    pic[tuple(zip(*agent_pos))] = [[255, 255, 150]] * len(agent_pos)
-                else:
-                    pic[agent_pos[0]] = [255, 255, 255]
-            else:
-                if len(agent_pos) > 0:
-                    agent_pos.clear()
-
-            self.last_option_id = c_option_id
-
-            term_draw_options = np.zeros((pic.shape[0], 3, 3))
-            c_option = self.agent.hierarchy.blocks[5].current_option
-            f_option = self.agent.hierarchy.blocks[5].failed_option
-            comp_option = self.agent.hierarchy.blocks[5].completed_option
-            self.agent.hierarchy.blocks[5].failed_option = None
-            self.agent.hierarchy.blocks[5].completed_option = None
-
-            if c_option is not None:
-                term_draw_options[c_option, 0] = [255, 255, 255]
-            if f_option is not None:
-                term_draw_options[f_option, 1] = [200, 0, 0]
-            if comp_option is not None:
-                term_draw_options[comp_option, 2] = [0, 0, 200]
-
-            if self.agent.hierarchy.output_block.predicted_options is not None:
-                predicted_options = self.agent.hierarchy.output_block.sm.get_options_by_id(
-                    self.agent.hierarchy.output_block.predicted_options)
-                for o in predicted_options:
-                    predicted_action_pattern = np.flatnonzero(o)
-                    self.agent.muscles.set_active_input(predicted_action_pattern)
-                    self.agent.muscles.depolarize_muscles()
-                    action_pattern = self.agent.muscles.get_depolarized_muscles()
-                    # convert muscles activation pattern to environment action
-                    p_action = self.agent.action.get_action(action_pattern)
-                    direction = c_direction - self.option_stat.action_rotation[p_action]
-                    if direction < 0:
-                        direction = 4 - direction
-                    else:
-                        direction %= 4
-                    if (len(self.option_stat.action_displace) == 4) or (
-                            np.all(self.option_stat.action_displace[p_action] == 0)):
-                        displacement = self.option_stat.action_displace[p_action]
-                    else:
-                        displacement = self.option_stat.transform_displacement((0, 1), direction)
-                    p_pos = (c_pos[0] + displacement[0], c_pos[1] + displacement[1])
-
-                    if (p_pos[0] < pic.shape[0]) and (p_pos[1] < pic.shape[1]):
-                        pic[p_pos[0], p_pos[1]] = [255, 200, 120]
-            pic = np.concatenate([pic, term_draw_options], axis=1)
-
-        plt.imsave(os.path.join(self.path_to_store_logs,
-                                f'{logger.id}_episode_{episode}_step_{steps}.png'), pic.astype('uint8'))
+        plt.imsave(
+            os.path.join(
+                self.path_to_store_logs,
+                f'{logger.id}_episode_{episode}_step_{steps}.png'
+            ), pic.astype('uint8')
+        )
         plt.close()
 
     # def update_option_stats(self, is_terminal):
@@ -594,6 +528,7 @@ class Runner:
         self.steps_per_task = 0
         self.task += 1
         self.map_change_indicator = 1
+        self.agent.flush_replay()
 
     @staticmethod
     def define_logging_metrics():
@@ -605,7 +540,12 @@ class Runner:
         wandb.define_metric("main_metrics/g_*", step_metric="goal")
 
 
-def resolve_agent(config, env):
-    from htm_rl.agents.dqn.agent_proxy import DqnAgentProxy
-    agent = DqnAgentProxy(config, env)
+def resolve_agent(name, **config):
+    agent = None
+    if name == 'dqn':
+        from htm_rl.agents.dqn.deps.dqn_agent import make_agent
+        agent = make_agent(config)
+    else:
+        AttributeError(f'Unknown Deep RL agent {name}')
+
     return agent

@@ -130,25 +130,25 @@ class UniformReplay(Storage):
         return np.asarray(indices)
 
     def feed(self, data):
-        for k, vs in data.items():
+        for k, v in data.items():
             if k not in self.keys:
                 raise RuntimeError('Undefined key')
             storage = getattr(self, k)
             pos = self.pos
             size = self.size()
-            for v in vs:
-                if pos >= len(storage):
-                    storage.append(v)
-                    size += 1
-                else:
-                    storage[self.pos] = v
-                pos = (pos + 1) % self.memory_size
+            if pos >= len(storage):
+                storage.append(v)
+                size += 1
+            else:
+                storage[self.pos] = v
+            pos = (pos + 1) % self.memory_size
         self.pos = pos
         self._size = size
 
     def sample(self, batch_size=None):
         if batch_size is None:
             batch_size = self.batch_size
+        assert self.size() > 0
 
         sampled_data = []
         while len(sampled_data) < batch_size:
@@ -175,7 +175,7 @@ class UniformReplay(Storage):
             raise RuntimeError('Invalid index')
         next_s_start = s_start + self.n_step
         next_s_end = s_end + self.n_step
-        if s_end < self.pos and next_s_end >= self.pos:
+        if s_end < self.pos <= next_s_end:
             raise RuntimeError('Invalid index')
 
         state = [self.state[i] for i in range(s_start, s_end + 1)]

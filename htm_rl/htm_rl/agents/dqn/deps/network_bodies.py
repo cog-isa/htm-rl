@@ -3,7 +3,7 @@
 # Permission given to modify the code as long as you keep this        #
 # declaration at the top                                              #
 #######################################################################
-
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -51,7 +51,8 @@ class DDPGConvBody(nn.Module):
 
 
 class FCBody(nn.Module):
-    def __init__(self, state_dim, hidden_units=(64, 64), gate=F.relu, noisy_linear=False):
+    # orig 64, 64
+    def __init__(self, state_dim, hidden_units=(64, 32), gate=torch.relu, noisy_linear=False):
         super(FCBody, self).__init__()
         dims = (state_dim,) + hidden_units
         if noisy_linear:
