@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import os
 
-from htm_rl.agents.dqn.deps.config import Config
+from htm_rl.agents.dqn.config import Config
 
 
 def select_device(gpu_id):

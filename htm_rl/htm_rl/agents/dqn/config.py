@@ -1,7 +1,7 @@
 import argparse
 import torch
 
-from htm_rl.agents.dqn.deps.normalizer import RescaleNormalizer
+from htm_rl.agents.dqn.normalizer import RescaleNormalizer
 
 
 class Config:

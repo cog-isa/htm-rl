@@ -4,20 +4,12 @@ import pathlib
 import numpy as np
 import imageio
 import random
-import yaml
 import matplotlib.pyplot as plt
 import wandb
 
-from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
 from htm_rl.agents.htm.htm_agent import Scenario
-from htm_rl.common.utils import safe_divide
-from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
-from htm_rl.agents.htm.configurator import configure
-from htm.bindings.algorithms import SpatialPooler
-from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
-from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, \
-    draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
+from htm_rl.agents.htm.utils import OptionVis, get_unshifted_pos
 
 
 class Runner:
@@ -543,7 +535,7 @@ class Runner:
 def resolve_agent(name, **config):
     agent = None
     if name == 'dqn':
-        from htm_rl.agents.dqn.deps.dqn_agent import make_agent
+        from htm_rl.agents.dqn.agent import make_agent
         agent = make_agent(config)
     else:
         AttributeError(f'Unknown Deep RL agent {name}')

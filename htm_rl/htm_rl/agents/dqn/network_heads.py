@@ -7,9 +7,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from htm_rl.agents.dqn.deps.config import Config
-from htm_rl.agents.dqn.deps.network_utils import BaseNet, layer_init, NoisyLinear
-from htm_rl.agents.dqn.deps.utils import tensor
+from htm_rl.agents.dqn.config import Config
+from htm_rl.agents.dqn.network_utils import BaseNet, layer_init, NoisyLinear
+from htm_rl.agents.dqn.utils import tensor
 
 
 class VanillaNet(nn.Module, BaseNet):

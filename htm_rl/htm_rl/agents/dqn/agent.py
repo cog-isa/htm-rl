@@ -2,12 +2,12 @@ import numpy as np
 import torch
 from htm.bindings.sdr import SDR
 
-from htm_rl.agents.dqn.deps.config import Config
-from htm_rl.agents.dqn.deps.network_bodies import FCBody
-from htm_rl.agents.dqn.deps.network_heads import VanillaNet
-from htm_rl.agents.dqn.deps.replay import UniformReplay, PrioritizedTransition, PrioritizedReplay
-from htm_rl.agents.dqn.deps.schedule import LinearSchedule
-from htm_rl.agents.dqn.deps.utils import tensor, to_np
+from htm_rl.agents.dqn.config import Config
+from htm_rl.agents.dqn.network_bodies import FCBody
+from htm_rl.agents.dqn.network_heads import VanillaNet
+from htm_rl.agents.dqn.replay import UniformReplay, PrioritizedTransition
+from htm_rl.agents.dqn.schedule import LinearSchedule
+from htm_rl.agents.dqn.utils import tensor, to_np
 from htm_rl.common.utils import softmax
 
 

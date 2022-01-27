@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from htm_rl.agents.dqn.deps.network_utils import layer_init, NoisyLinear
+from htm_rl.agents.dqn.network_utils import layer_init, NoisyLinear
 
 
 class NatureConvBody(nn.Module):

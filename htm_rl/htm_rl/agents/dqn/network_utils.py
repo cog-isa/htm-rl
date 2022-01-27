@@ -7,10 +7,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 import math
 
-from htm_rl.agents.dqn.deps.config import Config
+from htm_rl.agents.dqn.config import Config
 
 
 class BaseNet:
