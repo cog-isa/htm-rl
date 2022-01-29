@@ -4,7 +4,7 @@ program: ../../agents/htm/htm_agent.py
 #method: grid
 method: bayes
 metric:
-  name: total_steps
+  name: main_metrics/g_total_steps
   goal: minimize
 
 parameters:
