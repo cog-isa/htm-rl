@@ -87,3 +87,4 @@ cagent:
   batch_size: 32
   learning_rate: .001
   replay_buffer_size: 500
+  hidden_units: [128, 64]
