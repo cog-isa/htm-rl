@@ -104,11 +104,19 @@ class DqnAgent:
 def make_agent(_config):
     config = Config()
     config.merge(_config)
+
+    # Sanitize int config values because they might come as floats during sweep hyperparam search!
+    if config.replay_buffer_size is not None:
+        config.replay_buffer_size = int(config.replay_buffer_size)
+
     config.replay_cls = UniformReplay
     # config.replay_cls = PrioritizedReplay
 
     config.optimizer_fn = lambda params: torch.optim.RMSprop(params, config.learning_rate)
-    config.network_fn = lambda: VanillaNet(config.action_dim, FCBody(config.state_dim))
+    config.network_fn = lambda: VanillaNet(
+        config.action_dim,
+        FCBody(config.state_dim, hidden_units=tuple(config.hidden_units))
+    )
     # config.network_fn = lambda: DuelingNet(config.action_dim, FCBody(config.state_dim))
     config.history_length = 1
 
@@ -121,9 +129,10 @@ def make_agent(_config):
     )
 
     config.replay_fn = lambda: config.replay_cls(**replay_kwargs)
-    config.replay_eps = 0.01
-    config.replay_alpha = 0.5
-    config.replay_beta = LinearSchedule(0.55, 0.6, 1e5)
+    if config.replay_cls != UniformReplay:
+        config.replay_eps = 0.01
+        config.replay_alpha = 0.5
+        config.replay_beta = LinearSchedule(0.55, 0.6, 1e5)
 
     config.gradient_clip = 5
     agent = DqnAgent(config)
