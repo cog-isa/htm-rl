@@ -1,26 +1,29 @@
 import os.path
 import pathlib
-
-import numpy as np
-import imageio
 import random
-import yaml
-import matplotlib.pyplot as plt
-import wandb
 
+import imageio
+import matplotlib.pyplot as plt
+import numpy as np
+import wandb
+import yaml
+from htm.bindings.algorithms import SpatialPooler
+from htm.bindings.sdr import SDR
+
+from htm_rl.agents.htm.configurator import configure
 from htm_rl.agents.htm.hierarchy import Hierarchy, Block, InputBlock, SpatialMemory
+from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
 from htm_rl.agents.htm.muscles import Muscles
+from htm_rl.agents.htm.utils import (
+    OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy,
+    draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
+)
 from htm_rl.common.utils import safe_divide
+from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
 from htm_rl.modules.dreaming.dreamer import Dreamer
 from htm_rl.modules.empowerment import Empowerment
-from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
-from htm_rl.agents.htm.configurator import configure
-from htm.bindings.algorithms import SpatialPooler
-from htm_rl.agents.htm.htm_apical_basal_feeedback import ApicalBasalFeedbackTM
-from htm_rl.agents.htm.utils import OptionVis, draw_values, compute_q_policy, compute_mu_policy, draw_policy, \
-    draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
-from htm.bindings.sdr import SDR
+from htm_rl.scenarios.utils import parse_str
 
 
 class BioGwLabAction:
@@ -1064,7 +1067,6 @@ class Scenario:
 
 if __name__ == '__main__':
     import sys
-    import ast
 
     if len(sys.argv) > 1:
         default_config_name = sys.argv[1]
@@ -1081,7 +1083,8 @@ if __name__ == '__main__':
     for arg in sys.argv[2:]:
         key, value = arg.split('=')
 
-        value = ast.literal_eval(value)
+        # accepts everything non-parseable as is, i.e as a str
+        value = parse_str(value)
 
         key = key.lstrip('-')
         if key.endswith('.'):
