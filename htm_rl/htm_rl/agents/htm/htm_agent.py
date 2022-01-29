@@ -1107,7 +1107,7 @@ if __name__ == '__main__':
     #     yaml.dump(configure(config), file, Dumper=yaml.Dumper)
 
     agent_name = config['agent']
-    if agent_name == 'dqn':
+    if agent_name in ['dqn', 'o-c']:
         from htm_rl.agents.dqn.runner import Runner
         runner = Runner(config, logger=logger)
     elif agent_name == 'hima':

@@ -537,6 +537,9 @@ def resolve_agent(name, **config):
     if name == 'dqn':
         from htm_rl.agents.dqn.agent import make_agent
         agent = make_agent(config)
+    elif name == 'o-c':
+        from htm_rl.agents.optcrit.agent import make_agent
+        agent = make_agent(config)
     else:
         AttributeError(f'Unknown Deep RL agent {name}')
 

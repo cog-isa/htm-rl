@@ -15,10 +15,13 @@ class Config:
         # new
         self.batch_size = None
         self.train_schedule = None
+        self.hl_softmax_temp = None
         self.softmax_temp = None
         self.seed = None
         self.learning_rate = None
         self.replay_buffer_size = None
+        self.num_options = None
+        self.hidden_units = None
 
         # old
         self.task_fn = None

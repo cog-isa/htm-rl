@@ -1,5 +1,7 @@
 import random
-from collections import namedtuple
+from collections import namedtuple, defaultdict, deque
+from functools import partial
+from typing import Deque
 
 import numpy as np
 import torch
@@ -74,6 +76,47 @@ class SumTree:
         return idx, self.tree[idx], data_idx
 
 
+class DequeStorage(defaultdict):
+    def __init__(self, max_len):
+        super().__init__(partial(deque, maxlen=max_len))
+
+    def feed(self, data) -> None:
+        for k, v in data.items():
+            self[k].append(v)
+
+    @property
+    def is_full(self):
+        def contains_full_deque():
+            one_deque: Deque = next(iter(self.values()))
+            return len(one_deque) == one_deque.maxlen
+
+        return len(self) > 0 and contains_full_deque()
+
+    def extract(self, keys):
+        result = []
+        for k in keys:
+            d = list(self[k])
+            if not isinstance(d[0], torch.Tensor):
+                t = torch.Tensor(d)
+            elif d[0].dim() == 0:
+                t = torch.stack(d)
+            else:
+                t = torch.cat(d, dim=0)
+            result.append(t)
+
+        Entry = namedtuple('Entry', keys)
+        return Entry(*result)
+
+    def reset(self) -> None:
+        for d in self.values():
+            d.clear()
+
+    def pop_one_left(self) -> None:
+        for d in self.values():
+            d: Deque
+            d.popleft()
+
+
 class Storage:
     def __init__(self, memory_size, keys=None):
         if keys is None:
@@ -84,6 +127,7 @@ class Storage:
                        'mean', 'next_state']
         self.keys = keys
         self.memory_size = memory_size
+        self._size = 0
         self.reset()
 
     def feed(self, data):
@@ -91,6 +135,9 @@ class Storage:
             if k not in self.keys:
                 raise RuntimeError('Undefined key')
             getattr(self, k).append(v)
+
+    def inc_size(self):
+        self._size += 1
 
     def placeholder(self):
         for k in self.keys:
@@ -101,14 +148,30 @@ class Storage:
     def reset(self):
         for key in self.keys:
             setattr(self, key, [])
-        self.pos = 0
         self._size = 0
 
     def extract(self, keys):
         data = [getattr(self, k)[:self.memory_size] for k in keys]
-        data = map(lambda x: torch.cat(x, dim=0), data)
+        result = []
+        for x in data:
+            if not isinstance(x[0], torch.Tensor):
+                y = torch.Tensor(x)
+            elif x[0].dim() == 0:
+                y = torch.stack(x)
+            else:
+                y = torch.cat(x, dim=0)
+            result.append(y)
+
         Entry = namedtuple('Entry', keys)
-        return Entry(*list(data))
+        return Entry(*result)
+
+    @property
+    def size(self):
+        return self._size
+
+    @property
+    def is_full(self):
+        return self.size >= self.memory_size
 
 
 class UniformReplay(Storage):

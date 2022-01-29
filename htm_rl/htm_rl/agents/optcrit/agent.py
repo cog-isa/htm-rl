@@ -3,137 +3,152 @@
 # Permission given to modify the code as long as you keep this        #
 # declaration at the top                                              #
 #######################################################################
-import numpy as np
+
 import torch
+from htm.bindings.sdr import SDR
 from torch import nn
 
 from htm_rl.agents.dqn.config import Config
 from htm_rl.agents.dqn.network_bodies import FCBody
 from htm_rl.agents.dqn.network_heads import OptionCriticNet
-from htm_rl.agents.dqn.replay import Storage
-from htm_rl.agents.dqn.schedule import LinearSchedule
-from htm_rl.agents.dqn.utils import tensor, to_np
+from htm_rl.agents.dqn.replay import Storage, DequeStorage
 
 
 class OptionCriticAgent:
     def __init__(self, config):
         self.config = config
-        self.task = config.task_fn()
         self.network = config.network_fn()
-        self.target_network = config.network_fn()
         self.optimizer = config.optimizer_fn(self.network.parameters())
-        self.target_network.load_state_dict(self.network.state_dict())
 
-        self.total_steps = 0
-        self.worker_index = tensor(np.arange(config.num_workers)).long()
+        self._is_first = None
+        self._current_option = 0
+        self._state = None
+        self._state_sdr = SDR(self.config.state_dim)
+        self._storage = DequeStorage(config.batch_size)
 
-        self.states = self.config.state_normalizer(self.task.reset())
-        self.is_initial_states = tensor(np.ones((config.num_workers))).byte()
-        self.prev_options = self.is_initial_states.clone().long()
+    def act(self):
+        prediction = self.network(self._state)
+        option = self.sample_option(prediction)
 
-    def sample_option(self, prediction, epsilon, prev_option, is_intial_states):
+        # print(prediction['pi'])
+        prediction['pi'] = prediction['pi'][option]
+        prediction['log_pi'] = prediction['log_pi'][option]
+        dist = torch.distributions.Categorical(probs=prediction['pi'])
+        action = dist.sample()
+        entropy = dist.entropy()
+
+        self._storage.feed(prediction)
+        self._storage.feed({
+            'option': option,
+            'entropy': entropy,
+            'action': action,
+            'init_state': self._is_first,
+        })
+        self._current_option = option
+        return action
+
+    def observe(self, next_state, reward, is_first):
+        next_state = self.to_dense(next_state)
+
+        self._is_first = is_first
+        self._state = next_state
+
+        self.train_step()
+
+        self._storage.feed({
+            'prev_option': self._current_option,
+            'reward': reward,
+            'mask': 1 - is_first,
+            'ret': None,
+            'advantage': None,
+            'beta_advantage': None,
+        })
+
+    def train_step(self):
+        storage = self._storage
+        if not storage.is_full:
+            return
+
         with torch.no_grad():
-            q_option = prediction['q']
-            pi_option = torch.zeros_like(q_option).add(epsilon / q_option.size(1))
-            greedy_option = q_option.argmax(dim=-1, keepdim=True)
-            prob = 1 - epsilon + epsilon / q_option.size(1)
-            prob = torch.zeros_like(pi_option).add(prob)
-            pi_option.scatter_(1, greedy_option, prob)
+            prediction = self.network(self._state)
+            q_options = prediction['q']
+            betas = prediction['beta'][self._current_option]
+            ret = (1 - betas) * q_options[self._current_option] + betas * torch.max(q_options)
 
-            mask = torch.zeros_like(q_option)
-            mask[self.worker_index, prev_option] = 1
-            beta = prediction['beta']
-            pi_hat_option = (1 - beta) * mask + beta * pi_option
-
-            dist = torch.distributions.Categorical(probs=pi_option)
-            options = dist.sample()
-            dist = torch.distributions.Categorical(probs=pi_hat_option)
-            options_hat = dist.sample()
-
-            options = torch.where(is_intial_states, options, options_hat)
-        return options
-
-    def step(self):
         config = self.config
-        storage = Storage(config.rollout_length, ['beta', 'option', 'beta_advantage', 'prev_option', 'init_state', 'eps'])
+        for i in reversed(range(config.batch_size)):
+            r, q = storage['reward'][i], storage['q'][i]
+            ret = r + config.discount * storage['mask'][i] * ret
+            adv = ret - q[storage['option'][i]]
+            storage['ret'][i] = ret
+            storage['advantage'][i] = adv
 
-        for _ in range(config.rollout_length):
-            prediction = self.network(self.states)
-            epsilon = config.random_option_prob(config.num_workers)
-            options = self.sample_option(prediction, epsilon, self.prev_options, self.is_initial_states)
-            prediction['pi'] = prediction['pi'][self.worker_index, options]
-            prediction['log_pi'] = prediction['log_pi'][self.worker_index, options]
-            dist = torch.distributions.Categorical(probs=prediction['pi'])
-            actions = dist.sample()
-            entropy = dist.entropy()
-
-            next_states, rewards, terminals, info = self.task.step(to_np(actions))
-            self.record_online_return(info)
-            next_states = config.state_normalizer(next_states)
-            rewards = config.reward_normalizer(rewards)
-            storage.feed(prediction)
-            storage.feed({'reward': tensor(rewards).unsqueeze(-1),
-                          'mask': tensor(1 - terminals).unsqueeze(-1),
-                          'option': options.unsqueeze(-1),
-                          'prev_option': self.prev_options.unsqueeze(-1),
-                          'entropy': entropy.unsqueeze(-1),
-                          'action': actions.unsqueeze(-1),
-                          'init_state': self.is_initial_states.unsqueeze(-1).float(),
-                          'eps': epsilon})
-
-            self.is_initial_states = tensor(terminals).byte()
-            self.prev_options = options
-            self.states = next_states
-
-            self.total_steps += config.num_workers
-            if self.total_steps // config.num_workers % config.target_network_update_freq == 0:
-                self.target_network.load_state_dict(self.network.state_dict())
-
-        with torch.no_grad():
-            prediction = self.target_network(self.states)
-            storage.placeholder()
-            betas = prediction['beta'][self.worker_index, self.prev_options]
-            ret = (1 - betas) * prediction['q'][self.worker_index, self.prev_options] + \
-                  betas * torch.max(prediction['q'], dim=-1)[0]
-            ret = ret.unsqueeze(-1)
-
-        for i in reversed(range(config.rollout_length)):
-            ret = storage.reward[i] + config.discount * storage.mask[i] * ret
-            adv = ret - storage.q[i].gather(1, storage.option[i])
-            storage.ret[i] = ret
-            storage.advantage[i] = adv
-
-            v = storage.q[i].max(dim=-1, keepdim=True)[0] * (1 - storage.eps[i]) + storage.q[i].mean(-1).unsqueeze(-1) * \
-                storage.eps[i]
-            q = storage.q[i].gather(1, storage.prev_option[i])
-            storage.beta_advantage[i] = q - v + config.termination_regularizer
+            probs = torch.softmax(q, dim=-1)
+            v = q.dot(probs)
+            q_s = q[storage['prev_option'][i]]
+            storage['beta_advantage'][i] = q_s - v + config.termination_regularizer
 
         entries = storage.extract(
-            ['q', 'beta', 'log_pi', 'ret', 'advantage', 'beta_advantage', 'entropy', 'option', 'action', 'init_state', 'prev_option'])
+            ['q', 'beta', 'log_pi', 'ret', 'advantage', 'beta_advantage', 'entropy', 'option', 'action', 'init_state', 'prev_option']
+        )
 
-        q_loss = (entries.q.gather(1, entries.option) - entries.ret.detach()).pow(2).mul(0.5).mean()
-        pi_loss = -(entries.log_pi.gather(1,
+        q_loss = (entries.q.gather(0, entries.option) - entries.ret.detach()).pow(2).mul(0.5).mean()
+        pi_loss = -(entries.log_pi.gather(0,
                                           entries.action) * entries.advantage.detach()) - config.entropy_weight * entries.entropy
         pi_loss = pi_loss.mean()
-        beta_loss = (entries.beta.gather(1, entries.prev_option) * entries.beta_advantage.detach() * (1 - entries.init_state)).mean()
+        beta_loss = (
+                entries.beta.gather(0, entries.prev_option) * entries.beta_advantage.detach() * (1 - entries.init_state)
+        ).mean()
 
         self.optimizer.zero_grad()
         (pi_loss + q_loss + beta_loss).backward()
         nn.utils.clip_grad_norm_(self.network.parameters(), config.gradient_clip)
         self.optimizer.step()
+        self._storage.reset()
+
+    def flush_replay(self):
+        self._storage.reset()
+
+    def sample_option(self, prediction):
+        with torch.no_grad():
+            q_option = prediction['q']
+            # pi_option = torch.zeros_like(q_option).add(epsilon / q_option.size(1))
+            # greedy_option = q_option.argmax(dim=-1, keepdim=True)
+            # prob = 1 - epsilon + epsilon / q_option.size(1)
+            # prob = torch.zeros_like(pi_option).add(prob)
+            # pi_option.scatter_(1, greedy_option, prob)
+            pi_option = torch.softmax(q_option/self.config.hl_softmax_temp, dim=-1)
+            # pi_option = torch.softmax(q_option, dim=-1)
+
+            if self._is_first:
+                dist = torch.distributions.Categorical(probs=pi_option)
+                option = dist.sample()
+            else:
+                mask = torch.zeros_like(q_option)
+                mask[self._current_option] = 1
+                beta = prediction['beta']
+                pi_hat_option = (1 - beta) * mask + beta * pi_option
+                dist = torch.distributions.Categorical(probs=pi_hat_option)
+                option = dist.sample()
+
+        return option
+
+    def to_dense(self, sparse_sdr):
+        self._state_sdr.sparse = sparse_sdr
+        return self._state_sdr.dense
 
 
 def make_agent(_config):
-    _config.setdefault('log_level', 0)
     config = Config()
     config.merge(_config)
 
-    config.optimizer_fn = lambda params: torch.optim.RMSprop(params, 0.001)
-    config.network_fn = lambda: OptionCriticNet(FCBody(config.state_dim), config.action_dim, num_options=2)
-    config.random_option_prob = LinearSchedule(1.0, 0.1, 1e4)
-    config.discount = 0.99
-    config.target_network_update_freq = 200
-    config.rollout_length = 5
-    config.termination_regularizer = 0.01
-    config.entropy_weight = 0.01
+    config.optimizer_fn = lambda params: torch.optim.RMSprop(params, config.learning_rate)
+    config.network_fn = lambda: OptionCriticNet(
+        FCBody(config.state_dim, hidden_units=tuple(config.hidden_units)),
+        config.action_dim,
+        num_options=config.num_options,
+        softmax_temp=config.softmax_temp
+    )
     config.gradient_clip = 5
+    agent = OptionCriticAgent(config)
+    return agent

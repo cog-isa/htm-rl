@@ -16,7 +16,6 @@ class DqnAgent:
         self.config = config
         self.replay = config.replay_fn()
         self.network = config.network_fn()
-        # self.network.share_memory()
         self.optimizer = config.optimizer_fn(self.network.parameters())
         self._rng = np.random.default_rng(self.config.seed)
 
@@ -127,6 +126,5 @@ def make_agent(_config):
     config.replay_beta = LinearSchedule(0.55, 0.6, 1e5)
 
     config.gradient_clip = 5
-    config.eval_interval = int(5e3)
     agent = DqnAgent(config)
     return agent
