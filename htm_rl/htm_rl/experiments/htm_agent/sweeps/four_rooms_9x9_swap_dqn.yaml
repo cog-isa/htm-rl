@@ -4,7 +4,7 @@ program: ../../agents/htm/htm_agent.py
 #method: grid
 method: bayes
 metric:
-  name: main_metrics/g_total_steps
+  name: main_metrics/all_steps
   goal: minimize
 
 parameters:
@@ -12,6 +12,10 @@ parameters:
     value: 4654
   environment..seed:
     value: 45812
+  run_options..n_episodes:
+    value: 12000
+  run_options..log_every_episode:
+    value: 200
 
   # 0.025
   cagent..softmax_temp:
