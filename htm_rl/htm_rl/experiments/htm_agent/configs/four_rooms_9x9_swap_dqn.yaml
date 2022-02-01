@@ -17,25 +17,8 @@ path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 100000
-  log_every_episode: 100
-  log_values_int: True
-  log_values_ext: True
-  log_priorities: True
-  log_values: False
-  log_policy: False
-  log_option_values: False
-  log_option_policy: False
-  log_options_usage: True
-  log_td_error: True
-  log_anomaly: False
-  log_confidence: False
-  log_segments: True
-  log_terminal_stat: False
-  log_number_of_clusters: False
-  draw_options: False
-  draw_options_stats: False
-  opt_threshold: 100
-  train_patterns: False
+  log_every_episode: 5
+  gif_every_episode: 200
   animation_fps: 3
 
 environment:
