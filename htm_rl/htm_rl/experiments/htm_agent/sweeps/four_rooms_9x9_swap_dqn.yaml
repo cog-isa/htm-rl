@@ -15,7 +15,7 @@ parameters:
   run_options..n_episodes:
     value: 12000
   run_options..log_every_episode:
-    value: 10
+    value: 100
   run_options..gif_every_episode:
     value: 1000
 

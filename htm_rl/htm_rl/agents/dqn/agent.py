@@ -5,7 +5,7 @@ from htm.bindings.sdr import SDR
 from htm_rl.agents.dqn.config import Config
 from htm_rl.agents.dqn.network_bodies import FCBody
 from htm_rl.agents.dqn.network_heads import VanillaNet
-from htm_rl.agents.dqn.replay import UniformReplay, PrioritizedTransition
+from htm_rl.agents.dqn.replay import UniformReplay, PrioritizedTransition, DequeStorage
 from htm_rl.agents.dqn.schedule import LinearSchedule
 from htm_rl.agents.dqn.utils import tensor, to_np
 from htm_rl.common.utils import softmax
@@ -14,7 +14,7 @@ from htm_rl.common.utils import softmax
 class DqnAgent:
     def __init__(self, config):
         self.config = config
-        self.replay = config.replay_fn()
+        self.replay = DequeStorage(config.replay_buffer_size)
         self.network = config.network_fn()
         self.optimizer = config.optimizer_fn(self.network.parameters())
         self._rng = np.random.default_rng(self.config.seed)
@@ -40,10 +40,11 @@ class DqnAgent:
             return
 
         self.replay.feed({
-            'state': self._state,
-            'action': self._action,
-            'reward': reward,
-            'mask': 1 - is_first
+            's': self._state,
+            'a': self._action,
+            'r': reward,
+            's_next': next_state,
+            'done': 1 - is_first,
         })
         self._total_steps += 1
 
@@ -51,50 +52,40 @@ class DqnAgent:
         self._state = next_state
 
     def flush_replay(self):
-        self.replay = self.config.replay_fn()
+        self.replay.reset()
 
     def train_step(self):
-        if (
-                self.replay.size() < 2 * self.replay.batch_size
-                or self._total_steps % self.config.train_schedule != 0
-        ):
+        replay_buffer_filled = self.replay.sub_size >= 2 * self.config.batch_size
+        train_scheduled = self._total_steps % self.config.train_schedule == 0
+
+        if not (replay_buffer_filled and train_scheduled):
             return
 
-        transitions = self.replay.sample()
+        # uniformly sample a batch of transitions
+        i_batch = self._rng.choice(self.replay.sub_size, self.config.batch_size)
+        batch = self.replay.extract(
+            keys=['s', 'a', 'r', 's_next', 'done'],
+            indices=i_batch
+        )
 
-        loss = self.compute_loss(transitions)
-        if isinstance(transitions, PrioritizedTransition):
-            priorities = loss.abs().add(self.config.replay_eps).pow(self.config.replay_alpha)
-            idxs = tensor(transitions.idx).long()
-            self.replay.update_priorities(zip(to_np(idxs), to_np(priorities)))
-            sampling_probs = tensor(transitions.sampling_prob)
-            weights = sampling_probs.mul(sampling_probs.size(0)).add(1e-6).pow(-self.config.replay_beta())
-            weights = weights / weights.max()
-            loss = loss.mul(weights)
-
-        loss = self.reduce_loss(loss)
         self.optimizer.zero_grad()
+        loss = self.compute_loss(batch)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
         self.optimizer.step()
 
-    def reduce_loss(self, loss):
-        return loss.pow(2).mul(0.5).mean()
+    def compute_loss(self, batch):
+        s, a, r, s_n, done = batch.s, batch.a, batch.r, batch.s_next, batch.done
+        gamma = self.config.discount
 
-    def compute_loss(self, transitions):
-        states = transitions.state
-        next_states = transitions.next_state
         with torch.no_grad():
-            q_next = self.network(next_states)['q'].detach().max(1)[0]
+            q_next = self.network(s_n)['q'].detach().max(1)[0]
+            q_target = r + gamma * q_next * done
 
-        masks = tensor(transitions.mask)
-        rewards = tensor(transitions.reward)
-        q_target = rewards + self.config.discount * q_next * masks
-        actions = tensor(transitions.action).long()
-        q = self.network(states)['q']
-        q = q.gather(1, actions.unsqueeze(-1)).squeeze(-1)
-        loss = q_target - q
-        return loss
+        a = a.long()
+        q = self.network(s)['q'].gather(1, a.unsqueeze(-1)).squeeze(-1)
+        td_error = q - q_target
+        return td_error.pow(2).mean() / 2
 
     def to_dense(self, sparse_sdr):
         self._state_sdr.sparse = sparse_sdr
@@ -109,31 +100,12 @@ def make_agent(_config):
     if config.replay_buffer_size is not None:
         config.replay_buffer_size = int(config.replay_buffer_size)
 
-    config.replay_cls = UniformReplay
-    # config.replay_cls = PrioritizedReplay
-
     config.optimizer_fn = lambda params: torch.optim.RMSprop(params, config.learning_rate)
     config.network_fn = lambda: VanillaNet(
         config.action_dim,
         FCBody(config.state_dim, hidden_units=tuple(config.hidden_units))
     )
-    # config.network_fn = lambda: DuelingNet(config.action_dim, FCBody(config.state_dim))
-    config.history_length = 1
-
-    replay_kwargs = dict(
-        memory_size=config.replay_buffer_size,
-        batch_size=config.batch_size,
-        n_step=1,
-        discount=config.discount,
-        history_length=config.history_length
-    )
-
-    config.replay_fn = lambda: config.replay_cls(**replay_kwargs)
-    if config.replay_cls != UniformReplay:
-        config.replay_eps = 0.01
-        config.replay_alpha = 0.5
-        config.replay_beta = LinearSchedule(0.55, 0.6, 1e5)
-
     config.gradient_clip = 5
+
     agent = DqnAgent(config)
     return agent

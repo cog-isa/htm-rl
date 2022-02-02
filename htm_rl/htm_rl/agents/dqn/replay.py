@@ -5,6 +5,9 @@ from typing import Deque
 
 import numpy as np
 import torch
+from numpy.random import Generator
+
+from htm_rl.common.utils import isnone
 
 Transition = namedtuple('Transition', ['state', 'action', 'reward', 'next_state', 'mask'])
 PrioritizedTransition = namedtuple('Transition',
@@ -85,23 +88,43 @@ class DequeStorage(defaultdict):
             self[k].append(v)
 
     @property
+    def _one_deque(self) -> Deque:
+        return next(iter(self.values()))
+
+    @property
+    def sub_size(self):
+        return len(self._one_deque)
+
+    @property
     def is_full(self):
         def contains_full_deque():
-            one_deque: Deque = next(iter(self.values()))
+            one_deque = self._one_deque
             return len(one_deque) == one_deque.maxlen
 
         return len(self) > 0 and contains_full_deque()
 
-    def extract(self, keys):
-        result = []
-        for k in keys:
-            d = list(self[k])
-            if not isinstance(d[0], torch.Tensor):
-                t = torch.Tensor(d)
-            elif d[0].dim() == 0:
-                t = torch.stack(d)
+    def extract(self, keys=None, indices=None):
+        def fetch_items(key):
+            dq = self[key]
+            if indices is None:
+                res = list(dq)
             else:
-                t = torch.cat(d, dim=0)
+                res = [dq[ix] for ix in indices]
+            return res
+
+        keys = isnone(keys, self.keys())
+        result = []
+
+        for k in keys:
+            a = fetch_items(k)
+            if not isinstance(a[0], torch.Tensor):
+                if isinstance(a[0], np.ndarray):
+                    a = np.vstack(a)
+                t = torch.Tensor(a)
+            elif a[0].dim() == 0:
+                t = torch.stack(a)
+            else:
+                t = torch.cat(a, dim=0)
             result.append(t)
 
         Entry = namedtuple('Entry', keys)

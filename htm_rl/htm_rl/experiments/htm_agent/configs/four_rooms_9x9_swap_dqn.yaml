@@ -17,7 +17,7 @@ path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
   n_episodes: 100000
-  log_every_episode: 5
+  log_every_episode: 20
   gif_every_episode: 200
   animation_fps: 3
 
