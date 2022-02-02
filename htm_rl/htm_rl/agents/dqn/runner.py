@@ -6,6 +6,7 @@ from functools import partial
 import imageio
 import matplotlib.pyplot as plt
 import numpy as np
+import torch
 import wandb
 
 from htm_rl.agents.htm.htm_agent import Scenario
@@ -19,6 +20,7 @@ class Runner:
         seed = config['seed']
         np.random.seed(seed)
         random.seed(seed)
+        torch.set_num_threads(1)
 
         if 'scenario' in config.keys():
             # noinspection PyTypeChecker
