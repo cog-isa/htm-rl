@@ -103,7 +103,7 @@ def make_agent(_config):
     config.optimizer_fn = lambda params: torch.optim.RMSprop(params, config.learning_rate)
     config.network_fn = lambda: VanillaNet(
         config.action_dim,
-        FCBody(config.state_dim, hidden_units=tuple(config.hidden_units))
+        FCBody(config.state_dim, hidden_units=tuple(config.hidden_units), gates=config.hidden_act_f)
     )
     config.gradient_clip = 5
 

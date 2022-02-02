@@ -64,6 +64,14 @@ parameters:
       - [128, 32]
       - [64, 32]
 
+  # ['relu', 'relu']
+  cagent..hidden_act_f:
+    values:
+      - ['relu', 'relu']
+      - ['relu', 'tanh']
+      - ['tanh', 'relu']
+      - ['tanh', 'tanh']
+
 command:
   - ${env}
   - python

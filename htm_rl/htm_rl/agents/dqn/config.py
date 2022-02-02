@@ -22,6 +22,7 @@ class Config:
         self.replay_buffer_size = None
         self.num_options = None
         self.hidden_units = None
+        self.hidden_act_f = None
 
         # old
         self.task_fn = None

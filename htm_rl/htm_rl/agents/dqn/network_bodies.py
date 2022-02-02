@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from htm_rl.agents.dqn.network_utils import layer_init, NoisyLinear
+from htm_rl.common.utils import isnone
 
 
 class NatureConvBody(nn.Module):
@@ -52,9 +53,9 @@ class DDPGConvBody(nn.Module):
 
 class FCBody(nn.Module):
     # orig 64, 64
-    def __init__(self, state_dim, hidden_units=(64, 32), gate=torch.relu, noisy_linear=False):
+    def __init__(self, state_dim, hidden_units=(64, 32), gates=None, noisy_linear=False):
         super(FCBody, self).__init__()
-        dims = (state_dim,) + hidden_units
+        dims = (state_dim,) + tuple(hidden_units)
         if noisy_linear:
             self.layers = nn.ModuleList(
                 [NoisyLinear(dim_in, dim_out) for dim_in, dim_out in zip(dims[:-1], dims[1:])])
@@ -62,7 +63,8 @@ class FCBody(nn.Module):
             self.layers = nn.ModuleList(
                 [layer_init(nn.Linear(dim_in, dim_out)) for dim_in, dim_out in zip(dims[:-1], dims[1:])])
 
-        self.gate = gate
+        gates = isnone(gates, [None]*len(hidden_units))
+        self.gates = [self._gate(gate, torch.relu) for gate in gates]
         self.feature_dim = dims[-1]
         self.noisy_linear = noisy_linear
 
@@ -72,9 +74,19 @@ class FCBody(nn.Module):
                 layer.reset_noise()
 
     def forward(self, x):
-        for layer in self.layers:
-            x = self.gate(layer(x))
+        for layer, gate in zip(self.layers, self.gates):
+            x = gate(layer(x))
         return x
+
+    def _gate(self, gate, default_gate):
+        if gate is None:
+            return default_gate
+        elif gate == 'relu':
+            return torch.relu
+        elif gate == 'tanh':
+            return torch.tanh
+        else:
+            raise KeyError(f'{gate} is unsupported activation function')
 
 
 class DummyBody(nn.Module):
