@@ -1,24 +1,27 @@
 import argparse
-import torch
 
 
 class Config:
-    DEVICE = torch.device('cpu')
-
     def __init__(self):
         self.parser = argparse.ArgumentParser()
         # new
+        self.seed = None
         self.state_dim = None
         self.action_dim = None
-        self.batch_size = None
-        self.train_schedule = None
-        self.hl_softmax_temp = None
-        self.hl_eps_greedy = None
-        self.softmax_temp = None
-        self.eps_greedy = None
-        self.seed = None
-        self.learning_rate = None
-        self.replay_buffer_size = None
+
+        self.cr_learning_rate = None
+        self.cr_softmax_temp = None
+        self.cr_eps_greedy = None
+        self.cr_train_schedule = None
+        self.cr_batch_size = None
+        self.cr_replay_buffer_size = None
+        self.cr_optimizer_fn = None
+
+        self.ac_softmax_temp = None
+        self.ac_eps_greedy = None
+        self.ac_learning_rate = None
+        self.ac_optimizer_fn = None
+
         self.num_options = None
         self.hidden_units = None
         self.hidden_act_f = None
@@ -28,9 +31,6 @@ class Config:
 
         # old
         self.task_fn = None
-        self.optimizer_fn = None
-        self.actor_optimizer_fn = None
-        self.critic_optimizer_fn = None
         self.network_fn = None
         self.actor_network_fn = None
         self.critic_network_fn = None

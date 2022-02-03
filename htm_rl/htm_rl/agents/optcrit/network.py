@@ -18,11 +18,15 @@ class OptionCriticNet(nn.Module):
         self.to(Config.DEVICE)
 
     def forward(self, x):
-        phi = self.body(to_tensor(x))
-        q = self.fc_q(phi)
-        # theta = torch.softmax()
-        beta = torch.sigmoid(self.fc_beta(phi))
-        pi = self.fc_pi(phi).view(self.num_options, self.action_dim)
+        x = self.body(to_tensor(x))
+
+        q = self.fc_q(x)
+        beta = torch.sigmoid(self.fc_beta(x))
+
+        pi = self.fc_pi(x)
+        pi = pi.view(-1, self.num_options, self.action_dim)
+        pi = pi.squeeze()
+
         log_pi = torch.log_softmax(pi/self.softmax_temp, dim=-1)
         pi = torch.softmax(pi/self.softmax_temp, dim=-1)
         return {

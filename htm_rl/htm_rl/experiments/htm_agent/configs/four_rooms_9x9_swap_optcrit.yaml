@@ -12,11 +12,11 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: False  # wand logging
+log: True  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
-  n_episodes: 120
+  n_episodes: 12000
   log_every_episode: 100
   gif_every_episode: 1000
   animation_fps: 3
@@ -64,15 +64,16 @@ environment:
 
 cagent:
   seed: *seed
-  hl_softmax_temp: 0.1
-  hl_eps_greedy: .0
-  softmax_temp: 0.1
-  eps_greedy: .0
-  discount: 0.925
-  critic_train_schedule: 4
-  batch_size: 20
-  replay_buffer_size: 5000
-  learning_rate: .0002
+  discount: 0.92
+  cr_learning_rate: .0002
+  cr_softmax_temp: 0.1
+  cr_eps_greedy: .0
+  cr_train_schedule: 4
+  cr_batch_size: 20
+  cr_replay_buffer_size: 5000
+  ac_softmax_temp: 0.1
+  ac_eps_greedy: .0
+  ac_learning_rate: .00025
   num_options: 4
   termination_regularizer: 0.001
   entropy_weight: 0.01
