@@ -3,15 +3,16 @@
 # Permission given to modify the code as long as you keep this        #
 # declaration at the top                                              #
 #######################################################################
-
+import numpy as np
 import torch
 from htm.bindings.sdr import SDR
 from torch import nn
 
 from htm_rl.agents.dqn.config import Config
-from htm_rl.agents.dqn.network_bodies import FCBody
-from htm_rl.agents.dqn.network_heads import OptionCriticNet
-from htm_rl.agents.dqn.replay import Storage, DequeStorage
+from htm_rl.agents.dqn.network import to_np, FCBody
+from htm_rl.agents.optcrit.network import OptionCriticNet
+from htm_rl.agents.dqn.replay import DequeStorage
+from htm_rl.common.utils import softmax
 
 
 class OptionCriticAgent:
@@ -21,59 +22,71 @@ class OptionCriticAgent:
         self.optimizer = config.optimizer_fn(self.network.parameters())
 
         self._is_first = None
-        self._current_option = 0
+        self._action = None
+        self._option = None
         self._state = None
         self._state_sdr = SDR(self.config.state_dim)
-        self._storage = DequeStorage(config.batch_size)
+        self.replay = DequeStorage(config.batch_size)
+        self._total_steps = 0
+
+        self._rng = np.random.default_rng(self.config.seed)
 
     def act(self):
-        prediction = self.network(self._state)
-        option = self.sample_option(prediction)
+        with torch.no_grad():
+            prediction = self.network(self._state)
 
-        # print(prediction['pi'])
-        prediction['pi'] = prediction['pi'][option]
-        prediction['log_pi'] = prediction['log_pi'][option]
-        dist = torch.distributions.Categorical(probs=prediction['pi'])
-        action = dist.sample()
-        entropy = dist.entropy()
+        option = self.sample_option(
+            q_options=to_np(prediction['q']),
+            beta_options=to_np(prediction['beta'])
+        )
 
-        self._storage.feed(prediction)
-        self._storage.feed({
-            'option': option,
-            'entropy': entropy,
-            'action': action,
-            'init_state': self._is_first,
-        })
-        self._current_option = option
+        probs = to_np(prediction['pi'][option])
+        if self.config.eps_greedy is not None and self.config.eps_greedy > .0:
+            # eps-soft: at-least eps prob for each action
+            eps = self.config.eps_greedy
+            probs = np.clip(probs, a_min=eps, a_max=1.)
+            probs /= probs.sum()
+
+        action = self._rng.choice(self.config.action_dim, p=probs)
+
+        self._action = action
+        self._option = option
         return action
 
     def observe(self, next_state, reward, is_first):
         next_state = self.to_dense(next_state)
+        if is_first:
+            self._state = next_state
+            self._option = None
+            return
 
-        self._is_first = is_first
+        # self._is_first = is_first
         self._state = next_state
 
-        self.train_step()
+        self._total_steps += 1
+        # self.train_critic_step()
 
-        self._storage.feed({
-            'prev_option': self._current_option,
-            'reward': reward,
-            'mask': 1 - is_first,
-            'ret': None,
-            'advantage': None,
-            'beta_advantage': None,
-        })
+        # self.train_step()
+        #
+        # self._storage.feed({
+        #     'prev_option': self._option,
+        #     'reward': reward,
+        #     'mask': 1 - is_first,
+        #     'ret': None,
+        #     'advantage': None,
+        #     'beta_advantage': None,
+        # })
 
     def train_step(self):
-        storage = self._storage
+        storage = self.replay
         if not storage.is_full:
             return
 
         with torch.no_grad():
             prediction = self.network(self._state)
             q_options = prediction['q']
-            betas = prediction['beta'][self._current_option]
-            ret = (1 - betas) * q_options[self._current_option] + betas * torch.max(q_options)
+            betas = prediction['beta'][self._option]
+            ret = (1 - betas) * q_options[self._option] + betas * torch.max(q_options)
 
         config = self.config
         for i in reversed(range(config.batch_size)):
@@ -104,33 +117,60 @@ class OptionCriticAgent:
         (pi_loss + q_loss + beta_loss).backward()
         nn.utils.clip_grad_norm_(self.network.parameters(), config.gradient_clip)
         self.optimizer.step()
-        self._storage.reset()
+        self.replay.reset()
+
+    def train_critic_step(self):
+        replay_buffer_filled = self.replay.is_full or self.replay.sub_size >= 4 * self.config.batch_size
+        train_scheduled = self._total_steps % self.config.train_schedule == 0
+
+        if not (replay_buffer_filled and train_scheduled):
+            return
+
+        # uniformly sample a batch of transitions
+        i_batch = self._rng.choice(self.replay.sub_size, self.config.batch_size)
+        batch = self.replay.extract(
+            keys=['s', 'o', 'a', 'r', 's_next'],
+            indices=i_batch
+        )
+
+        self.optimizer.zero_grad()
+        loss = self.compute_critic_loss(batch)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
+        self.optimizer.step()
+
+    def compute_critic_loss(self, batch):
+        s, o, a, r, s_n = batch.s, batch.o, batch.a, batch.r, batch.s_next
+        gamma = self.config.discount
+
+        with torch.no_grad():
+            q_next = self.network(s_n)['q'].detach().max(1)[0]
+            q_target = r + gamma * q_next
+
+        a = a.long()
+        q = self.network(s)['q'].gather(1, a.unsqueeze(-1)).squeeze(-1)
+        td_error = q - q_target
+        return td_error.pow(2).mean() / 2
 
     def flush_replay(self):
-        self._storage.reset()
+        self.replay.reset()
 
-    def sample_option(self, prediction):
-        with torch.no_grad():
-            q_option = prediction['q']
-            # pi_option = torch.zeros_like(q_option).add(epsilon / q_option.size(1))
-            # greedy_option = q_option.argmax(dim=-1, keepdim=True)
-            # prob = 1 - epsilon + epsilon / q_option.size(1)
-            # prob = torch.zeros_like(pi_option).add(prob)
-            # pi_option.scatter_(1, greedy_option, prob)
-            pi_option = torch.softmax(q_option/self.config.hl_softmax_temp, dim=-1)
-            # pi_option = torch.softmax(q_option, dim=-1)
+    def sample_option(self, q_options: np.ndarray, beta_options: np.ndarray):
+        if self._option is not None:
+            if self._rng.random() >= beta_options[self._option]:
+                # do not terminate the current option
+                return self._option
 
-            if self._is_first:
-                dist = torch.distributions.Categorical(probs=pi_option)
-                option = dist.sample()
-            else:
-                mask = torch.zeros_like(q_option)
-                mask[self._current_option] = 1
-                beta = prediction['beta']
-                pi_hat_option = (1 - beta) * mask + beta * pi_option
-                dist = torch.distributions.Categorical(probs=pi_hat_option)
-                option = dist.sample()
+        # have to select new option
+        probs = softmax(q_options, self.config.hl_softmax_temp)
 
+        if self.config.hl_eps_greedy is not None and self.config.hl_eps_greedy > 0:
+            # eps-soft: at-least eps prob for each action
+            eps = self.config.hl_eps_greedy
+            probs = np.clip(probs, a_min=eps, a_max=1.)
+            probs /= probs.sum()
+
+        option = self._rng.choice(self.config.num_options, p=probs)
         return option
 
     def to_dense(self, sparse_sdr):
@@ -142,9 +182,20 @@ def make_agent(_config):
     config = Config()
     config.merge(_config)
 
-    config.optimizer_fn = lambda params: torch.optim.RMSprop(params, config.learning_rate)
+    # Sanitize int config values because they might come as floats during sweep hyperparam search!
+    if config.replay_buffer_size is not None:
+        config.replay_buffer_size = int(config.replay_buffer_size)
+
+    config.optimizer_fn = lambda params: torch.optim.RMSprop(
+        params, config.learning_rate, weight_decay=config.w_regularization
+    )
     config.network_fn = lambda: OptionCriticNet(
-        FCBody(config.state_dim, hidden_units=tuple(config.hidden_units)),
+        FCBody(
+            config.state_dim,
+            hidden_units=tuple(config.hidden_units),
+            gates=config.hidden_act_f,
+            w_scale=config.w_scale
+        ),
         config.action_dim,
         num_options=config.num_options,
         softmax_temp=config.softmax_temp

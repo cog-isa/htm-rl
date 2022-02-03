@@ -1,12 +1,33 @@
-#######################################################################
-# Copyright (C) 2017 Shangtong Zhang(zhangshangtong.cpp@gmail.com)    #
-# Permission given to modify the code as long as you keep this        #
-# declaration at the top                                              #
-#######################################################################
+import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn as nn
 
 from htm_rl.common.utils import isnone
+
+
+class Q(nn.Module):
+    def __init__(self, output_dim, body):
+        super(Q, self).__init__()
+
+        self.q = layer_init(nn.Linear(body.feature_dim, output_dim))
+        self.body = body
+
+    def forward(self, x):
+        x = to_tensor(x)
+        q = self.q(self.body(x))
+        return dict(q=q)
+
+
+def to_tensor(x):
+    if isinstance(x, torch.Tensor):
+        return x
+    x = np.asarray(x, dtype=np.float32)
+    x = torch.from_numpy(x)
+    return x
+
+
+def to_np(t):
+    return t.cpu().numpy()
 
 
 class FCBody(nn.Module):

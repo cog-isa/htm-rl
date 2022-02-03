@@ -3,11 +3,8 @@ import torch
 from htm.bindings.sdr import SDR
 
 from htm_rl.agents.dqn.config import Config
-from htm_rl.agents.dqn.network_bodies import FCBody
-from htm_rl.agents.dqn.network_heads import VanillaNet
-from htm_rl.agents.dqn.replay import UniformReplay, PrioritizedTransition, DequeStorage
-from htm_rl.agents.dqn.schedule import LinearSchedule
-from htm_rl.agents.dqn.utils import tensor, to_np
+from htm_rl.agents.dqn.network import Q, to_np, FCBody
+from htm_rl.agents.dqn.replay import DequeStorage
 from htm_rl.common.utils import softmax
 
 
@@ -25,23 +22,26 @@ class DqnAgent:
         self._action = None
 
     def act(self):
-        prediction = self.network(self._state)
-        q_values = to_np(prediction['q'])
+        with torch.no_grad():
+            prediction = self.network(self._state)
+            q_values = to_np(prediction['q'])
+
+        probs = softmax(q_values, self.config.softmax_temp)
+
         if self.config.eps_greedy is not None and self.config.eps_greedy > .0:
-            if self._rng.random() < self.config.eps_greedy:
-                action = self._rng.choice(self.config.action_dim)
-            else:
-                action = np.argmax(q_values)
-        else:
-            probs = softmax(q_values, self.config.softmax_temp)
-            action = self._rng.choice(self.config.action_dim, p=probs)
+            # eps-soft: at-least eps prob for each action
+            eps = self.config.eps_greedy
+            probs = np.clip(probs, a_min=eps, a_max=1.)
+            probs /= probs.sum()
+
+        action = self._rng.choice(self.config.action_dim, p=probs)
 
         self._action = action
         return action
 
     def observe(self, next_state, reward, is_first):
         next_state = self.to_dense(next_state)
-        if self._state is None:
+        if is_first:
             self._state = next_state
             return
 
@@ -50,7 +50,6 @@ class DqnAgent:
             'a': self._action,
             'r': reward,
             's_next': next_state,
-            'done': 1 - is_first,
         })
         self._total_steps += 1
 
@@ -70,7 +69,7 @@ class DqnAgent:
         # uniformly sample a batch of transitions
         i_batch = self._rng.choice(self.replay.sub_size, self.config.batch_size)
         batch = self.replay.extract(
-            keys=['s', 'a', 'r', 's_next', 'done'],
+            keys=['s', 'a', 'r', 's_next'],
             indices=i_batch
         )
 
@@ -81,12 +80,12 @@ class DqnAgent:
         self.optimizer.step()
 
     def compute_loss(self, batch):
-        s, a, r, s_n, done = batch.s, batch.a, batch.r, batch.s_next, batch.done
+        s, a, r, s_n = batch.s, batch.a, batch.r, batch.s_next
         gamma = self.config.discount
 
         with torch.no_grad():
             q_next = self.network(s_n)['q'].detach().max(1)[0]
-            q_target = r + gamma * q_next * done
+            q_target = r + gamma * q_next
 
         a = a.long()
         q = self.network(s)['q'].gather(1, a.unsqueeze(-1)).squeeze(-1)
@@ -109,7 +108,7 @@ def make_agent(_config):
     config.optimizer_fn = lambda params: torch.optim.RMSprop(
         params, config.learning_rate, weight_decay=config.w_regularization
     )
-    config.network_fn = lambda: VanillaNet(
+    config.network_fn = lambda: Q(
         config.action_dim,
         FCBody(
             config.state_dim,

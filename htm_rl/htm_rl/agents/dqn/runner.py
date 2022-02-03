@@ -6,7 +6,6 @@ from functools import partial
 import imageio
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 import wandb
 
 from htm_rl.agents.htm.htm_agent import Scenario
@@ -20,7 +19,7 @@ class Runner:
         seed = config['seed']
         np.random.seed(seed)
         random.seed(seed)
-        torch.set_num_threads(1)
+        set_one_thread()
 
         if 'scenario' in config.keys():
             # noinspection PyTypeChecker
@@ -386,6 +385,14 @@ class Runner:
 
         wandb.define_metric("goal")
         wandb.define_metric("main_metrics/g_*", step_metric="goal")
+
+
+def set_one_thread():
+    import torch
+
+    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['MKL_NUM_THREADS'] = '1'
+    torch.set_num_threads(1)
 
 
 def resolve_agent(name, **config):

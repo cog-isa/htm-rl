@@ -12,11 +12,11 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: True  # wand logging
+log: False  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
-  n_episodes: 12000
+  n_episodes: 120
   log_every_episode: 100
   gif_every_episode: 1000
   animation_fps: 3
