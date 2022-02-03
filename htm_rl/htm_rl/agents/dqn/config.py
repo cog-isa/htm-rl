@@ -17,12 +17,16 @@ class Config:
         self.train_schedule = None
         self.hl_softmax_temp = None
         self.softmax_temp = None
+        self.eps_greedy = None
         self.seed = None
         self.learning_rate = None
         self.replay_buffer_size = None
         self.num_options = None
         self.hidden_units = None
         self.hidden_act_f = None
+        self.enable_sparse_init = None
+        self.w_scale = None
+        self.w_regularization = None
 
         # old
         self.task_fn = None

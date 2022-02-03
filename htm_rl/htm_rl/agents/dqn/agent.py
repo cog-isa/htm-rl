@@ -27,8 +27,14 @@ class DqnAgent:
     def act(self):
         prediction = self.network(self._state)
         q_values = to_np(prediction['q'])
-        probs = softmax(q_values, self.config.softmax_temp)
-        action = self._rng.choice(self.config.action_dim, p=probs)
+        if self.config.eps_greedy is not None and self.config.eps_greedy > .0:
+            if self._rng.random() < self.config.eps_greedy:
+                action = self._rng.choice(self.config.action_dim)
+            else:
+                action = np.argmax(q_values)
+        else:
+            probs = softmax(q_values, self.config.softmax_temp)
+            action = self._rng.choice(self.config.action_dim, p=probs)
 
         self._action = action
         return action
@@ -55,7 +61,7 @@ class DqnAgent:
         self.replay.reset()
 
     def train_step(self):
-        replay_buffer_filled = self.replay.sub_size >= 2 * self.config.batch_size
+        replay_buffer_filled = self.replay.is_full or self.replay.sub_size >= 4 * self.config.batch_size
         train_scheduled = self._total_steps % self.config.train_schedule == 0
 
         if not (replay_buffer_filled and train_scheduled):
@@ -100,10 +106,17 @@ def make_agent(_config):
     if config.replay_buffer_size is not None:
         config.replay_buffer_size = int(config.replay_buffer_size)
 
-    config.optimizer_fn = lambda params: torch.optim.RMSprop(params, config.learning_rate)
+    config.optimizer_fn = lambda params: torch.optim.RMSprop(
+        params, config.learning_rate, weight_decay=config.w_regularization
+    )
     config.network_fn = lambda: VanillaNet(
         config.action_dim,
-        FCBody(config.state_dim, hidden_units=tuple(config.hidden_units), gates=config.hidden_act_f)
+        FCBody(
+            config.state_dim,
+            hidden_units=tuple(config.hidden_units),
+            gates=config.hidden_act_f,
+            w_scale=config.w_scale
+        )
     )
     config.gradient_clip = 5
 

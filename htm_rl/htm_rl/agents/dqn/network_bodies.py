@@ -5,68 +5,27 @@
 #######################################################################
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from htm_rl.agents.dqn.network_utils import layer_init, NoisyLinear
 from htm_rl.common.utils import isnone
-
-
-class NatureConvBody(nn.Module):
-    def __init__(self, in_channels=4, noisy_linear=False):
-        super(NatureConvBody, self).__init__()
-        self.feature_dim = 512
-        self.conv1 = layer_init(nn.Conv2d(in_channels, 32, kernel_size=8, stride=4))
-        self.conv2 = layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2))
-        self.conv3 = layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1))
-        if noisy_linear:
-            self.fc4 = NoisyLinear(7 * 7 * 64, self.feature_dim)
-        else:
-            self.fc4 = layer_init(nn.Linear(7 * 7 * 64, self.feature_dim))
-        self.noisy_linear = noisy_linear
-
-    def reset_noise(self):
-        if self.noisy_linear:
-            self.fc4.reset_noise()
-
-    def forward(self, x):
-        y = F.relu(self.conv1(x))
-        y = F.relu(self.conv2(y))
-        y = F.relu(self.conv3(y))
-        y = y.view(y.size(0), -1)
-        y = F.relu(self.fc4(y))
-        return y
-
-
-class DDPGConvBody(nn.Module):
-    def __init__(self, in_channels=4):
-        super(DDPGConvBody, self).__init__()
-        self.feature_dim = 39 * 39 * 32
-        self.conv1 = layer_init(nn.Conv2d(in_channels, 32, kernel_size=3, stride=2))
-        self.conv2 = layer_init(nn.Conv2d(32, 32, kernel_size=3))
-
-    def forward(self, x):
-        y = F.elu(self.conv1(x))
-        y = F.elu(self.conv2(y))
-        y = y.view(y.size(0), -1)
-        return y
 
 
 class FCBody(nn.Module):
     # orig 64, 64
-    def __init__(self, state_dim, hidden_units=(64, 32), gates=None, noisy_linear=False):
+    def __init__(self, state_dim, hidden_units, w_scale, gates=None, enable_sparse_init=False):
         super(FCBody, self).__init__()
         dims = (state_dim,) + tuple(hidden_units)
-        if noisy_linear:
-            self.layers = nn.ModuleList(
-                [NoisyLinear(dim_in, dim_out) for dim_in, dim_out in zip(dims[:-1], dims[1:])])
-        else:
-            self.layers = nn.ModuleList(
-                [layer_init(nn.Linear(dim_in, dim_out)) for dim_in, dim_out in zip(dims[:-1], dims[1:])])
+        self.layers = nn.ModuleList([
+            layer_init(
+                nn.Linear(dim_in, dim_out),
+                'sparse' if dim_in > 100 and enable_sparse_init else 'xavier',
+                w_scale
+            )
+            for dim_in, dim_out in zip(dims[:-1], dims[1:])
+        ])
 
         gates = isnone(gates, [None]*len(hidden_units))
-        self.gates = [self._gate(gate, torch.relu) for gate in gates]
+        self.gates = [self._gate(gate, torch.relu) for gate in gates[:len(hidden_units)]]
         self.feature_dim = dims[-1]
-        self.noisy_linear = noisy_linear
 
     def reset_noise(self):
         if self.noisy_linear:
@@ -89,10 +48,13 @@ class FCBody(nn.Module):
             raise KeyError(f'{gate} is unsupported activation function')
 
 
-class DummyBody(nn.Module):
-    def __init__(self, state_dim):
-        super(DummyBody, self).__init__()
-        self.feature_dim = state_dim
+def layer_init(layer, init_type='xavier', w_scale=1e-2):
+    if init_type == 'xavier':
+        nn.init.xavier_uniform_(layer.weight.data, w_scale)
+    elif init_type == 'sparse':
+        nn.init.sparse_(layer.weight.data, .5, w_scale)
+    else:
+        nn.init.constant_(layer.weight.data, w_scale)
 
-    def forward(self, x):
-        return x
+    nn.init.constant_(layer.bias.data, w_scale)
+    return layer
