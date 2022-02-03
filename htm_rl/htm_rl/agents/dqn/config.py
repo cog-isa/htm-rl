@@ -16,6 +16,7 @@ class Config:
         self.batch_size = None
         self.train_schedule = None
         self.hl_softmax_temp = None
+        self.hl_eps_greedy = None
         self.softmax_temp = None
         self.eps_greedy = None
         self.seed = None

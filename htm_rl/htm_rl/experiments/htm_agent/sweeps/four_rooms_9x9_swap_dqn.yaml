@@ -25,6 +25,16 @@ parameters:
     min: -6.9   # 0.001
     max: 2.3    # 10
 
+  # 0.
+  cagent..eps_greedy:
+    values:
+      - 0.
+      - .05
+      - .1
+      - .15
+      - .2
+      - .3
+
   # .92
   cagent..discount:
     distribution: uniform
@@ -58,19 +68,22 @@ parameters:
   # [128, 64]
   cagent..hidden_units:
     values:
-      - [128, 64]
-      - [256, 64]
       - [64, 64]
-      - [128, 32]
-      - [64, 32]
+      - [256, 256]
+      - [256, 256, 128]
+      - [256, 256, 128, 128]
 
-  # ['relu', 'relu']
-  cagent..hidden_act_f:
-    values:
-      - ['relu', 'relu']
-      - ['relu', 'tanh']
-      - ['tanh', 'relu']
-      - ['tanh', 'tanh']
+  # .01
+  w_scale..learning_rate:
+    distribution: log_uniform
+    min: -6.9  # 0.001
+    max: 0   # 1.
+
+  # .0001
+  w_regularization..learning_rate:
+    distribution: log_uniform
+    min: -11.5  # 0.00001
+    max: -2.3   # 0.1
 
 command:
   - ${env}
