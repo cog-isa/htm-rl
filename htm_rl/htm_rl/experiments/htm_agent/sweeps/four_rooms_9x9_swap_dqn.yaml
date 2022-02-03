@@ -74,13 +74,13 @@ parameters:
       - [256, 256, 128, 128]
 
   # .01
-  w_scale..learning_rate:
+  cagent..w_scale:
     distribution: log_uniform
     min: -6.9  # 0.001
     max: 0   # 1.
 
   # .0001
-  w_regularization..learning_rate:
+  cagent..w_regularization:
     distribution: log_uniform
     min: -11.5  # 0.00001
     max: -2.3   # 0.1
