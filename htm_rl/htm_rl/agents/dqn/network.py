@@ -48,11 +48,6 @@ class FCBody(nn.Module):
         self.gates = [self._gate(gate, torch.relu) for gate in gates[:len(hidden_units)]]
         self.feature_dim = dims[-1]
 
-    def reset_noise(self):
-        if self.noisy_linear:
-            for layer in self.layers:
-                layer.reset_noise()
-
     def forward(self, x):
         for layer, gate in zip(self.layers, self.gates):
             x = gate(layer(x))
@@ -69,13 +64,17 @@ class FCBody(nn.Module):
             raise KeyError(f'{gate} is unsupported activation function')
 
 
-def layer_init(layer, init_type='xavier', w_scale=1e-2):
-    if init_type == 'xavier':
-        nn.init.xavier_uniform_(layer.weight.data, w_scale)
-    elif init_type == 'sparse':
-        nn.init.sparse_(layer.weight.data, .5, w_scale)
-    else:
-        nn.init.constant_(layer.weight.data, w_scale)
+def layer_init(layer, init_type='xavier', w_scale=1e-1):
+    nn.init.orthogonal_(layer.weight.data)
+    layer.weight.data.mul_(w_scale)
 
-    nn.init.constant_(layer.bias.data, w_scale)
+    # if init_type == 'xavier':
+    #     nn.init.uniform_(layer.weight.data, -w_scale, w_scale)
+    #     # nn.init.xavier_uniform_(layer.weight.data, w_scale)
+    # elif init_type == 'sparse':
+    #     nn.init.sparse_(layer.weight.data, .5, w_scale)
+    # else:
+    #     nn.init.uniform_(layer.weight.data, -w_scale, w_scale)
+
+    nn.init.constant_(layer.bias.data, 0)
     return layer

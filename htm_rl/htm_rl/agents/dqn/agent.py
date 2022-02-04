@@ -30,18 +30,24 @@ class DqnAgent:
 
         if self.config.eps_greedy is not None and self.config.eps_greedy > .0:
             # eps-soft: at-least eps prob for each action
-            eps = self.config.eps_greedy
+            eps = self.config.eps_greedy / self.config.action_dim
             probs = np.clip(probs, a_min=eps, a_max=1.)
             probs /= probs.sum()
 
         action = self._rng.choice(self.config.action_dim, p=probs)
+
+        # action = np.argmax(q_values)
+        # if self.config.eps_greedy is not None and self.config.eps_greedy > .0:
+        #     eps = self.config.eps_greedy
+        #     if self._rng.random() < eps:
+        #         action = self._rng.choice(self.config.action_dim)
 
         self._action = action
         return action
 
     def observe(self, next_state, reward, is_first):
         next_state = self.to_dense(next_state)
-        if is_first:
+        if self._state is None:
             self._state = next_state
             return
 
@@ -50,6 +56,7 @@ class DqnAgent:
             'a': self._action,
             'r': reward,
             's_next': next_state,
+            'done': is_first,
         })
         self._total_steps += 1
 
@@ -69,28 +76,38 @@ class DqnAgent:
         # uniformly sample a batch of transitions
         i_batch = self._rng.choice(self.replay.sub_size, self.config.batch_size)
         batch = self.replay.extract(
-            keys=['s', 'a', 'r', 's_next'],
+            keys=['s', 'a', 'r', 's_next', 'done'],
             indices=i_batch
         )
 
         self.optimizer.zero_grad()
         loss = self.compute_loss(batch)
+        # if loss < 1e-10:
+        #     return
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
         self.optimizer.step()
+        #
+        # with torch.no_grad():
+        #     loss = loss.detach()
+        #     loss2 = self.compute_loss(batch).detach()
+        #
+        # assert abs(loss - loss2) < 1e-4
 
+    # noinspection PyPep8Naming
     def compute_loss(self, batch):
-        s, a, r, s_n = batch.s, batch.a, batch.r, batch.s_next
+        s, a, r, s_n, done = batch.s, batch.a, batch.r, batch.s_next, batch.done
+        a = a.long().unsqueeze(-1)
         gamma = self.config.discount
 
         with torch.no_grad():
-            q_next = self.network(s_n)['q'].detach().max(1)[0]
-            q_target = r + gamma * q_next
+            V_sn = self.network(s_n)['q'].max(1)[0]
+            td_target = r + gamma * V_sn * (1 - done)
+            td_target = td_target.detach()
 
-        a = a.long()
-        q = self.network(s)['q'].gather(1, a.unsqueeze(-1)).squeeze(-1)
-        td_error = q - q_target
-        return td_error.pow(2).mean() / 2
+        Q_s = self.network(s)['q'].gather(1, a).squeeze(-1)
+        td_error = Q_s - td_target
+        return td_error.pow(2).mul(0.5).mean()
 
     def to_dense(self, sparse_sdr):
         self._state_sdr.sparse = sparse_sdr
@@ -106,7 +123,8 @@ def make_agent(_config):
         config.replay_buffer_size = int(config.replay_buffer_size)
 
     config.optimizer_fn = lambda params: torch.optim.RMSprop(
-        params, config.learning_rate, weight_decay=config.w_regularization
+        params, lr=config.learning_rate,
+        weight_decay=config.w_regularization
     )
     config.network_fn = lambda: Q(
         config.action_dim,
@@ -117,7 +135,7 @@ def make_agent(_config):
             w_scale=config.w_scale
         )
     )
-    config.gradient_clip = 5
+    config.gradient_clip = .1
 
     agent = DqnAgent(config)
     return agent

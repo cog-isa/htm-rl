@@ -1,7 +1,7 @@
 seed: &seed 43872
 levels: 2
 agent: o-c
-project: 4rooms_swap_oc
+project: 4rooms_swap_oc_2
 entity: pkuderov  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
@@ -36,7 +36,7 @@ environment:
     - move down
     - move left
     - move up
-    - stay
+#    - stay
 
   rendering:
     view_rectangle: [[-2, -2], [2, 2]]
@@ -65,19 +65,21 @@ environment:
 cagent:
   seed: *seed
   discount: 0.92
+  cr_softmax_temp: 0.015
   cr_learning_rate: .0002
-  cr_softmax_temp: 0.1
-  cr_eps_greedy: .0
-  cr_train_schedule: 4
+  cr_eps_greedy: .05
+  cr_train_schedule: 10
   cr_batch_size: 20
   cr_replay_buffer_size: 5000
-  ac_softmax_temp: 0.1
-  ac_eps_greedy: .0
-  ac_learning_rate: .00025
-  num_options: 4
-  termination_regularizer: 0.001
+  ac_softmax_temp: 0.015
+  ac_eps_greedy: .05
+  ac_train_schedule: 10
+  ac_learning_rate: .0002
+  num_options: 1
+  termination_regularizer: 0.1
   entropy_weight: 0.01
-  hidden_units: [256, 256, 128]
+  hidden_units: [256, 128]
+#  hidden_units: [256, 256, 128]
   hidden_act_f: ['relu', 'tanh', 'relu', 'relu']
   enable_sparse_init: False
   w_scale: .01
