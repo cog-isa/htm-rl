@@ -77,7 +77,8 @@ class OptionCriticAgent:
             return
 
         # uniformly sample a batch of transitions
-        i_batch = -np.arange(self.config.ac_train_schedule) + self.replay.sub_size - 1
+        batch_size = min(self.config.ac_train_schedule, self.replay.sub_size)
+        i_batch = -np.arange(batch_size) + self.replay.sub_size - 1
         i_batch = i_batch[::-1]
         batch = self.replay.extract(
             keys=['s', 'o', 'a', 'r', 's_next', 'done'],

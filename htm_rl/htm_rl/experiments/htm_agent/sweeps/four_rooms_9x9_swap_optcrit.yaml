@@ -106,13 +106,13 @@ parameters:
   cagent..entropy_weight:
     distribution: log_uniform
     min: -11.5  # 1e-5
-    max: 0   # 1.
+    max: 0.   # 1.
 
   # 1.
   cagent..w_scale:
     distribution: log_uniform
     min: -6.9  # 0.001
-    max: 0   # 1.
+    max: 0.   # 1.
 
   # 1e-6
   cagent..w_regularization:
