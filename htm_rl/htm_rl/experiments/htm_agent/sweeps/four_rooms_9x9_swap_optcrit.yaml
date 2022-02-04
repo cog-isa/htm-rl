@@ -31,65 +31,100 @@ parameters:
     min: -6.9   # 0.001
     max: 2.3    # 10
 
-  # 0.
-  cagent..eps_greedy:
+  # 0.05
+  cagent..cr_eps_greedy:
     values:
       - 0.
       - .05
       - .1
-      - .15
       - .2
-      - .3
+
+  # 1e-6
+  cagent..cr_learning_rate:
+    distribution: log_uniform
+    min: -16.1  # 1e-7
+    max: -4.5   # 1e-2
 
   # 10
-  cagent..train_schedule:
+  cagent..cr_train_schedule:
     distribution: int_uniform
     min: 1
     max: 64
 
-  # 32
-  cagent..batch_size:
+  # 16
+  cagent..cr_batch_size:
     distribution: int_uniform
     min: 1
     max: 32
 
-  # .001
-  cagent..learning_rate:
-    distribution: log_uniform
-    min: -11.5  # 0.00001
-    max: -2.3   # 0.1
-
-  # 500
-  cagent..replay_buffer_size:
+  # 200
+  cagent..cr_replay_buffer_size:
     distribution: log_uniform
     min: 4.5    # 100
     max: 8.5    # 5000
 
+  # 1.0
+  cagent..ac_softmax_temp:
+    distribution: log_uniform
+    min: -6.9   # 0.001
+    max: 2.3    # 10
+
+  # 0.05
+  cagent..ac_eps_greedy:
+    values:
+      - 0.
+      - .05
+      - .1
+      - .2
+
+  # 10
+  cagent..ac_train_schedule:
+    distribution: int_uniform
+    min: 1
+    max: 64
+
+  # 1e-6
+  cagent..ac_learning_rate:
+    distribution: log_uniform
+    min: -16.1  # 1e-7
+    max: -4.5   # 1e-2
+
   # [128, 64]
   cagent..hidden_units:
     values:
-      - [64, 64]
-      - [256, 256]
-      - [256, 256, 128]
-      - [256, 256, 128, 128]
+      - [512, 256, 256]
+      - [512, 512]
+      - [512, 256, 256, 256]
 
-  # .01
+  # 1e-4
+  cagent..termination_regularizer:
+    distribution: log_uniform
+    min: -11.5  # 1e-5
+    max: -4.5   # 1e-2
+
+  # 1e-3
+  cagent..entropy_weight:
+    distribution: log_uniform
+    min: -11.5  # 1e-5
+    max: 0   # 1.
+
+  # 1.
   cagent..w_scale:
     distribution: log_uniform
     min: -6.9  # 0.001
     max: 0   # 1.
 
-  # .0001
+  # 1e-6
   cagent..w_regularization:
     distribution: log_uniform
-    min: -11.5  # 0.00001
-    max: -2.3   # 0.1
+    min: -16.1  # 1e-7
+    max: -4.5   # 1e-2
 
 command:
   - ${env}
   - python
   - ${program}
-  - four_rooms_9x9_swap_dqn
+  - four_rooms_9x9_swap_optcrit
   - ${args}
 
 

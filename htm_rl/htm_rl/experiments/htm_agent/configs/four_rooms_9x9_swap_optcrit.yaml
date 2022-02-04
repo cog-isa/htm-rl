@@ -1,7 +1,7 @@
 seed: &seed 43872
 levels: 2
 agent: o-c
-project: 4rooms_swap_oc_2
+project: 4rooms_swap_oc
 entity: pkuderov  # don't forget to change if you use logging
 
 scenario: '../../experiments/htm_agent/scenarios/four_rooms_swap.yaml'
@@ -65,7 +65,7 @@ environment:
 cagent:
   seed: *seed
   discount: 0.92
-  cr_softmax_temp: 0.002
+  cr_softmax_temp: 0.02
   cr_eps_greedy: .05
   cr_learning_rate: .000001
   cr_train_schedule: 10
