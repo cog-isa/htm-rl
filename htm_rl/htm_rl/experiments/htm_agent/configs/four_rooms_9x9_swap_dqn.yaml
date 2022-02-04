@@ -69,10 +69,11 @@ cagent:
   discount: 0.92
   train_schedule: 4
   batch_size: 16
-  learning_rate: .00001
-  replay_buffer_size: 100
-  hidden_units: [256, 128, 128]
+  learning_rate: .000001
+  replay_buffer_size: 200
+  hidden_units: [512, 128, 64]
   hidden_act_f: ['relu', 'relu', 'relu', 'relu']
   enable_sparse_init: False
   w_scale: 1.
   w_regularization: .000001
+  gradient_clip: .1

@@ -36,12 +36,6 @@ class DqnAgent:
 
         action = self._rng.choice(self.config.action_dim, p=probs)
 
-        # action = np.argmax(q_values)
-        # if self.config.eps_greedy is not None and self.config.eps_greedy > .0:
-        #     eps = self.config.eps_greedy
-        #     if self._rng.random() < eps:
-        #         action = self._rng.choice(self.config.action_dim)
-
         self._action = action
         return action
 
@@ -82,17 +76,9 @@ class DqnAgent:
 
         self.optimizer.zero_grad()
         loss = self.compute_loss(batch)
-        # if loss < 1e-10:
-        #     return
         loss.backward()
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
         self.optimizer.step()
-        #
-        # with torch.no_grad():
-        #     loss = loss.detach()
-        #     loss2 = self.compute_loss(batch).detach()
-        #
-        # assert abs(loss - loss2) < 1e-4
 
     # noinspection PyPep8Naming
     def compute_loss(self, batch):
@@ -135,7 +121,6 @@ def make_agent(_config):
             w_scale=config.w_scale
         )
     )
-    config.gradient_clip = .1
 
     agent = DqnAgent(config)
     return agent
