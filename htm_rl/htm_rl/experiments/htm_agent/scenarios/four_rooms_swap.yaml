@@ -2,7 +2,7 @@
   check_every: 'total_terminals'
   action: 'level_up'
   params: {}
-- condition: ['last_terminal_stat', 'mod', 1000, 'repeat']
+- condition: ['last_terminal_stat', 'mod', 100, 'repeat']
   check_every: 'last_terminal_stat'
   action: 'set_pos_rand_rooms'
   params:
