@@ -56,8 +56,6 @@ class OptionCriticAgent:
 
     def observe(self, next_state, reward, is_first):
         next_state = self.to_dense(next_state)
-        if is_first:
-            self._option = None
         if self._state is None:
             self._state = next_state
             return

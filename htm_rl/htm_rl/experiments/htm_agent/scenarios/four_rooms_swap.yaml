@@ -2,14 +2,14 @@
   check_every: 'total_terminals'
   action: 'level_up'
   params: {}
-- condition: ['last_terminal_stat', 'mod', 100, 'repeat']
+- condition: ['last_terminal_stat', 'mod', 1000, 'repeat']
   check_every: 'last_terminal_stat'
   action: 'set_pos_rand_rooms'
   params:
     agent_fixed_positions: [ [ 1, 2 ], [ 1, 6 ], [ 7, 2 ], [ 7, 6 ] ]
     food_fixed_positions: null
     door_positions: [ [4, 2], [1, 4], [4, 6], [7, 4] ]
-- condition: ['level', 'equal', 3, 'norepeat']
+- condition: ['level', 'equal', 2, 'norepeat']
   check_every: 'level'
   action: 'stop'
   params: {}

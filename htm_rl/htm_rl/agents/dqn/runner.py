@@ -172,7 +172,7 @@ class Runner:
             self.task += 1
             self.agent.flush_replay()
 
-        if self.episode == 1 or self.episode % gif_schedule == 0:
+        if gif_schedule > 0 and (self.episode == 1 or self.episode % gif_schedule == 0):
             self.animation = True
 
     def log_gif_animation(self, animation_fps):

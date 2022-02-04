@@ -1,0 +1,96 @@
+project: 4_rooms_oc_sweep
+entity: pkuderov
+program: ../../agents/htm/htm_agent.py
+#method: grid
+method: bayes
+metric:
+  name: main_metrics/g_total_steps
+  goal: minimize
+
+parameters:
+  seed.:
+    value: 4654
+  environment..seed:
+    value: 45812
+  run_options..n_episodes:
+    value: 10000
+  run_options..log_every_episode:
+    value: 200
+  run_options..gif_every_episode:
+    value: 2000
+
+  # .92
+  cagent..discount:
+    distribution: uniform
+    min: 0.9
+    max: 0.99
+
+  # 0.002
+  cagent..cr_softmax_temp:
+    distribution: log_uniform
+    min: -6.9   # 0.001
+    max: 2.3    # 10
+
+  # 0.
+  cagent..eps_greedy:
+    values:
+      - 0.
+      - .05
+      - .1
+      - .15
+      - .2
+      - .3
+
+  # 10
+  cagent..train_schedule:
+    distribution: int_uniform
+    min: 1
+    max: 64
+
+  # 32
+  cagent..batch_size:
+    distribution: int_uniform
+    min: 1
+    max: 32
+
+  # .001
+  cagent..learning_rate:
+    distribution: log_uniform
+    min: -11.5  # 0.00001
+    max: -2.3   # 0.1
+
+  # 500
+  cagent..replay_buffer_size:
+    distribution: log_uniform
+    min: 4.5    # 100
+    max: 8.5    # 5000
+
+  # [128, 64]
+  cagent..hidden_units:
+    values:
+      - [64, 64]
+      - [256, 256]
+      - [256, 256, 128]
+      - [256, 256, 128, 128]
+
+  # .01
+  cagent..w_scale:
+    distribution: log_uniform
+    min: -6.9  # 0.001
+    max: 0   # 1.
+
+  # .0001
+  cagent..w_regularization:
+    distribution: log_uniform
+    min: -11.5  # 0.00001
+    max: -2.3   # 0.1
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_swap_dqn
+  - ${args}
+
+
+
