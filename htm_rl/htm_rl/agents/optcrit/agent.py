@@ -6,12 +6,11 @@
 import numpy as np
 import torch
 from htm.bindings.sdr import SDR
-from torch import nn
 
-from htm_rl.agents.optcrit.config import Config
 from htm_rl.agents.dqn.network import to_np, FCBody
-from htm_rl.agents.optcrit.network import OptionCriticNet
 from htm_rl.agents.dqn.replay import DequeStorage
+from htm_rl.agents.optcrit.config import Config
+from htm_rl.agents.optcrit.network import OptionCriticNet
 from htm_rl.common.utils import softmax
 
 
@@ -58,6 +57,7 @@ class OptionCriticAgent:
         next_state = self.to_dense(next_state)
         if self._state is None:
             self._state = next_state
+            self._total_steps += 1
             return
 
         s, o, a, r, s_next = self._state, self._option, self._action, reward, next_state
@@ -78,6 +78,9 @@ class OptionCriticAgent:
 
         # uniformly sample a batch of transitions
         batch_size = min(self.config.ac_train_schedule, self.replay.sub_size)
+        if batch_size == 0:
+            return
+
         i_batch = -np.arange(batch_size) + self.replay.sub_size - 1
         i_batch = i_batch[::-1]
         batch = self.replay.extract(

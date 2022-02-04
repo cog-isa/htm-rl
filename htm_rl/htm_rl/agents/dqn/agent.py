@@ -43,6 +43,7 @@ class DqnAgent:
         next_state = self.to_dense(next_state)
         if self._state is None:
             self._state = next_state
+            self._total_steps += 1
             return
 
         self.replay.feed({
