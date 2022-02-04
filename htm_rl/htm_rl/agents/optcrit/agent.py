@@ -44,7 +44,7 @@ class OptionCriticAgent:
         probs = to_np(prediction['pi'][option])
         if self.config.ac_eps_greedy is not None and self.config.ac_eps_greedy > .0:
             # eps-soft: at-least eps prob for each action
-            eps = self.config.ac_eps_greedy
+            eps = self.config.ac_eps_greedy / self.config.action_dim
             probs = np.clip(probs, a_min=eps, a_max=1.)
             probs /= probs.sum()
 
@@ -57,80 +57,38 @@ class OptionCriticAgent:
     def observe(self, next_state, reward, is_first):
         next_state = self.to_dense(next_state)
         if is_first:
-            self._state = next_state
             self._option = None
+        if self._state is None:
+            self._state = next_state
             return
 
         s, o, a, r, s_next = self._state, self._option, self._action, reward, next_state
-        self.replay.feed({'s': s, 'o': o, 'a': a, 'r': r, 's_next': s_next})
+        self.replay.feed({'s': s, 'o': o, 'a': a, 'r': r, 's_next': s_next, 'done': is_first})
         self._total_steps += 1
 
         self.train_critic_step()
-        self.train_actor_step(s, o, a, r, s_next)
+        self.train_actor_step()
 
-        # self._is_first = is_first
         self._state = next_state
 
-        # self.train_step()
-        #
-        # self._storage.feed({
-        #     'prev_option': self._option,
-        #     'reward': reward,
-        #     'mask': 1 - is_first,
-        #     'ret': None,
-        #     'advantage': None,
-        #     'beta_advantage': None,
-        # })
+    def train_actor_step(self):
+        replay_buffer_filled = self.replay.is_full or self.replay.sub_size >= self.config.ac_train_schedule
+        train_scheduled = self._total_steps % self.config.ac_train_schedule == 0
 
-    def train_step(self):
-        storage = self.replay
-        if not storage.is_full:
+        if not (replay_buffer_filled and train_scheduled):
             return
 
-        with torch.no_grad():
-            prediction = self.network(self._state)
-            q_options = prediction['q']
-            betas = prediction['beta'][self._option]
-            ret = (1 - betas) * q_options[self._option] + betas * torch.max(q_options)
-
-        config = self.config
-        for i in reversed(range(config.batch_size)):
-            r, q = storage['reward'][i], storage['q'][i]
-            ret = r + config.discount * storage['mask'][i] * ret
-            adv = ret - q[storage['option'][i]]
-            storage['ret'][i] = ret
-            storage['advantage'][i] = adv
-
-            probs = torch.softmax(q, dim=-1)
-            v = q.dot(probs)
-            q_s = q[storage['prev_option'][i]]
-            storage['beta_advantage'][i] = q_s - v + config.termination_regularizer
-
-        entries = storage.extract(
-            ['q', 'beta', 'log_pi', 'ret', 'advantage', 'beta_advantage', 'entropy', 'option', 'action', 'init_state', 'prev_option']
+        # uniformly sample a batch of transitions
+        i_batch = -np.arange(self.config.ac_train_schedule) + self.replay.sub_size - 1
+        i_batch = i_batch[::-1]
+        batch = self.replay.extract(
+            keys=['s', 'o', 'a', 'r', 's_next', 'done'],
+            indices=i_batch
         )
 
-        q_loss = (entries.q.gather(0, entries.option) - entries.ret.detach()).pow(2).mul(0.5).mean()
-        pi_loss = -(
-            entries.log_pi.gather(0, entries.action) * entries.advantage.detach()
-            + config.entropy_weight * entries.entropy
-        )
-        pi_loss = pi_loss.mean()
-        beta_loss = (
-                entries.beta.gather(0, entries.prev_option) * entries.beta_advantage.detach() * (1 - entries.init_state)
-        ).mean()
-
-        self.optimizer.zero_grad()
-        (pi_loss + q_loss + beta_loss).backward()
-        nn.utils.clip_grad_norm_(self.network.parameters(), config.gradient_clip)
-        self.optimizer.step()
-        self.replay.reset()
-
-    def train_actor_step(self, s, o, a, r, s_n):
         self.ac_optimizer.zero_grad()
-        pi_loss, beta_loss = self.compute_actor_loss(s, o, a, r, s_n)
-
-        (pi_loss + beta_loss).backward()
+        loss = self.compute_actor_loss(batch)
+        loss.backward()
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
         self.ac_optimizer.step()
 
@@ -144,7 +102,7 @@ class OptionCriticAgent:
         # uniformly sample a batch of transitions
         i_batch = self._rng.choice(self.replay.sub_size, self.config.cr_batch_size)
         batch = self.replay.extract(
-            keys=['s', 'o', 'a', 'r', 's_next'],
+            keys=['s', 'o', 'a', 'r', 's_next', 'done'],
             indices=i_batch
         )
 
@@ -154,58 +112,66 @@ class OptionCriticAgent:
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
         self.cr_optimizer.step()
 
-    def compute_actor_loss(self, s, o, a, r, s_n):
+    def compute_actor_loss(self, batch):
+        s, o, a, r, s_n, done = batch.s, batch.o, batch.a, batch.r, batch.s_next, batch.done
+        # [batch_size, 1]
+        o = o.long().unsqueeze(-1)
+        a = a.long().unsqueeze(-1)
+        # [batch_size, 1, n_actions]
+        o_a = o.unsqueeze(-1).expand(*o.size(), self.config.action_dim)
+        gamma = self.config.discount
+
         pred = self.network(s)
-        pi = pred['pi'][o]
-        log_pi = pred['log_pi'][o]
-        beta_s_o = pred['beta'][o]
+        pi_o = pred['pi'].gather(1, o_a).squeeze(1)
+        log_pi_o = pred['log_pi'].gather(1, o_a).squeeze(1)
+        beta_s_o = pred['beta'].gather(1, o).squeeze(-1)
 
         with torch.no_grad():
             Q_s = pred['q']
-            Q_s_o = Q_s[o]
-            V_s = Q_s.max()
+            Q_s_o = Q_s.gather(1, o).squeeze(-1)
+            V_s = Q_s.max(-1)[0]
             beta_advantage = Q_s_o - V_s + self.config.termination_regularizer
 
         beta_loss = beta_s_o * beta_advantage
 
-        gamma = self.config.discount
         with torch.no_grad():
             pred_next = self.network(s_n)
-            beta_sn_o = pred_next['beta'][o]
-            Q_sn_o = pred_next['q'][o]
-            V_sn = pred_next['q'].max()
+            beta_sn_o = pred_next['beta'].gather(1, o).squeeze(-1)
+            Q_sn_o = pred_next['q'].gather(1, o).squeeze(-1)
+            V_sn = pred_next['q'].max(-1)[0]
 
             U_sn_o = (1 - beta_sn_o) * Q_sn_o + beta_sn_o * V_sn
 
-            Q_s_o_a = r + gamma * U_sn_o
+            Q_s_o_a = r + gamma * U_sn_o * (1 - done)
             advantage = Q_s_o_a - Q_s_o
-            entropy = -(pi * log_pi).sum()
+            entropy = -(pi_o * log_pi_o).sum(-1)
 
         w_entropy = self.config.entropy_weight
-        pi_loss = -log_pi[a] * advantage - w_entropy * entropy
+        log_pi_o_a = log_pi_o.gather(1, a).squeeze(-1)
 
-        return pi_loss, beta_loss
+        pi_loss = -(log_pi_o_a * advantage + w_entropy * entropy)
+
+        return (pi_loss + beta_loss).mean()
 
     def compute_critic_loss(self, batch):
-        s, o, a, r, s_n = batch.s, batch.o, batch.a, batch.r, batch.s_next
+        s, o, a, r, s_n, done = batch.s, batch.o, batch.a, batch.r, batch.s_next, batch.done
         o = o.long().unsqueeze(-1)
         gamma = self.config.discount
 
         with torch.no_grad():
             pred_next = self.network(s_n)
 
-        beta_sn_o = pred_next['beta'].gather(1, o).squeeze()
-        Q_sn_o = pred_next['q'].gather(1, o).squeeze()
+        beta_sn_o = pred_next['beta'].gather(1, o).squeeze(-1)
+        Q_sn_o = pred_next['q'].gather(1, o).squeeze(-1)
         V_sn = pred_next['q'].max(-1)[0]
 
         U_sn_o = (1 - beta_sn_o) * Q_sn_o + beta_sn_o * V_sn
-        td_target = r + gamma * U_sn_o
+        td_target = r + gamma * U_sn_o * (1 - done)
 
-        Q_s_o = self.network(s)['q'].gather(1, o).squeeze()
+        Q_s_o = self.network(s)['q'].gather(1, o).squeeze(-1)
         td_error = Q_s_o - td_target
 
-        # advantage and beta advantage
-        return td_error.pow(2).mean() / 2
+        return td_error.pow(2).mul(.5).mean()
 
     def flush_replay(self):
         self.replay.reset()
@@ -221,7 +187,7 @@ class OptionCriticAgent:
 
         if self.config.cr_eps_greedy is not None and self.config.cr_eps_greedy > 0:
             # eps-soft: at-least eps prob for each action
-            eps = self.config.cr_eps_greedy
+            eps = self.config.cr_eps_greedy / self.config.action_dim
             probs = np.clip(probs, a_min=eps, a_max=1.)
             probs /= probs.sum()
 
@@ -258,6 +224,5 @@ def make_agent(_config):
         num_options=config.num_options,
         softmax_temp=config.ac_softmax_temp
     )
-    config.gradient_clip = 5
     agent = OptionCriticAgent(config)
     return agent

@@ -65,22 +65,23 @@ environment:
 cagent:
   seed: *seed
   discount: 0.92
-  cr_softmax_temp: 0.015
-  cr_learning_rate: .0002
-  cr_eps_greedy: .05
-  cr_train_schedule: 10
-  cr_batch_size: 20
-  cr_replay_buffer_size: 5000
-  ac_softmax_temp: 0.015
-  ac_eps_greedy: .05
-  ac_train_schedule: 10
-  ac_learning_rate: .0002
+  cr_softmax_temp: 0.02
+  cr_learning_rate: .000004
+  cr_eps_greedy: .1
+  cr_train_schedule: 4
+  cr_batch_size: 16
+  cr_replay_buffer_size: 200
+  ac_softmax_temp: 0.002
+  ac_eps_greedy: .1
+  ac_train_schedule: 4
+  ac_learning_rate: .000004
   num_options: 1
   termination_regularizer: 0.1
   entropy_weight: 0.01
-  hidden_units: [256, 128]
+  hidden_units: [512, 128, 64]
 #  hidden_units: [256, 256, 128]
   hidden_act_f: ['relu', 'tanh', 'relu', 'relu']
   enable_sparse_init: False
-  w_scale: .01
-  w_regularization: .0001
+  w_scale: 1.
+  w_regularization: .000001
+  gradient_clip: .1
