@@ -48,13 +48,13 @@ parameters:
   # 10
   cagent..cr_train_schedule:
     distribution: int_uniform
-    min: 1
+    min: 4
     max: 64
 
   # 16
   cagent..cr_batch_size:
     distribution: int_uniform
-    min: 1
+    min: 4
     max: 32
 
   # 200
@@ -80,7 +80,7 @@ parameters:
   # 10
   cagent..ac_train_schedule:
     distribution: int_uniform
-    min: 2
+    min: 4
     max: 64
 
   # 1e-6
@@ -119,6 +119,12 @@ parameters:
     distribution: log_uniform
     min: -16.1  # 1e-7
     max: -4.5   # 1e-2
+
+  # 1e-6
+  cagent..gradient_clip:
+    distribution: log_uniform
+    min: -4.5   # 1e-2
+    max: 2.3   # 1e+1
 
 command:
   - ${env}
