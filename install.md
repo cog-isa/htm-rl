@@ -40,7 +40,7 @@ File `requirements.txt` contains all required dependencies. Dependencies are gro
 
 ### Install requirements to dedicated python environment
 
-In this section we provide you with two options: install requirements using both conda and pip or install everything with pip. In both cases requirements are installed into the new conda environment. The name of the environment is up to you, we use `htm` for this guide.
+In this section we provide you with two options: install requirements using both conda and pip or install everything with pip. In both cases requirements are installed into the new conda environment. The name of the environment is up to you, we use `hima` for this guide.
 
 *Do not hesitate to check that the package lists in the commands below match requirements in `requirements.txt`.*
 
@@ -49,8 +49,8 @@ In this section we provide you with two options: install requirements using both
 Create new conda environment and install the conda requirements group, then install pip requirements group:
 
 ```bash
-conda create --name htm python=3.9 numpy matplotlib jupyterlab ruamel.yaml tqdm wandb mock imageio seaborn
-conda activate htm
+conda create --name hima python=3.9 numpy matplotlib jupyterlab ruamel.yaml tqdm wandb mock imageio seaborn
+conda activate hima
 pip install hexy prettytable pytest>=4.6.5
 ```
 
@@ -59,8 +59,8 @@ pip install hexy prettytable pytest>=4.6.5
 Create new conda environment and install everything with pip:
 
 ```bash
-conda create --name htm python=3.9
-conda activate htm
+conda create --name hima python=3.9
+conda activate hima
 pip install -r requirements.txt
 ```
 
@@ -80,7 +80,7 @@ pip install --use-feature=in-tree-build .
 Install our `htm_rl` package:
 
 ```bash
-cd <htm_rl_project_root>/htm_rl
+cd <hima_project_root>/htm_rl
 pip install -e .
 ```
 
