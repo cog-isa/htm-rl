@@ -6,7 +6,7 @@ method: grid
 parameters:
   seed:
     values: [54372, 43213, 90483]
-  environment.seed: 
+  environment..seed: 
     values: [43802, 90191, 73051]
 
   run_options..n_episodes:
