@@ -12,11 +12,14 @@ parameters:
 
   block_default..feedback_boost_range:
     values:
-      - [ 0, 0.0 ]
+      - [ 0, 1 ]
 
-  blocks..1.bg.softmax_beta:
+  blocks.1.bg.softmax_beta:
     values:
-      - 0.25
+    - 1
+  blocks.3.bg.softmax_beta:
+    values:
+    - 0.25
 
   cagent..punish_intrinsic_reward:
     value: 1
