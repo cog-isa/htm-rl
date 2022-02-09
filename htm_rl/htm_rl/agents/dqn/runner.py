@@ -92,6 +92,7 @@ class Runner:
             if self.environment.is_terminal() and self.environment.items_collected > 0:
                 # detect that the goal is reached
                 self.goal_reached = True
+                self.draw_options_debug()
 
             if is_first:
                 self.finish_episode(log_enabled, log_every_episode, animation_fps)
@@ -174,6 +175,68 @@ class Runner:
 
         if gif_schedule > 0 and (self.episode == 1 or self.episode % gif_schedule == 0):
             self.animation = True
+
+    # FIXME: HACKS HACKS HACKS
+    def draw_options_debug(self):
+        from pathlib import Path
+        import torch
+        from numpy import ma
+        from htm_rl.agents.optcrit.agent import OptionCriticAgent
+        from htm_rl.common.utils import softmax
+        from htm_rl.agents.dqn.network import to_np
+        # 99-th goal
+        if (self.goal + 1) % 100 != 0 or not isinstance(self.agent, OptionCriticAgent):
+            return
+
+        self.draw_map(self.logger)
+
+        def get_observations():
+            from htm_rl.envs.biogwlab.module import EntityType
+            height, width = self.environment.shape
+            obstacle_mask = self.environment.aggregated_mask[EntityType.Obstacle]
+            position_provider = AgentStateProvider(self.environment)
+            encoding_scheme = {}
+
+            for i in range(height):
+                for j in range(width):
+                    if obstacle_mask[i, j]:
+                        continue
+                    position = i, j
+                    position_provider.overwrite(position)
+                    obs = self.environment.render()
+                    encoding_scheme[position] = obs
+
+            position_provider.restore()
+            return encoding_scheme
+
+        observations = get_observations()
+        shape = self.environment.shape + (self.environment.n_actions,)
+        op_policy = ma.masked_all(shape, dtype=np.float)
+        op_beta = ma.masked_all(shape, dtype=np.float)
+
+        for position, obs in observations.items():
+            with torch.no_grad():
+                obs = self.agent.to_dense(obs)
+                prediction = self.agent.network(obs)
+
+            op_probs = softmax(to_np(prediction['q']), self.agent.config.cr_softmax_temp)
+            op_policy[position] = op_probs
+
+            beta_probs = to_np(prediction['beta'])
+            op_beta[position] = beta_probs
+
+        op_policy = op_policy.filled(.0)
+        op_beta = op_beta.filled(.0)
+
+        from htm_rl.common.plot_utils import plot_grid_images
+        op_policy_path = Path(os.path.join(self.path_to_store_logs, f'op_policy_{self.task}.png'))
+        op_beta_path = Path(os.path.join(self.path_to_store_logs, f'op_beta_{self.task}.png'))
+
+        plot_grid_images(images=op_policy, titles='op_policy', save_path=op_policy_path)
+        plot_grid_images(images=op_beta, titles='op_beta', save_path=op_beta_path)
+
+        self.logger.log({'maps/t_op_policy': wandb.Image(op_policy_path.resolve())}, step=self.task)
+        self.logger.log({'maps/t_op_beta': wandb.Image(op_beta_path.resolve())}, step=self.task)
 
     def log_gif_animation(self, animation_fps):
         # TODO: replace with in-memory storage
@@ -382,6 +445,7 @@ class Runner:
         wandb.define_metric("task")
         wandb.define_metric("main_metrics/steps_per_task", step_metric="task")
         wandb.define_metric("main_metrics/t_*", step_metric="task")
+        wandb.define_metric("maps/t_*", step_metric="task")
 
         wandb.define_metric("goal")
         wandb.define_metric("main_metrics/g_*", step_metric="goal")
@@ -407,3 +471,40 @@ def resolve_agent(name, **config):
         AttributeError(f'Unknown Deep RL agent {name}')
 
     return agent
+
+
+class AgentStateProvider:
+    env: Environment
+
+    def __init__(self, env: Environment):
+        self.env = env
+        self.origin = None
+
+    @property
+    def state(self):
+        return self.position, self.view_direction
+
+    @property
+    def position(self):
+        return self.env.agent.position
+
+    @property
+    def view_direction(self):
+        return self.env.agent.view_direction
+
+    def overwrite(self, position=None, view_direction=None):
+        if self.origin is None:
+            self.origin = self.state
+        self._set(position, view_direction)
+
+    def restore(self):
+        if self.origin is None:
+            raise ValueError('Nothing to restore')
+        self._set(*self.origin)
+        self.origin = None
+
+    def _set(self, position, view_direction):
+        from htm_rl.common.utils import isnone
+
+        self.env.agent.position = isnone(position, self.env.agent.position)
+        self.env.agent.view_direction = isnone(view_direction, self.env.agent.view_direction)
