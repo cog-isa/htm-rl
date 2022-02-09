@@ -1,0 +1,57 @@
+project: 4_rooms_dqn_eval
+entity: pkuderov
+program: ../../agents/htm/htm_agent.py
+method: grid
+
+parameters:
+  seed:
+    values: [54372, 43213, 90483]
+  environment.seed: 
+    values: [43802, 90191, 73051]
+
+  run_options..n_episodes:
+    value: 12000
+  run_options..log_every_episode:
+    value: 100
+  run_options..gif_every_episode:
+    value: 1000
+
+  cagent..softmax_temp:
+    value: 0.01261
+
+  cagent..eps_greedy:
+    value: 0.05
+
+  cagent..discount:
+    value: 0.9024
+
+  cagent..train_schedule:
+    value: 8
+
+  cagent..batch_size:
+    value: 31
+
+  cagent..learning_rate:
+    value: 0.0000186
+
+  cagent..replay_buffer_size:
+    value: 200
+
+  cagent..hidden_units:
+    value: [512, 128]
+
+  cagent..w_scale:
+    value: 0.02553
+
+  cagent..w_regularization:
+    value: 0.0009853
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_swap_dqn
+  - ${args}
+
+
+

@@ -1,0 +1,77 @@
+project: 4_rooms_oc_eval
+entity: pkuderov
+program: ../../agents/htm/htm_agent.py
+method: grid
+
+parameters:
+  seed:
+    values: [54372, 43213, 90483]
+  environment.seed: 
+    values: [43802, 90191, 73051]
+
+  run_options..n_episodes:
+    value: 12000
+  run_options..log_every_episode:
+    value: 200
+  run_options..gif_every_episode:
+    value: 2000
+
+
+  cagent..discount:
+    value: 0.9172
+  cagent..cr_softmax_temp:
+    value: 0.01001
+  cagent..cr_eps_greedy:
+    value: 0.
+
+  cagent..cr_learning_rate:
+    value: 0.00001609
+
+  cagent..cr_train_schedule:
+    value: 6
+
+  cagent..cr_batch_size:
+    value: 25
+
+  cagent..cr_replay_buffer_size:
+    value: 192
+
+  cagent..ac_softmax_temp:
+    value: 0.6657
+
+  cagent..ac_eps_greedy:
+    value: 0.05
+
+  cagent..ac_train_schedule:
+    value: 27
+
+  cagent..ac_learning_rate:
+    value: 0.000268
+
+  cagent..hidden_units:
+    value: [512, 512]
+
+  cagent..termination_regularizer:
+    value: 0.00002301
+
+  cagent..entropy_weight:
+    value: 0.00001701
+
+  cagent..w_scale:
+    value: 0.0081
+
+  cagent..w_regularization:
+    value: 0.00001313
+
+  cagent..gradient_clip:
+    value: 1.
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - four_rooms_9x9_swap_optcrit
+  - ${args}
+
+
+
