@@ -92,7 +92,6 @@ class Runner:
             if self.environment.is_terminal() and self.environment.items_collected > 0:
                 # detect that the goal is reached
                 self.goal_reached = True
-                self.draw_options_debug()
 
             if is_first:
                 self.finish_episode(log_enabled, log_every_episode, animation_fps)
@@ -166,6 +165,7 @@ class Runner:
             self.goal_reached = False
             self.steps_per_goal = 0
             self.goal += 1
+            self.draw_options_debug()
 
         if self.task_complete:
             self.task_complete = False
@@ -188,7 +188,8 @@ class Runner:
         if (self.goal + 1) % 100 != 0 or not isinstance(self.agent, OptionCriticAgent):
             return
 
-        self.draw_map(self.logger)
+        # if self.logger is not None:
+        #     self.draw_map(self.logger)
 
         def get_observations():
             from htm_rl.envs.biogwlab.module import EntityType
@@ -226,17 +227,33 @@ class Runner:
             op_beta[position] = beta_probs
 
         op_policy = op_policy.filled(.0)
+        op_policy[0, 0, 0] = 1.
+        op_policy[0, 0, 1] = .5
+        op_policy[0, 0, 2] = .25
         op_beta = op_beta.filled(.0)
+        op_beta[0, 0, 0] = 1.
+        op_beta[0, 0, 1] = .5
+        op_beta[0, 0, 2] = .25
 
         from htm_rl.common.plot_utils import plot_grid_images
         op_policy_path = Path(os.path.join(self.path_to_store_logs, f'op_policy_{self.task}.png'))
         op_beta_path = Path(os.path.join(self.path_to_store_logs, f'op_beta_{self.task}.png'))
 
-        plot_grid_images(images=op_policy, titles='op_policy', save_path=op_policy_path)
-        plot_grid_images(images=op_beta, titles='op_beta', save_path=op_beta_path)
+        show = False
+        # plot_grid_images(images=op_policy, titles='op_policy', show=show, save_path=op_policy_path)
+        # plot_grid_images(images=op_beta, titles='op_beta', show=show, save_path=op_beta_path)
 
-        self.logger.log({'maps/t_op_policy': wandb.Image(op_policy_path.resolve())}, step=self.task)
-        self.logger.log({'maps/t_op_beta': wandb.Image(op_beta_path.resolve())}, step=self.task)
+        plot_grid_images(
+            images=[op_policy, op_beta],
+            titles=['op_policy', 'op_beta'],
+            show=show,
+            save_path=op_policy_path
+        )
+
+        # print(str(op_policy_path))
+        if self.logger is not None:
+            self.logger.log({'maps/t_op_policy': wandb.Image(str(op_policy_path))}, step=self.episode)
+            # self.logger.log({'maps/t_op_beta': wandb.Image(str(op_beta_path))}, step=self.episode)
 
     def log_gif_animation(self, animation_fps):
         # TODO: replace with in-memory storage
@@ -445,7 +462,7 @@ class Runner:
         wandb.define_metric("task")
         wandb.define_metric("main_metrics/steps_per_task", step_metric="task")
         wandb.define_metric("main_metrics/t_*", step_metric="task")
-        wandb.define_metric("maps/t_*", step_metric="task")
+        # wandb.define_metric("maps/t_*", step_metric="task")
 
         wandb.define_metric("goal")
         wandb.define_metric("main_metrics/g_*", step_metric="goal")
