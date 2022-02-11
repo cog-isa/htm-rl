@@ -10,17 +10,6 @@ parameters:
   environment..seed:
     values: [43802, 90191, 73051]
 
-  block_default..feedback_boost_range:
-    values:
-      - [ 0, 1 ]
-
-  blocks.1.bg.softmax_beta:
-    values:
-    - 1
-  blocks.3.bg.softmax_beta:
-    values:
-    - 0.25
-
   cagent..punish_intrinsic_reward:
     value: 1
 
