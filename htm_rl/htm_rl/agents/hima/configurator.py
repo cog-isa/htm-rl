@@ -1,5 +1,5 @@
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
-from htm_rl.envs.coppelia.environment import PulseEnv
+from htm_rl.envs.coppelia.environment import ArmEnv
 from htm_rl.agents.hima.adapters import PulseObsAdapter
 from copy import deepcopy
 
@@ -22,7 +22,7 @@ def configure(config):
     elif config['environment_type'] == 'pulse':
         headless = config['environment']['headless']
         config['environment'].update({'headless': True})
-        environment = PulseEnv(**config['environment'])
+        environment = ArmEnv(**config['environment'])
         config['environment'].update({'headless': headless})
         obs_adapter = PulseObsAdapter(environment, config['pulse_observation_adapter'])
         obs_sdr_size = obs_adapter.output_sdr_size

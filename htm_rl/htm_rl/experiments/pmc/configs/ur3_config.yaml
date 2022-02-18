@@ -1,8 +1,8 @@
 n_tasks: 10
 shuffle_tasks: False
 workspace_limits:  # arm workspace
-  r: [ 0.3, 0.8 ]  # meters min=0.12, max=0.83
-  h: [ 0.0, 0.3 ]  # min = 0, max=?
+  r: [ 0.3, 0.5 ]  # meters min=0.064, max=0.5
+  h: [ 0.0, 0.3 ]  # min = 0, max=0.482
   phi: [ 0, 360 ]  # degrees
 # goals: [[]]
 path_to_store_logs: '/tmp'
@@ -18,8 +18,8 @@ environment:
   goal_reward: 1.0
   position_threshold: 0.05  # goal position radius in meters
   joints_speed_limit: 80  # degrees per second
-  arm_name: 'Pulse75'
-  scene_file: 'pulse75_tip.ttt'  # MUST be changed accordingly to action type
+  arm_name: 'UR3'
+  scene_file: 'UR3_tip.ttt'  # MUST be changed accordingly to action type
   action_type: 'tip'
   joints_to_manage: 'all'
   camera_resolution: [ 128, 128 ]

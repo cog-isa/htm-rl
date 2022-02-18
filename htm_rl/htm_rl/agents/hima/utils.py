@@ -2,7 +2,7 @@ from htm_rl.envs.biogwlab.environment import Environment
 from htm_rl.modules.empowerment import Empowerment, real_empowerment
 from htm_rl.envs.biogwlab.module import EntityType
 from htm_rl.modules.basal_ganglia import softmax
-from htm_rl.envs.coppelia.environment import PulseEnv
+from htm_rl.envs.coppelia.environment import ArmEnv
 
 from htm.bindings.sdr import SDR
 from htm.bindings.algorithms import SpatialPooler
@@ -198,7 +198,7 @@ class OptionVis:
 
 
 def compute_q_policy(env, runner, directions: dict = None, n_states=None):
-    if isinstance(env, PulseEnv):
+    if isinstance(env, ArmEnv):
         if n_states is None:
             n_states = 2*180 // runner.action_adapter.delta + 1
         q = dict()

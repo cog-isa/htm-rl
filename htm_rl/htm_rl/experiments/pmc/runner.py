@@ -1,6 +1,6 @@
 import PIL.Image
 from environment import ReachAndGrasp2D
-from htm_rl.envs.coppelia.environment import PulseEnv
+from htm_rl.envs.coppelia.environment import ArmEnv
 from agent import BasicAgent
 import pygame
 import numpy as np
@@ -220,7 +220,7 @@ class RunnerRAG2D:
             screen_time += dt
 
 
-class RunnerPulse:
+class RunnerArm:
     def __init__(self, config, logger=None):
         self.log_buffer = dict()
         self.logger = logger
@@ -240,13 +240,13 @@ class RunnerPulse:
         self.total_steps = 0
         self.total_episodes = 0
         self.episodes_per_epoch = 0
-        self.task_n = 0
+        self.task_n = -1
         self.task_id = None
         self.epoch = 0
 
         self.capture_frames = False
 
-        self.environment = PulseEnv(**config['environment'])
+        self.environment = ArmEnv(**config['environment'])
 
         self.agent = BasicAgent(self.environment.camera.get_resolution(),
                                 **config['agent'])
@@ -264,8 +264,8 @@ class RunnerPulse:
         if self.goals is None:
             self.goals = self.generate_goals()
 
-        if len(self.goals) != self.n_tasks:
-            self.tasks = self._rng.choice(self.goals, self.n_tasks)
+        if self.goals.shape[0] != self.n_tasks:
+            self.tasks = self.goals[self._rng.choice(np.arange(self.goals.shape[0]), self.n_tasks)]
         else:
             self.tasks = self.goals
 
@@ -384,6 +384,6 @@ class RunnerPulse:
 
         x = r*np.cos(phi)
         y = r*np.sin(phi)
-        return x, y, h
+        return np.vstack([x, y, h]).T
 
 

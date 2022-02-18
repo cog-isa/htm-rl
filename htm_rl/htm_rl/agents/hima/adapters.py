@@ -2,7 +2,7 @@ from typing import Union
 
 from htm_rl.common.sdr_decoders import DecoderStack, IntBucketDecoder
 from htm_rl.common.sdr_encoders import RangeDynamicEncoder, VectorDynamicEncoder
-from htm_rl.envs.coppelia.environment import PulseEnv
+from htm_rl.envs.coppelia.environment import ArmEnv
 from htm_rl.modules.v1 import V1
 
 from math import pi
@@ -12,7 +12,7 @@ import numpy as np
 
 class PulseActionAdapter:
     def __init__(self,
-                 environment: PulseEnv,
+                 environment: ArmEnv,
                  mode,
                  delta,
                  time_delta,
@@ -58,7 +58,7 @@ class PulseActionAdapter:
 
 
 class PulseObsAdapter:
-    def __init__(self, environment: PulseEnv, config):
+    def __init__(self, environment: ArmEnv, config):
         self.environment = environment
         self.n_joints = self.environment.n_joints
         # setup encoders

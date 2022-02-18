@@ -12,7 +12,7 @@ from wandb.wandb_run import Run
 
 from htm_rl.agents.v1.agent import RndAgent
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
-from htm_rl.envs.coppelia.environment import PulseEnv
+from htm_rl.envs.coppelia.environment import ArmEnv
 
 
 class RndAgentRunner:

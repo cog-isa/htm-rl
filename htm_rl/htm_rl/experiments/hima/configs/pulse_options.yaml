@@ -42,6 +42,7 @@ environment:
   initial_target_position: [ 0.0, 0.275, 1.1 ]  # relative to arm base in meters
   joints_speed_limit: 80  # degrees per second
   action_type: 'joints'  # "joints"(pose) or "tip"(position)
+  arm_name: 'Pulse75'
   scene_file: 'pulse75_joints.ttt'  # MUST be changed accordingly to action type
   joints_to_manage:  # should be set to "all" if action type is "tip"
     - 4

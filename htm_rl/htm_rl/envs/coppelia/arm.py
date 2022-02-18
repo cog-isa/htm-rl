@@ -12,6 +12,11 @@ class Arm(RobotComponent):
         joint_names = ['%s_joint%d' % (name, i + 1) for i in range(num_joints)]
         super().__init__(count, name, joint_names, base_name)
 
+        suffix = '' if count == 0 else '#%d' % (count - 1)
+        self.base = Dummy(f'%s_base%s' % (name, suffix))
+        self.tip = Dummy(f'%s_tip%s' % (name, suffix))
+        self.target = Shape(f'%s_target_visible%s' % (name, suffix))
+
 
 class Pulse75(Arm):
     def __init__(self, count: int = 0):
@@ -26,6 +31,12 @@ class Pulse75(Arm):
                                   [-np.pi, np.pi],
                                   [-np.pi, np.pi]
                                   ])
-        self.base = Dummy(f'pulse75_base')
-        self.tip = Dummy(f'pulse75_tip')
-        self.target = Shape(f'pulse75_target_visible')
+
+
+class UR3(Arm):
+    def __init__(self, count: int = 0):
+        super().__init__(count, 'UR3', 6)
+
+
+ARMS = {'UR3': UR3, 'Pulse75': Pulse75}
+

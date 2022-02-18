@@ -1,8 +1,8 @@
 import yaml
 import wandb
-from runner import RunnerRAG2D, RunnerPulse
+from runner import RunnerRAG2D, RunnerArm
 
-envs = ['rag2d', 'pulse']
+envs = ['rag2d', 'coppelia']
 env = envs[1]
 
 if env == envs[0]:
@@ -13,11 +13,11 @@ if env == envs[0]:
     runner = RunnerRAG2D(config)
     runner.run()
 else:
-    name = 'configs/pulse_config.yaml'
+    name = 'configs/ur3_config.yaml'
     with open(name, 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
     if config['log']:
         logger = wandb.init(project=config['project'], entity=config['entity'], config=config)
-    runner = RunnerPulse(config)
+    runner = RunnerArm(config)
     runner.run()

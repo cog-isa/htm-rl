@@ -12,7 +12,7 @@ from htm_rl.modules.htm.pattern_memory import SpatialMemory
 from htm_rl.common.utils import safe_divide
 from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
-from htm_rl.envs.coppelia.environment import PulseEnv
+from htm_rl.envs.coppelia.environment import ArmEnv
 from htm.bindings.algorithms import SpatialPooler
 from htm_rl.modules.htm.temporal_memory import ApicalBasalFeedbackTM
 from htm_rl.agents.hima.utils import OptionVis, draw_values, draw_values_pulse, compute_q_policy, compute_mu_policy, \
@@ -78,7 +78,7 @@ class HIMAgentRunner:
             self.action_adapter = BioGwLabActionAdapter(**config['gw_action_adapter'])
             self.observation_adapter = BioGwLabObsAdapter()
         elif config['environment_type'] == 'pulse':
-            self.environment = PulseEnv(**config['environment'])
+            self.environment = ArmEnv(**config['environment'])
             self.action_adapter = PulseActionAdapter(self.environment, **config['pulse_action_adapter'])
             self.observation_adapter = PulseObsAdapter(self.environment, config['pulse_observation_adapter'])
         else:
@@ -360,7 +360,7 @@ class HIMAgentRunner:
                         q, policy, actions = compute_q_policy(self.environment, self, directions)
 
                         if log_values:
-                            if isinstance(self.environment, PulseEnv):
+                            if isinstance(self.environment, ArmEnv):
                                 draw_values_pulse(os.path.join(self.path_to_store_logs,
                                                                f'values_{self.logger.id}_{self.episode}.png'),
                                                   q,
@@ -509,7 +509,7 @@ class HIMAgentRunner:
         if self.logger is not None:
             self.logger.log({"total_steps": self.steps_total})
 
-        if isinstance(self.environment, PulseEnv):
+        if isinstance(self.environment, ArmEnv):
             self.environment.shutdown()
         print('Run finished.')
 
