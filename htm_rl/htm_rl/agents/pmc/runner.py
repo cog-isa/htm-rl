@@ -1,16 +1,16 @@
-import PIL.Image
-from environment import ReachAndGrasp2D
+from htm_rl.envs.rng2d.environment import ReachAndGrasp2D
 from htm_rl.envs.coppelia.environment import ArmEnv
-from agent import BasicAgent
+from htm_rl.agents.pmc.agent import BasicAgent
+from htm_rl.agents.pmc.utils import heatmap
+from htm_rl.agents.pmc.adapters import ActionAdapter
+from htm_rl.common.scenario import Scenario
+import PIL.Image
 import pygame
 import numpy as np
-from utils import heatmap
-from htm_rl.common.scenario import Scenario
 import imageio
 import os
 import wandb
 import matplotlib.pyplot as plt
-from adapters import ActionAdapter
 
 
 class RunnerRAG2D:

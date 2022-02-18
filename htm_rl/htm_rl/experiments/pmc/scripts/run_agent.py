@@ -1,9 +1,9 @@
 import yaml
 import wandb
-from runner import RunnerRAG2D, RunnerArm
+from htm_rl.agents.pmc.runner import RunnerRAG2D, RunnerArm
 
 envs = ['rag2d', 'coppelia']
-env = envs[1]
+env = envs[0]
 
 if env == envs[0]:
     name = 'configs/base_config.yaml'

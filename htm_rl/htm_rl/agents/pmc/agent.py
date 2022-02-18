@@ -1,6 +1,6 @@
 from htm_rl.modules.v1 import V1
-from basal_ganglia import BasalGanglia
-from pmc import ThaPMCToM1
+from htm_rl.agents.pmc.basal_ganglia import BasalGanglia
+from htm_rl.modules.pmc import ThaPMCToM1
 import numpy as np
 
 

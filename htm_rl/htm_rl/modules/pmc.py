@@ -1,8 +1,16 @@
 import numpy as np
-from utils import softmax, bsu
 from scipy.spatial import distance_matrix
 import matplotlib.pyplot as plt
 from PIL import Image
+
+
+def softmax(x):
+    e_x = np.exp(x)
+    return e_x / np.sum(e_x)
+
+
+def bsu(x, k=10):
+    return 1/(1 + np.exp(-x*k))
 
 
 class ThaPMCToM1:
