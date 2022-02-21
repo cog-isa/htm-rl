@@ -1,5 +1,8 @@
-n_tasks: 10
+project: 'ur3_pmc'
+entity: 'hauska'
+n_tasks: 1
 shuffle_tasks: False
+velocity: 0.1  # tip velocity m/s, if set null it means velocity=inf
 workspace_limits:  # arm workspace
   r: [ 0.3, 0.5 ]  # meters min=0.064, max=0.5
   h: [ 0.0, 0.3 ]  # min = 0, max=0.482
@@ -7,13 +10,13 @@ workspace_limits:  # arm workspace
 # goals: [[]]
 path_to_store_logs: '/tmp'
 recording_fps: 3
-scenario: 'scenarios/arm_random.yaml'
-log: false
+scenario: 'scenarios/one_goal.yaml'
+log: true
 seed: &seed 839482
 
 environment:
   max_steps: 200
-  reward_type: 'sparse' # sparse | gaus_dist
+  reward_type: 'gaus_dist' # sparse | gaus_dist
   action_cost: 0.01
   goal_reward: 1.0
   position_threshold: 0.05  # goal position radius in meters
@@ -26,9 +29,9 @@ environment:
   observation:
     - camera
   #  - joint_pos
-  action_time_step: 1  # s
+  action_time_step: 0.2  # s
   seed: *seed
-  headless: false
+  headless: true
   responsive_ui: false
 
 agent:

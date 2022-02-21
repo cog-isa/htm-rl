@@ -235,13 +235,13 @@ class RunnerArm:
         self.goals = config.get('goals')
 
         self.running = True
-        self.n_terminals = 0
+        self.n_terminals = -1
         self.step = 0
-        self.episode = 0
+        self.episode = -1
         self.task = None
         self.total_steps = 0
-        self.total_episodes = 0
-        self.episodes_per_epoch = 0
+        self.total_episodes = -1
+        self.episodes_per_epoch = -1
         self.task_n = -1
         self.task_id = None
         self.epoch = 0
@@ -253,7 +253,9 @@ class RunnerArm:
         self.agent = BasicAgent(self.environment.camera.get_resolution(),
                                 **config['agent'])
 
-        self.action_adapter = ArmActionAdapter(self.limits)
+        self.action_adapter = ArmActionAdapter(self.limits,
+                                               velocity=config['velocity'],
+                                               environment=self.environment)
 
         self.scenario = Scenario(config['scenario'], self)
 
@@ -285,7 +287,7 @@ class RunnerArm:
                 self.log(is_first)
 
             if is_first:
-                if self.step > 0:
+                if self.step < self.environment.max_steps:
                     self.n_terminals += 1
                 self.step = 0
                 self.episode += 1
@@ -319,7 +321,7 @@ class RunnerArm:
         self.task = self.tasks[self.task_id]
 
         self.env_reset()
-        self.environment.set_target_position(self.task)
+        self.environment.set_goal_position(self.task)
 
     def stop(self):
         self.running = False
@@ -332,7 +334,7 @@ class RunnerArm:
 
     def log(self, is_first):
         if is_first:
-            if self.total_episodes > 0:
+            if self.total_episodes >= 0:
                 self.logger.log(
                     {'main_metrics/steps': self.step, 'episode': self.total_episodes,
                      'main_metrics/task_id': self.task_id,
@@ -340,7 +342,7 @@ class RunnerArm:
                      },
                     step=self.total_episodes)
 
-            if self.episode == 0 and self.total_episodes > 0:
+            if self.episode == 0 and self.total_episodes >= 0:
                 self.logger.log(
                     {'main_metrics/episodes_per_task': self.log_buffer['episodes_per_task']},
                     step=self.task_id

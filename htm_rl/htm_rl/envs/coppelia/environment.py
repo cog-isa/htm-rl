@@ -169,7 +169,10 @@ class ArmEnv:
     def get_joints_speed_limit(self):
         return self.joints_speed_limit
 
-    def set_target_position(self, pos):
+    def get_target_position(self):
+        return self.agent.target.get_position(relative_to=self.agent.base)
+
+    def set_goal_position(self, pos):
         self.initial_target_position = pos
         self.goal.set_position(pos, relative_to=self.agent.base)
 

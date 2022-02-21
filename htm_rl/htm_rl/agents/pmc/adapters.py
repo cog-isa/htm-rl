@@ -1,5 +1,6 @@
-from math import sin, cos, radians
+from math import sin, cos, radians, copysign
 from animalai.envs.actions import AAIActions
+from htm_rl.envs.coppelia.environment import ArmEnv
 import numpy as np
 
 
@@ -18,8 +19,10 @@ class AAIActionAdapter:
 
 
 class ArmActionAdapter:
-    def __init__(self, limits):
+    def __init__(self, limits: dict, velocity=None, environment: ArmEnv = None):
         self.limits = limits
+        self.velocity = velocity
+        self.environment = environment
 
     def adapt(self, action):
         r = (self.limits['r'][0] +
@@ -36,4 +39,9 @@ class ArmActionAdapter:
         x = r * cos(phi)
         y = r * sin(phi)
         z = h
+        if self.velocity is not None:
+            c_x, c_y, c_z = self.environment.get_target_position()
+            x = c_x + copysign(min(self.velocity, abs(x - c_x)), x - c_x)
+            y = c_y + copysign(min(self.velocity, abs(y - c_y)), y - c_y)
+            z = c_z + copysign(min(self.velocity, abs(z - c_z)), z - c_z)
         return x, y, z
