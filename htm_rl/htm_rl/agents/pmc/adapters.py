@@ -1,7 +1,23 @@
 from math import sin, cos, radians
+from animalai.envs.actions import AAIActions
+import numpy as np
 
 
-class ActionAdapter:
+class AAIActionAdapter:
+    def __init__(self):
+        self.actions = AAIActions().allActions
+        self.n_actions = len(self.actions)
+
+    def adapt(self, action):
+        """
+        :param action: logits
+        :return:
+        """
+        action = self.actions[np.argmax(action)]
+        return action.action_tuple
+
+
+class ArmActionAdapter:
     def __init__(self, limits):
         self.limits = limits
 

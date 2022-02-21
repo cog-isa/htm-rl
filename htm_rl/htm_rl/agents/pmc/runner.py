@@ -2,8 +2,10 @@ from htm_rl.envs.rng2d.environment import ReachAndGrasp2D
 from htm_rl.envs.coppelia.environment import ArmEnv
 from htm_rl.agents.pmc.agent import BasicAgent
 from htm_rl.agents.pmc.utils import heatmap
-from htm_rl.agents.pmc.adapters import ActionAdapter
+from htm_rl.agents.pmc.adapters import ArmActionAdapter, AAIActionAdapter
 from htm_rl.common.scenario import Scenario
+from animalai.envs.environment import AnimalAIEnvironment
+
 import PIL.Image
 import pygame
 import numpy as np
@@ -251,7 +253,7 @@ class RunnerArm:
         self.agent = BasicAgent(self.environment.camera.get_resolution(),
                                 **config['agent'])
 
-        self.action_adapter = ActionAdapter(self.limits)
+        self.action_adapter = ArmActionAdapter(self.limits)
 
         self.scenario = Scenario(config['scenario'], self)
 
@@ -385,5 +387,58 @@ class RunnerArm:
         x = r*np.cos(phi)
         y = r*np.sin(phi)
         return np.vstack([x, y, h]).T
+
+
+class RunnerAAI:
+    def __init__(self, config, logger=None):
+        self.running = True
+
+        self.environment = AnimalAIEnvironment(**config['environment'])
+        self.behavior = list(self.environment.behavior_specs.keys())[0]
+        self.action_adapter = AAIActionAdapter()
+
+        config['agent']['config']['pmc']['input_size'] = self.action_adapter.n_actions
+        camera_resolution = self.environment.behavior_specs[self.behavior].observation_specs[0].shape[:2]
+        self.agent = BasicAgent(camera_resolution,
+                                **config['agent'])
+
+        self.seed = config.get('seed')
+        self._rng = np.random.default_rng(self.seed)
+
+    def run(self):
+        is_first = True
+        while True:
+            if not self.running:
+                self.environment.close()
+                break
+
+            if is_first:
+                self.agent.reset()
+                is_first = False
+
+            self.environment.step()
+            dec, term = self.environment.get_steps(self.behavior)
+
+            reward = 0
+            if len(dec.reward) > 0:
+                reward = dec.reward
+            if len(term.reward) > 0:
+                reward += term.reward
+                is_first = True
+
+            if is_first:
+                obs = np.zeros(self.environment.behavior_specs[self.behavior].observation_specs[0].shape)
+            else:
+                obs = self.environment.get_obs_dict(dec.obs)["camera"]
+
+            action = self.agent.make_action(obs)
+            action = self.action_adapter.adapt(action)
+            self.agent.reinforce(reward)
+
+            if not is_first:
+                self.environment.set_actions(self.behavior, action)
+
+    def env_reset(self):
+        self.environment.reset()
 
 

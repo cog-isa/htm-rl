@@ -1,0 +1,50 @@
+log: false
+seed: &seed 839482
+
+environment:
+  file_name: '/home/gsys/Desktop/Activity/HTM/htm_rl_tepo/animal-ai/env/AnimalAI'
+  arenas_configurations: '/home/gsys/Desktop/Activity/HTM/htm_rl_tepo/animal-ai/configs/basic/1g.yml'
+  play: False
+  useCamera: True
+  useRayCasts: False
+  seed: *seed
+
+agent:
+  config:
+    v1:
+      complex:
+        g_kernel_size: 24
+        g_stride: 12
+        g_sigma: 19.2
+        activity_level: 0.3
+      simple: [
+        {
+          g_kernel_size: 6,
+          g_stride: 1,
+          g_pad: null,
+          g_sigma_x: 1.8,
+          g_sigma_y: 1.2,
+          g_lambda_: 6,
+          g_filters: 8,
+          activity_level: 0.6
+        },
+      ]
+    bg:
+      input_size: null
+      output_size: 2000
+      alpha: 0.1
+      beta: 0.1
+      discount_factor: 0.9
+      seed: *seed
+    pmc:
+      n_neurons: 2000
+      learning_rate: 0.01
+      sparsity: 0.005
+      neighbourhood_radius: null
+      permanence_increment: 0.05
+      permanence_decrement: 0.01
+      connected_threshold: 0.5
+      initial_permanence: 0.3
+      softmax_beta: 1.0
+      bsu_k: 1.0
+      seed: *seed
