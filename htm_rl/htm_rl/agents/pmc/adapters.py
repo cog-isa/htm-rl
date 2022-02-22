@@ -40,7 +40,7 @@ class ArmActionAdapter:
         y = r * sin(phi)
         z = h
         if self.velocity is not None:
-            c_x, c_y, c_z = self.environment.get_target_position()
+            c_x, c_y, c_z = self.environment.get_tip_position()
             x = c_x + copysign(min(self.velocity, abs(x - c_x)), x - c_x)
             y = c_y + copysign(min(self.velocity, abs(y - c_y)), y - c_y)
             z = c_z + copysign(min(self.velocity, abs(z - c_z)), z - c_z)

@@ -333,8 +333,11 @@ class V1:
     def __init__(self,
                  raw_image_shape: tuple[int, int],
                  complex_config: dict,
-                 *simple_configs: dict
+                 *simple_configs: dict,
+                 num_threads: int = None,
                  ):
+        if num_threads is not None:
+            torch.set_num_threads(num_threads)
         self.num_paths = 0
         self.simple_cells = []
         self.complex_cells = []

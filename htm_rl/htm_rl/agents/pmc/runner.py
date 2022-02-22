@@ -231,6 +231,7 @@ class RunnerArm:
         self.path_to_store_logs = config['path_to_store_logs']
         self.recording_fps = config['recording_fps']
         self.limits = config['workspace_limits']
+        self.limits_margin = config['limits_margin']
         # optional
         self.goals = config.get('goals')
 
@@ -245,10 +246,13 @@ class RunnerArm:
         self.task_n = -1
         self.task_id = None
         self.epoch = 0
+        self.total_reward = 0
 
         self.capture_frames = False
 
-        self.environment = ArmEnv(**config['environment'])
+        self.environment = ArmEnv(workspace_limits=self.limits,
+                                  **config['environment']
+                                  )
 
         self.agent = BasicAgent(self.environment.camera.get_resolution(),
                                 **config['agent'])
@@ -282,6 +286,7 @@ class RunnerArm:
                 break
 
             reward, obs, is_first = self.environment.observe()
+            self.total_reward += reward
 
             if self.logger is not None:
                 self.log(is_first)
@@ -290,6 +295,7 @@ class RunnerArm:
                 if self.step < self.environment.max_steps:
                     self.n_terminals += 1
                 self.step = 0
+                self.total_reward = 0
                 self.episode += 1
                 self.total_episodes += 1
                 self.episodes_per_epoch += 1
@@ -336,9 +342,10 @@ class RunnerArm:
         if is_first:
             if self.total_episodes >= 0:
                 self.logger.log(
-                    {'main_metrics/steps': self.step, 'episode': self.total_episodes,
+                    {'main_metrics/steps': self.step+1, 'episode': self.total_episodes,
                      'main_metrics/task_id': self.task_id,
                      'main_metrics/total_steps': self.total_steps,
+                     'main_metrics/reward': self.total_reward,
                      },
                     step=self.total_episodes)
 
@@ -381,14 +388,29 @@ class RunnerArm:
         plt.close()
 
     def generate_goals(self):
-        r = self._rng.uniform(self.limits['r'][0], self.limits['r'][1], self.n_tasks)
-        phi = self._rng.uniform(self.limits['phi'][0], self.limits['phi'][1], self.n_tasks)
+        limits = dict()
+        for key, value in self.limits.items():
+            limits[key] = self.margin_limits_transform(value, self.limits_margin)
+
+        r = self._rng.uniform(limits['r'][0], limits['r'][1], self.n_tasks)
+        phi = self._rng.uniform(limits['phi'][0], limits['phi'][1], self.n_tasks)
         phi = np.radians(phi)
-        h = self._rng.uniform(self.limits['h'][0], self.limits['h'][1], self.n_tasks)
+        h = self._rng.uniform(limits['h'][0], limits['h'][1], self.n_tasks)
 
         x = r*np.cos(phi)
         y = r*np.sin(phi)
         return np.vstack([x, y, h]).T
+
+    def margin_limits_transform(self, limits, margin=1):
+        new_limits = list()
+        if margin != 1:
+            mid = (limits[0] + limits[1])/2
+            new_limits.append(mid + (limits[0] - mid)*margin)
+            new_limits.append(mid + (limits[1] - mid)*margin)
+        else:
+            new_limits = limits
+
+        return new_limits
 
 
 class RunnerAAI:

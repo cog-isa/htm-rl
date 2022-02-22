@@ -1,11 +1,12 @@
 from pyrep import PyRep
 from pyrep.objects.vision_sensor import VisionSensor
 from htm_rl.envs.coppelia.arm import ARMS
-from pyrep.objects.shape import Shape
+from pyrep.objects.shape import Shape, PrimitiveShape
 
 from os.path import dirname, join, abspath
 from typing import Union
 import numpy as np
+from math import sqrt
 
 from htm_rl.envs.env import Env
 
@@ -21,6 +22,8 @@ class ArmEnv:
                  action_cost: float,
                  goal_reward: float,
                  position_threshold: float,
+                 workspace_limits: dict,
+                 collision_penalty: float = 0,
                  initial_pose: list[float] = None,
                  initial_target_position: list[float] = None,
                  joints_speed_limit: float = 80,
@@ -35,12 +38,17 @@ class ArmEnv:
         scene_file = join(dirname(abspath(__file__)), 'scenes', scene_file)
         self.pr.launch(scene_file, headless=headless, responsive_ui=responsive_ui)
         self.pr.start()
-        self.goal = Shape(f'goal')
+        self.goal = Shape.create(type=PrimitiveShape.SPHERE,
+                                 size=[2 * position_threshold] * 3,
+                                 color=[1.0, 0.0, 0.0],
+                                 static=True, respondable=False)
+        self.goal.set_model_collidable(False)
 
         if arm_name in ARMS:
             self.agent = ARMS[arm_name]()
         else:
             raise NotImplemented(f'{arm_name} not found!')
+        self.agent.set_model_collidable(True)
 
         self.reward_type = reward_type
         self.action_type = action_type
@@ -60,16 +68,23 @@ class ArmEnv:
             self.camera.set_resolution(camera_resolution)
 
         self.observation = set(observation)
+        self.workspace_limits = workspace_limits
         self.is_first = True
         self.should_reset = False
         self.n_sim_steps_for_action = int(action_time_step / self.pr.get_simulation_timestep())
         assert self.n_sim_steps_for_action > 0
         self.action_cost = action_cost
         self.goal_reward = goal_reward
+        self.collision_penalty = collision_penalty
         self.position_threshold = position_threshold
         self.joints_speed_limit = np.pi * joints_speed_limit / 180
         self.max_steps = max_steps
         self.n_steps = 0
+        self.max_action_distance = sqrt(
+            (self.workspace_limits['r'][1] * 2) ** 2 +
+            (self.workspace_limits['h'][1] - self.workspace_limits['h'][0]) ** 2
+        )
+        self.action_distance = self.max_action_distance
         # should use all joints if you use IK
         # maybe we will remove this in future
         assert (action_type != 'tip') or (joints_to_manage == 'all')
@@ -110,6 +125,9 @@ class ArmEnv:
                 else:
                     joint.set_joint_target_velocity(0.0)
         elif self.action_type == 'tip':
+            self.action_distance = np.linalg.norm(
+                np.array(action) - self.get_tip_position()
+            )
             self.agent.target.set_position(action, relative_to=self.agent.base)
         else:
             raise ValueError
@@ -143,7 +161,9 @@ class ArmEnv:
         elif self.n_steps > self.max_steps:
             self.should_reset = True
 
-        reward = -self.action_cost
+        reward = -self.action_cost * self.action_distance / self.max_action_distance
+        # collision
+        # reward += -self.collision_penalty * self.agent.check_collision()
         if self.reward_type == 'sparse':
             if tip_in_loc:
                 reward += self.goal_reward
@@ -171,6 +191,9 @@ class ArmEnv:
 
     def get_target_position(self):
         return self.agent.target.get_position(relative_to=self.agent.base)
+
+    def get_tip_position(self):
+        return self.agent.tip.get_position(relative_to=self.agent.base)
 
     def set_goal_position(self, pos):
         self.initial_target_position = pos

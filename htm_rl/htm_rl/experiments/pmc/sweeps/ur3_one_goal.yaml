@@ -1,0 +1,14 @@
+project: ur3_pmc
+entity: hauska
+program: scripts/run_agent.py
+method: grid
+parameters:
+  seed:
+    values: [43228, 78273, 83207, 34783, 347812, 9034, 4347837, 3882, 29831, 93829, 23781, 32671, 32178, 32781, 287182]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ur3_config
+  - ${args}
