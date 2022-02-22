@@ -2,11 +2,11 @@
   check_every: 'epoch'
   action: 'stop'
   params: {}
-- condition: ['n_terminals', 'equal', 10, 'repeat']
+- condition: ['n_terminals', 'equal', 100, 'repeat']
   check_every: 'n_terminals'
   action: 'next_task'
   params: {}
-- condition: ['total_episodes', 'mod', 10, 'repeat']
+- condition: ['total_episodes', 'mod', 50, 'repeat']
   check_every: 'total_episodes'
   action: 'record'
   params: {}

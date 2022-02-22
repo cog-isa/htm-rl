@@ -2,7 +2,7 @@ project: 'ur3_pmc'
 entity: 'hauska'
 n_tasks: 1
 shuffle_tasks: False
-velocity: null  # tip velocity meters/action_time_step, if set null it means velocity=inf
+velocity: 0.2  # tip velocity meters/action_time_step, if set null it means velocity=inf; max tip speed for UR3 1 m/s
 limits_margin: 0.8  # percent
 workspace_limits:  # arm workspace
   r: [ 0.1, 0.4 ]  # meters min=0.064, max=0.5
@@ -31,7 +31,7 @@ environment:
   observation:
     - camera
   #  - joint_pos
-  action_time_step: 1  # s
+  action_time_step: 0.2  # s
   seed: *seed
   headless: true
   responsive_ui: false

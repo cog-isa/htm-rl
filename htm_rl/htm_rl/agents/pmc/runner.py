@@ -286,7 +286,6 @@ class RunnerArm:
                 break
 
             reward, obs, is_first = self.environment.observe()
-            self.total_reward += reward
 
             if self.logger is not None:
                 self.log(is_first)
@@ -301,6 +300,7 @@ class RunnerArm:
                 self.episodes_per_epoch += 1
                 self.agent.reset()
             else:
+                self.total_reward += reward
                 self.step += 1
                 self.total_steps += 1
 
