@@ -10,7 +10,14 @@
       - [Run Sweep](#run-sweep)
     - [Non-HIMA Q-learning agent](#non-hima-q-learning-agent)
 
-In this repository, we present a model of the autonomous agent called HIMA (Hierarchical Intrinsically Motivated Agent). Its modular structure is divided into blocks that consist of unified and reusable sub-blocks. We provide HIMA with a novel hierarchical memory model. Its Spatial Pooler and Temporal Memory sub-blocks are based on corresponding objects from the Hierarchical Temporal Memory model. However, we contribute to it by extending Temporal Memory with external modulation support via feedback connections and the higher-order sequences learning algorithm. The latter enables us to construct a hierarchy that can work with the state and action abstractions. We also propose the Basal Ganglia model and empowerment as two further building sub-blocks, which are responsible for learning the action selection strategy while being driven by the modulated motivation signal. Additionally, we supply our agent with an ability to learn in imagination that we call dreaming. The sparse distributed representation of states and actions is another distinguishing feature of our model. As a result, our contribution is to investigate the representation of abstract context-dependent actions that denote behavioral programs, as well as the ability of the basal ganglia to learn the choosing strategy between partially overlapping actions. Finally, we validate HIMA's ability to aggregate and reuse experience in order to solve RL tasks with changing goals.
+The Hierarchical Intrinsically Motivated Agent (HIMA) is an algorithm that is intended to exhibit an adaptive goal-directed behavior using neurophysiological models of the neocortex, basal ganglia, and thalamus:
+
+- The neocortex model is used to form hierarchical internal representations of raw sensory input and a model of the environment.
+- The basal ganglia model provides an association of internal representations projected from the neocortex with rewarding signals and selects appropriate actions via thalamocortical loops.
+- The Dreaming component models circuits of the brain responsible for the initiation of planning via the model of the environment in the neocortex, improving the learning speed.
+- The Empowerment module is in charge of producing intrinsic motivation signal utilizing the environmental model learned by the neocortex to guide exploration to the most promising states first.
+
+![HIMA Architecture](assets/hima_arch.png)
 
 ## Links
 
