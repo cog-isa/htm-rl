@@ -1,0 +1,27 @@
+project: ur3_pmc
+entity: hauska
+program: scripts/run_agent.py
+method: grid
+metric:
+  name: 'total_steps'
+parameters:
+  seed:
+    values: [43228, 7173, 54353]
+  agent.config.pmc.n_neurons:
+    values: [1000, 2000, 3000]
+  agent.config.pmc.sparsity:
+    values: [0.005, 0.01]
+  agent.config.pmc.learning_rate:
+    values: [ 0.002, 0.01 ]
+  agent.config.pmc.softmax_beta:
+    values: [ 1.2, 1, 0.8 ]
+  agent.config.pmc.bsu_k:
+    values: [ 1.2, 1, 0.8 ]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - coppelia
+  - ur3_config_tune
+  - ${args}

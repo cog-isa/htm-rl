@@ -24,6 +24,8 @@ elif env == envs[1]:
         config['environment']['seed'] = config['seed']
         config['agent']['config']['bg']['seed'] = config['seed']
         config['agent']['config']['pmc']['seed'] = config['seed']
+        
+        config['agent']['config']['bg']['output_size'] = config['agent']['config']['pmc']['n_neurons']
         return config
 
     if len(sys.argv) > 2:

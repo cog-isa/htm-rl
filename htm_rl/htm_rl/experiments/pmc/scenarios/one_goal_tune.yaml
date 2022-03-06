@@ -1,8 +1,8 @@
-- condition: ['total_episodes', 'mod', 50, 'repeat']
+- condition: ['total_episodes', 'equal', 99, 'norepeat']
   check_every: 'total_episodes'
   action: 'record'
   params: {}
-- condition: ['total_episodes', 'equal', 300, 'norepeat']
+- condition: ['total_episodes', 'equal', 100, 'norepeat']
   check_every: 'total_episodes'
   action: 'stop'
   params: {}

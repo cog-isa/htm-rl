@@ -10,5 +10,6 @@ command:
   - ${env}
   - python
   - ${program}
+  - coppelia
   - ur3_config
   - ${args}
