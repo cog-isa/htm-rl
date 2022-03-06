@@ -102,13 +102,14 @@ class GPi:
         self._input_size = input_size
         self._output_size = output_size
         self._rng = np.random.default_rng(seed)
-        # TODO убрать?
-        assert self._input_size == self._output_size, f"Input and output have different sizes: input: {input_size}, output {output_size}"
 
-    def compute(self, exc_input: float, inh_input) -> np.ndarray:
+    def compute(self, exc_input: float, inh_input, return_probs=False):
         out = exc_input - inh_input[0] - inh_input[1]
-        out = (out - out.min()) / (out.max() - out.min() + 1e-12)
-        out = self._rng.random(self._output_size) < out
+        probs = (out - out.min()) / (out.max() - out.min() + 1e-12)
+        if not return_probs:
+            out = self._rng.random(self._output_size) < probs
+        else:
+            out = 1 - probs
         return out
 
 
@@ -137,7 +138,7 @@ class STN:
         if learn:
             self.weights[exc_input] += 1
             self.time += 1
-        return np.mean(self.weights / self.time)
+        return float(np.mean(self.weights / self.time))
 
 
 class Thalamus:
@@ -476,3 +477,68 @@ class DualBasalGanglia:
             self.intrinsic_off *= self.intrinsic_decay
         else:
             self.intrinsic_off = 1
+
+
+class BasalGangliaSimple:
+    alpha: float
+    beta: float
+    discount_factor: float
+
+    def __init__(self,
+                 input_size: int,
+                 output_size: int,
+                 alpha: float,
+                 beta: float,
+                 discount_factor: float,
+                 seed: int,
+                 **kwargs):
+        self._input_size = input_size
+        self._output_size = output_size
+
+        self._rng: np.random.default_rng(seed)
+
+        self.stri = Striatum(input_size, output_size, discount_factor, alpha, beta)
+        self.stn = STN(input_size, input_size)
+        self.gpi = GPi(output_size, output_size, seed)
+        self.gpe = GPe(output_size, output_size)
+
+    @property
+    def td_error(self):
+        return self.stri.error
+
+    def reset(self):
+        self.stri.reset()
+
+    def compute(self, stimulus,
+                responses_boost: np.ndarray = None,
+                learn=True):
+        d1, d2 = self.stri.compute(stimulus)
+        stn = self.stn.compute(stimulus, learn=learn)
+        gpe = self.gpe.compute(stn, d2)
+        if responses_boost is not None:
+            d1 *= responses_boost
+        gpi = self.gpi.compute(stn, (d1, gpe), return_probs=True)
+
+        return gpi
+
+    def force_dopamine(self, reward: float, k: int = 0, **kwargs):
+        self.stri.learn(reward, k)
+
+    def update_response(self, response):
+        """
+        Forces to update striatum response history. In normal situation striatum do it automatically.
+
+        :param response: sparse array of motor cortex activity
+        :return:
+        """
+        self.stri.update_response(response)
+
+    def update_stimulus(self, stimulus):
+        """
+        Forces to update striatum stimulus history. In normal situation striatum do it automatically.
+
+        :param stimulus: sparse array of sensory cortex activity
+        :return:
+        """
+        self.stri.update_stimulus(stimulus)
+

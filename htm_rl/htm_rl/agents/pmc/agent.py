@@ -1,5 +1,5 @@
 from htm_rl.modules.v1 import V1
-from htm_rl.agents.pmc.basal_ganglia import BasalGanglia
+from htm_rl.modules.basal_ganglia import BasalGangliaSimple
 from htm_rl.modules.pmc import ThaPMCToM1
 import numpy as np
 
@@ -12,7 +12,7 @@ class BasicAgent:
                      config['v1']['complex'],
                      *config['v1']['simple'])
         config['bg']['input_size'] = self.v1.output_sdr_size
-        self.bg = BasalGanglia(**config['bg'])
+        self.bg = BasalGangliaSimple(**config['bg'])
         self.pmc = ThaPMCToM1(**config['pmc'])
         self.probs = None
         self.response = None
