@@ -73,15 +73,30 @@ def create_gabor_convolution(
     return convolution
 
 
-def conv2d(signal_: np.ndarray, filter_: np.ndarray) -> np.ndarray:
-    h, w = filter_.shape
-    shape = (h, w)
-    signal_ = np.pad(signal_, ((h // 2, h - h // 2 - 1), (w // 2, w - w // 2 - 1)),
-                     'constant', constant_values=0)
-    s = shape + tuple(np.subtract(signal_.shape, shape) + 1)
-    strd = np.lib.stride_tricks.as_strided
-    sub_matr = strd(signal_, shape=s, strides=signal_.strides * 2)
-    return np.einsum('ij,ijkl->kl', filter_, sub_matr)
+def conv2d(signal_: np.ndarray, filter_: np.ndarray, stride: int = 1) -> np.ndarray:
+    """
+    The convolution of 2d signal and 2d filter.
+    Parameters
+    ----------
+    signal_: np.ndarray
+        Input 2 dimensional signal with the shape (H, W).
+    filter_: np.ndarray
+        2 dimensional filter for convolution with the shape (FH, FW).
+    stride: int, default=1
+        The size of the stride (the same in both directions).
+    Returns
+    -------
+    convolution: np.ndarray
+        The resulting convolution of signal and filter with the shape
+        ((H - FH) // stride + 1, (W - FW) // stride + 1).
+    """
+    fh, fw = filter_.shape
+    h, w = signal_.shape
+    shape = (fh, fw, (h - fh) // stride + 1, (w - fw) // stride + 1)
+    strides = signal_.strides + tuple(np.multiply(signal_.strides, stride))
+    extended_matr = np.lib.stride_tricks.as_strided(signal_, shape=shape, strides=strides, writeable=False)
+    convolution = np.einsum('ij,ijkl->kl', filter_, extended_matr)
+    return convolution
 
 
 def relu(x):
@@ -298,7 +313,11 @@ class V1Complex:
     def length_sum(self, input: np.ndarray) -> np.ndarray:
         preactivation = np.zeros_like(input)
         for i, filter_ in enumerate(self.length_filters):
-            preactivation[i] = conv2d(input[i], filter_)
+            h, w = filter_.shape
+            in_temp = np.pad(
+                input[i], ((h // 2, h - h // 2 - 1), (w // 2, w - w // 2 - 1)),
+                'constant', constant_values=0)
+            preactivation[i] = conv2d(in_temp[i], filter_)
         return preactivation
 
     def end_stop(self, input: np.ndarray, lsum: np.ndarray) -> np.ndarray:
