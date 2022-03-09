@@ -1,7 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from torch.nn import Conv2d
-import torch
 
 
 def rgb2gray(rgb_image: np.ndarray) -> np.ndarray:
@@ -17,7 +15,29 @@ def rgb2gray(rgb_image: np.ndarray) -> np.ndarray:
 def create_gabor_filter(
         size: int, sigma_x: float, sigma_y: float,
         lambda_: float, theta: float
-) -> torch.Tensor:
+) -> np.ndarray:
+    """
+    The Gabor filter: sin(2*pi*y/lambda) exp(-x^2/(2*sigma_x^2)-y^2/(2*sigma_y^2),
+    where (x, y) are in basis rotated by theta.
+    Parameters
+    ----------
+    size: int
+        Determine the shape of the Gabor filter: ("size", "size").
+    sigma_x: float
+        Parameter for gaussian. The characteristic size
+        of receptive field in x direction.
+    sigma_y: float
+        Parameter for gaussian. The characteristic size
+        of receptive field in y direction.
+    lambda_: float
+        Parameter for sinus. The characteristic wavelength.
+    theta: float
+        The orientation of the filter (direction of the sinus wave).
+    Returns
+    -------
+    filter_: np.ndarray
+        Resulting rotated Gabor filter.
+    """
     filter_ = np.zeros((size, size))
     start = - (size - 1) / 2
     for i in range(size):
@@ -29,7 +49,7 @@ def create_gabor_filter(
             y = y_ * np.cos(theta) + x_ * np.sin(theta)
             r_2 = x ** 2 / (2 * sigma_x ** 2) + y ** 2 / (2 * sigma_y ** 2)
             filter_[i, j] = np.sin(2 * np.pi * y / lambda_) * np.exp(-r_2)
-    return torch.tensor(filter_)
+    return filter_
 
 
 def create_gaus_filter(
@@ -56,32 +76,30 @@ def create_gaus_filter(
     return filter_.flatten(), wi, wj
 
 
-def create_gabor_convolution(
-        size: int, stride: int, pad: int, sigma_x: float,
-        sigma_y: float, lambda_: float, num: int
-) -> Conv2d:
-    if stride == 1:
-        convolution = Conv2d(1, num, size, stride=stride, bias=False, padding='same')
-    else:
-        convolution = Conv2d(1, num, size, stride=stride, bias=False, padding=pad)
-    convolution.weight.requires_grad_(False)
-
-    for i in range(num):
-        convolution.weight.data[i, 0] = create_gabor_filter(
-            size, sigma_x, sigma_y, lambda_, i * 2 * np.pi / num
-        )
+def conv2d(signal_: np.ndarray, filter_: np.ndarray, stride: int = 1) -> np.ndarray:
+    """
+    The convolution of 2d signal and 2d filter.
+    Parameters
+    ----------
+    signal_: np.ndarray
+        Input 2 dimensional signal with the shape (H, W).
+    filter_: np.ndarray
+        2 dimensional filter for convolution with the shape (FH, FW).
+    stride: int, default=1
+        The size of the stride (the same in both directions).
+    Returns
+    -------
+    convolution: np.ndarray
+        The resulting convolution of signal and filter with the shape
+        ((H - FH) // stride + 1, (W - FW) // stride + 1).
+    """
+    fh, fw = filter_.shape
+    h, w = signal_.shape
+    shape = (fh, fw, (h - fh) // stride + 1, (w - fw) // stride + 1)
+    strides = signal_.strides + tuple(np.multiply(signal_.strides, stride))
+    extended_matr = np.lib.stride_tricks.as_strided(signal_, shape=shape, strides=strides, writeable=False)
+    convolution = np.einsum('ij,ijkl->kl', filter_, extended_matr)
     return convolution
-
-
-def conv2d(signal_: np.ndarray, filter_: np.ndarray) -> np.ndarray:
-    h, w = filter_.shape
-    shape = (h, w)
-    signal_ = np.pad(signal_, ((h // 2, h - h // 2 - 1), (w // 2, w - w // 2 - 1)),
-                     'constant', constant_values=0)
-    s = shape + tuple(np.subtract(signal_.shape, shape) + 1)
-    strd = np.lib.stride_tricks.as_strided
-    sub_matr = strd(signal_, shape=s, strides=signal_.strides * 2)
-    return np.einsum('ij,ijkl->kl', filter_, sub_matr)
 
 
 def relu(x):
@@ -140,46 +158,43 @@ def plot3d_3d_data(data: np.ndarray):
     plt.show()
 
 
-def to_input_shape(
-        raw_image_shape: tuple[int, int], stride: int,
-        padding: int, ker_shape: tuple[int, int]
-) -> tuple[int, int]:
-    s1, s2 = raw_image_shape
-    k1, k2 = ker_shape
-    if stride == 1:
-        output = raw_image_shape
-    else:
-        s1 = int((s1 + 2 * padding - k1) / stride + 1)
-        s2 = int((s2 + 2 * padding - k2) / stride + 1)
-        output = (s1, s2)
-    return output
-
-
 class V1Simple:
     def __init__(self,
                  g_kernel_size: int,
                  g_stride: int,
-                 g_pad: int,
                  g_sigma_x: float,
                  g_sigma_y: float,
                  g_lambda_: float,
                  g_filters: int,
-                 activity_level: float
+                 activity_level: float,
+                 g_pad: int = 0
                  ):
-        self.convolution = create_gabor_convolution(
-            g_kernel_size, g_stride, g_pad, g_sigma_x,
-            g_sigma_y, g_lambda_, g_filters
-        )
+        self.gabor_filters = [
+            create_gabor_filter(
+                g_kernel_size, g_sigma_x, g_sigma_y, g_lambda_, 2 * np.pi * i / g_filters
+            )
+            for i in range(g_filters)
+        ]
+        self.ker_size = g_kernel_size
+        self.pad = g_pad
+        self.stride = g_stride
         self.activity_level = activity_level
 
-    @property
-    def gabor_filters(self):
-        return self.convolution.weight.squeeze().numpy()
+    def output_shape(self, raw_image_shape: tuple[int, int]) -> tuple[int, int]:
+        s1, s2 = raw_image_shape
+        s1 = (s1 + 2 * self.pad - self.ker_size) // self.stride + 1
+        s2 = (s2 + 2 * self.pad - self.ker_size) // self.stride + 1
+        output = (s1, s2)
+        return output
 
     def compute(self, image: np.ndarray) -> np.ndarray:
         gray = rgb2gray(image)
-        gray = torch.tensor(gray.reshape((1, 1, *gray.shape)), dtype=torch.float32)
-        preactivation = self.convolution(gray).squeeze().numpy()
+        gray = np.pad(gray, self.pad, 'constant', constant_values=0)
+        preactivation = [
+            conv2d(gray, filter_, self.stride)
+            for filter_ in self.gabor_filters
+        ]
+        preactivation = np.array(preactivation)
         activation = kWTA(preactivation, self.activity_level)
         return activation
 
@@ -298,7 +313,11 @@ class V1Complex:
     def length_sum(self, input: np.ndarray) -> np.ndarray:
         preactivation = np.zeros_like(input)
         for i, filter_ in enumerate(self.length_filters):
-            preactivation[i] = conv2d(input[i], filter_)
+            h, w = filter_.shape
+            in_temp = np.pad(
+                input[i], ((h // 2, h - h // 2 - 1), (w // 2, w - w // 2 - 1)),
+                'constant', constant_values=0)
+            preactivation[i] = conv2d(in_temp, filter_)
         return preactivation
 
     def end_stop(self, input: np.ndarray, lsum: np.ndarray) -> np.ndarray:
@@ -334,10 +353,7 @@ class V1:
                  raw_image_shape: tuple[int, int],
                  complex_config: dict,
                  *simple_configs: dict,
-                 num_threads: int = None,
                  ):
-        if num_threads is not None:
-            torch.set_num_threads(num_threads)
         self.num_paths = 0
         self.simple_cells = []
         self.complex_cells = []
@@ -345,11 +361,7 @@ class V1:
         for simple_config in simple_configs:
             self.num_paths += 1
             self.simple_cells.append(V1Simple(**simple_config))
-            input_shape = to_input_shape(
-                raw_image_shape,
-                simple_config['g_stride'],
-                simple_config['g_pad'],
-                (simple_config['g_kernel_size'], simple_config['g_kernel_size']))
+            input_shape = self.simple_cells[-1].output_shape(raw_image_shape)
             self.complex_cells.append(
                 V1Complex(**complex_config, input_shape=input_shape)
             )
