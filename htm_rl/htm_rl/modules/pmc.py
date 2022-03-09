@@ -9,7 +9,7 @@ def softmax(x):
     return e_x / np.sum(e_x)
 
 
-def bsu(x, k=10):
+def bsu(x, k=10.0):
     return 1/(1 + np.exp(-x*k))
 
 
@@ -65,7 +65,7 @@ class ThaPMCToM1:
         cells = pool[self.rng.uniform(size=pool_probs.size) < pool_probs]
         cells = np.union1d(cells, cluster_center)
         # calculate output
-        out = np.sum(self.neurons[cells] * self.specializations[cells], axis=0) / np.sum(self.specializations[cells], axis=0)
+        out = self.get_continuous_action(cells)
         # learn
         if learn:
             self.learn(out)
@@ -78,6 +78,8 @@ class ThaPMCToM1:
             k_top = np.argpartition(distance, kth=-self.k_top)[-self.k_top:]
         elif self.neighbourhood_radius is not None:
             k_top = np.flatnonzero(distance < self.neighbourhood_radius)
+        else:
+            raise ValueError('Specify "neighbour_size" or "k_top".')
         # shift receptive field
         deltas = self.learning_rate * self.specializations[k_top] * (out - self.neurons[k_top])
         self.neurons[k_top] += deltas
@@ -114,6 +116,10 @@ class ThaPMCToM1:
         cm = plt.get_cmap()
         colored = cm(image)
         return Image.fromarray((colored[:, :, :3] * 255).astype(np.uint8))
+
+    def get_continuous_action(self, cells):
+        return np.sum(self.neurons[cells] * self.specializations[cells], axis=0) / np.sum(self.specializations[cells],
+                                                                                          axis=0)
 
 
 if __name__ == '__main__':

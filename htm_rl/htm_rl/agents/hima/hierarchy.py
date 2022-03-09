@@ -49,7 +49,8 @@ class Block:
                  sm_max_reward: float = 0.9,
                  sm_min_reward: float = 0.9,
                  modulate_tm_lr: bool = False,
-                 sparsity: float = 0):
+                 sparsity: float = 0,
+                 continuous_output: bool = False):
         
         self.tm = tm
         self.sp = sp
@@ -137,6 +138,8 @@ class Block:
         self.learn_tm = True
         self.learn_sp = True
         self.learn_sm = True
+
+        self.continuous_output = continuous_output
 
     def __str__(self):
         return f"Block_{self.id}"
@@ -379,9 +382,9 @@ class Block:
                 # all options
                 options = self.sm.get_sparse_patterns()
 
-                if len(options) > 0:
+                if len(options) > 0 or self.continuous_output:
                     boost_predicted_options = np.zeros(len(self.sm))
-                    if indices.size > 0:
+                    if len(indices) > 0:
                         # boost predicted options
                         boost_predicted_options[indices] += self.predicted_boost
                         # feedback boost
@@ -394,10 +397,14 @@ class Block:
                     norm_option_values /= (norm_option_values.max() + EPS)
 
                     self.made_decision = True
-                    self.current_option = self.sm.unique_id[option_index]
                     self.failed_option = None
                     self.completed_option = None
-                    self.predicted_options = self.sm.unique_id[indices]
+                    if len(self.sm.unique_id) > 0:
+                        self.current_option = self.sm.unique_id[option_index]
+                        self.predicted_options = self.sm.unique_id[indices]
+                    else:
+                        self.current_option = None
+                        self.predicted_options = np.empty(0)
 
                     # jumped off a high level option
                     if not np.isin(option_index, indices):

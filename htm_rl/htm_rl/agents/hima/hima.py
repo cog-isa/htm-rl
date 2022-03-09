@@ -14,11 +14,14 @@ class HIMA:
         self.use_dreaming = config['use_dreaming']
         self.punish_intrinsic_reward = config['punish_intrinsic_reward']
         self.hierarchy = hierarchy
-        self.elementary_actions = ElementaryActions(**config['elementary_actions'])
 
-        # initialize and pattern memory for output block
-        for pattern in self.elementary_actions.patterns:
-            self.hierarchy.output_block.sm.add(pattern)
+        if 'elementary_actions' in config.keys():
+            self.elementary_actions = ElementaryActions(**config['elementary_actions'])
+            # initialize pattern memory for output block
+            for pattern in self.elementary_actions.patterns:
+                self.hierarchy.output_block.sm.add(pattern)
+        else:
+            self.elementary_actions = None
 
         self.n_actions_to_accumulate = config['n_actions_to_accumulate']
         self.accumulated_action = np.empty(0)
@@ -59,7 +62,8 @@ class HIMA:
             self.hierarchy.set_input((state_pattern, self.action_pattern))
             self.action_pattern = self.hierarchy.output_block.get_output('feedback')
             self.accumulated_action = np.concatenate([self.accumulated_action, self.action_pattern + shift])
-            shift += self.elementary_actions.encoder.output_sdr_size
+            if self.elementary_actions is not None:
+                shift += self.elementary_actions.encoder.output_sdr_size
 
         # train empowerment tm
         if self.use_intrinsic_reward and (self.empowerment.filename is None):

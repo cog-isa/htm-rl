@@ -9,8 +9,9 @@ import wandb
 
 from htm_rl.agents.hima.hierarchy import Hierarchy, Block, InputBlock
 from htm_rl.modules.htm.pattern_memory import SpatialMemory
+from htm_rl.modules.pmc import ThaPMCToM1
 from htm_rl.common.utils import safe_divide
-from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia
+from htm_rl.modules.basal_ganglia import BasalGanglia, DualBasalGanglia, BGPMCProxy
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.envs.coppelia.environment import ArmEnv
 from htm.bindings.algorithms import SpatialPooler
@@ -20,7 +21,7 @@ from htm_rl.agents.hima.utils import OptionVis, draw_values, draw_values_pulse, 
     draw_dual_values, EmpowermentVis, get_unshifted_pos, clip_mask
 from htm_rl.common.scenario import Scenario
 from htm_rl.agents.hima.hima import HIMA
-from htm_rl.agents.hima.adapters import BioGwLabActionAdapter, PulseActionAdapter, BioGwLabObsAdapter, PulseObsAdapter
+from htm_rl.agents.hima.adapters import BioGwLabActionAdapter, PulseActionAdapter, BioGwLabObsAdapter, PulseObsAdapter, PulseContinuousActionAdapter
 
 
 class HIMAgentRunner:
@@ -55,6 +56,9 @@ class HIMAgentRunner:
             if block_conf['bg'] is not None:
                 if use_intrinsic_reward:
                     bg = DualBasalGanglia(**block_conf['bg'])
+                elif block_conf['bg']['continuous_action']:
+                    pmc = ThaPMCToM1(**block_conf['pmc'])
+                    bg = BGPMCProxy(pmc, block_conf['bg'])
                 else:
                     bg = BasalGanglia(**block_conf['bg'])
             else:
@@ -78,8 +82,19 @@ class HIMAgentRunner:
             self.action_adapter = BioGwLabActionAdapter(**config['gw_action_adapter'])
             self.observation_adapter = BioGwLabObsAdapter()
         elif config['environment_type'] == 'pulse':
-            self.environment = ArmEnv(**config['environment'])
-            self.action_adapter = PulseActionAdapter(self.environment, **config['pulse_action_adapter'])
+            self.workspace_limits = config['workspace_limits']
+            self.environment = ArmEnv(workspace_limits=self.workspace_limits, **config['environment'])
+            if 'pulse_action_adapter' in config.keys():
+                self.action_adapter = PulseActionAdapter(self.environment, **config['pulse_action_adapter'])
+            elif 'pulse_action_adapter_continuous' in config.keys():
+                self.action_adapter = PulseContinuousActionAdapter(
+                    self.agent,
+                    self.workspace_limits,
+                    environment=self.environment,
+                    **config['pulse_action_adapter_continuous']
+                )
+            else:
+                raise ValueError('Adapter config is not specified!')
             self.observation_adapter = PulseObsAdapter(self.environment, config['pulse_observation_adapter'])
         else:
             raise ValueError(f'Unknown environment type: {config["environment_type"]}! ')
