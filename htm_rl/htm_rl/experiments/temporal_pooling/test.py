@@ -4,6 +4,7 @@ from htm.bindings.sdr import SDR
 import numpy as np
 import matplotlib.pyplot as plt
 from htm_rl.modules.htm.spatial_pooler import UnionTemporalPooler
+from htm_rl.experiments.temporal_pooling.ablation_utp import AblationUtp
 import seaborn as sns
 from htm_rl.experiments.temporal_pooling.config import *
 import wandb
