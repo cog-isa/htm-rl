@@ -112,15 +112,11 @@ def train_all_seq(tm, tp, data, state_encoder, action_encoder, iters_per_seq):
     return representations
 
 
-def _run_tests():
+def run_test1(data):
     wandb.login()
-    row_data, data = generate_data(5, n_actions, n_states, randomness=0.5)
     np.random.shuffle(data)
-    print(data)
 
-    # -----------------------------
-    errors = []
-    wandb.init(project='my_utp', entity='irodkin', reinit=True)
+    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True)
     tm = DelayedFeedbackTM(**config_tm)
     tp = UnionTemporalPooler(**config_tp)
 
@@ -128,12 +124,8 @@ def _run_tests():
         run(tm, tp, data[0], state_encoder, action_encoder, True)
     wandb.finish()
 
-    # -----------------------------
-    tm = DelayedFeedbackTM(**config_tm)
-    tp = UnionTemporalPooler(**config_tp)
 
-    # -----------------------------
-
+def run_test2(data):
     utp_conf = {
         'inputDimensions': [input_columns * cells_per_column],
         'columnDimensions': [output_columns],
@@ -147,15 +139,8 @@ def _run_tests():
         'receptive_field_sparsity': 0.5,
         'activation_threshold': 0.6,
     }
-    np.random.seed(42)
-    tp_shape = utp_conf['columnDimensions']
-    in_shape = utp_conf['inputDimensions']
-    prev = np.zeros(utp_conf['columnDimensions'])
-    classes_num = utp_conf['inputDimensions']
 
-    my_utp = CustomUtp(**utp_conf)
-
-    wandb.init(project='my_utp', entity='irodkin', reinit=True, config=utp_conf)
+    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=utp_conf)
 
     # -----------------------------
     my_utp = CustomUtp(**utp_conf)
@@ -166,16 +151,29 @@ def _run_tests():
 
     wandb.finish(quiet=True)
 
-
-    # -----------------------------
     plt.title('pooling activations')
-    sns.heatmap(my_utp._pooling_activations.reshape(-1, 80), vmin=0, vmax=1, cmap='plasma')
+    # sns.heatmap(my_utp._pooling_activations.reshape(-1, 80), vmin=0, vmax=1, cmap='plasma')
 
     # -----------------------------
     print(my_utp.getUnionSDR().dense.nonzero()[0].size / output_columns)
 
-    # -----------------------------
-    wandb.init(project='my_utp', entity='irodkin', reinit=True, config=utp_conf)
+
+def run_test3(row_data):
+    utp_conf = {
+        'inputDimensions': [input_columns * cells_per_column],
+        'columnDimensions': [output_columns],
+        'initial_pooling': 1,
+        'pooling_decay': 0.1,
+        'permanence_inc': 0.005,
+        'permanence_dec': 0.003,
+        'sparsity': 0.04,
+        'active_weight': 0.5,
+        'predicted_weight': 2.0,
+        'receptive_field_sparsity': 0.5,
+        'activation_threshold': 0.6,
+    }
+
+    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=utp_conf)
 
     my_utp = CustomUtp(**utp_conf)
 
@@ -184,9 +182,8 @@ def _run_tests():
 
     wandb.finish(quiet=True)
 
-    # -------------
 
-    # ------------------
+def run_test4(data):
     utp_conf = {
         'inputDimensions': [input_columns * cells_per_column],
         'columnDimensions': [output_columns],
@@ -202,7 +199,7 @@ def _run_tests():
         **config_sp_lower
     }
 
-    wandb.init(project='my_utp', entity='irodkin', reinit=True, config=utp_conf)
+    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=utp_conf)
 
     my_utp = CustomUtp(**utp_conf)
     tm = DelayedFeedbackTM(**config_tm)
@@ -212,9 +209,10 @@ def _run_tests():
 
     wandb.finish(quiet=True)
 
-    # -----------------------
+    vis_what(data, representations)
 
 
+def vis_what(data, representations):
     similarity_matrix = np.zeros((len(representations), len(representations)))
     pure_similarity = np.zeros(similarity_matrix.shape)
     for i, policy1 in enumerate(data):
@@ -234,12 +232,9 @@ def _run_tests():
 
     sns.heatmap(abs(pure_similarity - similarity_matrix), vmin=0, vmax=1, cmap='plasma', ax=ax3)
     plt.show()
-    # print(representations[0].dense.nonzero()[0])
-    # print(representations[1].dense.nonzero()[0])
 
-    # ----------------------------
 
-    # ------------------
+def run_test5(data):
     stp_config = dict(
         initial_pooling=1,
         pooling_decay=0.05,
@@ -251,16 +246,14 @@ def _run_tests():
     tp = UnionTemporalPooler(**config_tp)
     stp = SandwichTp(**stp_config)
 
-    wandb.init(project='my_utp', entity='irodkin', reinit=True, config=stp_config)
+    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=stp_config)
     for epoch in range(50):
         representations = train_all_seq(tm, stp, data, state_encoder, action_encoder, 20)
     wandb.finish(quiet=True)
 
-    # -----------------
     sp1 = SpatialPooler(**config_sp_lower)
     sp2 = SpatialPooler(**config_sp_upper)
 
-    # -----------------
     input = SDR(sp1.getNumInputs())
     input.dense = np.ones(sp1.getNumInputs())
     output = SDR(sp1.getColumnDimensions())
@@ -269,6 +262,18 @@ def _run_tests():
     sp1.compute(input, learn=True, output=output)
     sp2.compute(output, learn=True, output=output)
     print(output.sparse)
+
+
+def _run_tests():
+    np.random.seed(42)
+
+    row_data, data = generate_data(5, n_actions, n_states, randomness=0.5)
+
+    run_test1(data)
+    run_test2(data)
+    run_test3(row_data)
+    run_test4(data)
+    run_test5(data)
 
 
 if __name__ == '__main__':

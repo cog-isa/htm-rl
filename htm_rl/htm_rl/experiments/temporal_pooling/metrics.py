@@ -22,5 +22,7 @@ def row_similarity(policy_1, policy_2):
 
 
 def representation_similarity(representation_1, representation_2):
-    return (representation_1 * representation_2).nonzero()[0].size / (representation_1 | representation_2).nonzero()[
-        0].size
+    overlap = (representation_1 * representation_2).nonzero()[0].size
+    union = (representation_1 | representation_2).nonzero()[0].size
+
+    return overlap / union

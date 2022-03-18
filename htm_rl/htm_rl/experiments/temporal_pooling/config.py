@@ -1,5 +1,8 @@
 from htm_rl.common.sdr_encoders import IntBucketEncoder
 
+wandb_entity = 'pkuderov'
+wandb_project = 'temporal_pooling'
+
 n_actions = 4
 action_bucket = 10
 n_states = 25
