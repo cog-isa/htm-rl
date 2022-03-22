@@ -4,6 +4,7 @@ import copy
 import numpy as np
 from numpy.random._generator import Generator
 from htm_rl.common.sdr import SparseSdr
+from htm_rl.modules.pmc import ThaPMCToM1
 
 EPS = 1e-12
 
@@ -510,13 +511,17 @@ class BasalGangliaSimple:
         self.stri.reset()
 
     def compute(self, stimulus,
+                responses: List[SparseSdr] = None,
                 responses_boost: np.ndarray = None,
                 learn=True):
         d1, d2 = self.stri.compute(stimulus)
+        if responses_boost is not None:
+            max_response = max(d1.max(), d2.max())
+            boost = responses_boost * max_response
+            d1 += boost
+            d2 += boost
         stn = self.stn.compute(stimulus, learn=learn)
         gpe = self.gpe.compute(stn, d2)
-        if responses_boost is not None:
-            d1 *= responses_boost
         gpi = self.gpi.compute(stn, (d1, gpe), return_probs=True)
 
         return gpi
@@ -541,4 +546,27 @@ class BasalGangliaSimple:
         :return:
         """
         self.stri.update_stimulus(stimulus)
+
+
+class BGPMCProxy(BasalGangliaSimple):
+    def __init__(self, pmc: ThaPMCToM1, bg_config):
+        super(BGPMCProxy, self).__init__(**bg_config)
+        self.pmc = pmc
+        self.continuous_action = None
+
+    def compute(self, stimulus,
+                responses: List[SparseSdr] = None,
+                responses_boost: np.ndarray = None,
+                learn=True):
+        # convert responses boost
+        if responses is not None:
+            dense_boost = np.zeros(self._output_size)
+            for idx, response in enumerate(responses):
+                dense_boost[response] += responses_boost[idx]
+            responses_boost = dense_boost
+
+        probs = super(BGPMCProxy, self).compute(stimulus, responses_boost=responses_boost, learn=learn)
+        action, response = self.pmc.compute(probs)
+        self.continuous_action = action
+        return 0, response, np.zeros(1)
 

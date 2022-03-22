@@ -4,10 +4,25 @@ from htm_rl.common.sdr_decoders import DecoderStack, IntBucketDecoder
 from htm_rl.common.sdr_encoders import RangeDynamicEncoder, VectorDynamicEncoder
 from htm_rl.envs.coppelia.environment import ArmEnv
 from htm_rl.modules.v1 import V1
+from htm_rl.agents.hima.hima import HIMA
+from htm_rl.agents.pmc.adapters import ArmActionAdapter
 
 from math import pi
 
 import numpy as np
+
+
+class PulseContinuousActionAdapter(ArmActionAdapter):
+    def __init__(self, agent: HIMA, limits: dict, velocity=None, environment: ArmEnv = None):
+        super(PulseContinuousActionAdapter, self).__init__(limits, velocity, environment)
+        self.agent = agent
+
+    def adapt(self, action):
+        continuous_action = self.agent.hierarchy.output_block.bg.pmc.get_continuous_action(action)
+        return super(PulseContinuousActionAdapter, self).adapt(continuous_action)
+
+    def reset(self):
+        pass
 
 
 class PulseActionAdapter:
