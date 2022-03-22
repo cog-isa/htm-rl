@@ -1,5 +1,40 @@
-from htm_rl.agents.v1.runner import AAIPygameRunner
+from htm_rl.agents.v1.runner import AAIPygameRunner, ExplorationAAIRunner
+import matplotlib.pyplot as plt
+import numpy as np
 
+
+def collect_data():
+    config = {
+        'steps': 1000,
+        'environment':{
+            'seed': 0,
+            'file_name': '/home/artem/projects/animal-ai/env/AnimalAI',
+            'arenas_configurations': '/home/artem/projects/animal-ai/configs/basic/1g.yml',
+            'play': False,
+            'useCamera': True,
+            'useRayCasts': False,
+            'resolution': 200,
+        },
+        'agent':{
+            'grid_size': 5
+        }
+    }
+    runner = ExplorationAAIRunner(config)
+    runner.run()
+    plt.imshow(runner.agent.map / runner.agent.map.max())
+    plt.show()
+    print(runner.agent.map)
+    n_states = int(runner.agent.map.min())
+    data = np.empty((25, n_states, 200, 200, 3))
+    ind = 0
+    for i in range(5):
+        for j in range(5):
+            arr = runner.agent.data[(i, j)]
+            temp = np.arange(len(arr))
+            np.random.shuffle(temp)
+            data[ind] = np.array(arr)[temp[:n_states]]
+            ind += 1
+    np.savez_compressed('aii_data.npz', data)
 
 def test():
     simple_configs = [
@@ -37,4 +72,5 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    # test()
+    collect_data()

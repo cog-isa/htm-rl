@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import wandb
 from wandb.wandb_run import Run
 
-from htm_rl.agents.v1.agent import RndAgent
+from htm_rl.agents.v1.agent import RndAgent, ExploreAgent
 from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
 from htm_rl.envs.coppelia.environment import ArmEnv
 
@@ -189,3 +189,34 @@ class AAIPygameRunner:
                             self.update_screen(raw_image)
         pygame.quit()
         self.env.close()
+
+
+class ExplorationAAIRunner:
+    def __init__(self, config):
+
+        self.env = AnimalAIEnvironment(**config['environment'])
+        self.behavior = list(self.env.behavior_specs.keys())[0]
+        self.actions = AAIActions().allActions
+        self.steps = config['steps']
+        self.agent = ExploreAgent(**config['agent'])
+
+    def run(self):
+        firststep = True
+        for i in range(self.steps):
+            if firststep:
+                self.env.step()
+                firststep = False
+                dec, term = self.env.get_steps(self.behavior)
+
+            pos = self.env.get_obs_dict(dec.obs)["position"]
+            vel = self.env.get_obs_dict(dec.obs)["velocity"]
+            cam = self.env.get_obs_dict(dec.obs)["camera"]
+            action = self.agent.act(pos, vel, cam)
+
+            self.env.set_actions(self.behavior, self.actions[action].action_tuple)
+            self.env.step()
+            dec, term = self.env.get_steps(self.behavior)
+            if len(term) > 0:  # Episode is over
+                firststep = True
+        self.env.close()
+
