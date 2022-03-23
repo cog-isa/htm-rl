@@ -1,0 +1,18 @@
+seed: 1337
+entity: pkuderov
+project: temporal_pooling
+log: False    # wandb logging
+
+generator:
+  _type_: synthetic
+  n_states: 25
+  n_actions: 4
+
+state_encoder:
+  _type_: int_bucket
+  bucket_size: 3
+
+action_encoder:
+  _type_: int_bucket
+  bucket_size: 10
+

@@ -1,9 +1,22 @@
 import sys
+from typing import Optional
 
 import wandb
 import yaml
 
 from htm_rl.scenarios.utils import parse_str
+
+
+class Experiment:
+    config: dict
+    logger: Optional[wandb]
+
+    def __init__(self, config: dict):
+        self.config = config
+        self.logger = make_logger(config)
+
+    def run(self):
+        ...
 
 
 def overwrite_config(config: dict, key_path: str, value: str):
@@ -72,6 +85,7 @@ def run_test():
         run_args = [default_config_name]
 
     config = compile_config(run_args)
+    Experiment(config).run()
 
 
 if __name__ == '__main__':
