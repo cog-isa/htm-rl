@@ -67,7 +67,8 @@ class CustomUtp:
 
         active_synapses = np.ix_(self.getUnionSDR().sparse, np.flatnonzero(active_neurons))
         self.connections[active_synapses] += self._permanence_dec
-        # self.connections[active_synapses] = (self.connections[active_synapses].transpose()+self._permanence_inc*self._pooling_activations[self.getUnionSDR().sparse]).transpose()
+        # self.connections[active_synapses] = (self.connections[active_synapses].transpose(
+        # )+self._permanence_inc*self._pooling_activations[self.getUnionSDR().sparse]).transpose()
         self.connections[active_synapses] += self._permanence_inc
         self.connections = self.connections.clip(0, 1)
 
