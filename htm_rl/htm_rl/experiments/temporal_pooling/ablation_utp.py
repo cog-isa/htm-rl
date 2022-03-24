@@ -39,6 +39,7 @@ class AblationUtp(SpatialPooler):
             synPermPreviousPredActiveInc=0.0,
             historyLength=0,
             minHistory=0,
+            second_boosting=True,
             **kwargs
     ):
         """
@@ -64,6 +65,7 @@ class AblationUtp(SpatialPooler):
         @param minHistory don't perform union (output all zeros) until buffer
         length >= minHistory
         """
+        self.second_boosting = second_boosting
 
         super(AblationUtp, self).__init__(**kwargs)
 
@@ -201,6 +203,7 @@ class AblationUtp(SpatialPooler):
             # adapt permanence of connections from predicted active inputs to newly active cell
             # This step is the spatial pooler learning rule, applied only to the predictedActiveInput
             # Todo: should we also include unpredicted active input in this step?
+
             self._adaptSynapses(correctly_predicted_input, self._activeCells, self.getSynPermActiveInc(),
                                 self.getSynPermInactiveDec())
 
@@ -215,12 +218,13 @@ class AblationUtp(SpatialPooler):
                                     self._synPermPreviousPredActiveInc, 0.0)
 
             # Homeostasis learning inherited from the spatial pooler
-            self._updateDutyCycles(totalOverlap.astype(UINT_DTYPE), self._activeCells)
-            self._bumpUpWeakColumns()
-            self._updateBoostFactors()
-            if self._isUpdateRound():
-                self._updateInhibitionRadius()
-                self._updateMinDutyCycles()
+            if self.second_boosting:
+                self._updateDutyCycles(totalOverlap.astype(UINT_DTYPE), self._activeCells)
+                self._bumpUpWeakColumns()
+                self._updateBoostFactors()
+                if self._isUpdateRound():
+                    self._updateInhibitionRadius()
+                    self._updateMinDutyCycles()
 
         # save inputs from the previous time step
         self._preActiveInput = copy.copy(input_active.dense)

@@ -17,6 +17,8 @@ from htm_rl.experiments.temporal_pooling.utils import StupidEncoder
 from htm_rl.modules.htm.spatial_pooler import UnionTemporalPooler
 from htm_rl.modules.htm.temporal_memory import DelayedFeedbackTM
 
+from htm_rl.experiments.temporal_pooling.ablation_utp import AblationUtp
+
 
 def train_model(tm: TemporalMemory, sdrs: np.ndarray, num_epochs=10) -> list:
     errors = []
@@ -100,12 +102,15 @@ def train_all_seq(tm, tp, data, state_encoder, action_encoder, iters_per_seq):
         tp.reset()
         whole_active = np.zeros(tp.getUnionSDR().dense.shape)
         for i in range(iters_per_seq):
+
             if i < 2:
                 whole_active = None
             elif i == 2:
                 whole_active = SDR(tp.getUnionSDR().dense.shape)
                 whole_active.dense = np.zeros(tp.getUnionSDR().dense.shape)
+
             run(tm, tp, policy, state_encoder, action_encoder, learn=True, prev_dense=prev, whole_active=whole_active)
+
         representations.append(tp.getUnionSDR())
         prev = tp.getUnionSDR().dense.copy()
     return representations
@@ -151,16 +156,33 @@ def only_custom_utp_test(row_data):
 
 
 def custom_utp_all_seq_5_epochs(data):
-    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=utp_conf)
-
     my_utp = CustomUtp(**utp_conf)
     tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, my_utp, data, epochs=5)
+
+
+def common_utp_all_seq_5_epochs(data):
     tp = UnionTemporalPooler(**config_tp)
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def ablation_all_seq_5_epochs(data):
+    tp = AblationUtp(
+        **config_tp,
+        second_boosting=False
+    )
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def all_seq(tm, tp, data, epochs):
+    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=utp_conf)
 
     representations = []
 
-    for epoch in range(1):
-        representations = train_all_seq(tm, my_utp, data, state_encoder, action_encoder, 20)
+    for epoch in range(epochs):
+        representations = train_all_seq(tm, tp, data, state_encoder, action_encoder, 20)
 
     vis_what(data, representations)
 
@@ -179,16 +201,16 @@ def vis_what(data, representations):
 
     fig = plt.figure(figsize=(40, 10))
     ax1 = fig.add_subplot(131)
-    ax1.set_title('representational', size=30)
+    ax1.set_title('representational', size=40)
     ax2 = fig.add_subplot(132)
-    ax2.set_title('pure', size=30)
+    ax2.set_title('pure', size=40)
     ax3 = fig.add_subplot(133)
-    ax3.set_title('difference', size=30)
+    ax3.set_title('difference', size=40)
 
     sns.heatmap(similarity_matrix, vmin=0, vmax=1, cmap='plasma', ax=ax1)
     sns.heatmap(pure_similarity, vmin=0, vmax=1, cmap='plasma', ax=ax2)
 
-    sns.heatmap(abs(pure_similarity - similarity_matrix), vmin=0, vmax=1, cmap='plasma', ax=ax3)
+    sns.heatmap(abs(pure_similarity - similarity_matrix), vmin=0, vmax=1, cmap='plasma', ax=ax3, annot=True)
     wandb.log({'representations similarity': wandb.Image(ax1)})
     plt.show()
 
@@ -222,12 +244,14 @@ def _run_tests():
     np.random.seed(42)
 
     row_data, data = generate_data(5, n_actions, n_states, randomness=0.5)
-
+    np.random.shuffle(data)
     # common_utp_one_seq(data)
     # custom_utp_one_seq(data)
     # only_custom_utp_test(row_data)
-    custom_utp_all_seq_5_epochs(data)
+    # custom_utp_all_seq_5_epochs(data)
     # stp_all_seq_3_epochs(data)
+    common_utp_all_seq_5_epochs(data)
+    # ablation_all_seq_5_epochs(data)
 
 
 if __name__ == '__main__':
