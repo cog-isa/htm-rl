@@ -2,12 +2,12 @@ from htm_rl.agents.agent import Agent
 from htm_rl.envs.env import Env
 from htm_rl.scenarios.config import FileConfig
 from htm_rl.scenarios.experiment import Experiment
-from htm_rl.scenarios.utils import filter_out_non_passable_items
+from htm_rl.scenarios.utils import filtered_by_name_convention
 
 
 def materialize_environment(env_config: dict, seed: int) -> Env:
     env_type = env_config['_type_']
-    env_config = filter_out_non_passable_items(env_config, depth=2)
+    env_config = filtered_by_name_convention(env_config, depth=2)
     if env_type == 'biogwlab':
         from htm_rl.envs.biogwlab.env import BioGwLabEnvironment
         return BioGwLabEnvironment(seed=seed, **env_config)
@@ -17,7 +17,7 @@ def materialize_environment(env_config: dict, seed: int) -> Env:
 
 def materialize_agent(agent_config: dict, seed: int, env: Env) -> Agent:
     agent_type = agent_config['_type_']
-    agent_config = filter_out_non_passable_items(agent_config, depth=2)
+    agent_config = filtered_by_name_convention(agent_config, depth=2)
     if agent_type == 'rnd':
         from htm_rl.agents.rnd.agent import RndAgent
         return RndAgent(seed=seed, env=env)

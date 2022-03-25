@@ -1,4 +1,5 @@
 from ast import literal_eval
+from typing import Iterable, Union
 
 from htm_rl.common.utils import ensure_list
 from htm_rl.scenarios.config import Config
@@ -48,13 +49,42 @@ class ProgressPoint:
         return hash(self.as_tuple())
 
 
-def filter_out_non_passable_items(config: dict, depth: int):
-    """Recursively filters out non-passable args started with '.' and '_'."""
+def filtered(d: dict, keys_to_remove: Iterable[str], depth: int) -> dict:
+    """
+    Returns a shallow copy of the provided dictionary without the items
+    that match `keys_to_remove`.
+
+    The `depth == 1` means filtering `d` itself,
+        `depth == 2` — with its dict immediate descendants
+        and so on.
+    """
+    if not isinstance(d, dict) or depth <= 0:
+        return d
+
+    return {
+        k: filtered(v, keys_to_remove, depth - 1)
+        for k, v in d.items()
+        if k not in keys_to_remove
+    }
+
+
+def filtered_by_name_convention(config: dict, depth: int) -> dict:
+    """
+    Recursively filters out non-passable args started with '.' and '_'.
+
+    The `depth == 1` means filtering `config` itself,
+        `depth == 2` — with its dict immediate descendants
+        and so on.
+
+    For example, it filters out `_type_` and `.xyz` dict keys,
+    which by our convention in yaml configs denote the type name
+    and a local variable correspondingly.
+    """
     if not isinstance(config, dict) or depth <= 0:
         return config
 
     return {
-        k: filter_out_non_passable_items(v, depth - 1)
+        k: filtered_by_name_convention(v, depth - 1)
         for k, v in config.items()
         if not (k.startswith('.') or k.startswith('_'))
     }
@@ -74,6 +104,16 @@ def parse_str(val):
         except ValueError:
             pass
     return val
+
+
+def which_type(config: dict, extract: bool = False) -> Union[str, tuple[str, dict]]:
+    key = '_type_'
+    t = config.get(key, None)
+    if extract:
+        filtered_config = filtered(config, keys_to_remove={key}, depth=1)
+        return t, filtered_config
+
+    return t
 
 
 def add_overwrite_attributes(config: Config, overwrites: list[str]):
