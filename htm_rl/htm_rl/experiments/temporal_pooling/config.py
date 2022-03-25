@@ -1,6 +1,6 @@
 from htm_rl.common.sdr_encoders import IntBucketEncoder
 
-wandb_entity = 'pkuderov'
+wandb_entity = 'irodkin'
 wandb_project = 'temporal_pooling'
 
 n_actions = 4
@@ -104,4 +104,18 @@ config_sp_upper = dict(
     synPermInactiveDec=0.01,
     wrapAround=True,
     seed=seed
+)
+
+utp_conf = dict(
+    inputDimensions=[input_columns * cells_per_column],
+    columnDimensions=[output_columns],
+    initial_pooling=1,
+    pooling_decay=0.2,
+    permanence_inc=0.005,
+    permanence_dec=0.003,
+    sparsity=0.004,
+    active_weight=0.5,
+    predicted_weight=2.0,
+    receptive_field_sparsity=0.5,
+    activation_threshold=0.6,
 )

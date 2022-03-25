@@ -14,12 +14,13 @@ from htm_rl.experiments.temporal_pooling.metrics import (
 )
 from htm_rl.experiments.temporal_pooling.sandwich_tp import SandwichTp
 from htm_rl.experiments.temporal_pooling.utils import StupidEncoder
-from htm_rl.modules.htm.spatial_pooler import SpatialPooler
 from htm_rl.modules.htm.spatial_pooler import UnionTemporalPooler
 from htm_rl.modules.htm.temporal_memory import DelayedFeedbackTM
 
+from htm_rl.experiments.temporal_pooling.ablation_utp import AblationUtp
 
-def learn_model(tm: TemporalMemory, sdrs: np.ndarray, num_epochs=10) -> list:
+
+def train_model(tm: TemporalMemory, sdrs: np.ndarray, num_epochs=10) -> list:
     errors = []
     for epoch in range(num_epochs):
         for sdr in sdrs:
@@ -101,18 +102,21 @@ def train_all_seq(tm, tp, data, state_encoder, action_encoder, iters_per_seq):
         tp.reset()
         whole_active = np.zeros(tp.getUnionSDR().dense.shape)
         for i in range(iters_per_seq):
+
             if i < 2:
                 whole_active = None
             elif i == 2:
                 whole_active = SDR(tp.getUnionSDR().dense.shape)
                 whole_active.dense = np.zeros(tp.getUnionSDR().dense.shape)
+
             run(tm, tp, policy, state_encoder, action_encoder, learn=True, prev_dense=prev, whole_active=whole_active)
+
         representations.append(tp.getUnionSDR())
         prev = tp.getUnionSDR().dense.copy()
     return representations
 
 
-def run_test1(data):
+def common_utp_one_seq(data):
     wandb.login()
     np.random.shuffle(data)
 
@@ -125,21 +129,7 @@ def run_test1(data):
     wandb.finish()
 
 
-def run_test2(data):
-    utp_conf = {
-        'inputDimensions': [input_columns * cells_per_column],
-        'columnDimensions': [output_columns],
-        'initial_pooling': 1,
-        'pooling_decay': 0.1,
-        'permanence_inc': 0.005,
-        'permanence_dec': 0.003,
-        'sparsity': 0.04,
-        'active_weight': 0.5,
-        'predicted_weight': 2.0,
-        'receptive_field_sparsity': 0.5,
-        'activation_threshold': 0.6,
-    }
-
+def custom_utp_one_seq(data):
     wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=utp_conf)
 
     # -----------------------------
@@ -151,28 +141,10 @@ def run_test2(data):
 
     wandb.finish(quiet=True)
 
-    plt.title('pooling activations')
-    # sns.heatmap(my_utp._pooling_activations.reshape(-1, 80), vmin=0, vmax=1, cmap='plasma')
-
-    # -----------------------------
     print(my_utp.getUnionSDR().dense.nonzero()[0].size / output_columns)
 
 
-def run_test3(row_data):
-    utp_conf = {
-        'inputDimensions': [input_columns * cells_per_column],
-        'columnDimensions': [output_columns],
-        'initial_pooling': 1,
-        'pooling_decay': 0.1,
-        'permanence_inc': 0.005,
-        'permanence_dec': 0.003,
-        'sparsity': 0.04,
-        'active_weight': 0.5,
-        'predicted_weight': 2.0,
-        'receptive_field_sparsity': 0.5,
-        'activation_threshold': 0.6,
-    }
-
+def only_custom_utp_test(row_data):
     wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=utp_conf)
 
     my_utp = CustomUtp(**utp_conf)
@@ -183,33 +155,38 @@ def run_test3(row_data):
     wandb.finish(quiet=True)
 
 
-def run_test4(data):
-    utp_conf = {
-        'inputDimensions': [input_columns * cells_per_column],
-        'columnDimensions': [output_columns],
-        'initial_pooling': 1,
-        'pooling_decay': 0.2,
-        'permanence_inc': 0.005,
-        'permanence_dec': 0.003,
-        'sparsity': 0.004,
-        'active_weight': 0.5,
-        'predicted_weight': 1.0,
-        'receptive_field_sparsity': 0.5,
-        'activation_threshold': 0.6,
-        **config_sp_lower
-    }
-
-    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=utp_conf)
-
+def custom_utp_all_seq_5_epochs(data):
     my_utp = CustomUtp(**utp_conf)
     tm = DelayedFeedbackTM(**config_tm)
-    tp = UnionTemporalPooler(**config_tp)
-    for epoch in range(5):
-        representations = train_all_seq(tm, my_utp, data, state_encoder, action_encoder, 20)
+    all_seq(tm, my_utp, data, epochs=5)
 
-    wandb.finish(quiet=True)
+
+def common_utp_all_seq_5_epochs(data):
+    tp = UnionTemporalPooler(**config_tp)
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def ablation_all_seq_5_epochs(data):
+    tp = AblationUtp(
+        **config_tp,
+        second_boosting=False
+    )
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def all_seq(tm, tp, data, epochs):
+    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=utp_conf)
+
+    representations = []
+
+    for epoch in range(epochs):
+        representations = train_all_seq(tm, tp, data, state_encoder, action_encoder, 20)
 
     vis_what(data, representations)
+
+    wandb.finish(quiet=True)
 
 
 def vis_what(data, representations):
@@ -224,17 +201,21 @@ def vis_what(data, representations):
 
     fig = plt.figure(figsize=(40, 10))
     ax1 = fig.add_subplot(131)
+    ax1.set_title('representational', size=40)
     ax2 = fig.add_subplot(132)
+    ax2.set_title('pure', size=40)
     ax3 = fig.add_subplot(133)
+    ax3.set_title('difference', size=40)
 
     sns.heatmap(similarity_matrix, vmin=0, vmax=1, cmap='plasma', ax=ax1)
     sns.heatmap(pure_similarity, vmin=0, vmax=1, cmap='plasma', ax=ax2)
 
-    sns.heatmap(abs(pure_similarity - similarity_matrix), vmin=0, vmax=1, cmap='plasma', ax=ax3)
+    sns.heatmap(abs(pure_similarity - similarity_matrix), vmin=0, vmax=1, cmap='plasma', ax=ax3, annot=True)
+    wandb.log({'representations similarity': wandb.Image(ax1)})
     plt.show()
 
 
-def run_test5(data):
+def stp_all_seq_3_epochs(data):
     stp_config = dict(
         initial_pooling=1,
         pooling_decay=0.05,
@@ -247,33 +228,30 @@ def run_test5(data):
     stp = SandwichTp(**stp_config)
 
     wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=stp_config)
-    for epoch in range(50):
+
+    representations = []
+
+    for epoch in range(3):
         representations = train_all_seq(tm, stp, data, state_encoder, action_encoder, 20)
+
+    vis_what(data, representations)
+
     wandb.finish(quiet=True)
-
-    sp1 = SpatialPooler(**config_sp_lower)
-    sp2 = SpatialPooler(**config_sp_upper)
-
-    input = SDR(sp1.getNumInputs())
-    input.dense = np.ones(sp1.getNumInputs())
-    output = SDR(sp1.getColumnDimensions())
-    output.dense = np.ones(sp1.getColumnDimensions())
-
-    sp1.compute(input, learn=True, output=output)
-    sp2.compute(output, learn=True, output=output)
-    print(output.sparse)
 
 
 def _run_tests():
+    wandb.login()
     np.random.seed(42)
 
     row_data, data = generate_data(5, n_actions, n_states, randomness=0.5)
-
-    run_test1(data)
-    run_test2(data)
-    run_test3(row_data)
-    run_test4(data)
-    run_test5(data)
+    np.random.shuffle(data)
+    # common_utp_one_seq(data)
+    # custom_utp_one_seq(data)
+    # only_custom_utp_test(row_data)
+    # custom_utp_all_seq_5_epochs(data)
+    # stp_all_seq_3_epochs(data)
+    common_utp_all_seq_5_epochs(data)
+    # ablation_all_seq_5_epochs(data)
 
 
 if __name__ == '__main__':
