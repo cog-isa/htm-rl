@@ -3,21 +3,27 @@ from typing import Optional
 
 import wandb
 import yaml
+from wandb.sdk.wandb_run import Run
 
+from htm_rl.experiments.temporal_pooling.data_generation import resolve_data_generator
 from htm_rl.scenarios.utils import parse_str
 
 
 class Experiment:
     config: dict
-    logger: Optional[wandb]
+    logger: Optional[Run]
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, n_policies: int):
         self.config = config
         self.logger = make_logger(config)
+        self.n_policies = n_policies
 
     def run(self):
-        ...
+        config = self.config
+        print(config)
+        data_generator = resolve_data_generator(config)
 
+        policies = data_generator.generate_policies(self.n_policies)
 
 def overwrite_config(config: dict, key_path: str, value: str):
     # accepts everything non-parseable as is, i.e as a str
@@ -84,8 +90,8 @@ def run_test():
         default_config_name = 'lol'
         run_args = [default_config_name]
 
-    config = compile_config(run_args)
-    Experiment(config).run()
+    config = compile_config(run_args, config_path_prefix='./configs/')
+    Experiment(config, **config['experiment']).run()
 
 
 if __name__ == '__main__':

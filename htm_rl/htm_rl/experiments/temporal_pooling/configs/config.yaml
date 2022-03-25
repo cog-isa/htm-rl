@@ -3,16 +3,26 @@ entity: pkuderov
 project: temporal_pooling
 log: False    # wandb logging
 
+experiment:
+  n_policies: 5
+
 generator:
   _type_: synthetic
-  n_states: 25
-  n_actions: 4
+  n_states: &n_states 25
+  n_actions: &n_actions 4
+  state_encoder: bucket
+  action_encoder: bucket
+  policy_similarity: 0.5
 
-state_encoder:
-  _type_: int_bucket
-  bucket_size: 3
+state_encoders:
+  bucket:
+    _type_: int_bucket
+    n_values: *n_states
+    bucket_size: 3
 
-action_encoder:
-  _type_: int_bucket
-  bucket_size: 10
+action_encoders:
+  bucket:
+    _type_: int_bucket
+    n_values: *n_actions
+    bucket_size: 10
 
