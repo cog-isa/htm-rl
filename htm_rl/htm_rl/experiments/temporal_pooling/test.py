@@ -167,10 +167,37 @@ def common_utp_all_seq_5_epochs(data):
     all_seq(tm, tp, data, epochs=5)
 
 
-def ablation_all_seq_5_epochs(data):
+def no_second_boosting(data):
     tp = AblationUtp(
         **config_tp,
         second_boosting=False
+    )
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def no_history_learning_5_epochs(data):
+    tp = AblationUtp(
+        **config_tp,
+        history_learning=False
+    )
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def no_history_learning_15_epochs(data):
+    tp = AblationUtp(
+        **config_tp,
+        history_learning=False
+    )
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=15)
+
+
+def no_untemporal_learning(data):
+    tp = AblationUtp(
+        **config_tp,
+        untemporal_learning=False
     )
     tm = DelayedFeedbackTM(**config_tm)
     all_seq(tm, tp, data, epochs=5)
@@ -250,8 +277,11 @@ def _run_tests():
     # only_custom_utp_test(row_data)
     # custom_utp_all_seq_5_epochs(data)
     # stp_all_seq_3_epochs(data)
-    common_utp_all_seq_5_epochs(data)
-    # ablation_all_seq_5_epochs(data)
+    # common_utp_all_seq_5_epochs(data)
+    # no_second_boosting(data)
+    # no_history_learning_5_epochs(data)
+    # no_history_learning_15_epochs(data)
+    no_untemporal_learning(data)
 
 
 if __name__ == '__main__':
