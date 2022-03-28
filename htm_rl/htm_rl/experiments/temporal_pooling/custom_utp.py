@@ -62,13 +62,25 @@ class CustomUtp:
         result_sdr.sparse = most_active
         return result_sdr
 
-    def update_permanences(self, active_neurons: np.ndarray):
-        # self.connections[:, np.flatnonzero(active_neurons)] -= self._permanence_dec
+    def untemporal_learning(self, predicted_neurons, winners):
+        self.connections[:, predicted_neurons.sparse] -= self._permanence_dec
 
-        active_synapses = np.ix_(self.getUnionSDR().sparse, np.flatnonzero(active_neurons))
+        active_synapses = np.ix_(winners, predicted_neurons.sparse)
+        self.connections[active_synapses] += self._permanence_dec
+        self.connections[active_synapses] += self._permanence_inc
+        self.connections = self.connections.clip(0, 1)
+
+    def union_learning(self, predicted_neurons):
+        # self.connections[:, predicted_neurons.sparse] -= self._permanence_dec
+
+        active_synapses = np.ix_(self.getUnionSDR().sparse, predicted_neurons.sparse)
         # self.connections[active_synapses] += self._permanence_dec
         self.connections[active_synapses] += self._permanence_inc
         self.connections = self.connections.clip(0, 1)
+
+    def update_permanences(self, predicted_neurons: SDR, winners: np.ndarray):
+        self.untemporal_learning(predicted_neurons, winners)
+        self.union_learning(predicted_neurons)
 
     def compute_continuous(self, active_neurons: SDR, predicted_neurons: SDR, learn: bool = True):
         weighted_input = active_neurons.dense * self.active_weight + predicted_neurons.dense * self.predicted_weight
@@ -79,7 +91,7 @@ class CustomUtp:
         self._union_sdr.dense = self._pooling_activations != 0
 
         if learn:
-            self.update_permanences(active_neurons.dense)
+            self.update_permanences(predicted_neurons, winners)
 
     def count_overlap(self, active_neurons: SDR, predicted_neurons: SDR) -> np.ndarray:
         active_synapses = np.logical_and(
@@ -113,7 +125,7 @@ class CustomUtp:
 
         self._union_sdr.dense = self._pooling_activations != 0
         if learn:
-            self.update_permanences(predicted_neurons.dense)
+            self.update_permanences(predicted_neurons, winners)
 
     def getUnionSDR(self):
         return self._union_sdr
