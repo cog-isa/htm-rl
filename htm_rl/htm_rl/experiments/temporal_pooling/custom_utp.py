@@ -63,12 +63,10 @@ class CustomUtp:
         return result_sdr
 
     def update_permanences(self, active_neurons: np.ndarray):
-        self.connections[:, np.flatnonzero(active_neurons)] -= self._permanence_dec
+        # self.connections[:, np.flatnonzero(active_neurons)] -= self._permanence_dec
 
         active_synapses = np.ix_(self.getUnionSDR().sparse, np.flatnonzero(active_neurons))
-        self.connections[active_synapses] += self._permanence_dec
-        # self.connections[active_synapses] = (self.connections[active_synapses].transpose(
-        # )+self._permanence_inc*self._pooling_activations[self.getUnionSDR().sparse]).transpose()
+        # self.connections[active_synapses] += self._permanence_dec
         self.connections[active_synapses] += self._permanence_inc
         self.connections = self.connections.clip(0, 1)
 
@@ -112,9 +110,10 @@ class CustomUtp:
         self.pooling_decay_step()
         self._pooling_activations[winners] += self._initial_pooling
         self._pooling_activations = self._pooling_activations.clip(0, 1)
+
         self._union_sdr.dense = self._pooling_activations != 0
         if learn:
-            self.update_permanences(active_neurons.dense)
+            self.update_permanences(predicted_neurons.dense)
 
     def getUnionSDR(self):
         return self._union_sdr

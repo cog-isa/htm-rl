@@ -111,11 +111,18 @@ utp_conf = dict(
     columnDimensions=[output_columns],
     initial_pooling=1,
     pooling_decay=0.2,
-    permanence_inc=0.005,
-    permanence_dec=0.003,
+    permanence_inc=0.1,
+    permanence_dec=0.01,
     sparsity=0.004,
     active_weight=0.5,
     predicted_weight=2.0,
     receptive_field_sparsity=0.5,
     activation_threshold=0.6,
+)
+
+stp_config = dict(
+    initial_pooling=1,
+    pooling_decay=0.05,
+    lower_sp_conf=config_sp_lower,
+    upper_sp_conf=config_sp_upper
 )

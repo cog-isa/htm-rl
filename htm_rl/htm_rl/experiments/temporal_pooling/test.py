@@ -167,13 +167,23 @@ def common_utp_all_seq_5_epochs(data):
     all_seq(tm, tp, data, epochs=5)
 
 
+def no_boosting(data):
+    tp = AblationUtp(
+        **config_tp,
+        first_boosting=False,
+        second_boosting=False
+    )
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
 def no_second_boosting(data):
     tp = AblationUtp(
         **config_tp,
         second_boosting=False
     )
     tm = DelayedFeedbackTM(**config_tm)
-    all_seq(tm, tp, data, epochs=5)
+    all_seq(tm, tp, data, epochs=15)
 
 
 def no_history_learning_5_epochs(data):
@@ -198,6 +208,26 @@ def no_untemporal_learning(data):
     tp = AblationUtp(
         **config_tp,
         untemporal_learning=False
+    )
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def no_union_learning(data):
+    tp = AblationUtp(
+        **config_tp,
+        union_learning=False
+    )
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def only_union_learning(data):
+    tp = AblationUtp(
+        **config_tp,
+        untemporal_learning=False,
+        union_learning=True,
+        history_learning=False,
     )
     tm = DelayedFeedbackTM(**config_tm)
     all_seq(tm, tp, data, epochs=5)
@@ -243,27 +273,20 @@ def vis_what(data, representations):
 
 
 def stp_all_seq_3_epochs(data):
-    stp_config = dict(
-        initial_pooling=1,
-        pooling_decay=0.05,
-        lower_sp_conf=config_sp_lower,
-        upper_sp_conf=config_sp_upper
-    )
 
     tm = DelayedFeedbackTM(**config_tm)
-    tp = UnionTemporalPooler(**config_tp)
     stp = SandwichTp(**stp_config)
 
-    wandb.init(project=wandb_project, entity=wandb_entity, reinit=True, config=stp_config)
+    all_seq(tm, stp, data, epochs=3)
 
-    representations = []
 
-    for epoch in range(3):
-        representations = train_all_seq(tm, stp, data, state_encoder, action_encoder, 20)
+# ----------------------------------------------------------------
 
-    vis_what(data, representations)
 
-    wandb.finish(quiet=True)
+def custom_test(data):
+    tp = CustomUtp(**utp_conf)
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
 
 
 def _run_tests():
@@ -281,7 +304,11 @@ def _run_tests():
     # no_second_boosting(data)
     # no_history_learning_5_epochs(data)
     # no_history_learning_15_epochs(data)
-    no_untemporal_learning(data)
+    # no_untemporal_learning(data)
+    # no_boosting(data)
+    # no_union_learning(data)
+    custom_test(data)
+    # only_union_learning(data)
 
 
 if __name__ == '__main__':
