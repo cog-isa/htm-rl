@@ -39,7 +39,11 @@ class AblationUtp(SpatialPooler):
             synPermPreviousPredActiveInc=0.0,
             historyLength=0,
             minHistory=0,
+            first_boosting=True,
             second_boosting=True,
+            history_learning=True,
+            untemporal_learning=True,
+            union_learning=True,
             **kwargs
     ):
         """
@@ -66,6 +70,10 @@ class AblationUtp(SpatialPooler):
         length >= minHistory
         """
         self.second_boosting = second_boosting
+        self.history_learning = history_learning
+        self.untemporal_learning = untemporal_learning
+        self.first_boosting = first_boosting
+        self.union_learning = union_learning
 
         super(AblationUtp, self).__init__(**kwargs)
 
@@ -180,7 +188,7 @@ class AblationUtp(SpatialPooler):
                         overlapsPredictedActive *
                         self._predictedActiveOverlapWeight).astype(REAL_DTYPE)
 
-        if learn:
+        if learn and self.first_boosting:
             boostFactors = np.zeros(self.getNumColumns(), dtype=REAL_DTYPE)
             self.getBoostFactors(boostFactors)
             boostedOverlaps = boostFactors * totalOverlap
@@ -203,19 +211,30 @@ class AblationUtp(SpatialPooler):
             # adapt permanence of connections from predicted active inputs to newly active cell
             # This step is the spatial pooler learning rule, applied only to the predictedActiveInput
             # Todo: should we also include unpredicted active input in this step?
-
-            self._adaptSynapses(correctly_predicted_input, self._activeCells, self.getSynPermActiveInc(),
-                                self.getSynPermInactiveDec())
+            if self.untemporal_learning:
+                self._adaptSynapses(
+                    correctly_predicted_input,
+                    self._activeCells,
+                    self.getSynPermActiveInc(),
+                    self.getSynPermInactiveDec()
+                )
 
             # Increase permanence of connections from predicted active inputs to cells in the union SDR
             # This is Hebbian learning applied to the current time step
-            self._adaptSynapses(correctly_predicted_input, self._unionSDR, self._synPermPredActiveInc, 0.0)
+            if self.union_learning:
+                self._adaptSynapses(correctly_predicted_input, self._unionSDR, self._synPermPredActiveInc, 0.0)
 
             # adapt permanence of connections from previously predicted inputs to newly active cells
             # This is a reinforcement learning rule that considers previous input to the current cell
-            for pre_input in self._prePredictedActiveInput:
-                self._adaptSynapses(pre_input, self._activeCells,
-                                    self._synPermPreviousPredActiveInc, 0.0)
+
+            if self.history_learning:
+                for pre_input in self._prePredictedActiveInput:
+                    self._adaptSynapses(
+                        pre_input,
+                        self._activeCells,
+                        self._synPermPreviousPredActiveInc,
+                        0.0
+                    )
 
             # Homeostasis learning inherited from the spatial pooler
             if self.second_boosting:

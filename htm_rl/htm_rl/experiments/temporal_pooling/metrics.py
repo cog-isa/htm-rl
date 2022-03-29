@@ -6,10 +6,14 @@ def symmetric_diff_sz(set1: np.ndarray, set2: np.ndarray) -> int:
 
 
 def symmetric_error(_output, _target):
+    if _output.size + _target.size == 0:
+        return 0
     return symmetric_diff_sz(_output, _target) / np.union1d(_output, _target).size
 
 
 def representations_intersection_1(dense1, dense2):
+    if np.count_nonzero(dense1) == 0:
+        return 1
     return np.count_nonzero(dense1 * dense2) / np.count_nonzero(dense1)
 
 
