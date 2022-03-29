@@ -299,7 +299,7 @@ def _run_tests():
     # custom_utp_one_seq(data)
     # only_custom_utp_test(row_data)
     # custom_utp_all_seq_5_epochs(data)
-    # stp_all_seq_3_epochs(data)
+    stp_all_seq_3_epochs(data)
     # common_utp_all_seq_5_epochs(data)
     # no_second_boosting(data)
     # no_history_learning_5_epochs(data)
@@ -307,7 +307,7 @@ def _run_tests():
     # no_untemporal_learning(data)
     # no_boosting(data)
     # no_union_learning(data)
-    custom_test(data)
+    # custom_test(data)
     # only_union_learning(data)
 
 
