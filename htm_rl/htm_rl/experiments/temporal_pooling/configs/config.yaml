@@ -1,13 +1,17 @@
-seed: 1337
+seed: &seed 1337
 entity: pkuderov
 project: temporal_pooling
-log: False    # wandb logging
+log: True    # wandb logging
 
 experiment:
   n_policies: 5
+  epochs: 3
+  steps_per_policy: 20
+  policy_selection_rule: 'ordered'
 
 generator:
   _type_: synthetic
+  seed: *seed
   n_states: &n_states 25
   n_actions: &n_actions 4
   state_encoder: bucket
@@ -26,3 +30,27 @@ action_encoders:
     n_values: *n_actions
     bucket_size: 10
 
+tm:
+  output_columns: 4000
+  cells_per_column: 16
+  output_union_sparsity: 0.01
+  noise_tolerance_apical: 0.1
+  learning_margin_apical: 0.2
+  connected_threshold_basal: 0.5
+  permanence_increment_basal: 0.1
+  permanence_decrement_basal: 0.01
+  initial_permanence_basal: 0.4
+  predicted_segment_decrement_basal: 0.001
+  max_segments_per_cell_basal: 32
+  connected_threshold_apical: 0.5
+  permanence_increment_apical: 0.1
+  permanence_decrement_apical: 0.01
+  initial_permanence_apical: 0.4
+  predicted_segment_decrement_apical: 0.001
+  max_segments_per_cell_apical: 32
+  prune_zero_synapses: True
+  timeseries: False
+  anomaly_window: 1000
+  confidence_window: 1000
+  noise_tolerance: 0.0
+  sm_ac: 0.99

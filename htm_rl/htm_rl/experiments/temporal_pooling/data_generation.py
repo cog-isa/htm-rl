@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Iterator
 
 import numpy as np
 from numpy.random import Generator
@@ -11,11 +11,11 @@ from htm_rl.scenarios.utils import which_type
 class Policy:
     _policy: np.ndarray
 
-    def __init__(self, policy: np.ndarray, seed):
+    def __init__(self, policy, seed=None):
         self._policy = policy
 
-    def __iter__(self) -> tuple[SparseSdr, SparseSdr]:
-        ...
+    def __iter__(self) -> Iterator[tuple[SparseSdr, SparseSdr]]:
+        return iter(self._policy)
 
     def shuffle(self) -> None:
         ...
@@ -65,7 +65,22 @@ class SyntheticGenerator:
 
         # replace origin actions for specified state indices with new actions
         np.put_along_axis(policies[1:], indices, new_actions, axis=1)
-        return policies
+
+        states_encoding = [self.state_encoder.encode(s) for s in range(n_states)]
+        action_encoding = [self.action_encoder.encode(a) for a in range(n_actions)]
+
+        encoded_policies = []
+        for i_policy in range(n_policies):
+            policy = []
+            for state in range(n_states):
+                action = policies[i_policy, state]
+                s = states_encoding[state]
+                a = action_encoding[action]
+                policy.append((s, a))
+
+            encoded_policies.append(Policy(policy))
+
+        return encoded_policies
 
 
 class PolicySelector:
