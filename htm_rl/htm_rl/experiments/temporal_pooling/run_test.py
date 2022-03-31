@@ -37,7 +37,7 @@ class Experiment:
         print(policies)
 
         tm = resolve_tm(self.config, data_generator.action_encoder, data_generator.state_encoder)
-        tp = resolve_tp(self.config, data_generator.action_encoder)
+        tp = resolve_tp(self.config, tm)
 
         representations = []
         for epoch in range(self.epochs):
@@ -141,51 +141,22 @@ class Experiment:
     #     plt.show()
 
 
-def resolve_tp(config, action_encoder):
-    seed = config['seed']
-    input_columns = action_encoder.output_sdr_size
-    cells_per_column = 16
-    output_columns = 4000
-    config_sp_lower = dict(
-        boostStrength=0.0,
-        columnDimensions=[output_columns],
-        inputDimensions=[input_columns * cells_per_column],
-        potentialRadius=input_columns * cells_per_column,
-        dutyCyclePeriod=1000,
-        globalInhibition=True,
-        localAreaDensity=0.01,
-        minPctOverlapDutyCycle=0.001,
-        numActiveColumnsPerInhArea=0,
-        potentialPct=0.5,
-        spVerbosity=0,
-        stimulusThreshold=3,
-        synPermConnected=0.5,
-        synPermActiveInc=0.1,
-        synPermInactiveDec=0.01,
-        wrapAround=True,
-        seed=seed
-    )
-    output_union_sparsity = 0.01
+def resolve_tp(config, temporal_memory):
+    base_config_tp = config['temporal_pooler']
+    input_size = temporal_memory.columns * temporal_memory.cells_per_column
+
     config_tp = dict(
-        activeOverlapWeight=1,
-        predictedActiveOverlapWeight=2,
-        maxUnionActivity=output_union_sparsity,
-        exciteFunctionType='Logistic',
-        decayFunctionType='Exponential',
-        decayTimeConst=10.0,
-        synPermPredActiveInc=0.1,
-        synPermPreviousPredActiveInc=0.05,
-        historyLength=20,
-        minHistory=3,
-        **config_sp_lower
+        inputDimensions=[input_size],
+        potentialRadius=input_size,
     )
+
+    config_tp = base_config_tp | config_tp
     tp = UnionTemporalPooler(**config_tp)
     return tp
 
 
 def resolve_tm(config, action_encoder, state_encoder):
-    base_config_tm = config['tm']
-    seed = config['seed']
+    base_config_tm = config['temporal_memory']
 
     # apical feedback
     apical_feedback_cells = base_config_tm['feedback_cells']
@@ -219,10 +190,9 @@ def resolve_tm(config, action_encoder, state_encoder):
         activation_threshold_basal=basal_active_bits,
         learning_threshold_basal=basal_active_bits,
         max_synapses_per_segment_basal=basal_active_bits,
-
-        seed=seed
     )
 
+    # it's necessary as we shadow some "relative" values with the "absolute" values
     config_tm = base_config_tm | config_tm
     tm = DelayedFeedbackTM(**config_tm)
     return tm

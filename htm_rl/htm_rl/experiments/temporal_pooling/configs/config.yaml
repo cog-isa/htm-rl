@@ -30,12 +30,59 @@ action_encoders:
     n_values: *n_actions
     bucket_size: 10
 
-tm:
+.shared_params:
+  tp_output_size: &tp_output_size 4000
+
+spatial_poolers:
+  lower:
+    boostStrength: 0.0
+    inputDimensions: [input_columns * cells_per_column]
+    columnDimensions: [*tp_output_size]
+    localAreaDensity: 0.01
+#    potentialRadius: [input_columns * cells_per_column]
+    globalInhibition: True
+    dutyCyclePeriod: 1000
+    minPctOverlapDutyCycle: 0.001
+    numActiveColumnsPerInhArea: 0
+    potentialPct: 0.5
+    stimulusThreshold: 3
+    synPermConnected: 0.5
+    synPermActiveInc: 0.1
+    synPermInactiveDec: 0.01
+    wrapAround: False
+    seed: *seed
+
+temporal_pooler:
+  columnDimensions: [*tp_output_size]
+  localAreaDensity: 0.01
+  maxUnionActivity: &tp_output_sparsity 0.01
+  activeOverlapWeight: 1
+  predictedActiveOverlapWeight: 2
+  exciteFunctionType: Logistic
+  decayFunctionType: Exponential
+  decayTimeConst: 10.0
+  synPermPredActiveInc: 0.1
+  synPermPreviousPredActiveInc: 0.05
+  historyLength: 20
+  minHistory: 3
+  boostStrength: 0.0
+  globalInhibition: True
+  dutyCyclePeriod: 1000
+  minPctOverlapDutyCycle: 0.001
+  numActiveColumnsPerInhArea: 0
+  potentialPct: 0.5
+  stimulusThreshold: 3
+  synPermConnected: 0.5
+  synPermActiveInc: 0.1
+  synPermInactiveDec: 0.01
+  wrapAround: False
+  seed: *seed
+
+temporal_memory:
   cells_per_column: 16
   # apical feedback
-  # num cells and sparsity should be moved out
-  feedback_cells: 4000
-  sample_size_apical: 0.01
+  feedback_cells: *tp_output_size
+  sample_size_apical: *tp_output_sparsity
   activation_threshold_apical: 0.9
   learning_threshold_apical: 0.8
   connected_threshold_apical: 0.5
@@ -59,3 +106,4 @@ tm:
   confidence_window: 1000
   noise_tolerance: 0.0
   sm_ac: 0.99
+  seed: *seed
