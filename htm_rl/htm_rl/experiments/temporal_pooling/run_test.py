@@ -2,16 +2,15 @@ import sys
 from typing import Optional
 
 import numpy as np
-import wandb
-import yaml
 from htm.bindings.sdr import SDR
 from wandb.sdk.wandb_run import Run
 
+from htm_rl.common.utils import ensure_absolute_number
+from htm_rl.experiments.temporal_pooling.config_utils import make_logger, compile_config
 from htm_rl.experiments.temporal_pooling.data_generation import resolve_data_generator
 from htm_rl.experiments.temporal_pooling.metrics import symmetric_error, representations_intersection_1
 from htm_rl.modules.htm.spatial_pooler import UnionTemporalPooler
 from htm_rl.modules.htm.temporal_memory import DelayedFeedbackTM
-from htm_rl.scenarios.utils import parse_str
 
 
 class Experiment:
@@ -185,109 +184,48 @@ def resolve_tp(config, action_encoder):
 
 
 def resolve_tm(config, action_encoder, state_encoder):
-    input_columns = action_encoder.output_sdr_size
-    cells_per_column = 16
-    output_columns = 4000
-    output_union_sparsity = 0.01
-    noise_tolerance_apical = 0.1
-    learning_margin_apical = 0.2
-    seed = 42
-    config_tm = dict(
-        columns=input_columns,
-        cells_per_column=cells_per_column,
-        context_cells=state_encoder.output_sdr_size,
-        feedback_cells=output_columns,
-        activation_threshold_basal=state_encoder.n_active_bits,
-        learning_threshold_basal=state_encoder.n_active_bits,
-        activation_threshold_apical=int(
-            output_union_sparsity * output_columns * (1 - noise_tolerance_apical)
-        ),
-        learning_threshold_apical=int(
-            output_union_sparsity * output_columns * (1 - learning_margin_apical)
-        ),
-        connected_threshold_basal=0.5,
-        permanence_increment_basal=0.1,
-        permanence_decrement_basal=0.01,
-        initial_permanence_basal=0.4,
-        predicted_segment_decrement_basal=0.001,
-        sample_size_basal=state_encoder.n_active_bits,
-        max_synapses_per_segment_basal=state_encoder.n_active_bits,
-        max_segments_per_cell_basal=32,
-        connected_threshold_apical=0.5,
-        permanence_increment_apical=0.1,
-        permanence_decrement_apical=0.01,
-        initial_permanence_apical=0.4,
-        predicted_segment_decrement_apical=0.001,
-        sample_size_apical=int(output_union_sparsity * output_columns),
-        max_synapses_per_segment_apical=int(output_union_sparsity * output_columns),
-        max_segments_per_cell_apical=32,
-        prune_zero_synapses=True,
-        timeseries=False,
-        anomaly_window=1000,
-        confidence_window=1000,
-        noise_tolerance=0.0,
-        sm_ac=0.99,
-        seed=42
+    base_config_tm = config['tm']
+    seed = config['seed']
+
+    # apical feedback
+    apical_feedback_cells = base_config_tm['feedback_cells']
+    apical_active_bits = ensure_absolute_number(
+        base_config_tm['sample_size_apical'],
+        baseline=apical_feedback_cells
     )
+    activation_threshold_apical = ensure_absolute_number(
+        base_config_tm['activation_threshold_apical'],
+        baseline=apical_active_bits
+    )
+    learning_threshold_apical = ensure_absolute_number(
+        base_config_tm['learning_threshold_apical'],
+        baseline=apical_active_bits
+    )
+
+    # basal context
+    basal_active_bits = state_encoder.n_active_bits
+
+    config_tm = dict(
+        columns=action_encoder.output_sdr_size,
+
+        feedback_cells=apical_feedback_cells,
+        sample_size_apical=apical_active_bits,
+        activation_threshold_apical=activation_threshold_apical,
+        learning_threshold_apical=learning_threshold_apical,
+        max_synapses_per_segment_apical=apical_active_bits,
+
+        context_cells=state_encoder.output_sdr_size,
+        sample_size_basal=basal_active_bits,
+        activation_threshold_basal=basal_active_bits,
+        learning_threshold_basal=basal_active_bits,
+        max_synapses_per_segment_basal=basal_active_bits,
+
+        seed=seed
+    )
+
+    config_tm = base_config_tm | config_tm
     tm = DelayedFeedbackTM(**config_tm)
     return tm
-
-
-def overwrite_config(config: dict, key_path: str, value: str):
-    # accepts everything non-parseable as is, i.e as a str
-    value = parse_str(value)
-    key_path = key_path.lstrip('-')
-
-    # NOTE: to distinguish sweep params from the config params in wandb
-    # interface, we introduced a trick - it's allowed to specify sweep param
-    # with insignificant additional dots (e.g. `.path..to...key.`)
-    # We ignore them here while parsing the hierarchical path stored in the key.
-
-    # ending dots are removed first to guarantee that after split by dots
-    # the last item is the actual correct name stored in the config dict slice
-    while key_path.endswith('.'):
-        key_path = key_path[:-1]
-
-    # sequentially unfold config dict hierarchy (with the current
-    # dict root represented by `c`) following the path stored in the key
-    tokens = key_path.split('.')
-    c = config
-    for key in tokens[:-1]:
-        if not key:
-            # ignore empty items introduced with additional dots
-            continue
-
-        # the sub-key can be integer - an index in an array
-        key = parse_str(key)
-        # unfold the next level of the hierarchy
-        c = c[key]
-
-    # finally, overwrite the value of the last key in the path
-    key = parse_str(tokens[-1])
-    c[key] = value
-
-
-def make_logger(config: dict):
-    if not config.get('log', None):
-        # not specified or empty
-        return None
-
-    # TODO: aggregate all wandb-related args into logger['log']
-    logger = wandb.init(project=config['project'], entity=config['entity'], config=config)
-
-    return logger
-
-
-def compile_config(run_args, config_path_prefix: str = '../configs/', config_extension: str = 'yaml'):
-    config_name = run_args[0]
-    with open(f'{config_path_prefix}{config_name}.{config_extension}', 'r') as config_io:
-        config = yaml.load(config_io, Loader=yaml.Loader)
-
-    for arg in run_args[1:]:
-        key_path, value = arg.split('.')
-        overwrite_config(config, key_path, value)
-
-    return config
 
 
 def run_test():
