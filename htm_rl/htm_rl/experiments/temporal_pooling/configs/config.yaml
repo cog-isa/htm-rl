@@ -3,16 +3,24 @@ entity: pkuderov
 project: temporal_pooling
 log: False    # wandb logging
 
+.shared_params:
+  n_states: &n_states 10
+  tp_output_size: &tp_output_size 400
+
 experiment:
-  n_policies: 5
-  epochs: 3
-  steps_per_policy: 20
+#  n_policies: 5
+#  epochs: 3
+#  policy_repeats: 20
+  n_policies: 3
+  epochs: 2
+  policy_repeats: 4
+  steps_per_policy: *n_states
   policy_selection_rule: 'ordered'
 
 generator:
   _type_: synthetic
   seed: *seed
-  n_states: &n_states 25
+  n_states: *n_states
   n_actions: &n_actions 4
   state_encoder: bucket
   action_encoder: bucket
@@ -29,28 +37,6 @@ action_encoders:
     _type_: int_bucket
     n_values: *n_actions
     bucket_size: 10
-
-.shared_params:
-  tp_output_size: &tp_output_size 4000
-
-spatial_poolers:
-  lower:
-    boostStrength: 0.0
-    inputDimensions: [input_columns * cells_per_column]
-    columnDimensions: [*tp_output_size]
-    localAreaDensity: 0.01
-#    potentialRadius: [input_columns * cells_per_column]
-    globalInhibition: True
-    dutyCyclePeriod: 1000
-    minPctOverlapDutyCycle: 0.001
-    numActiveColumnsPerInhArea: 0
-    potentialPct: 0.5
-    stimulusThreshold: 3
-    synPermConnected: 0.5
-    synPermActiveInc: 0.1
-    synPermInactiveDec: 0.01
-    wrapAround: False
-    seed: *seed
 
 temporal_pooler:
   columnDimensions: [*tp_output_size]

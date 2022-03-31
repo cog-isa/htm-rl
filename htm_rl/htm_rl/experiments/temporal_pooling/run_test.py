@@ -8,112 +8,161 @@ from wandb.sdk.wandb_run import Run
 from htm_rl.common.utils import ensure_absolute_number
 from htm_rl.experiments.temporal_pooling.config_utils import make_logger, compile_config
 from htm_rl.experiments.temporal_pooling.data_generation import resolve_data_generator
-from htm_rl.experiments.temporal_pooling.metrics import symmetric_error, representations_intersection_1
+from htm_rl.experiments.temporal_pooling.metrics import (
+    symmetric_error, representations_intersection_1
+)
 from htm_rl.modules.htm.spatial_pooler import UnionTemporalPooler
 from htm_rl.modules.htm.temporal_memory import DelayedFeedbackTM
+
+
+# noinspection PyAttributeOutsideInit
+class ExperimentStats:
+    def __init__(self, tp):
+        # self.tp_prev_policy_union = tp.getUnionSDR().copy()
+        # self.tp_prev_union = tp.getUnionSDR().copy()
+        ...
+
+    def on_policy_change(self, tp):
+        # self.tp_prev_policy_union = self.tp_prev_union.copy()
+        # self.tp_prev_union = tp.getUnionSDR().copy()
+
+        self.window_size = 1
+        self.window_error = 0
+        self.whole_active = None
+        self.policy_repeat = 0
+        self.intra_policy_step = 0
+
+    def on_policy_repeat(self, tp):
+        self.intra_policy_step = 0
+
+        if self.policy_repeat == 2:
+            self.whole_active = SDR(tp.getUnionSDR().dense.shape)
+            self.whole_active.dense = np.zeros(tp.getUnionSDR().dense.shape)
+
+        self.policy_repeat += 1
+
+    def on_step(self, tp_output):
+        # self.window_error += symmetric_error(tp_output, self.tp_prev_union)
+        # self.tp_prev_union = tp_output.copy()
+        self.intra_policy_step += 1
+
+    def log_step(self, logger):
+        # my_log = {}
+        #
+        # my_log['new_cells_percent'] = 1 - representations_intersection_1(
+        #     tp.getUnionSDR().dense, prev_dense
+        # )
+        # my_log['num_in_prev'] = np.count_nonzero(prev_dense)
+        # my_log['num_in_curr'] = np.count_nonzero(tp.getUnionSDR().dense)
+        #
+        # if whole_active is not None:
+        #     whole_active.dense = np.logical_or(whole_active.dense, tp.getUnionSDR().dense)
+        #     whole_nonzero = np.count_nonzero(whole_active.dense)
+        #     my_log['cells_in_whole'] = np.count_nonzero(tp.getUnionSDR().dense) / whole_nonzero
+        #
+        # if counter % window_size == window_size - 1:
+        #     my_log['difference'] = (window_error / window_size)
+        #     window_error = 0
+        # logger.log(my_log)
+        ...
 
 
 class Experiment:
     n_policies: int
     epochs: int
+    policy_repeats: int
     steps_per_policy: int
 
     config: dict
     logger: Optional[Run]
 
-    def __init__(self, config: dict, n_policies: int, epochs: int, steps_per_policy: int, **kwargs):
+    def __init__(
+            self, config: dict, n_policies: int, epochs: int,
+            policy_repeats: int, steps_per_policy: int,
+            **kwargs
+    ):
         self.config = config
         self.logger = make_logger(config)
         self.n_policies = n_policies
         self.epochs = epochs
+        self.policy_repeats = policy_repeats
         self.steps_per_policy = steps_per_policy
 
+        print('==> Init')
+        self.data_generator = resolve_data_generator(config)
+        self.temporal_memory = resolve_tm(
+            self.config,
+            action_encoder=self.data_generator.action_encoder,
+            state_encoder=self.data_generator.state_encoder
+        )
+        self.temporal_pooler = resolve_tp(
+            self.config,
+            temporal_memory=self.temporal_memory
+        )
+        self.stats = ExperimentStats(self.temporal_pooler)
+
     def run(self):
-        config = self.config
-        print(config)
-        data_generator = resolve_data_generator(config)
+        print('==> Generate policies')
+        policies = self.data_generator.generate_policies(self.n_policies)
 
-        policies = data_generator.generate_policies(self.n_policies)
-        print(policies)
-
-        tm = resolve_tm(self.config, data_generator.action_encoder, data_generator.state_encoder)
-        tp = resolve_tp(self.config, tm)
-
-        representations = []
+        print('==> Run')
         for epoch in range(self.epochs):
-            representations = self.train_epoch(tm, tp, policies)
+            self.train_epoch(policies)
+        print('<==')
 
-    def train_epoch(self, tm, tp, policies):
+    def train_epoch(self, policies):
         representations = []
-        prev = tp.getUnionSDR().dense.copy()
 
         for policy in policies:
-            tp.reset()
-            whole_active = None
-            for i in range(self.steps_per_policy):
-                if i == 2:
-                    whole_active = SDR(tp.getUnionSDR().dense.shape)
-                    whole_active.dense = np.zeros(tp.getUnionSDR().dense.shape)
+            self.temporal_pooler.reset()
+            self.stats.on_policy_change(self.temporal_pooler)
 
-                self.run_one_policy(
-                    tm, tp, policy, learn=True, prev_dense=prev, whole_active=whole_active
-                )
+            for i in range(self.policy_repeats):
+                self.stats.on_policy_repeat(self.temporal_pooler)
+                self.run_policy(policy, learn=True)
 
-            representations.append(tp.getUnionSDR())
-            prev = tp.getUnionSDR().dense.copy()
+            representations.append(self.temporal_pooler.getUnionSDR())
         return representations
 
-    def run_one_policy(
-            self, tm, tp, policy,
-            learn=True, prev_dense=None, whole_active: SDR = None
-    ):
-        tp_prev_union = tp.getUnionSDR().sparse.copy()
-        tp_input = SDR(tp.getNumInputs())
-        tp_predictive = SDR(tp.getNumInputs())
-        window_size = 1
-        window_error = 0
-        counter = 0
-        for context, active_input in policy:
-            tm.set_active_context_cells(context)
+    def run_policy(self, policy, learn=True):
+        tp_input = SDR(self.temporal_pooler.getNumInputs())
+        tp_predicted = SDR(self.temporal_pooler.getNumInputs())
 
-            tm.activate_basal_dendrites(learn)
+        for state, action in policy:
+            self.compute_tm_step(
+                self.temporal_memory,
+                feedforward_input=action,
+                basal_context=state,
+                apical_feedback=self.temporal_pooler.getUnionSDR().sparse,
+                learn=learn
+            )
 
-            tm.set_active_feedback_cells(tp.getUnionSDR().sparse)
-            tm.activate_apical_dendrites(learn)
-            tm.propagate_feedback()
+            tp_input.sparse = self.temporal_memory.get_active_cells()
+            tp_predicted.sparse = self.temporal_memory.get_correctly_predicted_cells()
+            self.temporal_pooler.compute(tp_input, tp_predicted, learn)
+            current_union = self.temporal_pooler.getUnionSDR().sparse.copy()
 
-            tm.predict_cells()
+            self.stats.on_step(current_union)
+            self.log_step()
 
-            tm.set_active_columns(active_input)
-            tm.activate_cells(learn)
+    def log_step(self):
+        if not self.logger:
+            return
+        self.stats.log_step(self.logger)
 
-            tp_input.sparse = tm.get_active_cells()
-            tp_predictive.sparse = tm.get_correctly_predicted_cells()
-            tp.compute(tp_input, tp_predictive, learn)
+    @staticmethod
+    def compute_tm_step(tm, feedforward_input, basal_context, apical_feedback, learn):
+        tm.set_active_context_cells(basal_context)
+        tm.activate_basal_dendrites(learn)
 
-            current_union = tp.getUnionSDR().sparse.copy()
+        tm.set_active_feedback_cells(apical_feedback)
+        tm.activate_apical_dendrites(learn)
+        tm.propagate_feedback()
 
-            window_error += symmetric_error(current_union, tp_prev_union)
+        tm.predict_cells()
 
-            if self.logger:
-                my_log = {}
-                if prev_dense is not None:
-                    my_log['new_cells_percent'] = 1 - representations_intersection_1(tp.getUnionSDR().dense, prev_dense)
-                    my_log['num_in_prev'] = np.count_nonzero(prev_dense)
-                    my_log['num_in_curr'] = np.count_nonzero(tp.getUnionSDR().dense)
-
-                if whole_active is not None:
-                    whole_active.dense = np.logical_or(whole_active.dense, tp.getUnionSDR().dense)
-                    whole_nonzero = np.count_nonzero(whole_active.dense)
-                    my_log['cells_in_whole'] = np.count_nonzero(tp.getUnionSDR().dense) / whole_nonzero
-
-                if counter % window_size == window_size - 1:
-                    my_log['difference'] = (window_error / window_size)
-                    window_error = 0
-                self.logger.log(my_log)
-            tp_prev_union = current_union.copy()
-
-            counter += 1
+        tm.set_active_columns(feedforward_input)
+        tm.activate_cells(learn)
 
     # def vis_what(self, data, representations):
     #     similarity_matrix = np.zeros((len(representations), len(representations)))
