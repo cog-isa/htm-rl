@@ -3,10 +3,10 @@ from setuptools import setup, find_packages
 setup(
     name='htm_rl',
     version='1.0',
-    description='RL agent based on HTM framework',
-    url='https://github.com/cog-isa/htm-rl/',
+    description='Hierarchical intrinsically motivated agent, HIMA',
+    url='https://github.com/AIRI-Institute/him-agent',
     author='Petr Kuderov',
-    author_email='pkuderov@gmail.com',
-    license='MIT',
+    author_email='kuderov@airi.net',
+    license='AGPLv3',
     packages=find_packages(),
 )
