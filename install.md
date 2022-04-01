@@ -80,7 +80,7 @@ pip install --use-feature=in-tree-build .
 Install our `htm_rl` package:
 
 ```bash
-cd <htm_rl_project_root>/htm_rl
+cd <htm_rl_project_root>/hima
 pip install -e .
 ```
 
@@ -155,7 +155,7 @@ After that you just work as usual :)
 
 ### What's next
 
-If you're new to the HTM, check out [this](./README.md#quick-intro) quick intro list. After that proceed to the project's [readme](htm_rl/htm_rl/README.md).
+If you're new to the HTM, check out [this](./README.md#quick-intro) quick intro list. After that proceed to the project's [readme](hima/README.md).
 
 ### Additional notes
 

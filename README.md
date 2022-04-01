@@ -34,14 +34,14 @@ A detailed description of HIMA model is provided in the [supporting paper](https
 
 - Supporting [paper](https://www.doi.org/10.1186/s40708-022-00156-6)
 - Contributors [guide](./CONTRIBUTING.md)
-- Cumulative project's [readme](./htm_rl/htm_rl/README.md)
+- Cumulative project's [readme](hima/README.md)
 - Introductory [materials](./intro.md)
 
 ## Quick install
 
 There're two setup guides:
 
-- [quick & short version](#quick-install) is here. It's recommended for `htm_rl` library users.
+- [quick & short version](#quick-install) is here. It's recommended for `hima` library users.
 - [extended version](./install.md/#install-requirements) is for contributors or if you have troubles with this version.
 
 Before cloning the repository, make sure Git LFS is installed (see [help](./install.md/#git-lfs)). Then:
@@ -61,8 +61,8 @@ git clone https://github.com/ZhekaHauska/htm.core.git
 cd htm.core
 pip install --use-feature=in-tree-build .
 
-#  cd to the htm_rl subdirectory in project root and install htm_rl package
-cd <hima_project_root>/htm_rl
+#  cd to the hima subdirectory in project root and install hima package
+cd <hima_project_root>/hima
 pip install -e .
 ```
 
@@ -71,7 +71,7 @@ pip install -e .
 - `notebooks/` - Jupyter Notebooks
 - `tools/` - 3rd party tools and scripts
 - `watcher/` - our visualization tool for HTM SP and TM.
-- `htm_rl/` - HIMA package `htm_rl` sources (e.g. set it as sources root in PyCharm)
+- `hima/` - HIMA package `hima` sources (e.g. set it as sources root in PyCharm)
 
 ## Run examples
 
@@ -83,10 +83,10 @@ Sign up to [wandb](https://wandb.ai/) and get access token in your profile setti
 
 ``` bash
 # cd to package sources root
-cd <hima_project_root>/htm_rl/htm_rl
+cd <hima_project_root>/hima/hima
 
 # replace <config name> with the config filename without extension
-python agents/htm/htm_agent.py experiments/htm_agent/configs/<config_name>
+python agents/hima/hima.py experiments/hima/configs/<config_name>
 ```
 
 Do not forget to change `entity` parameter in corresponding config file to match your [wandb](https://wandb.ai/) login. When wandb asks you to login for the first time, use your access token obtained earlier.
@@ -97,9 +97,9 @@ Wandb [sweep](https://docs.wandb.ai/guides/sweeps) runs series of experiments wi
 
 ```bash
 # cd to package sources root
-cd <hima_project_root>/htm_rl/htm_rl
+cd <hima_project_root>/hima/hima
 
-cd experiments/htm_agent
+cd experiments/hima
 
 # replace <sweep config name> with the sweep config filename without extension
 wandb sweep sweep/<sweep config name>
@@ -112,7 +112,7 @@ python scripts/run_agents.py -n n_processes -c "wandb agent <sweep id>"
 
 ```bash
 # cd to package sources root
-cd <hima_project_root>/htm_rl/htm_rl/
+cd <hima_project_root>/hima/hima/
 
 # cd to the 5x5_pos experiments
 cd experiments/5x5_pos/

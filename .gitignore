@@ -13,7 +13,7 @@
 notebooks/00_scratchpad.ipynb
 
 # temporal scratchpad script
-htm_rl/htm_rl/scratch.py
+hima/scratch.py
 
 # non-tracked temp notebooks
 notebooks/**/_*.ipynb
@@ -38,7 +38,7 @@ reports/**/assets/
 wandb/
 
 # config auto-backups
-/htm_rl/**/_*.yml
+/hima/**/_*.yml
 
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
