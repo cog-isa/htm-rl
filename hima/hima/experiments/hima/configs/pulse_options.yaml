@@ -1,0 +1,416 @@
+seed: &seed 5231
+levels: 2
+agent: hima
+project: hima_pulse
+entity: hauska  # don't forget to change if you use logging
+
+log: False  # wandb logging
+path_to_store_logs: '/tmp'  # important: change, if you are Windows user
+
+run_options:
+  n_episodes: 200
+  log_every_episode: 10
+  log_values_int: False
+  log_values_ext: False
+  log_priorities: False
+  log_values: False
+  log_policy: False
+  log_option_values: False
+  log_option_policy: False
+  log_options_usage: False
+  log_td_error: True
+  log_anomaly: False
+  log_confidence: False
+  log_modulation: False
+  log_segments: True
+  log_terminal_stat: False
+  log_empowerment: False
+  log_number_of_clusters: False
+  draw_options: False
+  draw_options_stats: False
+  opt_threshold: 50
+  animation_fps: 5
+
+environment_type: pulse
+workspace_limits:  # arm workspace
+  r: [ 0.1, 0.4 ]  # meters min=0.064, max=0.5
+  h: [ 0.1, 0.4 ]  # min = 0, max=0.482
+  phi: [ 0, 360 ]  # degrees
+environment:
+  max_steps: 200
+  reward_type: 'sparse' # sparse | gaus_dist
+  collision_penalty: 1
+  action_cost: 0.02
+  goal_reward: 1.0
+  position_threshold: 0.05  # goal position radius in meters
+  initial_pose: [ 0.0, 0.0, 0.0, 0.0, 90, 0.0 ]  # initial robot joint positions in degrees
+  initial_target_position: [ 0.0, 0.15, 0.4 ]  # relative to arm base in meters
+  joints_speed_limit: 80  # degrees per second
+  arm_name: 'UR3'
+  scene_file: 'UR3_tip.ttt'  # MUST be changed accordingly to action type
+  action_type: 'tip'
+  joints_to_manage: 'all'
+  camera_resolution: [ 128, 128 ]
+  observation:
+    - camera
+  #  - joint_pos
+  action_time_step: 0.2  # s
+  seed: *seed
+  headless: false
+  responsive_ui: false
+
+#pulse_action_adapter:
+#  mode: angle  # angle | speed
+#  delta: 20  # degrees
+#  time_delta: 0.2  # seconds
+#  default_value: 'random'
+#  seed: *seed
+
+pulse_action_adapter_continuous:
+  velocity: 0.2
+
+pulse_observation_adapter:
+  v1:
+    complex:
+      g_kernel_size: 24
+      g_stride: 12
+      g_sigma: 19.2
+      activity_level: 0.6
+    simple: [
+      {
+        g_kernel_size: 6,
+        g_stride: 1,
+        g_pad: None,
+        g_sigma_x: 1.8,
+        g_sigma_y: 1.2,
+        g_lambda_: 6,
+        g_filters: 8,
+        activity_level: 0.6
+      },
+    ]
+  joint_pos:
+    min_delta: 0.3  # radians
+    # max_delta: 1.0  # use with speed modulation
+    cyclic: False  # wrap encoding
+    n_active_bits: 10
+    use_speed_modulation: False
+  joint_vel:
+    min_delta: 0.1  # radians/s
+    cyclic: False
+    n_active_bits: 10
+
+
+cagent:
+  use_intrinsic_reward: false
+  use_dreaming: false
+  alpha: 1.0
+  punish_intrinsic_reward: -10
+#  elementary_actions:
+#    n_actions: 3
+#    bucket_size: 3
+  empowerment:
+    horizon: 3
+    similarity_threshold: 0.6
+    memory: true
+    evaluate: false
+    tm_config:
+      noise_tolerance: 0.25
+      learning_margin: 0.35
+      cellsPerColumn: 20
+      initialPermanence: 0.5
+      connectedPermanence: 0.5
+      permanenceIncrement: 0.02
+      permanenceDecrement: 0.001
+      predictedSegmentDecrement: 0.001
+      maxSegmentsPerCell: 5
+    seed: *seed
+  dreaming:
+    enabled: false
+    anomaly_based_falling_asleep:
+      anomaly_threshold: 1.0
+      alpha: .8
+      beta: 2.
+      max_prob: .15
+
+    prediction_depth: 18
+    n_prediction_rollouts: [ 3, 12 ]
+
+    sa_encoder:
+      clusters_similarity_threshold: .7
+
+    reward_model:
+      learning_rate: [ 1., 1. ]
+
+    anomaly_model:
+      learning_rate: [ .1, 1. ]
+
+    transition_model:
+      tm:
+        cells_per_column: 1
+        initial_permanence: .3
+        connected_permanence: .3
+        activation_threshold: .88
+        learning_threshold: .8
+        max_new_synapse_count: 1.0
+        max_synapses_per_segment: 1.0
+        predictedSegmentDecrement: .001
+        permanenceIncrement: .05
+        permanenceDecrement: .01
+        maxSegmentsPerCell: 8
+    seed: *seed
+
+# specify blocks and substitute default parameters
+blocks:
+  0:
+    bg: null
+    block:
+      level: 1
+    sm: {}
+    sp:
+      boostStrength: 0.0
+      localAreaDensity: 0.02
+      potentialPct: 0.5
+    tm:
+      basal_columns: 1000
+  1:
+    bg:
+      continuous_action: True
+      alpha: 0.1
+      beta: 0.1
+      alpha_int: 0.01
+      beta_int: 0.01
+      off_policy: true
+      softmax_beta: 1.0
+      epsilon_noise: 0.0
+    pmc:
+      n_neurons: 2000
+    block:
+      modulate_tm_lr: true
+      level: 1
+    sm: {}
+    sp: null
+    tm:
+      basal_columns: 2000
+
+  2:
+    bg: null
+    block:
+      level: 2
+    sm: { }
+    sp:
+      boostStrength: 0.0
+      localAreaDensity: 0.02
+      potentialPct: 0.5
+    tm:
+      basal_columns: 1000
+  3:
+    bg:
+      alpha: 0.1
+      beta: 0.1
+      off_policy: true
+      softmax_beta: 1.0
+      epsilon_noise: 0.0
+    block:
+      level: 2
+    sm: { }
+    sp:
+      boostStrength: 0.0
+      localAreaDensity: 0.02
+      potentialPct: 0.5
+    tm:
+      basal_columns: 1000
+
+cells_per_column: &cells_per_column 15
+
+# specify connections
+hierarchy:
+  block_connections: [
+    {
+      'basal_in': [ ],
+      'apical_in': [ ],
+      'feedback_in': [ ],
+      'basal_out': [ 2 ],
+      'apical_out': [ ],
+      'feedback_out': [ ]
+    },
+
+    {
+      'basal_in': [ ],
+      'apical_in': [ ],
+      'feedback_in': [ ],
+      'basal_out': [ 3 ],
+      'apical_out': [ ],
+      'feedback_out': [ ]
+    },
+
+    {
+      'basal_in': [ 0 ],
+      'apical_in': [ 3 ],
+      'feedback_in': [ 4 ],
+      'basal_out': [ 4 ],
+      'apical_out': [ 3 ],
+      'feedback_out': [ ]
+    },
+
+    {
+      'basal_in': [ 1 ],
+      'apical_in': [ 2 ],
+      'feedback_in': [ 5 ],
+      'basal_out': [ 5 ],
+      'apical_out': [ 2 ],
+      'feedback_out': [ ]
+    },
+
+    {
+      'basal_in': [ 2 ],
+      'apical_in': [ 5 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
+      'apical_out': [ 5 ],
+      'feedback_out': [ 2 ]
+    },
+
+    {
+      'basal_in': [ 3 ],
+      'apical_in': [ 4 ],
+      'feedback_in': [ ],
+      'basal_out': [ ],
+      'apical_out': [ 4 ],
+      'feedback_out': [ 3 ]
+    }
+  ]
+  input_blocks:
+  - 0
+  - 1
+  output_block: 3
+  visual_block: 2
+
+input_block_default:
+  columns: 0
+  level: 0
+
+muscles_size: 12
+
+# default parameters
+spatial_memory_default:
+  activation_threshold: 1
+  initial_permanence: 1.0
+  overlap_threshold: 0.9
+  permanence_decrement: 0.0
+  permanence_forgetting_decrement: 0.0
+  permanence_increment: 0.0
+  permanence_threshold: 0.0
+spatial_pooler_default:
+  boostStrength: 0.0
+  columnDimensions:
+  - 1000
+  dutyCyclePeriod: 1000
+  globalInhibition: true
+  localAreaDensity: 0.04
+  minPctOverlapDutyCycle: 0.001
+  numActiveColumnsPerInhArea: 0
+  potentialPct: 0.5
+  seed: *seed
+  spVerbosity: 0
+  stimulusThreshold: 1
+  synPermActiveInc: 0.1
+  synPermConnected: 0.1
+  synPermInactiveDec: 0.01
+  wrapAround: true
+temporal_memory_default:
+  apical_cells_per_column: *cells_per_column
+  basal_cells_per_column: *cells_per_column
+  noise_tolerance: 0.1
+  max_segments_per_cell: 8
+  max_segments_per_cell_apical: 8
+  max_segments_per_cell_exec: 8
+  max_segments_per_cell_inhib: 8
+  anomaly_window: 500
+  confidence_window: 500
+  initial_permanence: 0.1
+  connected_threshold: 0.5
+  permanence_increment: 0.1
+  permanence_decrement: 0.01
+  predicted_segment_decrement: 0.001
+  initial_permanence_apical: 0.1
+  connected_threshold_apical: 0.5
+  permanence_increment_apical: 0.1
+  permanence_decrement_apical: 0.01
+  predicted_segment_decrement_apical: 0.001
+  initial_permanence_exec: 0.1
+  connected_threshold_exec: 0.5
+  permanence_increment_exec: 0.01
+  permanence_decrement_exec: 0.001
+  predicted_segment_decrement_exec: 0.0001
+  initial_permanence_inhib: 0.1
+  connected_threshold_inhib: 0.5
+  permanence_increment_inhib: 0.1
+  permanence_decrement_inhib: 0.001
+  predicted_segment_decrement_inhib: 0.005
+  enable_pruning_basal: False
+  enable_pruning_apical: False
+  enable_pruning_exec: False
+  enable_pruning_inhib: False
+  pruning_period_basal: 3000
+  pruning_period_apical: 2000
+  pruning_period_exec: 5000
+  pruning_period_inhib: 2000
+  prune_zero_synapses: True
+  seed: *seed
+  timeseries: True
+
+basal_ganglia_default:
+  continuous_action: False
+  alpha: 0.01  # external striatum learning rate
+  alpha_int: 0.1  # internal striatum learning rate
+  beta: 0.01  # external striatum learning rate
+  beta_int: 0.1  # internal striatum learning rate
+  discount_factor: 0.95  # external reward
+  discount_factor_int: 0.5 # internal reward
+  off_policy: true  # true: use Q-learning, false: use SARSA for external striatum region
+  off_policy_int: true  # the same for internal striatum region
+  softmax_beta: 1.0  # softmax inverse temperature, controls thalamus noise
+  epsilon_noise: 0.0  # another way to control thalamus noisiness
+  priority_ext: 1.0  # scale factor for external reward
+  priority_int: 0.1  # scale factor for internal reward
+  td_error_threshold: 0.01  # margin for td error condition: td < -threshold, experimental
+  priority_inc_factor: 1.1  # multiply priority if td error is positive, experimental
+  priority_dec_factor: 0.9  # else, experimental
+  use_reward_modulation: true  # true: instead of TD error use reward modulation for priority
+  sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
+  sm_reward_dec: 0.998  # smooth factor for reward modulation during decrement
+  sm_max_reward: 0.99  # smooth factor for max reward
+  sm_min_reward: 0.99  # smooth factor for min reward
+  max_reward_decay: 0.999  # decay factor for max reward
+  min_reward_decay: 0.999  # decay factor for min reward
+  seed: *seed
+
+block_default:
+  gamma: 0.997  # discount factor for option rewards
+  predicted_boost: 0.0  # boost predicted elementary actions
+  feedback_boost_range: [0.0, 0.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
+  modulate_tm_lr: false  # use reward modulation for lr of TM
+  sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
+  sm_reward_dec: 0.98  # smooth factor for reward modulation during decrement
+  sm_max_reward: 0.99  # smooth factor for max reward
+  sm_min_reward: 0.99  # smooth factor for min reward
+  max_reward_decay: 0.999  # decay factor for max reward
+  min_reward_decay: 0.999  # decay factor for min reward
+  d_an_th: 0.1  # threshold for anomaly deviation from mean, used for conditions
+  d_cn_th: 0.1  # threshold for confidence deviation from mean, used for conditions
+  sm_da: 0.9  # smooth factor for dopamine(squared td error)
+  sm_dda: 0.995  # smooth factor for derivative of dopamine
+
+pmc_default:
+  input_size: 3
+  n_neurons: 2000
+  learning_rate: 0.01
+  sparsity: 0.005
+  neighbourhood_radius: null
+  permanence_increment: 0.05
+  permanence_decrement: 0.01
+  connected_threshold: 0.5
+  initial_permanence: 0.3
+  softmax_beta: 1.0
+  bsu_k: 1.0
+  seed: *seed
