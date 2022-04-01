@@ -9,7 +9,7 @@ import wandb
 if len(sys.argv) > 1:
     default_config_name = sys.argv[1]
 else:
-    default_config_name = 'ur3_options'
+    default_config_name = 'cross_11x11_options'
 with open(f'../configs/{default_config_name}.yaml', 'r') as file:
     config = yaml.load(file, Loader=yaml.Loader)
 

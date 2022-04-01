@@ -7,10 +7,12 @@ from copy import deepcopy
 def configure(config):
     print('Configure ... ')
     new_config = dict()
-    new_config['workspace_limits'] = config['workspace_limits']
+    if 'workspace_limits' in config.keys():
+        new_config['workspace_limits'] = config['workspace_limits']
+
     new_config['environment'] = config['environment']
     new_config['hierarchy'] = config['hierarchy']
-    if 'vis_config' in config.keys():
+    if 'vis_options' in config.keys():
         new_config['vis_options'] = config['vis_options']
     new_config['environment_type'] = config['environment_type']
 
@@ -54,7 +56,8 @@ def configure(config):
     config['spatial_pooler_default']['seed'] = config['seed']
     config['temporal_memory_default']['seed'] = config['seed']
     config['basal_ganglia_default']['seed'] = config['seed']
-    config['pmc_default']['seed'] = config['seed']
+    if 'pmc_default' in config.keys():
+        config['pmc_default']['seed'] = config['seed']
     config['cagent']['empowerment']['seed'] = config['seed']
 
     blocks = [{'block': deepcopy(config['block_default']),

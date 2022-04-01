@@ -12,7 +12,7 @@ vis_options:
   action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
   action_rotation: [0, 0, 0, 0]
 
-log: true  # wand logging
+log: false  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
@@ -349,6 +349,7 @@ temporal_memory_default:
   timeseries: True
 
 basal_ganglia_default:
+  continuous_action: False
   alpha: 0.01  # external striatum learning rate
   alpha_int: 0.1  # internal striatum learning rate
   beta: 0.01  # external striatum learning rate
