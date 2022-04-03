@@ -6,33 +6,14 @@
 # VS Code project-specific settings
 .vscode/
 
-# additional auto-generated git config
-.gitconfig
-
-# temporal scratchpad notebook
-notebooks/00_scratchpad.ipynb
-
-# temporal scratchpad script
-hima/scratch.py
-
-# non-tracked temp notebooks
-notebooks/**/_*.ipynb
-
-# data files in experiments folder
-/hima/**/*.pkl
+# media files in package folder
 /hima/**/*.png
 /hima/**/*.svg
 /hima/**/*.gif
-/hima/**/*.csv.tar.gz
 
-# LaTeX
-# needed for source-to-pdf cursor sync
-*.synctex.gz
-# pdfs generated from tex
-/reports/**/*.pdf
-# inkscape aux folder
-svg-inkscape/
-reports/**/assets/
+# data files in package folder
+/hima/**/*.pkl
+/hima/**/*.csv.tar.gz
 
 # wandb folders
 wandb/
@@ -178,5 +159,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-/notebooks/htm_agent_test.ipynb
-/notebooks/test_muscles.ipynb
