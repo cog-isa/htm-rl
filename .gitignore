@@ -19,11 +19,11 @@ hima/scratch.py
 notebooks/**/_*.ipynb
 
 # data files in experiments folder
-/htm_rl/**/*.pkl
-/htm_rl/**/*.png
-/htm_rl/**/*.svg
-/htm_rl/**/*.gif
-/htm_rl/**/*.csv.tar.gz
+/hima/**/*.pkl
+/hima/**/*.png
+/hima/**/*.svg
+/hima/**/*.gif
+/hima/**/*.csv.tar.gz
 
 # LaTeX
 # needed for source-to-pdf cursor sync
