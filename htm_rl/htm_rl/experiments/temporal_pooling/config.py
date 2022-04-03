@@ -118,7 +118,8 @@ utp_conf = dict(
     predicted_weight=2.0,
     receptive_field_sparsity=0.5,
     activation_threshold=0.6,
-    history_length=20
+    history_length=20,
+    union_sdr_sparsity=0.01
 )
 
 stp_config = dict(

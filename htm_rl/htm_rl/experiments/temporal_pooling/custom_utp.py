@@ -19,6 +19,7 @@ class CustomUtp:
                  receptive_field_sparsity,
                  activation_threshold,
                  history_length,
+                 union_sdr_sparsity,
                  **kwargs):
         input_shape = inputDimensions
         output_shape = columnDimensions
@@ -47,6 +48,8 @@ class CustomUtp:
         self.sensitivity = np.random.uniform(0, 1, (out_size, in_size))
 
         self.predict_history = []
+
+        self.cells_in_union = int(np.prod(self._shape)*union_sdr_sparsity)
 
     def set_receptive_fields(self):
         for cell in self.receptive_fields:
@@ -103,9 +106,9 @@ class CustomUtp:
         self.predict_history.append(predicted_neurons)
 
     def update_permanences(self, predicted_neurons: SDR, winners: np.ndarray):
-        self.untemporal_learning(predicted_neurons, winners)
+        # self.untemporal_learning(predicted_neurons, winners)
         self.union_learning(predicted_neurons)
-        self.history_learning(predicted_neurons, winners)
+        # self.history_learning(predicted_neurons, winners)
 
     def compute_continuous(self, active_neurons: SDR, predicted_neurons: SDR, learn: bool = True):
         weighted_input = active_neurons.dense * self.active_weight + predicted_neurons.dense * self.predicted_weight
@@ -140,6 +143,11 @@ class CustomUtp:
         winners = np.argpartition(overlap, -self.winners_num)[-self.winners_num:]
         return winners
 
+    def update_union_sdr(self):
+        self._union_sdr.dense = self._pooling_activations > np.partition(
+            self._pooling_activations.flatten(), -self.cells_in_union-1
+        )[-self.cells_in_union-1]
+
     def compute(self, active_neurons: SDR, predicted_neurons: SDR, learn: bool = True):
         overlap = self.count_overlap(active_neurons, predicted_neurons)
         winners = self.choose_winners(overlap)
@@ -148,7 +156,8 @@ class CustomUtp:
         self._pooling_activations[winners] += self._initial_pooling
         self._pooling_activations = self._pooling_activations.clip(0, 1)
 
-        self._union_sdr.dense = self._pooling_activations != 0
+        self.update_union_sdr()
+
         if learn:
             self.update_permanences(predicted_neurons, winners)
 
