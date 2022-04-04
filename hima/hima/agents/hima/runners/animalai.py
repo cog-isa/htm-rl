@@ -13,7 +13,6 @@ from hima.modules.pmc import ThaPMCToM1
 from hima.common.utils import safe_divide
 from hima.modules.basal_ganglia import BasalGanglia, DualBasalGanglia, BGPMCProxy
 from hima.envs.biogwlab.env import BioGwLabEnvironment
-from hima.envs.coppelia.environment import ArmEnv
 from htm.bindings.algorithms import SpatialPooler
 from hima.modules.htm.temporal_memory import ApicalBasalFeedbackTM
 from hima.agents.hima.utils import OptionVis, draw_values, draw_values_pulse, compute_q_policy, compute_mu_policy, \
@@ -82,6 +81,7 @@ class HIMAgentRunner:
             self.action_adapter = BioGwLabActionAdapter(**config['gw_action_adapter'])
             self.observation_adapter = BioGwLabObsAdapter()
         elif config['environment_type'] == 'pulse':
+            from hima.envs.coppelia.environment import ArmEnv
             self.workspace_limits = config['workspace_limits']
             self.environment = ArmEnv(workspace_limits=self.workspace_limits, **config['environment'])
             if 'pulse_action_adapter' in config.keys():

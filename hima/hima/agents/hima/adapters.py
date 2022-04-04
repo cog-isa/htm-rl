@@ -2,7 +2,6 @@ from typing import Union
 
 from hima.common.sdr_decoders import DecoderStack, IntBucketDecoder
 from hima.common.sdr_encoders import RangeDynamicEncoder, VectorDynamicEncoder
-from hima.envs.coppelia.environment import ArmEnv
 from hima.modules.v1 import V1
 from hima.agents.hima.hima import HIMA
 from hima.agents.pmc.adapters import ArmActionAdapter
@@ -13,7 +12,7 @@ import numpy as np
 
 
 class PulseContinuousActionAdapter(ArmActionAdapter):
-    def __init__(self, agent: HIMA, limits: dict, velocity=None, environment: ArmEnv = None):
+    def __init__(self, agent: HIMA, limits: dict, velocity=None, environment=None):
         super(PulseContinuousActionAdapter, self).__init__(limits, velocity, environment)
         self.agent = agent
 
@@ -27,7 +26,7 @@ class PulseContinuousActionAdapter(ArmActionAdapter):
 
 class PulseActionAdapter:
     def __init__(self,
-                 environment: ArmEnv,
+                 environment,
                  mode,
                  delta,
                  time_delta,
@@ -73,7 +72,7 @@ class PulseActionAdapter:
 
 
 class PulseObsAdapter:
-    def __init__(self, environment: ArmEnv, config):
+    def __init__(self, environment, config):
         self.environment = environment
         self.n_joints = self.environment.n_joints
         # setup encoders

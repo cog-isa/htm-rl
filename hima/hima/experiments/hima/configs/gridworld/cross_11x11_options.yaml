@@ -15,9 +15,8 @@ vis_options:
 log: false  # wand logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
-run_options:
-  n_episodes: 2000
-  log_every_episode: 25
+logger_config:
+  log_every_episode: 100
   log_values_int: False
   log_values_ext: False
   log_priorities: False
@@ -31,7 +30,6 @@ run_options:
   log_confidence: False
   log_modulation: True
   log_segments: True
-  log_terminal_stat: True
   log_empowerment: False
   log_number_of_clusters: False
   draw_options: True
@@ -39,7 +37,7 @@ run_options:
   opt_threshold: 50
   animation_fps: 3
 
-environment_type: gw
+environment_type: gridworld
 environment:
   seed: 432921
   shape_xy: [11, 11]
@@ -87,11 +85,11 @@ environment:
     early_stop: true
     n_items_to_collect: 1
 
-gw_action_adapter:
+action_adapter:
   default_value: 'random'
   seed: *seed
 
-cagent:
+agent_config:
   use_intrinsic_reward: false
   use_dreaming: false
   alpha: 1.0
@@ -278,8 +276,6 @@ input_block_default:
   columns: 0
   level: 0
 
-muscles_size: 12
-
 # default parameters
 spatial_memory_default:
   activation_threshold: 1
@@ -349,7 +345,6 @@ temporal_memory_default:
   timeseries: True
 
 basal_ganglia_default:
-  continuous_action: False
   alpha: 0.01  # external striatum learning rate
   alpha_int: 0.1  # internal striatum learning rate
   beta: 0.01  # external striatum learning rate

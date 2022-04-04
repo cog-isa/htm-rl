@@ -4,7 +4,7 @@ from hima.agents.q.cluster_memory import ClusterMemory
 from hima.agents.q.sa_encoders import SpSaEncoder
 from hima.common.sdr import SparseSdr
 from hima.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
-from hima.htm_plugins.spatial_pooler import SpatialPoolerWrapper
+from hima.modules.htm.spatial_pooler import SpatialPoolerWrapper
 
 
 class DreamerSaEncoder(SpSaEncoder):

@@ -168,7 +168,7 @@ class Dreamer:
         anomaly = self.anomaly_model.state_anomaly(s)
         return self._anomaly_based_dreaming(anomaly)
 
-    def dream(self, starting_state: SparseSdr):
+    def dream(self, starting_state: SparseSdr, action_adapter):
         """
         Switches to dreaming mode and performs several imaginary trajectory
         rollouts. Dreaming starts from `starting_state`, which is the current
@@ -193,7 +193,7 @@ class Dreamer:
             depth = 0
             # loop over one rollout's trajectory states
             while depth < self.prediction_depth:
-                next_state, next_s, a, anomaly = self._move_in_dream(state, s)
+                next_state, next_s, a, anomaly = self._move_in_dream(state, s, action_adapter)
                 depth += 1
 
                 if len(next_s) < .6 * len(self._starting_s) or anomaly > .7:
@@ -211,10 +211,11 @@ class Dreamer:
         self._wake()
         self.stats.on_dreamed(i_rollout, sum_depth)
 
-    def _move_in_dream(self, state: SparseSdr, s: SparseSdr):
+    def _move_in_dream(self, state: SparseSdr, s: SparseSdr, action_adapter):
         reward = self.reward_model.state_reward(s)
 
-        action = self.agent.make_action(state)
+        action_pattern = self.agent.make_action(state)
+        action = action_adapter.adapt(action_pattern)
         self.agent.reinforce(reward)
 
         if reward > .3:

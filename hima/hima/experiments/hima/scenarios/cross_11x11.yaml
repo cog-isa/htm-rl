@@ -1,4 +1,8 @@
-- condition: ['episode', 'equal', 999, 'norepeat']
+- condition: ['episode', 'equal', 2000, 'norepeat']
+  check_every: 'episode'
+  action: 'stop'
+  params: {}
+- condition: ['episode', 'equal', 1000, 'norepeat']
   check_every: 'episode'
   action: 'set_food_positions'
   params:

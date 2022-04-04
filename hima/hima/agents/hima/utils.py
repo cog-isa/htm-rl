@@ -2,7 +2,6 @@ from hima.envs.biogwlab.environment import Environment
 from hima.modules.empowerment import Empowerment, real_empowerment
 from hima.envs.biogwlab.module import EntityType
 from hima.modules.basal_ganglia import softmax
-from hima.envs.coppelia.environment import ArmEnv
 
 from htm.bindings.sdr import SDR
 from htm.bindings.algorithms import SpatialPooler
@@ -198,22 +197,33 @@ class OptionVis:
 
 
 def compute_q_policy(env, runner, directions: dict = None, n_states=None):
-    if isinstance(env, ArmEnv):
-        if n_states is None:
-            n_states = 2*180 // runner.action_adapter.delta + 1
-        q = dict()
-        policy = dict()
-        visual_block = runner.agent.hierarchy.visual_block
-        output_block = runner.agent.hierarchy.output_block
-        options = output_block.sm.get_sparse_patterns()
-        actions = list()
-        for pattern in options:
-            actions.append(runner.action_adapter.decoder_stack.decode(pattern)[0])
-        states = np.linspace(-np.pi, np.pi, n_states)
-        state_pattern = SDR(runner.observation_adapter.output_sdr_size)
-        sp_output = SDR(visual_block.tm.basal_columns)
-        for i, state in enumerate(states):
-            observation = runner.observation_adapter.adapt([[state]])
+    env = env.env
+    top_left_point = env.renderer.shape.top_left_point
+    q = dict()
+    policy = dict()
+    visual_block = runner.agent.hierarchy.visual_block
+    output_block = runner.agent.hierarchy.output_block
+    options = output_block.sm.get_sparse_patterns()
+    actions = list()
+    for pattern in options:
+        actions.append(runner.action_adapter.decoder_stack.decode([pattern])[0])
+
+    state_pattern = SDR(env.output_sdr_size)
+    sp_output = SDR(visual_block.tm.basal_columns)
+
+    if directions is None:
+        directions = [env.agent.view_direction]
+    else:
+        directions = list(directions.values())
+    # пройти по всем состояниям и вычилить для каждого состояния Q
+    for i_flat in np.flatnonzero(~env.aggregated_mask[EntityType.Obstacle]):
+        env.agent.position = env.agent._unflatten_position(i_flat)
+        unshifted_pos = get_unshifted_pos(env.agent.position, top_left_point)
+        q[unshifted_pos] = dict()
+        policy[unshifted_pos] = dict()
+        for i, direction in enumerate(directions):
+            env.agent.view_direction = direction
+            _, observation, _ = env.observe()
             state_pattern.sparse = observation
             visual_block.sp.compute(state_pattern, False, sp_output)
             (option_index,
@@ -223,47 +233,8 @@ def compute_q_policy(env, runner, directions: dict = None, n_states=None):
                                                       responses_boost=None,
                                                       learn=False)
 
-            q[i] = option_values
-            policy[i] = softmax(output_block.bg.tha.response_activity)
-    else:
-        env = env.env
-        top_left_point = env.renderer.shape.top_left_point
-        q = dict()
-        policy = dict()
-        visual_block = runner.agent.hierarchy.visual_block
-        output_block = runner.agent.hierarchy.output_block
-        options = output_block.sm.get_sparse_patterns()
-        actions = list()
-        for pattern in options:
-            actions.append(runner.action_adapter.decoder_stack.decode([pattern])[0])
-
-        state_pattern = SDR(env.output_sdr_size)
-        sp_output = SDR(visual_block.tm.basal_columns)
-
-        if directions is None:
-            directions = [env.agent.view_direction]
-        else:
-            directions = list(directions.values())
-        # пройти по всем состояниям и вычилить для каждого состояния Q
-        for i_flat in np.flatnonzero(~env.aggregated_mask[EntityType.Obstacle]):
-            env.agent.position = env.agent._unflatten_position(i_flat)
-            unshifted_pos = get_unshifted_pos(env.agent.position, top_left_point)
-            q[unshifted_pos] = dict()
-            policy[unshifted_pos] = dict()
-            for i, direction in enumerate(directions):
-                env.agent.view_direction = direction
-                _, observation, _ = env.observe()
-                state_pattern.sparse = observation
-                visual_block.sp.compute(state_pattern, False, sp_output)
-                (option_index,
-                 option,
-                 option_values) = output_block.bg.compute(sp_output.sparse,
-                                                          options,
-                                                          responses_boost=None,
-                                                          learn=False)
-
-                q[unshifted_pos][i] = option_values
-                policy[unshifted_pos][i] = softmax(output_block.bg.tha.response_activity)
+            q[unshifted_pos][i] = option_values
+            policy[unshifted_pos][i] = softmax(output_block.bg.tha.response_activity)
     return q, policy, actions
 
 

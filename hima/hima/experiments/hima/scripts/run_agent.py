@@ -1,4 +1,3 @@
-from hima.agents.hima.runner import HIMAgentRunner
 from hima.agents.hima.configurator import configure
 
 import yaml
@@ -7,10 +6,11 @@ import ast
 import wandb
 
 if len(sys.argv) > 1:
-    default_config_name = sys.argv[1]
+    default_config = sys.argv[1]
 else:
-    default_config_name = 'cross_11x11_options'
-with open(f'../configs/{default_config_name}.yaml', 'r') as file:
+    default_config = 'gridworld/four_rooms_9x9_swap_all_together'
+
+with open(f'../configs/{default_config}.yaml', 'r') as file:
     config = yaml.load(file, Loader=yaml.Loader)
 
 if config['log']:
@@ -45,10 +45,21 @@ if logger is not None:
 
 # with open('../../experiments/hima/htm_config_unpacked.yaml', 'w') as file:
 #     yaml.dump(configure(config), file, Dumper=yaml.Dumper)
-
-runner = HIMAgentRunner(configure(config), logger=logger)
+if config['environment_type'] == 'gridworld':
+    from hima.agents.hima.runners.gridworld import HIMAgentRunner
+    runner = HIMAgentRunner(configure(config), logger=logger, logger_config=config['logger_config'])
+elif config['environment_type'] == 'coppelia':
+    from hima.agents.hima.runners.coppelia import HIMAgentRunner
+    runner = HIMAgentRunner(configure(config), logger=logger, logger_config=config['logger_config'])
+elif config['environment_type'] == 'animalai':
+    from hima.agents.hima.runners.animalai import HIMAgentRunner
+    runner = HIMAgentRunner(configure(config), logger=logger, logger_config=config['logger_config'])
+else:
+    raise ValueError(
+        f"Unknown environment type: {config['environment_type']}"
+    )
 
 # if logger is not None:
 #     runner.draw_map(logger)
 
-runner.run_episodes(**config['run_options'])
+runner.run_episodes()

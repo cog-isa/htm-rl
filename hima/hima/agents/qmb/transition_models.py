@@ -1,7 +1,7 @@
 from hima.agents.q.sa_encoder import SaEncoder
 from hima.agents.qmb.transition_model import TransitionModel
 from hima.common.sdr import SparseSdr
-from hima.htm_plugins.temporal_memory import TemporalMemory
+from hima.modules.htm.temporal_memory import ClassicTemporalMemory as TemporalMemory
 
 
 class SaTransitionModel(TransitionModel):

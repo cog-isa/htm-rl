@@ -1,6 +1,3 @@
-from hima.envs.biogwlab.env import BioGwLabEnvironment
-from hima.envs.coppelia.environment import ArmEnv
-from hima.agents.hima.adapters import PulseObsAdapter
 from copy import deepcopy
 
 
@@ -19,10 +16,13 @@ def configure(config):
     if 'scenario' in config.keys():
         new_config['scenario'] = config['scenario']
 
-    if config['environment_type'] == 'gw':
+    if config['environment_type'] == 'gridworld':
+        from hima.envs.biogwlab.env import BioGwLabEnvironment
         environment = BioGwLabEnvironment(**config['environment'])
         obs_sdr_size = environment.env.output_sdr_size
-    elif config['environment_type'] == 'pulse':
+    elif config['environment_type'] == 'coppelia':
+        from hima.envs.coppelia.environment import ArmEnv
+        from hima.agents.hima.adapters import PulseObsAdapter
         headless = config['environment']['headless']
         config['environment'].update({'headless': True})
         environment = ArmEnv(workspace_limits=config['workspace_limits'], **config['environment'])
@@ -30,6 +30,8 @@ def configure(config):
         obs_adapter = PulseObsAdapter(environment, config['pulse_observation_adapter'])
         obs_sdr_size = obs_adapter.output_sdr_size
         environment.shutdown()
+    elif config['environment_type'] == 'animalai':
+        pass
     else:
         raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')
     print(f'obs sdr size: {obs_sdr_size}')
@@ -38,9 +40,9 @@ def configure(config):
     output_block = config['hierarchy']['output_block']
     visual_block = config['hierarchy']['visual_block']
     # define input blocks
-    if 'elementary_actions' in config['cagent'].keys():
-        motor_size = config['cagent']['elementary_actions']['n_actions'] * config['cagent']['elementary_actions']['bucket_size']
-        motor_sparsity = config['cagent']['elementary_actions']['bucket_size']/motor_size
+    if 'elementary_actions' in config['agent_config'].keys():
+        motor_size = config['agent_config']['elementary_actions']['n_actions'] * config['agent_config']['elementary_actions']['bucket_size']
+        motor_sparsity = config['agent_config']['elementary_actions']['bucket_size']/motor_size
     else:
         pmc_conf = deepcopy(config['pmc_default'])
         pmc_conf.update(config['blocks'][output_block-2]['pmc'])
@@ -58,7 +60,7 @@ def configure(config):
     config['basal_ganglia_default']['seed'] = config['seed']
     if 'pmc_default' in config.keys():
         config['pmc_default']['seed'] = config['seed']
-    config['cagent']['empowerment']['seed'] = config['seed']
+    config['agent_config']['empowerment']['seed'] = config['seed']
 
     blocks = [{'block': deepcopy(config['block_default']),
                'tm': deepcopy(config['temporal_memory_default'])} for _ in range(len(config['blocks']))]
@@ -167,15 +169,15 @@ def configure(config):
 
     new_config['blocks'] = blocks
     # agent
-    new_config['agent'] = config['cagent']
+    new_config['agent'] = config['agent_config']
     new_config['agent']['state_size'] = obs_sdr_size
 
-    noise_tolerance = config['cagent']['empowerment']['tm_config']['noise_tolerance']
-    learning_margin = config['cagent']['empowerment']['tm_config']['learning_margin']
+    noise_tolerance = config['agent_config']['empowerment']['tm_config']['noise_tolerance']
+    learning_margin = config['agent_config']['empowerment']['tm_config']['learning_margin']
     input_size = blocks[visual_block - len(input_blocks)]['tm']['basal_columns']
     input_sparsity = blocks[visual_block - len(input_blocks)]['sparsity']
 
-    new_config['agent']['empowerment'] = deepcopy(config['cagent']['empowerment'])
+    new_config['agent']['empowerment'] = deepcopy(config['agent_config']['empowerment'])
     new_config['agent']['empowerment']['tm_config'].pop('noise_tolerance')
     new_config['agent']['empowerment']['tm_config'].pop('learning_margin')
     new_config['agent']['empowerment']['encode_size'] = input_size
@@ -189,7 +191,7 @@ def configure(config):
         )
     )
 
-    new_config['agent']['dreaming'] = deepcopy(config['cagent']['dreaming'])
+    new_config['agent']['dreaming'] = deepcopy(config['agent_config']['dreaming'])
 
     new_config['seed'] = config['seed']
     new_config['levels'] = config['levels']
@@ -208,17 +210,17 @@ def configure(config):
             new_config['pulse_action_adapter'] = config['pulse_action_adapter']
             new_config['pulse_action_adapter'].update(dict(
                 seed=config['seed'],
-                bucket_size=config['cagent']['elementary_actions']['bucket_size']
+                bucket_size=config['agent_config']['elementary_actions']['bucket_size']
             ))
             new_config['agent']['elementary_actions']['n_actions'] = 3
         else:
             new_config['pulse_action_adapter_continuous'] = config['pulse_action_adapter_continuous']
-    elif config['environment_type'] == 'gw':
-        new_config['gw_action_adapter'] = config['gw_action_adapter']
-        new_config['gw_action_adapter'].update(dict(
+    elif config['environment_type'] == 'gridworld':
+        new_config['action_adapter'] = config['action_adapter']
+        new_config['action_adapter'].update(dict(
             seed=config['seed'],
-            bucket_size=config['cagent']['elementary_actions']['bucket_size'],
-            n_actions=config['cagent']['elementary_actions']['n_actions']
+            bucket_size=config['agent_config']['elementary_actions']['bucket_size'],
+            n_actions=config['agent_config']['elementary_actions']['n_actions']
         ))
     else:
         raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')

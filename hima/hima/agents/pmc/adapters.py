@@ -1,6 +1,5 @@
 from math import sin, cos, radians, copysign
 from animalai.envs.actions import AAIActions
-from hima.envs.coppelia.environment import ArmEnv
 import numpy as np
 
 
@@ -19,7 +18,7 @@ class AAIActionAdapter:
 
 
 class ArmActionAdapter:
-    def __init__(self, limits: dict, velocity=None, environment: ArmEnv = None):
+    def __init__(self, limits: dict, velocity=None, environment=None):
         self.limits = limits
         self.velocity = velocity
         self.environment = environment

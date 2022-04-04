@@ -7,7 +7,7 @@ from hima.agents.q.sa_encoder import SaEncoder
 from hima.common.sdr import SparseSdr
 from hima.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from hima.envs.env import Env
-from hima.htm_plugins.spatial_pooler import SpatialPooler
+from hima.modules.htm.spatial_pooler import SpatialPooler
 
 
 class SpSaEncoder(SaEncoder):

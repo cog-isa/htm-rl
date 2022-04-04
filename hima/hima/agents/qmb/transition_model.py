@@ -2,7 +2,7 @@ import numpy as np
 from htm.bindings.sdr import SDR
 
 from hima.common.sdr import SparseSdr
-from hima.htm_plugins.temporal_memory import TemporalMemory
+from hima.modules.htm.temporal_memory import ClassicTemporalMemory as TemporalMemory
 
 
 class TransitionModel:

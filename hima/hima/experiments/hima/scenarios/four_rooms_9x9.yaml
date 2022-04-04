@@ -1,7 +1,0 @@
-- condition: ['episode', 'equal', 1999, 'norepeat']
-  check_every: 'episode'
-  action: 'set_food_positions'
-  params:
-    positions: [[8, 8], [8, 5], [5, 8]]
-    rand: true
-    sample_size: 1

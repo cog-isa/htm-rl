@@ -1,115 +1,113 @@
-seed: &seed 847582
+seed: &seed 5231
 levels: 2
 agent: hima
-project: four_rooms_swap_options
-entity: you  # don't forget to change if you use logging
+project: hima_pulse
+entity: hauska  # don't forget to change if you use logging
 
-scenario: '../../experiments/hima/scenarios/four_rooms_18x18_swap.yaml'
-
-vis_options:
-  size: 42
-  max_options: 50
-  action_displace: [[0, 1], [1, 0], [0, -1], [-1, 0]]
-  action_rotation: [0, 0, 0, 0]
-
-log: true  # wand logging
+log: False  # wandb logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
 
 run_options:
-  n_episodes: 100000
-  log_every_episode: 25
+  n_episodes: 200
+  log_every_episode: 10
   log_values_int: False
   log_values_ext: False
   log_priorities: False
-  log_values: True
-  log_policy: True
+  log_values: False
+  log_policy: False
   log_option_values: False
   log_option_policy: False
-  log_options_usage: True
+  log_options_usage: False
   log_td_error: True
   log_anomaly: False
   log_confidence: False
-  log_modulation: True
+  log_modulation: False
   log_segments: True
-  log_terminal_stat: True
+  log_terminal_stat: False
   log_empowerment: False
   log_number_of_clusters: False
-  draw_options: True
-  draw_options_stats: True
+  draw_options: False
+  draw_options_stats: False
   opt_threshold: 50
-  train_patterns: True
-  animation_fps: 3
+  animation_fps: 5
 
+environment_type: pulse
+workspace_limits:  # arm workspace
+  r: [ 0.1, 0.4 ]  # meters min=0.064, max=0.5
+  h: [ 0.1, 0.4 ]  # min = 0, max=0.482
+  phi: [ 0, 360 ]  # degrees
 environment:
-  seed: 432921
-  shape_xy: [18, 18]
+  max_steps: 200
+  reward_type: 'sparse' # sparse | gaus_dist
+  collision_penalty: 1
+  action_cost: 0.02
+  goal_reward: 1.0
+  position_threshold: 0.05  # goal position radius in meters
+  initial_pose: [ 0.0, 0.0, 0.0, 0.0, 90, 0.0 ]  # initial robot joint positions in degrees
+  initial_target_position: [ 0.0, 0.15, 0.4 ]  # relative to arm base in meters
+  joints_speed_limit: 80  # degrees per second
+  arm_name: 'UR3'
+  scene_file: 'UR3_tip.ttt'  # MUST be changed accordingly to action type
+  action_type: 'tip'
+  joints_to_manage: 'all'
+  camera_resolution: [ 128, 128 ]
+  observation:
+    - camera
+  #  - joint_pos
+  action_time_step: 0.2  # s
+  seed: *seed
+  headless: false
+  responsive_ui: false
 
-  actions_cost:
-    base_cost: -0.005
-    weights:
-      stay: 2.0
-      turn: 1.0
-      move: 1.0
-  actions:
-    - move right
-    - move down
-    - move left
-    - move up
-    - stay
+#pulse_action_adapter:
+#  mode: angle  # angle | speed
+#  delta: 20  # degrees
+#  time_delta: 0.2  # seconds
+#  default_value: 'random'
+#  seed: *seed
 
-  rendering:
-    view_rectangle: [[-1, -1], [1, 1]]
+pulse_action_adapter_continuous:
+  velocity: 0.2
 
-  areas:
-    n_types: 4
+pulse_observation_adapter:
+  v1:
+    complex:
+      g_kernel_size: 24
+      g_stride: 12
+      g_sigma: 19.2
+      activity_level: 0.6
+    simple: [
+      {
+        g_kernel_size: 6,
+        g_stride: 1,
+        g_pad: None,
+        g_sigma_x: 1.8,
+        g_sigma_y: 1.2,
+        g_lambda_: 6,
+        g_filters: 8,
+        activity_level: 0.6
+      },
+    ]
+  joint_pos:
+    min_delta: 0.3  # radians
+    # max_delta: 1.0  # use with speed modulation
+    cyclic: False  # wrap encoding
+    n_active_bits: 10
+    use_speed_modulation: False
+  joint_vel:
+    min_delta: 0.1  # radians/s
+    cyclic: False
+    n_active_bits: 10
 
-  obstacle:
-    density: 0.1
-    map_name: '../../experiments/hima/maps/four_rooms_18x18.map'
-
-  food:
-    n_items: 1
-    reward: 1.
-    positions: [[4, 6]]
-
-  agent:
-    change_position: true
-    direction: up
-    positions: [ [ 1, 2 ], [ 7, 2 ], [ 7, 6 ], [ 1, 6 ] ]
-  #  rendering:
-  #    what:
-  #      - position
-  ##      - view direction
-  #    bucket_size: 3
-
-  terminate:
-    episode_max_steps: 400
-    early_stop: true
-    n_items_to_collect: 1
 
 cagent:
   use_intrinsic_reward: false
   use_dreaming: false
   alpha: 1.0
   punish_intrinsic_reward: -10
-  action:
-    do_nothing_action: 4
-    noise_tolerance: 0.1
-    patterns:
-    - [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    - [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0]
-    - [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1]
-  muscles:
-    connected_permanence: 0.5
-    depolarized_decrement: 0.01
-    initial_permanence: 0.6
-    max_segments_per_cell: 32
-    noise_tolerance: 0.1
-    permanence_decrement: 0.01
-    permanence_increment: 0.1
-    sample_size: 1.0
-    seed: *seed
+#  elementary_actions:
+#    n_actions: 3
+#    bucket_size: 3
   empowerment:
     horizon: 3
     similarity_threshold: 0.6
@@ -176,23 +174,23 @@ blocks:
       basal_columns: 1000
   1:
     bg:
+      continuous_action: True
       alpha: 0.1
       beta: 0.1
       alpha_int: 0.01
       beta_int: 0.01
       off_policy: true
-      softmax_beta: 0.25
+      softmax_beta: 1.0
       epsilon_noise: 0.0
+    pmc:
+      n_neurons: 2000
     block:
       modulate_tm_lr: true
       level: 1
     sm: {}
-    sp:
-      boostStrength: 0.0
-      localAreaDensity: 0.02
-      potentialPct: 0.5
+    sp: null
     tm:
-      basal_columns: 1000
+      basal_columns: 2000
 
   2:
     bg: null
@@ -210,7 +208,7 @@ blocks:
       alpha: 0.1
       beta: 0.1
       off_policy: true
-      softmax_beta: 0.5
+      softmax_beta: 1.0
       epsilon_noise: 0.0
     block:
       level: 2
@@ -291,8 +289,6 @@ input_block_default:
   columns: 0
   level: 0
 
-muscles_size: 12
-
 # default parameters
 spatial_memory_default:
   activation_threshold: 1
@@ -362,6 +358,7 @@ temporal_memory_default:
   timeseries: True
 
 basal_ganglia_default:
+  continuous_action: False
   alpha: 0.01  # external striatum learning rate
   alpha_int: 0.1  # internal striatum learning rate
   beta: 0.01  # external striatum learning rate
@@ -389,7 +386,7 @@ basal_ganglia_default:
 block_default:
   gamma: 0.997  # discount factor for option rewards
   predicted_boost: 0.0  # boost predicted elementary actions
-  feedback_boost_range: [0.0, 0.8]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
+  feedback_boost_range: [0.0, 0.0]  # max and min boost percents for elementary actions corresponding to an option, switch off options [0.0, 0.0]
   modulate_tm_lr: false  # use reward modulation for lr of TM
   sm_reward_inc: 0.9  # smooth factor for reward modulation during increment
   sm_reward_dec: 0.98  # smooth factor for reward modulation during decrement
@@ -401,3 +398,17 @@ block_default:
   d_cn_th: 0.1  # threshold for confidence deviation from mean, used for conditions
   sm_da: 0.9  # smooth factor for dopamine(squared td error)
   sm_dda: 0.995  # smooth factor for derivative of dopamine
+
+pmc_default:
+  input_size: 3
+  n_neurons: 2000
+  learning_rate: 0.01
+  sparsity: 0.005
+  neighbourhood_radius: null
+  permanence_increment: 0.05
+  permanence_decrement: 0.01
+  connected_threshold: 0.5
+  initial_permanence: 0.3
+  softmax_beta: 1.0
+  bsu_k: 1.0
+  seed: *seed
