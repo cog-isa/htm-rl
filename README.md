@@ -10,7 +10,6 @@
     - [How to run HIMA agent](#how-to-run-hima-agent)
       - [Run one experiment](#run-one-experiment)
       - [Run Sweep](#run-sweep)
-    - [Non-HIMA Q-learning agent](#non-hima-q-learning-agent)
   - [License](#license)
 
 ## The Repository
@@ -61,7 +60,7 @@ git clone https://github.com/ZhekaHauska/htm.core.git
 cd htm.core
 pip install --use-feature=in-tree-build .
 
-#  cd to the hima subdirectory in project root and install hima package
+#  cd to the hima subdirectory in the project root and install hima package
 cd <hima_project_root>/hima
 pip install -e .
 ```
@@ -82,13 +81,16 @@ Sign up to [wandb](https://wandb.ai/) and get access token in your profile setti
 #### Run one experiment
 
 ``` bash
-# cd to package sources root
-cd <hima_project_root>/hima/hima/experiments/hima/scripts
+# cd to the package sources root
+cd <hima_project_root>/hima/hima
+
+# cd to the hima experiments directory
+cd experiments/hima
 
 # setup environment
-source env_variables.sh
+source scripts/env_variables.sh
 # replace <config name> with the config filename without extension
-python run_agent.py experiments/hima/configs/<config_name>
+python scripts/run_agent.py configs/<config_name>
 ```
 
 Do not forget to change `entity` parameter in corresponding config file to match your [wandb](https://wandb.ai/) login. When wandb asks you to login for the first time, use your access token obtained earlier.
@@ -98,9 +100,10 @@ Do not forget to change `entity` parameter in corresponding config file to match
 Wandb [sweep](https://docs.wandb.ai/guides/sweeps) runs series of experiments with different seeds and parameters.
 
 ```bash
-# cd to package sources root
+# cd to the package sources root
 cd <hima_project_root>/hima/hima
 
+# cd to the hima experiments directory
 cd experiments/hima
 
 # setup environment
