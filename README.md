@@ -85,12 +85,10 @@ Sign up to [wandb](https://wandb.ai/) and get access token in your profile setti
 cd <hima_project_root>/hima/hima
 
 # cd to the hima experiments directory
-cd experiments/hima
+cd experiments/hima/scripts
 
-# setup environment
-source scripts/env_variables.sh
 # replace <config name> with the config filename without extension
-python scripts/run_agent.py configs/<config_name>
+python run_agent.py <environment>/<config_name>
 ```
 
 Do not forget to change `entity` parameter in corresponding config file to match your [wandb](https://wandb.ai/) login. When wandb asks you to login for the first time, use your access token obtained earlier.
@@ -105,9 +103,6 @@ cd <hima_project_root>/hima/hima
 
 # cd to the hima experiments directory
 cd experiments/hima
-
-# setup environment
-source scripts/env_variables.sh
 
 # replace <sweep config name> with the sweep config filename without extension
 wandb sweep sweep/<sweep config name>

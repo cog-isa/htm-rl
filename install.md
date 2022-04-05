@@ -3,15 +3,17 @@
 - [Installation](#installation)
   - [Install requirements](#install-requirements)
     - [[Optional] Install conda](#optional-install-conda)
+    - [[Optional] Install PyRep](#optional-install-pyrep)
+    - [[Optional] Install AnimalAI 3](#optional-install-animalai-3)
     - [[Info] requirements.txt structure](#info-requirementstxt-structure)
     - [Install requirements to dedicated python environment](#install-requirements-to-dedicated-python-environment)
       - [Option 1: use conda and pip](#option-1-use-conda-and-pip)
       - [Option 2: use pip only](#option-2-use-pip-only)
     - [Install `htm.core`](#install-htmcore)
-    - [[Optional] Install `htm_rl` package](#optional-install-htm_rl-package)
+    - [[Optional] Install `hima` package](#optional-install-hima-package)
   - [Contributors setup](#contributors-setup)
     - [Working with Jupyter Notebooks](#working-with-jupyter-notebooks)
-      - [Using `htm_rl` package in Jupyter Notebooks](#using-htm_rl-package-in-jupyter-notebooks)
+      - [Using `hima` package in Jupyter Notebooks](#using-hima-package-in-jupyter-notebooks)
       - [Jupyter Notebooks stripping](#jupyter-notebooks-stripping)
     - [Working with data files](#working-with-data-files)
       - [Git LFS](#git-lfs)
@@ -33,6 +35,16 @@ However, we recommend to prioritize using conda over pip, because it allows mana
 If you are new to conda, we recommend getting conda with [Miniconda](https://docs.conda.io/en/latest/miniconda.html) (a minimal console version of conda) instead of Anaconda (see [the difference](https://stackoverflow.com/a/45421527/1094048)).
 
 *If you brave enough, you may also consider [Miniforge](https://github.com/conda-forge/miniforge) as alternative to Miniconda - the difference from Miniconda is only that it sets default conda package channel to [conda-forge](https://github.com/conda-forge/miniforge), which is community-driven so it gets updates faster in general and contains more packages. Another alternative is to use [Mamba](https://github.com/mamba-org/mamba) instead of conda - Mamba mimics conda API, even uses it and fully backward compatible with it, so you can use both together; Mamba has enhanced dependency-resolving performance and async package installation, and also extends conda functionality. Last two options combined, [Mamba + Miniforge = Mambaforge](https://github.com/conda-forge/miniforge#mambaforge), are distributed by Miniforge community.*
+
+### [Optional] Install PyRep
+
+If you are planning to run experiments with arm manipulators you should also install 
+[PyRep](https://github.com/stepjam/PyRep).
+
+### [Optional] Install AnimalAI 3
+
+If you are planning to run experiments in [AnimalAI](https://github.com/mdcrosby/animal-ai) environment you should also install it.
+
 
 ### [Info] requirements.txt structure
 
@@ -75,16 +87,16 @@ cd htm.core
 pip install --use-feature=in-tree-build .
 ```
 
-### [Optional] Install `htm_rl` package
+### [Optional] Install `hima` package
 
-Install our `htm_rl` package:
+Install our `hima` package:
 
 ```bash
-cd <htm_rl_project_root>/hima
+cd <hima_project_root>/hima
 pip install -e .
 ```
 
-The last command installs `htm_rl` with _development mode_ flag, which allows you importing modules from the `htm_rl` package outside of the package root folder, e.g. in Jupyter Notebooks or in another packages.
+The last command installs `hima` with _development mode_ flag, which allows you importing modules from the `hima` package outside of the package root folder, e.g. in Jupyter Notebooks or in another packages.
 
 Development mode flag `-e` prevent package sources to be copied to the index. Instead, the symlink is created, which means that the edits are "visible" immediately and don't require you to reinstall/update package manually after any changes in the package sources.
 
@@ -92,9 +104,9 @@ Development mode flag `-e` prevent package sources to be copied to the index. In
 
 ### Working with Jupyter Notebooks
 
-#### Using `htm_rl` package in Jupyter Notebooks
+#### Using `hima` package in Jupyter Notebooks
 
-See [[Optional] Install `htm_rl` package](#optional-install-htm_rl-package).
+See [[Optional] Install `hima` package](#optional-install-hima-package).
 
 #### Jupyter Notebooks stripping
 
@@ -149,9 +161,11 @@ After that you just work as usual :)
 - `reports/` - any [markdown, tex, Jupyter Notebooks] reports
 - `tools/` - any 3rd party tools and scripts
 - `watcher/` - visualization tool for HTM SP and TM.
-- `htm_rl/` - sources root (mark this directory for PyCharm), it contains `setup.py`
-  - `htm_rl/` - `htm_rl` package sources
-    - `run_X.py` - runners, i.e. entry point to run testing scenarios
+- `hima/` - sources root (mark this directory for PyCharm), it contains `setup.py`
+  - `hima/` - `hima` package sources
+      - `experiments/`
+        - `scirpts/`
+          - `run_agent.py` - runners, i.e. entry point to run testing scenarios
 
 ### What's next
 
