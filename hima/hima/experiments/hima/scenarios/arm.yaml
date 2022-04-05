@@ -1,0 +1,4 @@
+- condition: ['episode', 'equal', 1000, 'norepeat']
+  check_every: 'episode'
+  action: 'stop'
+  params: {}

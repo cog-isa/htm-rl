@@ -8,7 +8,7 @@ import wandb
 if len(sys.argv) > 1:
     default_config = sys.argv[1]
 else:
-    default_config = 'gridworld/four_rooms_9x9_swap_all_together'
+    default_config = 'coppelia/pulse_options_continues'
 
 with open(f'../configs/{default_config}.yaml', 'r') as file:
     config = yaml.load(file, Loader=yaml.Loader)
@@ -46,14 +46,11 @@ if logger is not None:
 # with open('../../experiments/hima/htm_config_unpacked.yaml', 'w') as file:
 #     yaml.dump(configure(config), file, Dumper=yaml.Dumper)
 if config['environment_type'] == 'gridworld':
-    from hima.agents.hima.runners.gridworld import HIMAgentRunner
-    runner = HIMAgentRunner(configure(config), logger=logger, logger_config=config['logger_config'])
+    from hima.agents.hima.runners.gridworld import GwHIMARunner
+    runner = GwHIMARunner(configure(config), logger=logger, logger_config=config['logger_config'])
 elif config['environment_type'] == 'coppelia':
-    from hima.agents.hima.runners.coppelia import HIMAgentRunner
-    runner = HIMAgentRunner(configure(config), logger=logger, logger_config=config['logger_config'])
-elif config['environment_type'] == 'animalai':
-    from hima.agents.hima.runners.animalai import HIMAgentRunner
-    runner = HIMAgentRunner(configure(config), logger=logger, logger_config=config['logger_config'])
+    from hima.agents.hima.runners.coppelia import ArmHIMARunner
+    runner = ArmHIMARunner(configure(config), logger=logger, logger_config=config['logger_config'])
 else:
     raise ValueError(
         f"Unknown environment type: {config['environment_type']}"

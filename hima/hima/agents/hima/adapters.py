@@ -1,5 +1,3 @@
-from typing import Union
-
 from hima.common.sdr_decoders import DecoderStack, IntBucketDecoder
 from hima.common.sdr_encoders import RangeDynamicEncoder, VectorDynamicEncoder
 from hima.modules.v1 import V1
@@ -7,24 +5,23 @@ from hima.agents.hima.hima import HIMA
 from hima.agents.pmc.adapters import ArmActionAdapter
 
 from math import pi
-
 import numpy as np
 
 
-class PulseContinuousActionAdapter(ArmActionAdapter):
+class ArmContinuousActionAdapter(ArmActionAdapter):
     def __init__(self, agent: HIMA, limits: dict, velocity=None, environment=None):
-        super(PulseContinuousActionAdapter, self).__init__(limits, velocity, environment)
+        super(ArmContinuousActionAdapter, self).__init__(limits, velocity, environment)
         self.agent = agent
 
     def adapt(self, action):
         continuous_action = self.agent.hierarchy.output_block.bg.pmc.get_continuous_action(action)
-        return super(PulseContinuousActionAdapter, self).adapt(continuous_action)
+        return super(ArmContinuousActionAdapter, self).adapt(continuous_action)
 
     def reset(self):
         pass
 
 
-class PulseActionAdapter:
+class ArmActionAdapter:
     def __init__(self,
                  environment,
                  mode,
@@ -71,7 +68,7 @@ class PulseActionAdapter:
         self.current_speeds = np.zeros_like(self.current_speeds)
 
 
-class PulseObsAdapter:
+class ArmObsAdapter:
     def __init__(self, environment, config):
         self.environment = environment
         self.n_joints = self.environment.n_joints

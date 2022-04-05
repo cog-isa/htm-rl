@@ -1,3 +1,7 @@
+- condition: ['episode', 'equal', 100000, 'norepeat']
+  check_every: 'episode'
+  action: 'stop'
+  params: {}
 - condition: ['last_terminal_stat', 'mod', 100, 'repeat']
   check_every: 'last_terminal_stat'
   action: 'set_pos_in_order'

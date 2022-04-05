@@ -1,40 +1,28 @@
 seed: &seed 5231
 levels: 2
 agent: hima
-project: hima_ur3
+project: hima_pulse75
 entity: hauska  # don't forget to change if you use logging
 
-log: False  # wandb logging
+log: true  # wandb logging
 path_to_store_logs: '/tmp'  # important: change, if you are Windows user
+scenario: '../scenarios/arm.yaml'
 
-run_options:
-  n_episodes: 200
+logger_config:
   log_every_episode: 10
-  log_values_int: False
-  log_values_ext: False
   log_priorities: False
-  log_values: False
-  log_policy: False
-  log_option_values: False
-  log_option_policy: False
-  log_options_usage: False
   log_td_error: True
   log_anomaly: False
   log_confidence: False
   log_modulation: False
   log_segments: True
-  log_terminal_stat: False
-  log_empowerment: False
   log_number_of_clusters: False
-  draw_options: False
-  draw_options_stats: False
-  opt_threshold: 50
   animation_fps: 5
 
-environment_type: pulse
+environment_type: coppelia
 workspace_limits:  # arm workspace
-  r: [ 0.1, 0.4 ]  # meters min=0.064, max=0.5
-  h: [ 0.1, 0.4 ]  # min = 0, max=0.482
+  r: [ 0.12, 0.4 ]  # meters min=0.12, max=0.67
+  h: [ 0.1, 0.4 ]  # min = 0, max=0.67
   phi: [ 0, 360 ]  # degrees
 environment:
   max_steps: 200
@@ -46,8 +34,8 @@ environment:
   initial_pose: [ 0.0, 0.0, 0.0, 0.0, 90, 0.0 ]  # initial robot joint positions in degrees
   initial_target_position: [ 0.0, 0.15, 0.4 ]  # relative to arm base in meters
   joints_speed_limit: 80  # degrees per second
-  arm_name: 'UR3'
-  scene_file: 'UR3_tip.ttt'  # MUST be changed accordingly to action type
+  arm_name: 'Pulse75'
+  scene_file: 'pulse75_tip.ttt'  # MUST be changed accordingly to action type
   action_type: 'tip'
   joints_to_manage: 'all'
   camera_resolution: [ 128, 128 ]
@@ -56,20 +44,20 @@ environment:
   #  - joint_pos
   action_time_step: 0.2  # s
   seed: *seed
-  headless: false
+  headless: true
   responsive_ui: false
 
-#pulse_action_adapter:
+#action_adapter:
 #  mode: angle  # angle | speed
 #  delta: 20  # degrees
 #  time_delta: 0.2  # seconds
 #  default_value: 'random'
 #  seed: *seed
 
-pulse_action_adapter_continuous:
+action_adapter_continuous:
   velocity: 0.2
 
-pulse_observation_adapter:
+observation_adapter:
   v1:
     complex:
       g_kernel_size: 24
@@ -100,10 +88,9 @@ pulse_observation_adapter:
     n_active_bits: 10
 
 
-cagent:
-  use_intrinsic_reward: false
+agent_config:
   use_dreaming: false
-  alpha: 1.0
+  use_intrinsic_reward: false
   punish_intrinsic_reward: -10
 #  elementary_actions:
 #    n_actions: 3
@@ -123,40 +110,6 @@ cagent:
       permanenceDecrement: 0.001
       predictedSegmentDecrement: 0.001
       maxSegmentsPerCell: 5
-    seed: *seed
-  dreaming:
-    enabled: false
-    anomaly_based_falling_asleep:
-      anomaly_threshold: 1.0
-      alpha: .8
-      beta: 2.
-      max_prob: .15
-
-    prediction_depth: 18
-    n_prediction_rollouts: [ 3, 12 ]
-
-    sa_encoder:
-      clusters_similarity_threshold: .7
-
-    reward_model:
-      learning_rate: [ 1., 1. ]
-
-    anomaly_model:
-      learning_rate: [ .1, 1. ]
-
-    transition_model:
-      tm:
-        cells_per_column: 1
-        initial_permanence: .3
-        connected_permanence: .3
-        activation_threshold: .88
-        learning_threshold: .8
-        max_new_synapse_count: 1.0
-        max_synapses_per_segment: 1.0
-        predictedSegmentDecrement: .001
-        permanenceIncrement: .05
-        permanenceDecrement: .01
-        maxSegmentsPerCell: 8
     seed: *seed
 
 # specify blocks and substitute default parameters
@@ -288,8 +241,6 @@ hierarchy:
 input_block_default:
   columns: 0
   level: 0
-
-muscles_size: 12
 
 # default parameters
 spatial_memory_default:

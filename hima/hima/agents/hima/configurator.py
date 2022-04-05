@@ -22,16 +22,14 @@ def configure(config):
         obs_sdr_size = environment.env.output_sdr_size
     elif config['environment_type'] == 'coppelia':
         from hima.envs.coppelia.environment import ArmEnv
-        from hima.agents.hima.adapters import PulseObsAdapter
+        from hima.agents.hima.adapters import ArmObsAdapter
         headless = config['environment']['headless']
         config['environment'].update({'headless': True})
         environment = ArmEnv(workspace_limits=config['workspace_limits'], **config['environment'])
         config['environment'].update({'headless': headless})
-        obs_adapter = PulseObsAdapter(environment, config['pulse_observation_adapter'])
+        obs_adapter = ArmObsAdapter(environment, config['observation_adapter'])
         obs_sdr_size = obs_adapter.output_sdr_size
         environment.shutdown()
-    elif config['environment_type'] == 'animalai':
-        pass
     else:
         raise ValueError(f'Unknown environment type: "{config["environment_type"]}"')
     print(f'obs sdr size: {obs_sdr_size}')
@@ -191,13 +189,14 @@ def configure(config):
         )
     )
 
-    new_config['agent']['dreaming'] = deepcopy(config['agent_config']['dreaming'])
+    if 'dreaming' in config['agent_config'].keys():
+        new_config['agent']['dreaming'] = deepcopy(config['agent_config']['dreaming'])
 
     new_config['seed'] = config['seed']
     new_config['levels'] = config['levels']
     new_config['path_to_store_logs'] = config['path_to_store_logs']
 
-    if config['environment_type'] == 'pulse':
+    if config['environment_type'] == 'coppelia':
         if config['environment']['action_type'] != 'tip':
             if config['environment']['joints_to_manage'] != 'all':
                 new_config['agent']['n_actions_to_accumulate'] = len(config['environment']['joints_to_manage'])
@@ -205,17 +204,18 @@ def configure(config):
                 new_config['agent']['n_actions_to_accumulate'] = 6
         else:
             new_config['agent']['n_actions_to_accumulate'] = 1
-        new_config['pulse_observation_adapter'] = config['pulse_observation_adapter']
-        if 'pulse_action_adapter' in config.keys():
-            new_config['pulse_action_adapter'] = config['pulse_action_adapter']
-            new_config['pulse_action_adapter'].update(dict(
+        new_config['observation_adapter'] = config['observation_adapter']
+        if 'action_adapter' in config.keys():
+            new_config['action_adapter'] = config['action_adapter']
+            new_config['action_adapter'].update(dict(
                 seed=config['seed'],
                 bucket_size=config['agent_config']['elementary_actions']['bucket_size']
             ))
             new_config['agent']['elementary_actions']['n_actions'] = 3
         else:
-            new_config['pulse_action_adapter_continuous'] = config['pulse_action_adapter_continuous']
+            new_config['action_adapter_continuous'] = config['action_adapter_continuous']
     elif config['environment_type'] == 'gridworld':
+        new_config['agent']['n_actions_to_accumulate'] = 1
         new_config['action_adapter'] = config['action_adapter']
         new_config['action_adapter'].update(dict(
             seed=config['seed'],

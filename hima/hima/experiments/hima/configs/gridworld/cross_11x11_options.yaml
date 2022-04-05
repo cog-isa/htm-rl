@@ -92,9 +92,7 @@ action_adapter:
 agent_config:
   use_intrinsic_reward: false
   use_dreaming: false
-  alpha: 1.0
   punish_intrinsic_reward: -10
-  n_actions_to_accumulate: 1
   elementary_actions:
     n_actions: 4
     bucket_size: 3

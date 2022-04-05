@@ -22,7 +22,7 @@ from hima.agents.hima.hima import HIMA
 from hima.agents.hima.adapters import BioGwLabActionAdapter, BioGwLabObsAdapter
 
 
-class HIMAgentRunner:
+class GwHIMARunner:
     def __init__(self, config, logger=None, logger_config=None):
         seed = config['seed']
         np.random.seed(seed)
