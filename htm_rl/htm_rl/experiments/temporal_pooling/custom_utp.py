@@ -70,7 +70,7 @@ class CustomUtp:
         return result_sdr
 
     def adapt_synapses(self, input_: np.ndarray, output_: np.ndarray, inc, dec):
-        self.connections[:, input_] -= dec
+        self.connections[output_, :] -= dec
 
         active_synapses = np.ix_(output_, input_)
         self.connections[active_synapses] += dec
@@ -144,9 +144,11 @@ class CustomUtp:
         return winners
 
     def update_union_sdr(self):
-        self._union_sdr.dense = self._pooling_activations > np.partition(
-            self._pooling_activations.flatten(), -self.cells_in_union-1
-        )[-self.cells_in_union-1]
+        # tie_breaker = np.random.normal(0, 0.001, np.prod(self._shape))
+        # self._union_sdr.dense = self._pooling_activations + tie_breaker > np.partition(
+        #     (self._pooling_activations+tie_breaker).flatten(), -self.cells_in_union-1
+        # )[-self.cells_in_union-1]
+        self._union_sdr.dense = self._pooling_activations != 0
 
     def compute(self, active_neurons: SDR, predicted_neurons: SDR, learn: bool = True):
         overlap = self.count_overlap(active_neurons, predicted_neurons)

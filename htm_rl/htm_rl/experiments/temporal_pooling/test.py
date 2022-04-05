@@ -67,8 +67,10 @@ def run(tm, tp, policy, state_encoder, action_encoder, learn=True, prev_dense=No
         my_log = {}
         if prev_dense is not None:
             my_log['new_cells_percent'] = 1 - representations_intersection_1(tp.getUnionSDR().dense, prev_dense)
+            my_log['prev_similarity'] = representation_similarity(tp.getUnionSDR().dense, prev_dense)
             my_log['num_in_prev'] = np.count_nonzero(prev_dense)
-            my_log['num_in_curr'] = np.count_nonzero(tp.getUnionSDR().dense)
+
+        my_log['num_in_curr'] = np.count_nonzero(tp.getUnionSDR().dense)
 
         if whole_active is not None:
             whole_active.dense = np.logical_or(whole_active.dense, tp.getUnionSDR().dense)
@@ -77,6 +79,13 @@ def run(tm, tp, policy, state_encoder, action_encoder, learn=True, prev_dense=No
 
         if counter % window_size == window_size - 1:
             my_log['difference'] = (window_error / window_size)
+            try:
+                my_log['nonzero_pooling'] = np.count_nonzero(tp._pooling_activations)
+                my_log['lower_bound'] = np.partition(
+                    tp._pooling_activations.flatten(), -tp.cells_in_union-1
+                )[-tp.cells_in_union-1]
+            except BaseException:
+                pass
             window_error = 0
         wandb.log(my_log)
         tp_prev_union = current_union.copy()
@@ -270,6 +279,9 @@ def vis_what(data, representations):
 
     sns.heatmap(abs(pure_similarity - similarity_matrix), vmin=0, vmax=1, cmap='plasma', ax=ax3, annot=True)
     wandb.log({'representations similarity': wandb.Image(ax1)})
+    table = wandb.Table([[np.mean(abs(pure_similarity - similarity_matrix))]])
+    wandb.log({'mean_abs_error': wandb.plot.bar(table, '', '')})
+
     plt.show()
 
 
@@ -301,14 +313,14 @@ def _run_tests():
     # only_custom_utp_test(row_data)
     # custom_utp_all_seq_5_epochs(data)
     # stp_all_seq_3_epochs(data)
-    # common_utp_all_seq_5_epochs(data)
+    common_utp_all_seq_5_epochs(data)
     # no_second_boosting(data)
     # no_history_learning_5_epochs(data)
     # no_history_learning_15_epochs(data)
     # no_untemporal_learning(data)
     # no_boosting(data)
     # no_union_learning(data)
-    custom_test(data)
+    # custom_test(data)
     # only_union_learning(data)
 
 
