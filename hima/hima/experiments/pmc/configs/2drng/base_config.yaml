@@ -17,7 +17,7 @@ agent:
         {
           g_kernel_size: 6,
           g_stride: 1,
-          g_pad: None,
+          g_pad: 0,
           g_sigma_x: 1.8,
           g_sigma_y: 1.2,
           g_lambda_: 6,

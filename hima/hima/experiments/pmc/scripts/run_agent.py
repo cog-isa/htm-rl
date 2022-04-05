@@ -10,10 +10,10 @@ envs = ['rag2d', 'coppelia', 'aai']
 if len(sys.argv) > 1:
     env = sys.argv[1]
 else:
-    env = envs[1]
+    env = envs[2]
 
 if env == envs[0]:
-    name = 'configs/base_config.yaml'
+    name = '../configs/2drng/base_config.yaml'
     with open(name, 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
@@ -31,9 +31,9 @@ elif env == envs[1]:
     if len(sys.argv) > 2:
         name = sys.argv[2]
     else:
-        name = 'ur3_config'
+        name = 'pulse_config'
 
-    with open(f'configs/{name}.yaml', 'r') as file:
+    with open(f'../configs/coppelia/{name}.yaml', 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
     for arg in sys.argv[3:]:
@@ -69,7 +69,7 @@ elif env == envs[1]:
     runner.run()
 
 elif env == envs[2]:
-    name = 'configs/aai_basic_config.yaml'
+    name = '../configs/animalai/aai_basic_config.yaml'
     with open(name, 'r') as file:
         config = yaml.load(file, Loader=yaml.Loader)
 
