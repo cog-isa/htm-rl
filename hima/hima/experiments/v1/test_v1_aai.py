@@ -25,16 +25,21 @@ def collect_data():
     plt.show()
     print(runner.agent.map)
     n_states = int(runner.agent.map.min())
-    data = np.empty((25, n_states, 200, 200, 3))
-    ind = 0
-    for i in range(5):
-        for j in range(5):
-            arr = runner.agent.data[(i, j)]
-            temp = np.arange(len(arr))
-            np.random.shuffle(temp)
-            data[ind] = np.array(arr)[temp[:n_states]]
-            ind += 1
-    np.savez_compressed('aii_data.npz', data)
+    if n_states == 0:
+        print("One of the cells is not visited")
+        print("No data will be saved")
+    else:
+        data = np.empty((25, n_states, 200, 200, 3))
+        ind = 0
+        for i in range(5):
+            for j in range(5):
+                arr = runner.agent.data[(i, j)]
+                temp = np.arange(len(arr))
+                np.random.shuffle(temp)
+                data[ind] = np.array(arr)[temp[:n_states]]
+                ind += 1
+        np.savez_compressed('aii_data.npz', data)
+
 
 def test():
     simple_configs = [
