@@ -1,7 +1,7 @@
 seed: &seed 1337
 entity: pkuderov
 project: temporal_pooling
-log: False    # wandb logging
+log: True    # wandb logging
 
 .shared_params:
   n_states: &n_states 10
