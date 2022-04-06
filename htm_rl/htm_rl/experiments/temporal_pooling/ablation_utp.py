@@ -25,7 +25,7 @@ class AblationUtp(SpatialPooler):
       driven by active-cell input and, more strongly, by predictive-active cell
       input. The latter is more likely to produce active columns. Such winning
       columns will also tend to persist longer in the union SDR.
-      """
+    """
 
     def __init__(
             self,

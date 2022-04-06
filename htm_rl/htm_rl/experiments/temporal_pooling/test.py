@@ -10,7 +10,7 @@ from htm_rl.experiments.temporal_pooling.custom_utp import CustomUtp
 from htm_rl.experiments.temporal_pooling.data_generation import generate_data
 from htm_rl.experiments.temporal_pooling.metrics import (
     symmetric_error, representations_intersection_1, row_similarity,
-    representation_similarity
+    representation_similarity, similarity_mae
 )
 from htm_rl.experiments.temporal_pooling.sandwich_tp import SandwichTp
 from htm_rl.experiments.temporal_pooling.utils import StupidEncoder
@@ -19,6 +19,7 @@ from htm_rl.modules.htm.temporal_memory import DelayedFeedbackTM
 
 from htm_rl.experiments.temporal_pooling.ablation_utp import AblationUtp
 from time import time
+
 
 
 def train_model(tm: TemporalMemory, sdrs: np.ndarray, num_epochs=10) -> list:
@@ -193,7 +194,7 @@ def no_second_boosting(data):
         second_boosting=False
     )
     tm = DelayedFeedbackTM(**config_tm)
-    all_seq(tm, tp, data, epochs=15)
+    all_seq(tm, tp, data, epochs=5)
 
 
 def no_history_learning_5_epochs(data):
@@ -232,7 +233,7 @@ def no_union_learning(data):
     all_seq(tm, tp, data, epochs=5)
 
 
-def only_union_learning(data):
+def common_only_UnionL(data):
     tp = AblationUtp(
         **config_tp,
         untemporal_learning=False,
@@ -279,9 +280,7 @@ def vis_what(data, representations):
 
     sns.heatmap(abs(pure_similarity - similarity_matrix), vmin=0, vmax=1, cmap='plasma', ax=ax3, annot=True)
     wandb.log({'representations similarity': wandb.Image(ax1)})
-    table = wandb.Table([[np.mean(abs(pure_similarity - similarity_matrix))]])
-    wandb.log({'mean_abs_error': wandb.plot.bar(table, '', '')})
-
+    wandb.run.summary['mae'] = similarity_mae(pure_similarity, similarity_matrix)
     plt.show()
 
 
@@ -302,18 +301,42 @@ def custom_test(data):
     all_seq(tm, tp, data, epochs=5)
 
 
+def custom_only_UnionL_uncut(data):
+    tp = CustomUtp(
+        **utp_conf,
+        untemporal_learning_enabled=False,
+        union_learning_enabled=True,
+        history_learning_enabled=False,
+        limit_union_cells=False
+    )
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def custom_no_HistoryL_uncut(data):
+    tp = CustomUtp(**utp_conf, history_learning_enabled=False, limit_union_cells=False)
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
+def custom_no_HistoryL(data):
+    tp = CustomUtp(**utp_conf, history_learning_enabled=False)
+    tm = DelayedFeedbackTM(**config_tm)
+    all_seq(tm, tp, data, epochs=5)
+
+
 def _run_tests():
     wandb.login()
     np.random.seed(42)
 
-    row_data, data = generate_data(5, n_actions, n_states, randomness=0.5)
+    row_data, data = generate_data(5, n_actions, n_states, randomness=0.7)
     np.random.shuffle(data)
     # common_utp_one_seq(data)
     # custom_utp_one_seq(data)
     # only_custom_utp_test(row_data)
     # custom_utp_all_seq_5_epochs(data)
-    # stp_all_seq_3_epochs(data)
-    common_utp_all_seq_5_epochs(data)
+    stp_all_seq_3_epochs(data)
+    # common_utp_all_seq_5_epochs(data)
     # no_second_boosting(data)
     # no_history_learning_5_epochs(data)
     # no_history_learning_15_epochs(data)
@@ -321,7 +344,10 @@ def _run_tests():
     # no_boosting(data)
     # no_union_learning(data)
     # custom_test(data)
-    # only_union_learning(data)
+    # common_only_UnionL(data)
+    # custom_only_UnionL_uncut(data)
+    # custom_no_HistoryL_uncut(data)
+    # custom_no_HistoryL(data)
 
 
 if __name__ == '__main__':

@@ -20,7 +20,12 @@ class CustomUtp:
                  activation_threshold,
                  history_length,
                  union_sdr_sparsity,
-                 **kwargs):
+                 prev_perm_inc,
+                 untemporal_learning_enabled=True,
+                 union_learning_enabled=True,
+                 history_learning_enabled=True,
+                 limit_union_cells=True,
+                 ):
         input_shape = inputDimensions
         output_shape = columnDimensions
         out_size = np.prod(output_shape)
@@ -39,6 +44,7 @@ class CustomUtp:
         self.field_size = int(receptive_field_sparsity * in_size)
         self.activation_threshold = activation_threshold
         self.history_length = history_length
+        self.prev_perm_inc = prev_perm_inc
 
         self.connections = np.random.normal(self.activation_threshold, 0.1, (out_size, in_size))
 
@@ -50,6 +56,11 @@ class CustomUtp:
         self.predict_history = []
 
         self.cells_in_union = int(np.prod(self._shape)*union_sdr_sparsity)
+
+        self.untemporal_learning_enabled = untemporal_learning_enabled
+        self.union_learning_enabled = union_learning_enabled
+        self.history_learning_enabled = history_learning_enabled
+        self.limit_union_cells = limit_union_cells
 
     def set_receptive_fields(self):
         for cell in self.receptive_fields:
@@ -98,7 +109,7 @@ class CustomUtp:
             self.adapt_synapses(
                 input_=prev_predict.sparse,
                 output_=winners,
-                inc=self._permanence_inc,
+                inc=self.prev_perm_inc,
                 dec=0
             )
         if len(self.predict_history) == self.history_length:
@@ -106,9 +117,14 @@ class CustomUtp:
         self.predict_history.append(predicted_neurons)
 
     def update_permanences(self, predicted_neurons: SDR, winners: np.ndarray):
-        # self.untemporal_learning(predicted_neurons, winners)
-        self.union_learning(predicted_neurons)
-        # self.history_learning(predicted_neurons, winners)
+        if self.untemporal_learning_enabled:
+            self.untemporal_learning(predicted_neurons, winners)
+
+        if self.union_learning_enabled:
+            self.union_learning(predicted_neurons)
+
+        if self.history_learning_enabled:
+            self.history_learning(predicted_neurons, winners)
 
     def compute_continuous(self, active_neurons: SDR, predicted_neurons: SDR, learn: bool = True):
         weighted_input = active_neurons.dense * self.active_weight + predicted_neurons.dense * self.predicted_weight
@@ -144,11 +160,13 @@ class CustomUtp:
         return winners
 
     def update_union_sdr(self):
-        # tie_breaker = np.random.normal(0, 0.001, np.prod(self._shape))
-        # self._union_sdr.dense = self._pooling_activations + tie_breaker > np.partition(
-        #     (self._pooling_activations+tie_breaker).flatten(), -self.cells_in_union-1
-        # )[-self.cells_in_union-1]
-        self._union_sdr.dense = self._pooling_activations != 0
+        if self.limit_union_cells:
+            tie_breaker = np.random.normal(0, 0.001, np.prod(self._shape))
+            self._union_sdr.dense = (self._pooling_activations + tie_breaker) > np.partition(
+                (self._pooling_activations+tie_breaker).flatten(), -self.cells_in_union-1
+            )[-self.cells_in_union-1]
+        else:
+            self._union_sdr.dense = self._pooling_activations != 0
 
     def compute(self, active_neurons: SDR, predicted_neurons: SDR, learn: bool = True):
         overlap = self.count_overlap(active_neurons, predicted_neurons)

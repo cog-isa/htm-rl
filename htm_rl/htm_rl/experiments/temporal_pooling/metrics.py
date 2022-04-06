@@ -28,5 +28,10 @@ def row_similarity(policy_1, policy_2):
 def representation_similarity(representation_1, representation_2):
     overlap = np.count_nonzero(representation_1 * representation_2)
     union = np.count_nonzero(representation_1 | representation_2)
-
+    if union == 0:
+        return 1
     return overlap / union
+
+
+def similarity_mae(pure, representational):
+    return np.mean(abs(pure - representational)[np.ones(pure.shape) - np.identity(pure.shape[0]) == 1])

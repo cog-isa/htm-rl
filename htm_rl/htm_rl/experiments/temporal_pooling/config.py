@@ -109,8 +109,8 @@ config_sp_upper = dict(
 utp_conf = dict(
     inputDimensions=[input_columns * cells_per_column],
     columnDimensions=[output_columns],
-    initial_pooling=1,
-    pooling_decay=0.2,
+    initial_pooling=0.5,
+    pooling_decay=0.1,
     permanence_inc=0.1,
     permanence_dec=0.01,
     sparsity=0.004,
@@ -119,7 +119,8 @@ utp_conf = dict(
     receptive_field_sparsity=0.5,
     activation_threshold=0.6,
     history_length=20,
-    union_sdr_sparsity=0.01
+    union_sdr_sparsity=0.01,
+    prev_perm_inc=0.05
 )
 
 stp_config = dict(
