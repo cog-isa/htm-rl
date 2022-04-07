@@ -2,24 +2,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 import wandb
-from htm.algorithms import TemporalMemory
-from htm.bindings.sdr import SDR
-
-from htm_rl.experiments.temporal_pooling.config import *
-from htm_rl.experiments.temporal_pooling.custom_utp import CustomUtp
-from htm_rl.experiments.temporal_pooling.data_generation import generate_data
-from htm_rl.experiments.temporal_pooling.metrics import (
+from hima.experiments.temporal_pooling.ablation_utp import AblationUtp
+from hima.experiments.temporal_pooling.config import *
+from hima.experiments.temporal_pooling.custom_utp import CustomUtp
+from hima.experiments.temporal_pooling.data_generation import generate_data
+from hima.experiments.temporal_pooling.metrics import (
     symmetric_error, representations_intersection_1, row_similarity,
     representation_similarity, similarity_mae
 )
-from htm_rl.experiments.temporal_pooling.sandwich_tp import SandwichTp
-from htm_rl.experiments.temporal_pooling.utils import StupidEncoder
-from htm_rl.modules.htm.spatial_pooler import UnionTemporalPooler
-from htm_rl.modules.htm.temporal_memory import DelayedFeedbackTM
-
-from htm_rl.experiments.temporal_pooling.ablation_utp import AblationUtp
-from time import time
-
+from hima.experiments.temporal_pooling.sandwich_tp import SandwichTp
+from hima.experiments.temporal_pooling.utils import StupidEncoder
+from hima.modules.htm.spatial_pooler import UnionTemporalPooler
+from hima.modules.htm.temporal_memory import DelayedFeedbackTM
+from htm.algorithms import TemporalMemory
+from htm.bindings.sdr import SDR
 
 
 def train_model(tm: TemporalMemory, sdrs: np.ndarray, num_epochs=10) -> list:

@@ -5,7 +5,7 @@ from htm.bindings.algorithms import SpatialPooler
 from htm.bindings.math import Random
 from htm.bindings.sdr import SDR
 
-from htm_rl.modules.htm.utils import (
+from hima.modules.htm.utils import (
     ExponentialDecayFunction, NoDecayFunction, LogisticExciteFunction,
     FixedExciteFunction
 )

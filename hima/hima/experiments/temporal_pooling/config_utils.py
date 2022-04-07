@@ -1,7 +1,7 @@
 import wandb
 import yaml
 
-from htm_rl.scenarios.utils import parse_str
+from hima.common.config_utils import parse_str
 
 
 def overwrite_config(config: dict, key_path: str, value: str):

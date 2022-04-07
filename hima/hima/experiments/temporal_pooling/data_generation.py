@@ -3,9 +3,9 @@ from typing import Optional, Iterator
 import numpy as np
 from numpy.random import Generator
 
-from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.sdr_encoders import IntBucketEncoder
-from htm_rl.scenarios.utils import which_type
+from hima.common.sdr import SparseSdr
+from hima.common.sdr_encoders import IntBucketEncoder
+from hima.common.config_utils import which_type
 
 
 class Policy:

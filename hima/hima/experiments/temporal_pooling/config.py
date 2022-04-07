@@ -1,4 +1,4 @@
-from htm_rl.common.sdr_encoders import IntBucketEncoder
+from hima.common.sdr_encoders import IntBucketEncoder
 
 wandb_entity = 'irodkin'
 wandb_project = 'temporal_pooling'

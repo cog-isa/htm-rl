@@ -6,15 +6,15 @@ import numpy as np
 from htm.bindings.sdr import SDR
 from wandb.sdk.wandb_run import Run
 
-from htm_rl.common.sdr import SparseSdr
-from htm_rl.common.utils import ensure_absolute_number, safe_divide
-from htm_rl.experiments.temporal_pooling.config_utils import make_logger, compile_config
-from htm_rl.experiments.temporal_pooling.data_generation import resolve_data_generator
-from htm_rl.experiments.temporal_pooling.metrics import (
+from hima.common.sdr import SparseSdr
+from hima.common.utils import ensure_absolute_number, safe_divide
+from hima.experiments.temporal_pooling.config_utils import make_logger, compile_config
+from hima.experiments.temporal_pooling.data_generation import resolve_data_generator
+from hima.experiments.temporal_pooling.metrics import (
     symmetric_error, representations_intersection_1
 )
-from htm_rl.modules.htm.spatial_pooler import UnionTemporalPooler
-from htm_rl.modules.htm.temporal_memory import DelayedFeedbackTM
+from hima.modules.htm.spatial_pooler import UnionTemporalPooler
+from hima.modules.htm.temporal_memory import DelayedFeedbackTM
 
 
 # noinspection PyAttributeOutsideInit
