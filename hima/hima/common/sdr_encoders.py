@@ -1,4 +1,4 @@
-from typing import List, Any, Sequence, Tuple
+from typing import Any, Sequence
 
 import numpy as np
 
@@ -12,7 +12,7 @@ class IntBucketEncoder:
     SDR bit space is divided into `n_values` possibly overlapping buckets of `bucket_size` bits
         where i-th bucket starts from i * `buckets_step` index.
     Each value is encoded with corresponding bucket of active bits (see example).
-    This's a sparse encoder, so the output is in sparse SDR format.
+    This is a sparse encoder, so the output is in sparse SDR format.
 
     Non-overlapping example, i.e. when `buckets_step` == `bucket_size` = 4, for `n_values` = 3:
         0000 1111 0000
@@ -299,10 +299,14 @@ class VectorDynamicEncoder:
         return np.concatenate(outputs)
 
 
-if __name__ == '__main__':
+def _test():
     encoder = RangeDynamicEncoder(0, 1, 0.3, 10, True, seed=5)
     for x in np.linspace(0, 1, 11):
         code = encoder.encode(x)
         dense = np.zeros(encoder.output_sdr_size, dtype=int)
         dense[code] = 1
         print(f"{round(x, 2)}: {dense}")
+
+
+if __name__ == '__main__':
+    _test()
