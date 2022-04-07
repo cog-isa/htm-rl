@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name='hima',
@@ -8,5 +8,5 @@ setup(
     author='Petr Kuderov',
     author_email='kuderov@airi.net',
     license='AGPLv3',
-    packages=find_packages(),
+    packages=['hima'],
 )
