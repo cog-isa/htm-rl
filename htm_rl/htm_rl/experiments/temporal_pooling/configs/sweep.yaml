@@ -1,0 +1,15 @@
+project: temporal_pooling
+entity: pkuderov
+program: run_test.py
+method: grid
+parameters:
+  seed.:
+    values: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+
+command:
+  - ${env}
+  - python
+  - ${program}
+  - config
+  - ${args}
+
