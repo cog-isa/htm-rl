@@ -1,0 +1,94 @@
+seed: 1337
+entity: pkuderov
+project: temporal_pooling
+log: True    # wandb logging
+
+.shared_params:
+  n_states: &n_states 30
+  tp_output_size: &tp_output_size 4000
+#  n_states: &n_states 10
+#  tp_output_size: &tp_output_size 400
+
+experiment:
+  n_policies: 5
+  epochs: 4
+  policy_repeats: 20
+#  n_policies: 3
+#  epochs: 2
+#  policy_repeats: 4
+  steps_per_policy: *n_states
+  policy_selection_rule: 'ordered'
+
+generator:
+  _type_: synthetic
+  n_states: *n_states
+  n_actions: &n_actions 4
+  state_encoder: bucket
+  action_encoder: bucket
+  policy_similarity: 0.5
+
+state_encoders:
+  bucket:
+    _type_: int_bucket
+    n_values: *n_states
+    bucket_size: 3
+
+action_encoders:
+  bucket:
+    _type_: int_bucket
+    n_values: *n_actions
+    bucket_size: 10
+
+temporal_pooler:
+  columnDimensions: [*tp_output_size]
+  localAreaDensity: 0.01
+  maxUnionActivity: &tp_output_sparsity 0.01
+  activeOverlapWeight: 1
+  predictedActiveOverlapWeight: 2
+  exciteFunctionType: Logistic
+  decayFunctionType: Exponential
+  decayTimeConst: 10.0
+  synPermPredActiveInc: 0.1
+  synPermPreviousPredActiveInc: 0.05
+  historyLength: 20
+  minHistory: 3
+  boostStrength: 0.0
+  globalInhibition: True
+  dutyCyclePeriod: 1000
+  minPctOverlapDutyCycle: 0.001
+  numActiveColumnsPerInhArea: 0
+  potentialPct: 0.5
+  stimulusThreshold: 3
+  synPermConnected: 0.5
+  synPermActiveInc: 0.1
+  synPermInactiveDec: 0.01
+  wrapAround: False
+
+temporal_memory:
+  cells_per_column: 16
+  # apical feedback
+  feedback_cells: *tp_output_size
+  sample_size_apical: *tp_output_sparsity
+  activation_threshold_apical: 0.9
+  learning_threshold_apical: 0.8
+  connected_threshold_apical: 0.5
+  permanence_increment_apical: 0.1
+  permanence_decrement_apical: 0.01
+  initial_permanence_apical: 0.4
+  predicted_segment_decrement_apical: 0.001
+  max_segments_per_cell_apical: 32
+  # basal context
+  activation_threshold_basal: 1.0
+  learning_threshold_basal: 1.0
+  connected_threshold_basal: 0.5
+  permanence_increment_basal: 0.1
+  permanence_decrement_basal: 0.01
+  initial_permanence_basal: 0.4
+  predicted_segment_decrement_basal: 0.001
+  max_segments_per_cell_basal: 32
+  prune_zero_synapses: True
+  timeseries: False
+  anomaly_window: 1000
+  confidence_window: 1000
+  noise_tolerance: 0.0
+  sm_ac: 0.99
