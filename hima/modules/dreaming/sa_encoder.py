@@ -1,102 +1,87 @@
-import numpy as np
-
-from hima.agents.q.cluster_memory import ClusterMemory
-from hima.agents.q.sa_encoders import SpSaEncoder
 from hima.common.sdr import SparseSdr
-from hima.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
-from hima.modules.htm.spatial_pooler import SpatialPoolerWrapper
 
 
-class DreamerSaEncoder(SpSaEncoder):
+class SaEncoder:
     """
-    Auxiliary encoder for the HIMA dreamer implementation.
-    Besides forward encoding, it also supports s --> state decoding. It also
-    doesn't implement s_a --> sa encoding as it's not needed for a Dreamer.
+    State, action encoder.
     """
-    sa_sp: None
-
-    state_sp: SpatialPoolerWrapper
-    state_clusters: ClusterMemory
-    state_decoder: list[SparseSdr]
-
-    # noinspection PyMissingConstructor
-    def __init__(
-            self, state_encoder, n_actions: int,
-            state_clusters: dict
-    ):
-        self.state_sp = SpatialPoolerWrapper(state_encoder)
-        self.state_clusters = ClusterMemory(
-            input_sdr_size=self.state_sp.output_sdr_size,
-            n_active_bits=self.state_sp.n_active_bits,
-            **state_clusters
-        )
-        self.state_decoder = []
-
-        self.action_encoder = IntBucketEncoder(
-            n_actions, self.state_sp.n_active_bits
-        )
-        self.s_a_concatenator = SdrConcatenator(input_sources=[
-            self.state_sp,
-            self.action_encoder
-        ])
-        self.sa_sp = None  # it isn't needed for a Dreamer
 
     def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
-        if not isinstance(state, np.ndarray):
-            state = np.array(list(state))
+        """
+        Encodes state sparse sdr to another state sparse sdr (aka s):
+            state --> s
+        """
+        raise NotImplementedError()
 
-        # state encoder learns in HIMA, not here
-        s = self.state_sp.compute(state, learn=False)
+    def encode_action(self, action: int, learn: bool) -> SparseSdr:
+        """
+        Encodes action int to action sparse sdr (aka a):
+            action --> a
+        """
+        raise NotImplementedError()
 
-        s, i_cluster = self._cluster_s(s, learn)
-        self._add_to_decoder(state, i_cluster)
-        return s
+    def concat_s_a(self, s: SparseSdr, a: SparseSdr, learn: bool) -> SparseSdr:
+        """
+        Encodes state (s) and action (a) sparse sdrs to joined representation,
+        such that it can be decoded back (hence the name "concat" as it's
+        the most naive implementation). The naming for such representation is s_a:
+            s, a --> s_a
+        """
+        raise NotImplementedError()
 
+    def cut_s(self, s_a: SparseSdr) -> SparseSdr:
+        """
+        Decodes joined decodable state-action sparse sdr representation s_a,
+        returning only state sparse sdr s:
+            s_a --> s
+        """
+        raise NotImplementedError()
+
+    def encode_s_a(self, s_a: SparseSdr, learn: bool) -> SparseSdr:
+        """
+        Encodes joined decodable state-action sparse sdr representation s_a
+        to another [possibly not decodable] joined sparse sdr representation sa:
+            s_a --> sa
+        """
+        raise NotImplementedError()
+
+    # ----------- shortcuts ----------------
     def concat_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        # action encoder learns in HIMA, not here
-        a = self.encode_action(action, learn=False)
-        s_a = self.concat_s_a(s, a, learn=learn)
-        return s_a
+        """
+        Encodes state (s) sparse sdrs and action int to joined decodable
+        state-action sparse sdr representation s_a:
+            s, action --> s_a
+        It's a shortcut method, which combines following (but could be implemented
+        faster):
+            action --> a
+            s, a --> s_a
+        """
+        raise NotImplementedError()
 
-    def decode_s_to_state(self, s: SparseSdr) -> SparseSdr:
-        cluster, i_cluster, similarity = self.state_clusters.match(
-            s,
-            similarity_threshold=self.state_clusters.similarity_threshold.min_value
-        )
-        if cluster is None:
-            return np.empty(0)
-        return self.state_decoder[i_cluster]
+    def encode_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
+        """
+        Encodes state (s) sparse sdrs and action int to [possibly not decodable]
+        joined sparse sdr representation sa:
+            s, action --> sa
+        It's a shortcut method, which combines following (but could be implemented
+        faster):
+            action --> a
+            s, a --> s_a
+            s_a --> sa
+        """
+        raise NotImplementedError()
 
     @property
     def output_sdr_size(self):
-        return self.s_a_concatenator.output_sdr_size
+        """
+        Represent the size of the joined state-action sparse sdr
+        representation (sa).
+        """
+        raise NotImplementedError()
 
-    def _cluster_s(self, s: SparseSdr, learn: bool) -> SparseSdr:
-        cluster, i_cluster, similarity = self.state_clusters.match(s)
-        self.state_clusters.similarity_threshold.balance(increase=cluster is not None)
-
-        if learn:
-            if cluster is None and self.state_clusters.full:
-                # have to free up space manually to track clusters order change
-                i_removed = self.state_clusters.remove_least_used_cluster()
-
-                self.state_decoder[i_removed] = self.state_decoder[-1]
-                self.state_decoder.pop()
-
-            i_cluster = self.state_clusters.activate(
-                s, similarity=similarity, matched_cluster=i_cluster
-            )
-            cluster = self.state_clusters.representatives[i_cluster]
-
-        if cluster is not None:
-            s = np.sort(cluster)
-
-        return s, i_cluster
-
-    def _add_to_decoder(self, state: SparseSdr, cluster: int):
-        if cluster is None:
-            return
-
-        if cluster == len(self.state_decoder):
-            self.state_decoder.append([])
-        self.state_decoder[cluster] = state.copy()
+    @property
+    def s_output_sdr_size(self):
+        """
+        Represent the size of the encoded state sparse sdr
+        """
+        raise NotImplementedError()

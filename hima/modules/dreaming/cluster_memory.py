@@ -1,7 +1,7 @@
 import numpy as np
 
-from hima.agents.q.balancing_param import BalancingParam
-from hima.agents.q.cluster_memory_stats import ClusterMemoryStats
+from hima.modules.dreaming.balancing_param import BalancingParam
+from hima.modules.dreaming.cluster_memory_stats import ClusterMemoryStats
 from hima.common.sdr import SparseSdr, DenseSdr
 from hima.common.utils import isnone
 

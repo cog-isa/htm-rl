@@ -4,17 +4,17 @@ from typing import Optional
 import numpy as np
 from numpy.random import Generator
 
-from hima.agents.dreamer.dreaming_stats import DreamingStats
-from hima.agents.dreamer.falling_asleep import AnomalyBasedFallingAsleep
-from hima.agents.q.cluster_memory import ClusterMemory
-from hima.agents.q.input_changes_detector import InputChangesDetector
-from hima.agents.qmb.anomaly_model import AnomalyModel
-from hima.agents.qmb.reward_model import RewardModel
-from hima.agents.qmb.transition_model import TransitionModel
-from hima.agents.qmb.transition_models import make_transition_model
 from hima.common.sdr import SparseSdr
 from hima.common.utils import isnone, safe_divide
-from hima.modules.dreaming.sa_encoder import DreamerSaEncoder
+from hima.modules.dreaming.anomaly_model import AnomalyModel
+from hima.modules.dreaming.cluster_memory import ClusterMemory
+from hima.modules.dreaming.dreaming_stats import DreamingStats
+from hima.modules.dreaming.falling_asleep import AnomalyBasedFallingAsleep
+from hima.modules.dreaming.input_changes_detector import InputChangesDetector
+from hima.modules.dreaming.reward_model import RewardModel
+from hima.modules.dreaming.sa_encoders import DreamerSaEncoder
+from hima.modules.dreaming.transition_model import TransitionModel
+from hima.modules.dreaming.transition_models import make_transition_model
 
 
 class Dreamer:

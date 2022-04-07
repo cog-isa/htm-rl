@@ -1,4 +1,4 @@
-from hima.agents.q.cluster_memory_stats import ClusterMemoryStats
+from hima.modules.dreaming.cluster_memory_stats import ClusterMemoryStats
 from hima.common.utils import safe_divide
 
 

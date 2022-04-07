@@ -1,24 +1,16 @@
 import numpy as np
 
-from hima.agents.agent import Agent
-from hima.common.sdr import SparseSdr
-from hima.envs.env import Env
 
-
-class RndAgent(Agent):
+class RndAgent:
     n_actions: int
 
-    def __init__(
-            self,
-            env: Env,
-            seed: int,
-    ):
-        self.n_actions = env.n_actions
+    def __init__(self, n_actions, seed: int):
+        self.n_actions = n_actions
         self.rng = np.random.default_rng(seed)
 
     @property
     def name(self):
         return 'rnd'
 
-    def act(self, reward: float, state: SparseSdr, first: bool):
+    def act(self):
         return self.rng.integers(self.n_actions)

@@ -2,12 +2,12 @@ from typing import Optional
 
 import numpy as np
 
-from hima.agents.q.cluster_memory import ClusterMemory
-from hima.agents.q.sa_encoder import SaEncoder
+from hima.modules.dreaming.cluster_memory import ClusterMemory
+from hima.modules.dreaming.sa_encoder import SaEncoder
 from hima.common.sdr import SparseSdr
 from hima.common.sdr_encoders import IntBucketEncoder, SdrConcatenator
 from hima.envs.env import Env
-from hima.modules.htm.spatial_pooler import SpatialPooler
+from hima.modules.htm.spatial_pooler import SpatialPoolerWrapper, SpatialPooler
 
 
 class SpSaEncoder(SaEncoder):
@@ -122,94 +122,96 @@ class SpSaEncoder(SaEncoder):
         return s
 
 
-class CrossSaEncoder(SaEncoder):
-    class CrossProductEncoder:
-        n_actions: int
-        n_active_bits: int
-        input_sdr_size: int
-        output_sdr_size: int
+class DreamerSaEncoder(SpSaEncoder):
+    """
+    Auxiliary encoder for the HIMA dreamer implementation.
+    Besides forward encoding, it also supports s --> state decoding. It also
+    doesn't implement s_a --> sa encoding as it's not needed for a Dreamer.
+    """
+    sa_sp: None
 
-        def __init__(self, env):
-            self.n_actions = env.n_actions
-            self.input_sdr_size = env.output_sdr_size
-            self.output_sdr_size = env.output_sdr_size * env.n_actions
-            self.n_active_bits = len(env.observe())
+    state_sp: SpatialPoolerWrapper
+    state_clusters: ClusterMemory
+    state_decoder: list[SparseSdr]
 
-        def encode(self, s: SparseSdr, action: int):
-            bucket_size = self.n_active_bits
-            state = s[0] // bucket_size
-
-            lft = (state * self.n_actions + action) * bucket_size
-            rht = lft + bucket_size
-            return np.arange(lft, rht)
-
-        def decode_action(self, a: SparseSdr) -> int:
-            return a[0] // self.n_active_bits
-
-        def decode_s(self, sa_superposition):
-            if not sa_superposition:
-                return []
-
-            stride = self.n_actions * self.n_active_bits
-            state = -1
-            for x in sa_superposition:
-                state = x // stride
-                break
-            bucket_size = self.n_active_bits
-            lft = state * bucket_size
-            rgt = lft + bucket_size
-            return np.arange(lft, rgt)
-
-    state_clusters: None
-    action_encoder: IntBucketEncoder
-
-    sa_encoder: CrossProductEncoder
-
-    def __init__(self, env: Env):
-        self.sa_encoder = self.CrossProductEncoder(env)
-        self.action_encoder = IntBucketEncoder(
-            n_values=env.n_actions, bucket_size=self.sa_encoder.n_active_bits
+    # noinspection PyMissingConstructor
+    def __init__(
+            self, state_encoder, n_actions: int,
+            state_clusters: dict
+    ):
+        self.state_sp = SpatialPoolerWrapper(state_encoder)
+        self.state_clusters = ClusterMemory(
+            input_sdr_size=self.state_sp.output_sdr_size,
+            n_active_bits=self.state_sp.n_active_bits,
+            **state_clusters
         )
-        self.state_clusters = None
+        self.state_decoder = []
+
+        self.action_encoder = IntBucketEncoder(
+            n_actions, self.state_sp.n_active_bits
+        )
+        self.s_a_concatenator = SdrConcatenator(input_sources=[
+            self.state_sp,
+            self.action_encoder
+        ])
+        self.sa_sp = None  # it isn't needed for a Dreamer
 
     def encode_state(self, state: SparseSdr, learn: bool) -> SparseSdr:
-        return state
+        if not isinstance(state, np.ndarray):
+            state = np.array(list(state))
 
-    def encode_action(self, action: int, learn: bool) -> SparseSdr:
-        return self.action_encoder.encode(action)
+        # state encoder learns in HIMA, not here
+        s = self.state_sp.compute(state, learn=False)
 
-    def concat_s_a(self, s: SparseSdr, a: SparseSdr, learn: bool) -> SparseSdr:
-        action = self.sa_encoder.decode_action(a)
-        return self.sa_encoder.encode(s, action)
-
-    def cut_s(self, sa_superposition: SparseSdr) -> SparseSdr:
-        return self.sa_encoder.decode_s(sa_superposition)
-
-    def encode_s_a(self, s_a: SparseSdr, learn: bool) -> SparseSdr:
-        return s_a
+        s, i_cluster = self._cluster_s(s, learn)
+        self._add_to_decoder(state, i_cluster)
+        return s
 
     def concat_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        s_a = self.sa_encoder.encode(s, action)
+        # action encoder learns in HIMA, not here
+        a = self.encode_action(action, learn=False)
+        s_a = self.concat_s_a(s, a, learn=learn)
         return s_a
 
-    def encode_s_action(self, s: SparseSdr, action: int, learn: bool) -> SparseSdr:
-        # noinspection PyUnusedLocal
-        sa = s_a = self.sa_encoder.encode(s, action)
-        return sa
-
-    @property
-    def s_output_sdr_size(self):
-        return self.sa_encoder.input_sdr_size
+    def decode_s_to_state(self, s: SparseSdr) -> SparseSdr:
+        cluster, i_cluster, similarity = self.state_clusters.match(
+            s,
+            similarity_threshold=self.state_clusters.similarity_threshold.min_value
+        )
+        if cluster is None:
+            return np.empty(0)
+        return self.state_decoder[i_cluster]
 
     @property
     def output_sdr_size(self):
-        return self.sa_encoder.output_sdr_size
+        return self.s_a_concatenator.output_sdr_size
 
+    def _cluster_s(self, s: SparseSdr, learn: bool) -> SparseSdr:
+        cluster, i_cluster, similarity = self.state_clusters.match(s)
+        self.state_clusters.similarity_threshold.balance(increase=cluster is not None)
 
-def make_sa_encoder(
-        env: Env, seed: int, sa_encoder_config: dict
-):
-    if sa_encoder_config:
-        return SpSaEncoder(env, seed, **sa_encoder_config)
-    else:
-        return CrossSaEncoder(env)
+        if learn:
+            if cluster is None and self.state_clusters.full:
+                # have to free up space manually to track clusters order change
+                i_removed = self.state_clusters.remove_least_used_cluster()
+
+                self.state_decoder[i_removed] = self.state_decoder[-1]
+                self.state_decoder.pop()
+
+            i_cluster = self.state_clusters.activate(
+                s, similarity=similarity, matched_cluster=i_cluster
+            )
+            cluster = self.state_clusters.representatives[i_cluster]
+
+        if cluster is not None:
+            s = np.sort(cluster)
+
+        return s, i_cluster
+
+    def _add_to_decoder(self, state: SparseSdr, cluster: int):
+        if cluster is None:
+            return
+
+        if cluster == len(self.state_decoder):
+            self.state_decoder.append([])
+        self.state_decoder[cluster] = state.copy()
