@@ -54,7 +54,7 @@ def compile_config(run_args, config_path_prefix: str = '../configs/', config_ext
         config = yaml.load(config_io, Loader=yaml.Loader)
 
     for arg in run_args[1:]:
-        key_path, value = arg.split('.')
+        key_path, value = arg.split('=')
         overwrite_config(config, key_path, value)
 
     return config

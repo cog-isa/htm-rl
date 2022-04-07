@@ -1,25 +1,26 @@
-seed: &seed 1337
+seed: 1337
 entity: pkuderov
 project: temporal_pooling
 log: True    # wandb logging
 
 .shared_params:
-  n_states: &n_states 10
-  tp_output_size: &tp_output_size 400
+  n_states: &n_states 30
+  tp_output_size: &tp_output_size 4000
+#  n_states: &n_states 10
+#  tp_output_size: &tp_output_size 400
 
 experiment:
-#  n_policies: 5
-#  epochs: 3
-#  policy_repeats: 20
-  n_policies: 3
-  epochs: 2
-  policy_repeats: 4
+  n_policies: 5
+  epochs: 4
+  policy_repeats: 20
+#  n_policies: 3
+#  epochs: 2
+#  policy_repeats: 4
   steps_per_policy: *n_states
   policy_selection_rule: 'ordered'
 
 generator:
   _type_: synthetic
-  seed: *seed
   n_states: *n_states
   n_actions: &n_actions 4
   state_encoder: bucket
@@ -62,7 +63,6 @@ temporal_pooler:
   synPermActiveInc: 0.1
   synPermInactiveDec: 0.01
   wrapAround: False
-  seed: *seed
 
 temporal_memory:
   cells_per_column: 16
@@ -92,4 +92,3 @@ temporal_memory:
   confidence_window: 1000
   noise_tolerance: 0.0
   sm_ac: 0.99
-  seed: *seed

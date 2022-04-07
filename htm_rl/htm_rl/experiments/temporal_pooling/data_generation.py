@@ -9,9 +9,11 @@ from htm_rl.scenarios.utils import which_type
 
 
 class Policy:
+    id: int
     _policy: np.ndarray
 
-    def __init__(self, policy, seed=None):
+    def __init__(self, id: int, policy, seed=None):
+        self.id = id
         self._policy = policy
 
     def __iter__(self) -> Iterator[tuple[SparseSdr, SparseSdr]]:
@@ -78,7 +80,7 @@ class SyntheticGenerator:
                 a = action_encoding[action]
                 policy.append((s, a))
 
-            encoded_policies.append(Policy(policy))
+            encoded_policies.append(Policy(id=i_policy, policy=policy))
 
         return encoded_policies
 
@@ -107,10 +109,11 @@ class PolicySelector:
 
 
 def resolve_data_generator(config: dict):
+    seed = config['seed']
     generator_type, generator_config = which_type(config['generator'], extract=True)
 
     if generator_type == 'synthetic':
-        return SyntheticGenerator(config, **generator_config)
+        return SyntheticGenerator(config, seed=seed, **generator_config)
     else:
         raise KeyError(f'{generator_type} is not supported')
 

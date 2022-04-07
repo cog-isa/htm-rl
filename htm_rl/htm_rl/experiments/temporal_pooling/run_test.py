@@ -1,4 +1,5 @@
 import sys
+from collections import defaultdict
 from typing import Optional
 
 import numpy as np
@@ -19,15 +20,18 @@ from htm_rl.modules.htm.temporal_memory import DelayedFeedbackTM
 # noinspection PyAttributeOutsideInit
 class ExperimentStats:
     def __init__(self):
+        self.policy_id: Optional[int] = None
+        self.last_representations = {}
         self.tp_current_representation = set()
         # self.tp_prev_policy_union = tp.getUnionSDR().copy()
         # self.tp_prev_union = tp.getUnionSDR().copy()
         ...
 
-    def on_policy_change(self):
+    def on_policy_change(self, policy_id):
         # self.tp_prev_policy_union = self.tp_prev_union.copy()
         # self.tp_prev_union = tp.getUnionSDR().copy()
 
+        self.policy_id = policy_id
         self.window_size = 1
         self.window_error = 0
         self.whole_active = None
@@ -44,8 +48,12 @@ class ExperimentStats:
         self.policy_repeat += 1
 
     def on_step(
-            self, temporal_memory, temporal_pooler, logger
+            self, policy_id: int,
+            temporal_memory, temporal_pooler, logger
     ):
+        if policy_id != self.policy_id:
+            self.on_policy_change(policy_id)
+
         tm_log = self._get_tm_metrics(temporal_memory)
         tp_log = self._get_tp_metrics(temporal_pooler)
         if logger:
@@ -59,21 +67,17 @@ class ExperimentStats:
         prev_repr = self.tp_current_representation
         curr_repr = set(temporal_pooler.getUnionSDR().sparse)
         self.tp_current_representation = curr_repr
+        # noinspection PyTypeChecker
+        self.last_representations[self.policy_id] = curr_repr
 
         sparsity = safe_divide(
             len(curr_repr), temporal_pooler._maxUnionCells
         )
-        new_cells_pct = safe_divide(
-            len(prev_repr & curr_repr),
+        new_cells_ratio = safe_divide(
+            len(curr_repr - prev_repr),
             temporal_pooler._maxUnionCells
         )
 
-        # my_log['new_cells_percent'] = 1 - representations_intersection_1(
-        #     tp.getUnionSDR().dense, prev_dense
-        # )
-        # my_log['num_in_prev'] = np.count_nonzero(prev_dense)
-        # my_log['num_in_curr'] = np.count_nonzero(tp.getUnionSDR().dense)
-        #
         # if whole_active is not None:
         #     whole_active.dense = np.logical_or(whole_active.dense, tp.getUnionSDR().dense)
         #     whole_nonzero = np.count_nonzero(whole_active.dense)
@@ -83,7 +87,8 @@ class ExperimentStats:
         #     my_log['difference'] = (window_error / window_size)
         #     window_error = 0
         return {
-            'tp/new_cells_pct': new_cells_pct
+            'tp/sparsity': sparsity,
+            'tp/new_cells': new_cells_ratio
         }
 
     def _get_tm_metrics(self, temporal_memory) -> dict:
@@ -146,6 +151,8 @@ class Experiment:
         print('==> Run')
         for epoch in range(self.epochs):
             self.train_epoch(policies)
+
+        self.log_summary(policies)
         print('<==')
 
     def train_epoch(self, policies):
@@ -153,10 +160,7 @@ class Experiment:
 
         for policy in policies:
             self.temporal_pooler.reset()
-            self.stats.on_policy_change()
-
             for i in range(self.policy_repeats):
-                self.stats.on_policy_repeat()
                 self.run_policy(policy, learn=True)
 
             representations.append(self.temporal_pooler.getUnionSDR())
@@ -177,14 +181,23 @@ class Experiment:
                 predicted_input=tm.get_correctly_predicted_cells(),
                 learn=learn
             )
-
-            current_union = self.temporal_pooler.getUnionSDR().sparse.copy()
-
             self.stats.on_step(
+                policy_id=policy.id,
                 temporal_memory=self.temporal_memory,
                 temporal_pooler=self.temporal_pooler,
                 logger=self.logger
             )
+
+    def log_summary(self, policies):
+        if not self.logger:
+            return
+
+        input_similarity_matrix = self._get_input_similarity(policies)
+        output_similarity_matrix = self._get_output_similarity(self.stats.last_representations)
+
+        mae = np.mean(np.abs(input_similarity_matrix - output_similarity_matrix))
+        self.logger.summary['mae'] = mae
+        self.vis_similarity(input_similarity_matrix, output_similarity_matrix)
 
     def compute_tm_step(
             self, feedforward_input: SparseSdr, basal_context: SparseSdr,
@@ -210,34 +223,72 @@ class Experiment:
 
         self.temporal_pooler.compute(self._tp_active_input, self._tp_predicted_input, learn)
 
-    # def vis_what(self, data, representations):
-    #     similarity_matrix = np.zeros((len(representations), len(representations)))
-    #     pure_similarity = np.zeros(similarity_matrix.shape)
-    #     for i, policy1 in enumerate(data):
-    #         for j, policy2 in enumerate(data):
-    #             pure_similarity[i][j] = row_similarity(policy1, policy2)
-    #             similarity_matrix[i][j] = abs(
-    #                 representation_similarity(representations[i].dense, representations[j].dense)
-    #             )
-    #
-    #     fig = plt.figure(figsize=(40, 10))
-    #     ax1 = fig.add_subplot(131)
-    #     ax1.set_title('representational', size=40)
-    #     ax2 = fig.add_subplot(132)
-    #     ax2.set_title('pure', size=40)
-    #     ax3 = fig.add_subplot(133)
-    #     ax3.set_title('difference', size=40)
-    #
-    #     sns.heatmap(similarity_matrix, vmin=0, vmax=1, cmap='plasma', ax=ax1)
-    #     sns.heatmap(pure_similarity, vmin=0, vmax=1, cmap='plasma', ax=ax2)
-    #
-    #     sns.heatmap(abs(pure_similarity - similarity_matrix), vmin=0, vmax=1, cmap='plasma', ax=ax3, annot=True)
-    #     wandb.log({'representations similarity': wandb.Image(ax1)})
-    #     plt.show()
+    def _get_input_similarity(self, policies):
+        def elem_sim(x1, x2):
+            overlap = np.intersect1d(x1, x2, assume_unique=True).size
+            return safe_divide(overlap, x2.size)
+
+        def reduce_elementwise_similarity(similarities):
+            return np.mean(similarities)
+
+        n_policies = len(policies)
+        similarity_matrix = np.zeros((n_policies, n_policies))
+        for i in range(n_policies):
+            for j in range(n_policies):
+                if i == j:
+                    continue
+
+                similarities = []
+                for p1, p2 in zip(policies[i], policies[j]):
+                    p1_sim = [elem_sim(p1[k], p2[k]) for k in range(len(p1))]
+                    sim = reduce_elementwise_similarity(p1_sim)
+                    similarities.append(sim)
+
+                similarity_matrix[i, j] = reduce_elementwise_similarity(similarities)
+        return similarity_matrix
+
+    def _get_output_similarity(self, representations):
+        n_policies = len(representations.keys())
+        similarity_matrix = np.zeros((n_policies, n_policies))
+        for i in range(n_policies):
+            for j in range(n_policies):
+                if i == j:
+                    continue
+
+                repr1: set = representations[i]
+                repr2: set = representations[j]
+                similarity_matrix[i, j] = safe_divide(
+                    len(repr1 & repr2),
+                    len(repr2)
+                )
+        return similarity_matrix
+
+    def vis_similarity(self, input_similarity_matrix, output_similarity_matrix):
+        from matplotlib import pyplot as plt
+        import seaborn as sns
+        import wandb
+
+        fig = plt.figure(figsize=(40, 10))
+        ax1 = fig.add_subplot(131)
+        ax1.set_title('output', size=40)
+        ax2 = fig.add_subplot(132)
+        ax2.set_title('input', size=40)
+        ax3 = fig.add_subplot(133)
+        ax3.set_title('diff', size=40)
+
+        sns.heatmap(output_similarity_matrix, vmin=0, vmax=1, cmap='plasma', ax=ax1)
+        sns.heatmap(input_similarity_matrix, vmin=0, vmax=1, cmap='plasma', ax=ax2)
+
+        sns.heatmap(
+            np.abs(output_similarity_matrix - input_similarity_matrix),
+            vmin=0, vmax=1, cmap='plasma', ax=ax3, annot=True
+        )
+        self.logger.log({'representations similarity': wandb.Image(ax1)})
 
 
 def resolve_tp(config, temporal_memory):
     base_config_tp = config['temporal_pooler']
+    seed = config['seed']
     input_size = temporal_memory.columns * temporal_memory.cells_per_column
 
     config_tp = dict(
@@ -246,12 +297,13 @@ def resolve_tp(config, temporal_memory):
     )
 
     config_tp = base_config_tp | config_tp
-    tp = UnionTemporalPooler(**config_tp)
+    tp = UnionTemporalPooler(seed=seed, **config_tp)
     return tp
 
 
 def resolve_tm(config, action_encoder, state_encoder):
     base_config_tm = config['temporal_memory']
+    seed = config['seed']
 
     # apical feedback
     apical_feedback_cells = base_config_tm['feedback_cells']
@@ -289,7 +341,7 @@ def resolve_tm(config, action_encoder, state_encoder):
 
     # it's necessary as we shadow some "relative" values with the "absolute" values
     config_tm = base_config_tm | config_tm
-    tm = DelayedFeedbackTM(**config_tm)
+    tm = DelayedFeedbackTM(seed=seed, **config_tm)
     return tm
 
 
