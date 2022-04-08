@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='hima',
-    version='1.0',
+    version='1.1',
     description='Hierarchical intrinsically motivated agent, HIMA',
     url='https://github.com/AIRI-Institute/him-agent',
     author='Petr Kuderov',
