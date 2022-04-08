@@ -25,32 +25,31 @@ The Hierarchical Intrinsically Motivated Agent (HIMA) is an algorithm that is in
 - The Dreaming component models circuits of the brain responsible for the initiation of planning via the model of the environment in the neocortex, improving the learning speed.
 - The Empowerment module is in charge of producing intrinsic motivation signal utilizing the environmental model learned by the neocortex to guide exploration to the most promising states first.
 
-A detailed description of HIMA model is provided in the [supporting paper](https://www.doi.org/10.1186/s40708-022-00156-6).
+A detailed description of HIMA model is provided in the [supporting paper](http://dx.doi.org/10.1186/s40708-022-00156-6).
 
 ![HIMA Architecture](assets/hima_arch.png)
 
 ## Links
 
-- Supporting [paper](https://www.doi.org/10.1186/s40708-022-00156-6)
+- Supporting [paper](http://dx.doi.org/10.1186/s40708-022-00156-6)
 - Contributors [guide](./CONTRIBUTING.md)
-- Cumulative project's [readme](hima/README.md)
 - Introductory [materials](./intro.md)
 
 ## Quick install
 
 There're two setup guides:
 
-- [quick & short version](#quick-install) is here. It's recommended for `hima` library users.
-- [extended version](./install.md/#install-requirements) is for contributors or if you have troubles with this version.
+- [quick & short version](#quick-install) is here below.
+- [extended version](./install.md).
 
-Before cloning the repository, make sure Git LFS is installed (see [help](./install.md/#git-lfs)). Then:
+Before cloning the repository, make sure Git LFS is installed (see [help](./install.md#step-2-install-git-lfs)). Then:
 
 ```bash
-# create env with required packages via conda, then activate it
+# create new env with the required packages via conda, then activate it
 conda create --name hima python=3.9 numpy matplotlib jupyterlab ruamel.yaml tqdm wandb mock imageio seaborn
 conda activate hima
 
-# install packages, that cannot be installed with conda, with pip
+# install with pip the packages that cannot be installed with conda
 pip install hexy prettytable "pytest>=4.6.5"
 
 # git clone our `htm.core` fork to an arbitrary place and pip install it from sources
@@ -58,19 +57,16 @@ pip install hexy prettytable "pytest>=4.6.5"
 cd <where to clone>
 git clone https://github.com/ZhekaHauska/htm.core.git
 cd htm.core
-pip install --use-feature=in-tree-build .
+pip install .
 
 #  cd to the hima subdirectory in the project root and install hima package
-cd <hima_project_root>/hima
+cd <hima_project_root>
 pip install -e .
 ```
 
 ## Repository structure
 
-- `notebooks/` - Jupyter Notebooks
-- `tools/` - 3rd party tools and scripts
-- `watcher/` - our visualization tool for HTM SP and TM.
-- `hima/` - HIMA package `hima` sources (e.g. set it as sources root in PyCharm)
+- `hima/` - HIMA package `hima` sources
 
 ## Run examples
 
@@ -82,7 +78,7 @@ Sign up to [wandb](https://wandb.ai/) and get access token in your profile setti
 
 ``` bash
 # cd to the package sources root
-cd <hima_project_root>/hima/hima
+cd <hima_project_root>/hima
 
 # cd to the hima experiments directory
 cd experiments/hima/scripts
@@ -91,7 +87,7 @@ cd experiments/hima/scripts
 python run_agent.py <environment>/<config_name>
 ```
 
-Do not forget to change `entity` parameter in corresponding config file to match your [wandb](https://wandb.ai/) login. When wandb asks you to login for the first time, use your access token obtained earlier.
+Do not forget to change `entity` parameter in the corresponding config file to match your [wandb](https://wandb.ai/) login. When wandb asks you to login for the first time, use your access token obtained earlier.
 
 #### Run Sweep
 
@@ -99,7 +95,7 @@ Wandb [sweep](https://docs.wandb.ai/guides/sweeps) runs series of experiments wi
 
 ```bash
 # cd to the package sources root
-cd <hima_project_root>/hima/hima
+cd <hima_project_root>/hima
 
 # cd to the hima experiments directory
 cd experiments/hima

@@ -7,7 +7,7 @@
 
 ## Setting up local development
 
-Check out [installation guide](./install.md), especially [contributors setup](./install.md/#contributors-setup) section.
+Check out our [installation guide](./install.md).
 
 ## Styleguides
 

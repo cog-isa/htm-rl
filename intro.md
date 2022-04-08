@@ -1,11 +1,5 @@
 # Introductory materials and tasks
 
-TODO:
-
-- revise test problems on SP and TM for new team members
-  - write up problems (in Ru)
-  - add baseline solutions
-
 ## HTM
 
 Ordered list of useful links to dive into the HTM theory and practice:
@@ -16,11 +10,9 @@ Ordered list of useful links to dive into the HTM theory and practice:
   - NB: implementation details aren't important at first, no need for grocking them from the start
 - [Optional] Short and easy to read [numenta paper](https://arxiv.org/abs/1503.07469) on the power of SDR.
 - Intro to `htm.core` package Temporal Memory class - two-part blog post series ([part1](https://3rdman.de/2020/02/hierarchical-temporal-memory-part-1-getting-started/), [part2](https://3rdman.de/2020/04/hierarchical-temporal-memory-part-2/)) on how to use it.
-  - 01-03 notebooks in `./notebooks/` are complementary, check out them.
   - NB: it's good if you understood high level TM algo and at this point have questions regarding the low level details
 - [BAMI.TM](https://numenta.com/assets/pdf/temporal-memory-algorithm/Temporal-Memory-Algorithm-Details.pdf) - definitive guide on Temporal Memory (TM) implementation details
   - very important for understanding HTM - how to use it and its limits
-  - 04-05 notebooks in `./notebooks/` are complementary, check out them.
 
 Additional useful links:
 
