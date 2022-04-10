@@ -18,8 +18,6 @@ from htm_rl.modules.htm.spatial_pooler import UnionTemporalPooler
 from htm_rl.modules.htm.temporal_memory import DelayedFeedbackTM
 
 from htm_rl.experiments.temporal_pooling.ablation_utp import AblationUtp
-from time import time
-
 
 
 def train_model(tm: TemporalMemory, sdrs: np.ndarray, num_epochs=10) -> list:
@@ -175,7 +173,7 @@ def custom_utp_all_seq_5_epochs(data):
 def common_utp_all_seq_5_epochs(data):
     tp = UnionTemporalPooler(**config_tp)
     tm = DelayedFeedbackTM(**config_tm)
-    all_seq(tm, tp, data, epochs=5)
+    all_seq(tm, tp, data, epochs=15)
 
 
 def no_boosting(data):
@@ -335,8 +333,8 @@ def _run_tests():
     # custom_utp_one_seq(data)
     # only_custom_utp_test(row_data)
     # custom_utp_all_seq_5_epochs(data)
-    stp_all_seq_3_epochs(data)
-    # common_utp_all_seq_5_epochs(data)
+    # stp_all_seq_3_epochs(data)
+    common_utp_all_seq_5_epochs(data)
     # no_second_boosting(data)
     # no_history_learning_5_epochs(data)
     # no_history_learning_15_epochs(data)
