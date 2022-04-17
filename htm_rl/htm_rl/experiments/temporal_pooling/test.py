@@ -4,6 +4,7 @@ import seaborn as sns
 import wandb
 from htm.algorithms import TemporalMemory
 from htm.bindings.sdr import SDR
+from time import sleep
 
 from htm_rl.experiments.temporal_pooling.config import *
 from htm_rl.experiments.temporal_pooling.custom_utp import CustomUtp
@@ -334,7 +335,7 @@ def _run_tests():
     # only_custom_utp_test(row_data)
     # custom_utp_all_seq_5_epochs(data)
     # stp_all_seq_3_epochs(data)
-    common_utp_all_seq_5_epochs(data)
+    # common_utp_all_seq_5_epochs(data)
     # no_second_boosting(data)
     # no_history_learning_5_epochs(data)
     # no_history_learning_15_epochs(data)
@@ -346,6 +347,10 @@ def _run_tests():
     # custom_only_UnionL_uncut(data)
     # custom_no_HistoryL_uncut(data)
     # custom_no_HistoryL(data)
+    data = np.load('observations.npy')
+
+    plt.imshow(data[3], interpolation='nearest')
+    plt.show()
 
 
 if __name__ == '__main__':

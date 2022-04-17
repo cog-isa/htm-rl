@@ -1,12 +1,13 @@
 import numpy as np
-from pickle import dump, load
+import sys
+
+from pickle import dump
+
 from animalai.envs.environment import AnimalAIEnvironment
 from animalai.envs.actions import AAIActions
 
 from htm_rl.agents.agent import Agent
 from htm_rl.common.sdr import SparseSdr
-from htm.bindings.sdr import SDR
-
 from htm_rl.modules.v1 import V1
 
 
@@ -64,14 +65,13 @@ def list_to_np(lst: list) -> np.ndarray:
     return res
 
 
-def collect_data():
+def collect_data(room_conf):
     config = {
         'steps': 60,
         'environment': {
             'seed': 0,
             'file_name': '/home/ivan/htm/AnimalAI-Olympics/animal-ai/env/AnimalAI',
-            'arenas_configurations':
-                '/home/ivan/htm/htm-rl/htm_rl/htm_rl/experiments/temporal_pooling/configs/arenas/1g.yml',
+            'arenas_configurations': room_conf,
             'play': False,
             'useCamera': True,
             'useRayCasts': False,
@@ -134,7 +134,11 @@ def through_v1(images: np.ndarray, v1_config):
 
 
 if __name__ == '__main__':
-    pics = collect_data()
+    if len(sys.argv) > 1:
+        room_conf_path = sys.argv[1]
+    else:
+        room_conf_path = '/home/ivan/htm/htm-rl/htm_rl/htm_rl/experiments/temporal_pooling/configs/arenas/1g.yml'
+    pics = collect_data(room_conf_path)
     simple_configs = [
         {
             'g_kernel_size': 12,
@@ -157,8 +161,6 @@ if __name__ == '__main__':
         'simple_configs': simple_configs,
         'complex_config': complex_config
     })
-    print(converted['sparse'][0])
-    print(type(converted['sparse'][0]))
     with open('saved_dictionary.pkl', 'wb') as f:
         dump(converted, f)
 
