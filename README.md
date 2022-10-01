@@ -1,3 +1,6 @@
+**This repository has been deprecated in favor of the [him-agent](https://github.com/AIRI-Institute/him-agent).**
+___
+
 # HTM applied to RL setting
 
 [![DOI](https://zenodo.org/badge/264959456.svg)](https://zenodo.org/badge/latestdoi/264959456)
